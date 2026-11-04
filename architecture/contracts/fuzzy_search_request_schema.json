@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://libras.umak.edu.ph/schemas/fuzzy_search_request.json",
+  "title": "FuzzyCatalogSearchRequest",
+  "description": "Request schema for dispatching bounded fuzzy catalog queries to the algorithmic engine.",
+  "type": "object",
+  "properties": {
+    "query": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "Patron search keyword, title phrase, author surname, or Dewey/LC call number."
+    },
+    "max_edit_distance": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2,
+      "default": 2,
+      "description": "Maximum bounded Levenshtein distance (radius k_max in {0, 1, 2})."
+    },
+    "target_fields": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["title", "author", "call_number", "isbn"]
+      },
+      "default": ["title", "author", "call_number"],
+      "description": "Bibliographic fields to search against."
+    },
+    "limit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 50,
+      "default": 10,
+      "description": "Maximum candidate matches returned in certificate."
+    }
+  },
+  "required": ["query"],
+  "additionalProperties": false
+}

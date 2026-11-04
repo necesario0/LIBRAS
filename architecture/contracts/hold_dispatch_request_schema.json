@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://libras.umak.edu.ph/schemas/hold_dispatch_request.json",
+  "title": "HoldDispatchResolutionRequest",
+  "description": "Payload sent when a physical book copy is scanned at the circulation counter to resolve holds.",
+  "type": "object",
+  "properties": {
+    "accession_number": {
+      "type": "string",
+      "pattern": "^[0-9A-Za-z\\-_]{4,20}$",
+      "description": "Scanned physical barcode accession identifier preserving leading zeros."
+    },
+    "desk_station_id": {
+      "type": "string",
+      "description": "Circulation desk terminal identifier (e.g., CIRC-MAIN-DESK-01)."
+    },
+    "librarian_id": {
+      "type": "string",
+      "description": "Authenticated identifier of the circulation librarian processing return."
+    },
+    "checkin_timestamp": {
+      "type": "integer",
+      "minimum": 1600000000000,
+      "description": "Epoch millisecond timestamp of scanner trigger."
+    }
+  },
+  "required": ["accession_number", "desk_station_id", "librarian_id", "checkin_timestamp"],
+  "additionalProperties": false
+}
