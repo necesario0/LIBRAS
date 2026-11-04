@@ -1,0 +1,9 @@
+# Project LIBRAS - Python Dependencies
+# ALGOCOM × SOFTENG (PBL Milestone 1)
+
+# Document generation
+python-docx>=1.1.0
+
+# Testing and automated benchmarking
+pytest>=7.4.0
+pytest-benchmark>=4.0.0
