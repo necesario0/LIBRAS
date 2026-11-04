@@ -5,7 +5,7 @@
 **Section & Term:** III-BCSAD • Academic Year 2026–2027  
 **Advisers:** Prof. Nomar Maestro (ALGOCOM / IAS) • Prof. Era Marie Gannaban (SOFTENG / HCI)  
 **Target Unit:** University of Makati Library Learning Commons (UMak LLC Main & SOL Library)  
-**Repository:** [https://github.com/UMak-CCIS-Capstones/LIBRAS-Core](https://github.com/UMak-CCIS-Capstones/LIBRAS-Core)
+**Repository:** [https://github.com/necesario0/LIBRAS](https://github.com/necesario0/LIBRAS)
 
 ---
 
