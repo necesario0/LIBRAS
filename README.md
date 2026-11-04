@@ -75,47 +75,6 @@ flowchart TD
 
 ---
 
-## 📁 Repository Directory Structure
-
-```text
-LIBRAS-Core/
-├── README.md                          <-- Project overview, roles, architecture, and run instructions
-├── requirements.txt                   <-- Python project dependencies
-├── .gitignore                         <-- Git hygiene rules (excludes __pycache__, bytecode, etc.)
-├── demo.py                            <-- Interactive demonstration script for both algorithms
-│
-├── docs/                              <-- Official Milestone Documentation Deliverables
-│   ├── III-BCSAD_Group1_LIBRAS_Milestone1_Proposal.docx  <-- Primary 7,000-word Proposal Report
-│   ├── III-BCSAD_Group1_LIBRAS_Milestone1_Proposal.md    <-- Full Markdown Companion Report
-│   ├── Requirements_Engineering_v2.docx.md               <-- Formal System Requirements (SRS v2)
-│   └── SYSTEM_ARCHITECTURE_AND_DESIGN_SPECIFICATION.md   <-- High-level system design specs
-│
-├── architecture/                      <-- Architectural Design Artifacts & Data Contracts
-│   ├── component_diagram.md           <-- Four-tier decoupled service specification
-│   └── contracts/
-│       ├── fuzzy_search_request_schema.json   <-- JSON Schema for OPAC search request
-│       ├── fuzzy_search_response_schema.json  <-- JSON Schema for OPAC search certificate
-│       ├── hold_dispatch_request_schema.json  <-- JSON Schema for check-in hold dispatch
-│       ├── hold_dispatch_response_schema.json <-- JSON Schema for hold allocation certificate
-│       └── problem_details_error_schema.json  <-- RFC 7807 Problem Details error schema
-│
-├── src/                               <-- Isolated Algorithmic Core Prototype Engine
-│   ├── __init__.py
-│   ├── trie_levenshtein.py            <-- Bounded Trie Levenshtein Automaton Search Engine
-│   └── priority_heap.py               <-- Role-Weighted Composite Min-Heap Scheduler
-│
-├── tests/                             <-- Unit Tests & Empirical Benchmarking Suite
-│   ├── __init__.py
-│   ├── test_trie_search.py            <-- Unit tests for search edge cases, bounds, and pruning
-│   ├── test_priority_heap.py          <-- Unit tests for heap invariants, role boosts, and FIFO
-│   └── run_benchmarks.py              <-- Empirical validation comparing naive vs optimized
-│
-└── scripts/                           <-- Document & Artifact Generators
-    └── generate_proposal_docx.py      <-- Automation script compiling the .docx Proposal Report
-```
-
----
-
 ## ⚡ Quickstart Guide: Running the Code & Benchmarks
 
 ### 1. Installation
