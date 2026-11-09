@@ -88,3 +88,4 @@ benchmarks/results/pg-run.log
 benchmarks/results/h2h-run.log
 benchmarks/results/worst-case-quick.md
 docs/milestone-revision-2/tools/node_modules/
+!docs/milestone-revision-2/parts/
