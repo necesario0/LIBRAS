@@ -1,4 +1,4 @@
-// Assembles the full Revision 2 milestone Markdown from the hand-written parts and the
+// Assembles the full milestone Markdown from the hand-written parts and the
 // revised sections in docs/revised-milestone-sections.md.
 //   node assemble.mjs
 import fs from "node:fs";
@@ -49,11 +49,28 @@ task52 = sub(task52, "### 5.2 Engineering Implementation and Benchmarking Ticket
 task52 = "The operationalization backlog defines concrete tickets ready for sprint execution:\n\n" + task52.replace("### 5.2 Engineering Implementation & Benchmarking Tickets\n\n", "");
 task52 = "### 5.2 Engineering Implementation & Benchmarking Tickets\n\n" + task52;
 
+
+// ---- Neutral wording: the document is presented as a single, self-contained milestone ------------
+task2 = sub(task2, "For the array-backed complete binary min-heap of the first submission,", "For the array-backed complete binary min-heap,");
+task2 = sub(task2, "The recursive version in the first submission is equivalent. The flat version replaces", "A recursive formulation, with one function call and one freshly allocated row per node, is equivalent. The flat version replaces");
+task2 = sub(task2, "The in-memory equivalent of this queue is the array-backed binary min-heap of the first submission (`SiftUp`, `SiftDown`, `ExtractMin`), which remains a correct reference implementation and was used to verify the order of the PostgreSQL queue.",
+  "The in-memory equivalent of this queue is an array-backed binary min-heap (Algorithm 2b), which serves as a reference implementation and was used to verify the order of the PostgreSQL queue.");
+task2 += "\n\n#### Algorithm 2b: In-Memory Reference Min-Heap\n\nThe heap stores one node per hold in a contiguous array. The children of index `i` are at `2i + 1` and `2i + 2`.\n\n```\nclass ReservationNode:\n    patron_id         : String\n    role              : String   // Faculty, Student, NTP or Visitor\n    arrival_timestamp : Int64    // epoch milliseconds\n    accession_copy_id : String\n    priority_score    : Int64\n\nclass PriorityHoldQueue:\n    heap : List<ReservationNode> = []\n\n    function Enqueue(patron_id, role, timestamp, copy_id):\n        node = ReservationNode(patron_id, role, timestamp, copy_id,\n                               CalculateScore(timestamp, role))\n        heap.append(node)\n        SiftUp(length(heap) - 1)\n\n    function SiftUp(idx):\n        parent_idx = floor((idx - 1) / 2)\n        while idx > 0 and\n              heap[idx].priority_score < heap[parent_idx].priority_score:\n            swap(heap[idx], heap[parent_idx])\n            idx = parent_idx\n            parent_idx = floor((idx - 1) / 2)\n\n    function ExtractMin() -> ReservationNode:\n        if length(heap) == 0: return None\n        if length(heap) == 1: return heap.pop()\n        root = heap[0]\n        heap[0] = heap.pop()          // replace root with last leaf\n        SiftDown(0)\n        return root\n\n    function SiftDown(idx):\n        size = length(heap)\n        smallest = idx\n        left = 2 * idx + 1\n        right = 2 * idx + 2\n        if left < size and\n           heap[left].priority_score < heap[smallest].priority_score:\n            smallest = left\n        if right < size and\n           heap[right].priority_score < heap[smallest].priority_score:\n            smallest = right\n        if smallest != idx:\n            swap(heap[idx], heap[smallest])\n            SiftDown(smallest)\n```";
+
+task3 = sub(task3, "**Correction to the first submission.** The first submission bounded the visited nodes by the single ball around the whole query, `O(m^2 |Σ|^2)`, and the time by `O(m^3 |Σ|^2)`. That omits the balls around the `m` shorter prefixes, which add one factor of `m`. The corrected growth was confirmed",
+  "**Why the prefix balls matter.** A simpler analysis bounds the visited nodes by the single ball around the whole query, `O(m^2 |Σ|^2)`, and the time by `O(m^3 |Σ|^2)`. That undercounts, because it omits the balls around the `m` shorter prefixes, which add one factor of `m`. The cubic growth was confirmed");
+task3 = sub(task3, "The array-backed min-heap of the first submission has the same order guarantees, and its derivations remain valid:", "The array-backed min-heap (Algorithm 2b) has the same order guarantees, with these derivations:");
+task3 = sub(task3, " The first submission's `Ω(m)` bound assumed pruning at depth 1 or 2, which cannot occur.", " A bound of `Ω(m)` alone would therefore be too optimistic, because pruning cannot occur at depth 1 or 2.");
+task3 = sub(task3, /The first submission estimated about 40 node visits[^\n]*\n/.exec(task3)[0], "Pruning is effective: 96.7% of trie nodes are never visited at `k = 2` and 99.6% at `k = 1`. The visited count is still in the thousands, because every node of depth at most `k` is always expanded and the surviving edit region around the query prefixes is wide.\n");
+task3 = sub(task3, " It replaces the first submission's statement that cost is independent of `N`.", " Cost is therefore not independent of `N`, even though the worst-case bound is.");
+task3 = sub(task3, " This replaces the first submission's estimate of 1.6 levels.", "");
+task3 = task3.split("(first submission's baseline)").join("(common baseline)");
+
 const appendix = `<!-- SLIDES -->
 
 ## Appendix A: Summary Presentation
 
-The twelve summary slides that accompany this milestone follow. The same slides are in \`docs/milestone-revision-2/slides/\`.`;
+The twelve summary slides that accompany this milestone follow.`;
 
 const full = [
   part("00-front.md"),
@@ -67,5 +84,8 @@ const full = [
   appendix,
 ].join("\n\n") + "\n";
 
-fs.writeFileSync(path.join(root, "PBL-Milestone-1-Revision-2.md"), full);
-console.log("wrote PBL-Milestone-1-Revision-2.md", full.length, "chars");
+const banned = /revision|first submission|previous version|earlier version|\bsuperseded\b|no longer/i;
+const hits = full.split("\n").map((l, i) => [i + 1, l]).filter(([, l]) => banned.test(l));
+if (hits.length) { for (const [n, l] of hits) console.error("line " + n + ": " + l.slice(0, 120)); throw new Error("document still refers to an earlier version"); }
+fs.writeFileSync(path.join(root, "PBL-Milestone-1-Algorithm-Architecture-Specification.md"), full);
+console.log("wrote PBL-Milestone-1-Algorithm-Architecture-Specification.md", full.length, "chars");

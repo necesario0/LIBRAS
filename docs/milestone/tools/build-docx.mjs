@@ -1,4 +1,4 @@
-// Builds PBL-Milestone-1-Revision-2.docx from the Markdown source, with the summary slides as
+// Builds PBL-Milestone-1-Algorithm-Architecture-Specification.docx from the Markdown source, with the summary slides as
 // full-page images in a landscape section at the end.
 //   node build-docx.mjs
 import fs from "node:fs";
@@ -13,8 +13,8 @@ import {
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(here, "..");
-const md = fs.readFileSync(path.join(root, "PBL-Milestone-1-Revision-2.md"), "utf8").replace(/\r\n/g, "\n").replace("<!-- SLIDES -->", "");
-const outFile = path.join(root, "PBL-Milestone-1-Revision-2.docx");
+const md = fs.readFileSync(path.join(root, "PBL-Milestone-1-Algorithm-Architecture-Specification.md"), "utf8").replace(/\r\n/g, "\n").replace("<!-- SLIDES -->", "");
+const outFile = path.join(root, "PBL-Milestone-1-Algorithm-Architecture-Specification.docx");
 
 const FONT = "Calibri";
 const MONO = "Consolas";
@@ -194,7 +194,7 @@ const footer = new Footer({
   children: [new Paragraph({
     alignment: AlignmentType.CENTER,
     children: [
-      new TextRun({ text: "Project LIBRAS - PBL Milestone 1 (Revision 2) - page ", font: FONT, size: 16, color: "555555" }),
+      new TextRun({ text: "Project LIBRAS - PBL Milestone 1 - page ", font: FONT, size: 16, color: "555555" }),
       new TextRun({ children: [PageNumber.CURRENT], font: FONT, size: 16, color: "555555" }),
     ],
   })],
@@ -207,7 +207,7 @@ const levelsFor = (fmt, text) => Array.from({ length: 4 }, (_, level) => ({
 
 const doc = new Document({
   creator: "Group 1, III-BCSAD, University of Makati",
-  title: "PBL Milestone 1: Algorithm Architecture Specification and Software Engineering Proposal (Revision 2)",
+  title: "PBL Milestone 1: Algorithm Architecture Specification and Software Engineering Proposal",
   subject: "Project LIBRAS",
   styles: {
     default: { document: { run: { font: FONT, size: 21 } } },

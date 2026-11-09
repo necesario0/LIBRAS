@@ -1,5 +1,5 @@
 <!doctype html>
-<html><head><meta charset="utf-8"><title>Project LIBRAS - PBL Milestone 1 (Revision 2) - Summary Slides</title>
+<html><head><meta charset="utf-8"><title>Project LIBRAS - PBL Milestone 1 - Summary Slides</title>
 <style>
   @page { size: 960px 540px; margin: 0; }
   * { box-sizing: border-box; }
@@ -41,14 +41,14 @@
 <!-- 1 Title -->
 <section class="slide">
   <div style="height:104px"></div>
-  <p class="eyebrow">PBL Milestone 1 · ALGOCOM × SOFTENG · Revision 2</p>
+  <p class="eyebrow">PBL Milestone 1 · ALGOCOM × SOFTENG</p>
   <h1 style="font-size:62px">Project LIBRAS</h1>
   <p class="sub">Library Borrowing and Records Administration System: dual-core algorithmic optimization on a decoupled service-layer architecture</p>
   <div class="cards" style="position:absolute; left:64px; right:64px; bottom:72px; margin:0;">
     <div class="card"><h3 class="pu">Group 1 · III-BCSAD</h3><p>University of Makati · CCIS · AY 2026–2027</p></div>
     <div class="card"><h3 class="pu">Advisers</h3><p>Prof. Nomar Maestro · Prof. Era Marie Gannaban</p></div>
   </div>
-  <div class="footer">Project LIBRAS · PBL Milestone 1 (Revision 2) · Group 1 &nbsp;|&nbsp; <span>1 / 12</span></div>
+  <div class="footer">Project LIBRAS · PBL Milestone 1 · Group 1 &nbsp;|&nbsp; <span>1 / 12</span></div>
 </section>
 
 <!-- 2 Problem -->
@@ -65,7 +65,7 @@
     <p><b>Typo-tolerant search:</b> SQL <code>ILIKE '%term%'</code> is a substring match with no typo tolerance. It found only 3.7% of the words within two edits, and it still scans every row.</p>
     <p><b>Hold dispatch:</b> one returned copy needs its top-priority patron resolved instantly, with no race conditions or starvation.</p>
   </div>
-  <div class="footer">Project LIBRAS · PBL Milestone 1 (Revision 2) · Group 1 &nbsp;|&nbsp; <span>2 / 12</span></div>
+  <div class="footer">Project LIBRAS · PBL Milestone 1 · Group 1 &nbsp;|&nbsp; <span>2 / 12</span></div>
 </section>
 
 <!-- 3 Formulation -->
@@ -81,7 +81,7 @@
       <p>where PriorityScore = t<sub>i</sub> − W(ρ<sub>i</sub>); smaller means higher priority</p></div>
   </div>
   <p>Inputs: lexicon D with N ≥ 50,000 tokens · query Q with 1 ≤ |Q| ≤ 64 · hold pool R with K ≤ 5,000 requests</p>
-  <div class="footer">Project LIBRAS · PBL Milestone 1 (Revision 2) · Group 1 &nbsp;|&nbsp; <span>3 / 12</span></div>
+  <div class="footer">Project LIBRAS · PBL Milestone 1 · Group 1 &nbsp;|&nbsp; <span>3 / 12</span></div>
 </section>
 
 <!-- 4 Constraints -->
@@ -96,7 +96,7 @@
       <tr><td>Faculty</td><td>+24 h advance</td></tr><tr><td>NTP</td><td>+12 h advance</td></tr>
       <tr><td>Student</td><td>0 (pure FIFO)</td></tr><tr><td>Visitor</td><td>−24 h deprioritized</td></tr></table></div>
   </div>
-  <div class="footer">Project LIBRAS · PBL Milestone 1 (Revision 2) · Group 1 &nbsp;|&nbsp; <span>4 / 12</span></div>
+  <div class="footer">Project LIBRAS · PBL Milestone 1 · Group 1 &nbsp;|&nbsp; <span>4 / 12</span></div>
 </section>
 
 <!-- 5 Selection -->
@@ -112,7 +112,7 @@
   <div class="card"><h3 class="am">Alternatives tested and not chosen</h3>
     <p><b>Search:</b> SymSpell (318 MB), per-node-object trie (55 MB), BK-tree, bigram index, <code>pg_trgm</code> (17% recall), <code>ILIKE</code> (3.7% recall), linear scan.</p>
     <p><b>Queue:</b> 4-ary, lazy-delete and pairing heaps, sorted array, unsorted scan. Full results on slide 9.</p></div>
-  <div class="footer">Project LIBRAS · PBL Milestone 1 (Revision 2) · Group 1 &nbsp;|&nbsp; <span>5 / 12</span></div>
+  <div class="footer">Project LIBRAS · PBL Milestone 1 · Group 1 &nbsp;|&nbsp; <span>5 / 12</span></div>
 </section>
 
 <!-- 6 Search mechanics -->
@@ -127,7 +127,7 @@
     <div class="card stat" style="flex:.6"><p class="big gr">96.7%</p><p>of trie nodes unvisited at k = 2 (99.6% at k = 1)</p></div>
   </div>
   <p>Result: recall 100% against a brute-force reference on every benchmark query.</p>
-  <div class="footer">Project LIBRAS · PBL Milestone 1 (Revision 2) · Group 1 &nbsp;|&nbsp; <span>6 / 12</span></div>
+  <div class="footer">Project LIBRAS · PBL Milestone 1 · Group 1 &nbsp;|&nbsp; <span>6 / 12</span></div>
 </section>
 
 <!-- 7 Dispatch mechanics -->
@@ -141,7 +141,7 @@
   </div>
   <div class="card"><h3 class="gr">Worked example</h3>
     <p>Faculty arriving at t scores t − 24 h and beats a Student who arrived at t − 12 h, so the returned copy goes to Faculty. With 50 concurrent clients, each of 2,000 holds was served exactly once.</p></div>
-  <div class="footer">Project LIBRAS · PBL Milestone 1 (Revision 2) · Group 1 &nbsp;|&nbsp; <span>7 / 12</span></div>
+  <div class="footer">Project LIBRAS · PBL Milestone 1 · Group 1 &nbsp;|&nbsp; <span>7 / 12</span></div>
 </section>
 
 <!-- 8 Scalability -->
@@ -156,7 +156,7 @@
     <tr><td>Trie memory</td><td>O(N·L<sub>avg</sub>)</td><td>4.4 MB at 50,000 tokens; 16.9 MB at 200,000</td></tr>
     <tr><td>Queue memory</td><td>O(K) in PostgreSQL</td><td>None in the Node.js process</td></tr>
   </table>
-  <div class="footer">Project LIBRAS · PBL Milestone 1 (Revision 2) · Group 1 &nbsp;|&nbsp; <span>8 / 12</span></div>
+  <div class="footer">Project LIBRAS · PBL Milestone 1 · Group 1 &nbsp;|&nbsp; <span>8 / 12</span></div>
 </section>
 
 <!-- 9 Evidence -->
@@ -172,7 +172,7 @@
   </table>
   <p style="margin-top:10px">Rule: exact results, at least 250 queries/s, memory within 2× the smallest passing option, then lowest p95. In repeated runs the flat trie p95 was 0.73 ms against 1.25 ms (bigram) at 50,000 tokens and 2.4 ms against 21.6 ms at 400,000.</p>
   <p><b>Queue:</b> every in-memory heap is about 50,000× inside the 10 ms limit; the PostgreSQL query (1.7 ms) was chosen for durability, atomicity with the loan record, and no queue state in the application.</p>
-  <div class="footer">Project LIBRAS · PBL Milestone 1 (Revision 2) · Group 1 &nbsp;|&nbsp; <span>9 / 12</span></div>
+  <div class="footer">Project LIBRAS · PBL Milestone 1 · Group 1 &nbsp;|&nbsp; <span>9 / 12</span></div>
 </section>
 
 <!-- 10 Architecture -->
@@ -186,7 +186,7 @@
   <div class="tier"><b>Node.js / Express / TypeScript</b> · business rules, mailer · <b>SearchEngine</b> (flat trie, atomic swap) · <b>HoldQueue</b> (SQL repository)</div>
   <div class="arrow">↓ SQL, row locking</div>
   <div class="tier"><b>PostgreSQL 16</b> · catalog, accounts, loans, fines · hold queue with index on (title, score, seq)</div>
-  <div class="footer">Project LIBRAS · PBL Milestone 1 (Revision 2) · Group 1 &nbsp;|&nbsp; <span>10 / 12</span></div>
+  <div class="footer">Project LIBRAS · PBL Milestone 1 · Group 1 &nbsp;|&nbsp; <span>10 / 12</span></div>
 </section>
 
 <!-- 11 Benchmarking -->
@@ -201,7 +201,7 @@
     <div class="card"><h3 class="am">Tooling</h3><p>Node.js benchmark harness (<code>process.hrtime</code>, forced GC) · PostgreSQL 16 · <code>node:test</code></p></div>
     <div class="card"><h3 class="am">Load target</h3><p>Search ≤ 1.0 s at 50 users</p><p>Method: Big-O before, profiling after</p></div>
   </div>
-  <div class="footer">Project LIBRAS · PBL Milestone 1 (Revision 2) · Group 1 &nbsp;|&nbsp; <span>11 / 12</span></div>
+  <div class="footer">Project LIBRAS · PBL Milestone 1 · Group 1 &nbsp;|&nbsp; <span>11 / 12</span></div>
 </section>
 
 <!-- 12 Citations -->
@@ -214,7 +214,7 @@
     <div class="card"><h3 class="am">Architecture and data</h3><p>[13] Fowler, PoEAA, 2002</p><p>[17] Newman, Building Microservices, 2021</p><p>[28] PostgreSQL 16 documentation</p></div>
   </div>
   <p>Full list [1]–[28] in the proposal · github.com/necesario0/LIBRAS</p>
-  <div class="footer">Project LIBRAS · PBL Milestone 1 (Revision 2) · Group 1 &nbsp;|&nbsp; <span>12 / 12</span></div>
+  <div class="footer">Project LIBRAS · PBL Milestone 1 · Group 1 &nbsp;|&nbsp; <span>12 / 12</span></div>
 </section>
 
 </body></html>

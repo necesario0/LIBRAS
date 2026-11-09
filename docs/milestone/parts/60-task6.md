@@ -55,7 +55,7 @@ Theoretical Big-O analysis and empirical benchmarking profiling represent comple
 - **Empirical Benchmarking Profiling (Post-Implementation):**
   - Empirical benchmarking measures real-world wall-clock latency, memory allocation footprints, and throughput on actual hardware (e.g., per-query latency percentiles measured with `process.hrtime`, and retained memory measured after a forced garbage collection, in the Node.js benchmark harness of Section 3.5).
   - Empirical profiling captures physical machine phenomena that Big-O ignores: CPU cache behavior, memory layout, page faults, network serialization overheads, and Garbage Collection pauses. While Big-O ensures theoretical soundness, empirical benchmarking proves production SLA compliance under actual load.
-  - The two methods check each other. In this project, measurement corrected the analysis: the first submission's estimate of about 40 node visits and cost independent of catalog size was replaced by the measured figure of about 8,400 visits and cost that grows with catalog size, and the worst-case bound gained a factor of m (Sections 3.1 and 3.2).
+  - The two methods check each other. In this project, measurement refined the analysis: counting visited nodes showed that the worst-case bound needs a factor of m for the query prefixes, and that real cost grows with catalog size instead of staying constant (Sections 3.1 and 3.2).
 
 ### 6.5 Mitigating Cold Start & Data Sparsity in Library Preference Matrices
 

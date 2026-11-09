@@ -4,7 +4,7 @@
 
 A foundational software engineering principle enforced in PBL Milestone 1 is the strict decoupling of heavy algorithmic processing from database Object-Relational Mapping (ORM) models and web presentation controllers. Coupling algorithmic computation directly into web controller threads (e.g., executing Levenshtein matrix loops inside an Express route handler) blocks Node.js event loops, exhausts HTTP connection pools, and risks cascading server timeouts under traffic spikes.
 
-In Revision 2 this principle is implemented as module boundaries inside the Node.js API, organized in four layers (Figure 4.1):
+This principle is implemented as module boundaries inside the Node.js API, organized in four layers (Figure 4.1):
 
 1. **Presentation Tier:** A React Native (TypeScript) mobile app for students, faculty and non-teaching personnel to search the catalog, reserve books, display dynamic rolling barcode IDs (TOTP RFC 6238) and view loan records, and a React.js (TypeScript) web portal for librarians (inventory cataloging, desk circulation, clearance processing, dashboard metrics and reports).
 2. **Hosting & Ingress Layer:** Render hosts the API and the web portal with HTTPS termination and continuous deployment from GitHub. JWT authentication, CORS and rate limiting (100 req/min/IP) run as Express middleware.
@@ -13,11 +13,11 @@ In Revision 2 this principle is implemented as module boundaries inside the Node
    - `SearchEngine.search(query, k)` returns matches from an in-memory flat trie. The trie is built from a snapshot of the lexicon read from PostgreSQL. When the catalog changes, a new trie is built in the background (about 235 ms at 50,000 tokens) and swapped in atomically, so searches in flight finish on the old trie.
    - `HoldQueue.enqueue`, `dispatch` and `cancel` wrap the SQL statements of Algorithm 2 in one repository module.
 
-A typical search takes under 1 ms in the module at 50,000 tokens, so it can run on the main thread. If profiling shows event-loop delay under load, the module can move to a worker thread without changing its interface. The first submission used a separate Python and FastAPI service, a gRPC link, and Redis for locking and queue persistence. Those are no longer needed, because the search index lives in the API process and PostgreSQL row locking replaces the Redis mutex.
+A typical search takes under 1 ms in the module at 50,000 tokens, so it can run on the main thread. If profiling shows event-loop delay under load, the module can move to a worker thread without changing its interface. A separate algorithm service (for example Python with FastAPI), a gRPC link, and Redis for locking and queue persistence are unnecessary, because the search index lives in the API process and PostgreSQL row locking provides the mutual exclusion.
 
 ![Figure 4.1: System component and decoupled service-layer architecture](assets/architecture.png)
 
-*Figure 4.1: System component and decoupled service-layer architecture (Revision 2).*
+*Figure 4.1: System component and decoupled service-layer architecture.*
 
 ### 4.2 Interface Data Contracts (OpenAPI 3.1 & JSON Schemas)
 

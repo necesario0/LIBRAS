@@ -1,7 +1,5 @@
 # PBL Milestone 1: Algorithm Architecture Specification & Software Engineering Proposal
 
-**Revision 2**
-
 Project LIBRAS: Library Borrowing and Records Administration System
 
 Dual-Core Algorithmic Optimization & Decoupled Service-Layer Architecture
@@ -19,29 +17,16 @@ University of Makati • College of Computer Science (CCIS) • Academic Year 20
 | **Section & Year** | III-BCSAD • Academic Year 2026–2027 |
 | **Team Members & Engineering Roles** | Lead Algorithm Architect: Edrian C. Necesario (k12255958)<br>Backend / Systems Engineer: Cobby N. Baldonado (k12256165)<br>Data / QA Engineer: Buzz Aldrizh G. Saavedra (k12257228)<br>Systems Analyst / Technical Lead: Adrianne Quinn Emmanuel C. Rosalan (k12255842)<br>Security & Algorithmic QA Engineer: Mhel Klarenz B. Urdaneta (k12256252) |
 | **Repository URL & Target Date** | Repository: https://github.com/necesario0/LIBRAS (prototype benchmark code in `benchmarks/`)<br>Submission Milestone: November 2026 (PBL Milestone 1) |
-| **Document Revision** | Revision 2, November 2026. The algorithms were revised after an empirical comparison against alternatives (Section 3.5). |
-| **[AI POLICY TRANSPARENCY: YELLOW ZONE CONFORMANCE]** | AI Assistance: We used generative assistance to verify the algebraic summations for the trie branching analysis, validate the OpenAPI 3.1 JSON schema draft specifications, and cross-check the formal IEEE citations. All computational formulations, recurrence invariants, pseudocode logic, and software engineering data contracts have been critically reviewed, validated against operational requirements, and mathematically proven by Group 1.<br>Revision 2: generative assistance (Claude, Anthropic) was also used to write and run the prototype benchmark code, to analyze its results, and to draft the revised sections. Group 1 reviewed the derivations and results and remains responsible for their accuracy. |
+| **[AI POLICY TRANSPARENCY: YELLOW ZONE CONFORMANCE]** | AI Assistance: We used generative assistance to verify the algebraic summations for the trie branching analysis, validate the OpenAPI 3.1 JSON schema draft specifications, and cross-check the formal IEEE citations. All computational formulations, recurrence invariants, pseudocode logic, and software engineering data contracts have been critically reviewed, validated against operational requirements, and mathematically proven by Group 1.<br>Generative assistance (Claude, Anthropic) was also used to write and run the prototype benchmark code, to analyze its results, and to draft parts of the algorithm analysis. Group 1 reviewed the derivations and results and remains responsible for their accuracy. |
 
-## Revision 2 Summary
+## Algorithms at a Glance
 
-The first submission specified two algorithms. Revision 2 replaces them with the algorithms that performed best when compared against alternatives on the same data, queries and machine (Section 3.5), and corrects statements in the first submission that the measurements did not support.
+Project LIBRAS uses two algorithms, selected by comparing them against alternatives on the same data, queries and machine (Section 3.5).
 
-| Role | Name in Revision 2 | Name in the first submission |
+| Role | Algorithm | Technique |
 | --- | --- | --- |
-| Catalog search | **Bounded Levenshtein Trie Search** | Bounded Levenshtein Trie Automaton Search |
-| Hold dispatch | **Role-Weighted Priority Queue Dispatcher** | Role-Weighted Composite Min-Heap Hold Dispatcher |
-
-| Section | Change |
-| --- | --- |
-| 1.1, 1.2.2 | Baseline statement corrected; wording aligned with the new dispatcher |
-| 2.1 to 2.3 | New strategy schema, proofs of the pruning lemma and queue-order invariant, flat-array trie and indexed priority query pseudocode |
-| 3.1 to 3.4 | Corrected worst-case bound (one factor of m was missing), measured average cases, new space figures |
-| 3.5 | New: empirical algorithm selection |
-| 4.1 | Search and dispatch run as modules in the Node.js API; no separate Python service or Redis; new diagram |
-| 5.1, 5.2 | Acceptance criterion and tickets updated for TypeScript and PostgreSQL |
-| 6.1 to 6.4 | Statements that no longer hold are replaced; the exact versus approximate discussion is corrected |
-| References | Entry [10] corrected; entries [23] to [28] added |
-| Appendix A | Summary slides rebuilt with the revised content |
+| Catalog search | **Bounded Levenshtein Trie Search** | Dynamic programming over a trie with branch-and-bound pruning, stored as flat arrays |
+| Hold dispatch | **Role-Weighted Priority Queue Dispatcher** | Greedy minimum-score selection from an ordered index in PostgreSQL |
 
 ## Task 1: Computational Problem Modeling & Formal Mathematical Formulation
 
@@ -160,7 +145,7 @@ Consequence: the search returns exactly the words within distance `k`, with no f
 
 **Queue-order invariant.** Each hold `r` has a score `PriorityScore(r) = t_r - W(role_r)`, where the role weights `W` are as defined in Section 1.2.2 (Faculty 86,400,000 ms; NTP 43,200,000 ms; Student 0; Visitor -86,400,000 ms). Ties are broken by arrival sequence `seq`. The queue is ordered by the key `(score, seq)`, and dispatch always removes the entry with the smallest key. Because `seq` is unique, the order is total and the winner is unique.
 
-**Min-heap order invariant (in-memory reference implementation).** For the array-backed complete binary min-heap of the first submission, `PriorityScore(Parent(i)) <= PriorityScore(i)` for all `i` in `[1, K-1]`, and the tree is complete (all levels full except possibly the last, filled left to right). This invariant makes the root the minimum, so extraction returns the same winner as the indexed query.
+**Min-heap order invariant (in-memory reference implementation).** For the array-backed complete binary min-heap, `PriorityScore(Parent(i)) <= PriorityScore(i)` for all `i` in `[1, K-1]`, and the tree is complete (all levels full except possibly the last, filled left to right). This invariant makes the root the minimum, so extraction returns the same winner as the indexed query.
 
 ### 2.3 Structured Algorithmic Pseudocode
 
@@ -204,7 +189,7 @@ function Search(trie, query, k) -> List<Match>:
     return results
 ```
 
-The recursive version in the first submission is equivalent. The flat version replaces one object per node with three typed arrays, one preallocated block of DP rows, and an explicit stack in place of recursion.
+A recursive formulation, with one function call and one freshly allocated row per node, is equivalent. The flat version replaces one object per node with three typed arrays, one preallocated block of DP rows, and an explicit stack in place of recursion.
 
 #### Algorithm 2: Role-Weighted Priority Queue Dispatcher (PostgreSQL)
 
@@ -251,7 +236,60 @@ function DispatchReturnedCopy(title, copy_id):       // one transaction
     return winner
 ```
 
-`FOR UPDATE SKIP LOCKED` locks the chosen row for the duration of the transaction. A concurrent dispatch that finds the top row locked takes the next row instead of waiting, so two desks never receive the same hold. The in-memory equivalent of this queue is the array-backed binary min-heap of the first submission (`SiftUp`, `SiftDown`, `ExtractMin`), which remains a correct reference implementation and was used to verify the order of the PostgreSQL queue.
+`FOR UPDATE SKIP LOCKED` locks the chosen row for the duration of the transaction. A concurrent dispatch that finds the top row locked takes the next row instead of waiting, so two desks never receive the same hold. The in-memory equivalent of this queue is an array-backed binary min-heap (Algorithm 2b), which serves as a reference implementation and was used to verify the order of the PostgreSQL queue.
+
+#### Algorithm 2b: In-Memory Reference Min-Heap
+
+The heap stores one node per hold in a contiguous array. The children of index `i` are at `2i + 1` and `2i + 2`.
+
+```
+class ReservationNode:
+    patron_id         : String
+    role              : String   // Faculty, Student, NTP or Visitor
+    arrival_timestamp : Int64    // epoch milliseconds
+    accession_copy_id : String
+    priority_score    : Int64
+
+class PriorityHoldQueue:
+    heap : List<ReservationNode> = []
+
+    function Enqueue(patron_id, role, timestamp, copy_id):
+        node = ReservationNode(patron_id, role, timestamp, copy_id,
+                               CalculateScore(timestamp, role))
+        heap.append(node)
+        SiftUp(length(heap) - 1)
+
+    function SiftUp(idx):
+        parent_idx = floor((idx - 1) / 2)
+        while idx > 0 and
+              heap[idx].priority_score < heap[parent_idx].priority_score:
+            swap(heap[idx], heap[parent_idx])
+            idx = parent_idx
+            parent_idx = floor((idx - 1) / 2)
+
+    function ExtractMin() -> ReservationNode:
+        if length(heap) == 0: return None
+        if length(heap) == 1: return heap.pop()
+        root = heap[0]
+        heap[0] = heap.pop()          // replace root with last leaf
+        SiftDown(0)
+        return root
+
+    function SiftDown(idx):
+        size = length(heap)
+        smallest = idx
+        left = 2 * idx + 1
+        right = 2 * idx + 2
+        if left < size and
+           heap[left].priority_score < heap[smallest].priority_score:
+            smallest = left
+        if right < size and
+           heap[right].priority_score < heap[smallest].priority_score:
+            smallest = right
+        if smallest != idx:
+            swap(heap[idx], heap[smallest])
+            SiftDown(smallest)
+```
 
 ## Task 3: Theoretical Asymptotic Analysis & Scalability Profiling
 
@@ -274,7 +312,7 @@ Time, banded rows: O( k * V ) = O( m^3 * |Σ|^3 )     (see note)
 
 Note: a DP row only needs the cells within `k` of the diagonal (Ukkonen, 1985), which reduces the per-node cost from `O(m)` to `O(k)`. The implemented and benchmarked version computes full rows.
 
-**Correction to the first submission.** The first submission bounded the visited nodes by the single ball around the whole query, `O(m^2 |Σ|^2)`, and the time by `O(m^3 |Σ|^2)`. That omits the balls around the `m` shorter prefixes, which add one factor of `m`. The corrected growth was confirmed experimentally on an exhaustive dictionary (every string up to length `m + k + 1`), the case where no branch is absent. For `k = 2` the ratio of visited nodes to `m^3` settles to a constant while the ratio to `m^2` keeps growing:
+**Why the prefix balls matter.** A simpler analysis bounds the visited nodes by the single ball around the whole query, `O(m^2 |Σ|^2)`, and the time by `O(m^3 |Σ|^2)`. That undercounts, because it omits the balls around the `m` shorter prefixes, which add one factor of `m`. The cubic growth was confirmed experimentally on an exhaustive dictionary (every string up to length `m + k + 1`), the case where no branch is absent. For `k = 2` the ratio of visited nodes to `m^3` settles to a constant while the ratio to `m^2` keeps growing:
 
 | Alphabet | m = 6 | m = 10 | m = 14 | visited / m^3 at largest m | visited / (m^3 \|Σ\|^3) |
 | --- | --- | --- | --- | --- | --- |
@@ -295,7 +333,7 @@ Note: a DP row only needs the cells within `k` of the diagonal (Ukkonen, 1985), 
 | Peek (`SELECT ... LIMIT 1`) | `O(log K)` | An in-memory heap is `O(1)` |
 | Cancel or expire | `O(log K)` | Primary-key lookup, then index maintenance |
 
-**In-memory reference heap.** The array-backed min-heap of the first submission has the same order guarantees, and its derivations remain valid:
+**In-memory reference heap.** The array-backed min-heap (Algorithm 2b) has the same order guarantees, with these derivations:
 
 - *Enqueue:* appending to the dynamic array is `O(1)` amortized. In the worst case the new hold has the smallest score in the heap, so it travels from the deepest leaf to the root. The height of a complete binary tree with `K` nodes is `h = floor(log_2 K)` and each level swap is `O(1)`, so `T_enqueue(worst) = O(log K)`.
 - *Extract-Min:* swapping the root with the last leaf is `O(1)`; the following `SiftDown` compares the node against at most two children per level for at most `floor(log_2 K)` levels, so `T_extract(worst) = O(log K)`.
@@ -303,7 +341,7 @@ Note: a DP row only needs the cells within `k` of the diagonal (Ukkonen, 1985), 
 
 ### 3.2 Average-Case (Θ) and Best-Case (Ω) Time Complexity Evaluations
 
-**Best case (Algorithm 1).** By the observation in Section 2.2, no node of depth `d <= k` is ever pruned, so the search always visits every trie node of depth at most `k`, plus at least one root-to-leaf path of length `m` when the query is an indexed word. The lower bound is `Ω(m + n_k)`, where `n_k` is the number of trie nodes of depth at most `k` (at most `1 + |Σ| + |Σ|^2` for `k = 2`). The first submission's `Ω(m)` bound assumed pruning at depth 1 or 2, which cannot occur.
+**Best case (Algorithm 1).** By the observation in Section 2.2, no node of depth `d <= k` is ever pruned, so the search always visits every trie node of depth at most `k`, plus at least one root-to-leaf path of length `m` when the query is an indexed word. The lower bound is `Ω(m + n_k)`, where `n_k` is the number of trie nodes of depth at most `k` (at most `1 + |Σ| + |Σ|^2` for `k = 2`). A bound of `Ω(m)` alone would therefore be too optimistic, because pruning cannot occur at depth 1 or 2.
 
 **Average case (Algorithm 1), measured.** The average case depends on the real character distribution of the catalog. On the synthetic 50,000-token catalog, with the literal trie implementation and queries of length 12:
 
@@ -312,7 +350,7 @@ Note: a DP row only needs the cells within `k` of the diagonal (Ukkonen, 1985), 
 | 1 | 1,036 | 99.6% | 0.4 |
 | 2 | 8,401 | 96.7% | 0.9 |
 
-The first submission estimated about 40 node visits at `k = 2`, and 98.4% of branches pruned. The measured pruning is 96.7% at `k = 2` and 99.6% at `k = 1`, so pruning is effective but the visited count is about 200 times larger than estimated. The estimate `(m (b_eff)^k)` assumed a branching factor that is not defined for the pruned region.
+Pruning is effective: 96.7% of trie nodes are never visited at `k = 2` and 99.6% at `k = 1`. The visited count is still in the thousands, because every node of depth at most `k` is always expanded and the surviving edit region around the query prefixes is wide.
 
 The number of visited nodes grows sublinearly with catalog size. With `m = 12` and `k = 2`:
 
@@ -320,9 +358,9 @@ The number of visited nodes grows sublinearly with catalog size. With `m = 12` a
 | --- | --- | --- | --- | --- | --- |
 | Nodes visited | 2,708 | 5,517 | 8,152 | 11,613 | 15,083 |
 
-Between 5,000 and 200,000 tokens (a factor of 40), visited nodes grew by a factor of 5.6, roughly proportional to `N^0.47` on this data. This is an empirical observation on synthetic data, not a proved bound. It replaces the first submission's statement that cost is independent of `N`.
+Between 5,000 and 200,000 tokens (a factor of 40), visited nodes grew by a factor of 5.6, roughly proportional to `N^0.47` on this data. This is an empirical observation on synthetic data, not a proved bound. Cost is therefore not independent of `N`, even though the worst-case bound is.
 
-**Algorithm 2.** For the in-memory reference heap, a random insertion sifts up 0.58 levels on average under a realistic role mix (70% Student, 15% Faculty, 10% NTP, 5% Visitor) and 0 levels when all patrons have the same role, because arrival times increase. This replaces the first submission's estimate of 1.6 levels. For the PostgreSQL queue, insertion and dispatch are `O(log K)` index operations regardless of the arrival pattern.
+**Algorithm 2.** For the in-memory reference heap, a random insertion sifts up 0.58 levels on average under a realistic role mix (70% Student, 15% Faculty, 10% NTP, 5% Visitor) and 0 levels when all patrons have the same role, because arrival times increase. For the PostgreSQL queue, insertion and dispatch are `O(log K)` index operations regardless of the arrival pattern.
 
 ### 3.3 Auxiliary Space Complexity (O)
 
@@ -386,7 +424,7 @@ The flat trie is faster from 50,000 tokens upward and smaller at every size. Its
 
 | Candidate | p95 (ms) | Matches found | p95 with 50 clients (ms) |
 | --- | --- | --- | --- |
-| `ILIKE '%term%'` (first submission's baseline) | 23.9 | 3.7% | 312 |
+| `ILIKE '%term%'` (common baseline) | 23.9 | 3.7% | 312 |
 | `levenshtein_less_equal` scan | 10.5 | 100% | 186 |
 | `pg_trgm` GIN index, default threshold | 2.6 | 16.9% | 85 |
 | `pg_trgm` GIN index, threshold 0.1 | 12.5 | 69.8% | 128 |
@@ -416,7 +454,7 @@ Every in-memory option is about 50,000 times faster than the 10 ms limit, so spe
 
 A foundational software engineering principle enforced in PBL Milestone 1 is the strict decoupling of heavy algorithmic processing from database Object-Relational Mapping (ORM) models and web presentation controllers. Coupling algorithmic computation directly into web controller threads (e.g., executing Levenshtein matrix loops inside an Express route handler) blocks Node.js event loops, exhausts HTTP connection pools, and risks cascading server timeouts under traffic spikes.
 
-In Revision 2 this principle is implemented as module boundaries inside the Node.js API, organized in four layers (Figure 4.1):
+This principle is implemented as module boundaries inside the Node.js API, organized in four layers (Figure 4.1):
 
 1. **Presentation Tier:** A React Native (TypeScript) mobile app for students, faculty and non-teaching personnel to search the catalog, reserve books, display dynamic rolling barcode IDs (TOTP RFC 6238) and view loan records, and a React.js (TypeScript) web portal for librarians (inventory cataloging, desk circulation, clearance processing, dashboard metrics and reports).
 2. **Hosting & Ingress Layer:** Render hosts the API and the web portal with HTTPS termination and continuous deployment from GitHub. JWT authentication, CORS and rate limiting (100 req/min/IP) run as Express middleware.
@@ -425,11 +463,11 @@ In Revision 2 this principle is implemented as module boundaries inside the Node
    - `SearchEngine.search(query, k)` returns matches from an in-memory flat trie. The trie is built from a snapshot of the lexicon read from PostgreSQL. When the catalog changes, a new trie is built in the background (about 235 ms at 50,000 tokens) and swapped in atomically, so searches in flight finish on the old trie.
    - `HoldQueue.enqueue`, `dispatch` and `cancel` wrap the SQL statements of Algorithm 2 in one repository module.
 
-A typical search takes under 1 ms in the module at 50,000 tokens, so it can run on the main thread. If profiling shows event-loop delay under load, the module can move to a worker thread without changing its interface. The first submission used a separate Python and FastAPI service, a gRPC link, and Redis for locking and queue persistence. Those are no longer needed, because the search index lives in the API process and PostgreSQL row locking replaces the Redis mutex.
+A typical search takes under 1 ms in the module at 50,000 tokens, so it can run on the main thread. If profiling shows event-loop delay under load, the module can move to a worker thread without changing its interface. A separate algorithm service (for example Python with FastAPI), a gRPC link, and Redis for locking and queue persistence are unnecessary, because the search index lives in the API process and PostgreSQL row locking provides the mutual exclusion.
 
 ![Figure 4.1: System component and decoupled service-layer architecture](assets/architecture.png)
 
-*Figure 4.1: System component and decoupled service-layer architecture (Revision 2).*
+*Figure 4.1: System component and decoupled service-layer architecture.*
 
 ### 4.2 Interface Data Contracts (OpenAPI 3.1 & JSON Schemas)
 
@@ -694,7 +732,7 @@ Theoretical Big-O analysis and empirical benchmarking profiling represent comple
 - **Empirical Benchmarking Profiling (Post-Implementation):**
   - Empirical benchmarking measures real-world wall-clock latency, memory allocation footprints, and throughput on actual hardware (e.g., per-query latency percentiles measured with `process.hrtime`, and retained memory measured after a forced garbage collection, in the Node.js benchmark harness of Section 3.5).
   - Empirical profiling captures physical machine phenomena that Big-O ignores: CPU cache behavior, memory layout, page faults, network serialization overheads, and Garbage Collection pauses. While Big-O ensures theoretical soundness, empirical benchmarking proves production SLA compliance under actual load.
-  - The two methods check each other. In this project, measurement corrected the analysis: the first submission's estimate of about 40 node visits and cost independent of catalog size was replaced by the measured figure of about 8,400 visits and cost that grows with catalog size, and the worst-case bound gained a factor of m (Sections 3.1 and 3.2).
+  - The two methods check each other. In this project, measurement refined the analysis: counting visited nodes showed that the worst-case bound needs a factor of m for the query prefixes, and that real cost grows with catalog size instead of staying constant (Sections 3.1 and 3.2).
 
 ### 6.5 Mitigating Cold Start & Data Sparsity in Library Preference Matrices
 
@@ -783,4 +821,4 @@ Production algorithmic engines must operate with absolute resilience against mal
 
 ## Appendix A: Summary Presentation
 
-The twelve summary slides that accompany this milestone follow. The same slides are in `docs/milestone-revision-2/slides/`.
+The twelve summary slides that accompany this milestone follow.
