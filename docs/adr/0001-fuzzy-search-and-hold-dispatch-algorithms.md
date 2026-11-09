@@ -6,36 +6,33 @@
 
 ## Context
 
-PBL Milestone 1 specified two algorithms: a Bounded Levenshtein Trie with DP branch-and-bound for OPAC fuzzy search, and a role-weighted complete binary min-heap for reservation dispatch. The team asked which algorithms are best for LIBRAS, and agreed that a competitor may beat the milestone's choice, with the milestone updated afterwards.
+PBL Milestone 1 specified two algorithms: a Bounded Levenshtein Trie with DP branch-and-bound for OPAC fuzzy search, and a role-weighted complete binary min-heap for reservation dispatch. The team is redoing the milestone and asked which algorithms work best for the system, allowing competitors to beat the original choices.
 
-Constraints: search within 1.0 s at 50 concurrent patrons and about 250 queries/s peak (SRS); hold extraction within 10 ms; roughly 50,000 catalog tokens and up to 5,000 queued holds per title; stack is Node.js, Express and TypeScript on Render with PostgreSQL. Priorities, in order: correctness and latency, then simplicity, then memory.
+Constraints: search within 1.0 s at 50 concurrent patrons and about 250 queries/s peak (SRS); hold extraction within 10 ms; roughly 50,000 catalog tokens and up to 5,000 queued holds per title; stack is Node.js, Express and TypeScript on Render with PostgreSQL. The team's requirements: for search, the lowest latency that does not use much more memory than the other options; for dispatch, whatever works best while staying light on the device.
 
 ## Decision
 
-1. **Fuzzy search: use SymSpell (symmetric delete) as the primary engine**, verified with exact bounded Levenshtein, if the server can hold about 320 MB for the index. If it cannot, or the catalog changes often, use an in-process bigram inverted index with an exact count filter. The simplest option that still meets the SLA is an exact `levenshtein_less_equal` scan in PostgreSQL (p95 186 ms at 50 concurrent clients). Do not use `pg_trgm` as the fuzzy engine (17% recall at its default threshold), and do not use the literal trie, linear scan or BK-tree as the primary engine.
-2. **Hold dispatch: use a PostgreSQL indexed query as the system of record** (`DELETE ... ORDER BY score, seq LIMIT 1 FOR UPDATE SKIP LOCKED`, about 1.7 ms, correct order, no double serves under 50 clients, durable). If an in-memory structure is kept, use the complete binary min-heap with an id-to-position index so cancellations and claim-window expiries are O(log K).
+1. **Fuzzy search: use the flattened Bounded Levenshtein Trie** (`trie-dp-flat`): the milestone's algorithm (trie, one DP row per node, branch-and-bound on the row minimum) implemented with typed-array nodes, 32-bit child offsets, preallocated DP rows and an explicit stack. Rebuild and atomically swap the trie when the catalog changes.
+2. **Hold dispatch: use a PostgreSQL indexed priority query as the single hold queue**: `DELETE FROM holds WHERE id = (SELECT id FROM holds WHERE title = $1 ORDER BY score, seq LIMIT 1 FOR UPDATE SKIP LOCKED) RETURNING id`, on an index over (title, score, seq), with the milestone's score (arrival time minus role weight). If an in-memory structure is ever needed as a cache, use the complete binary min-heap with an id-to-position index.
 
 ## Why
 
-- All candidates that return exact results and exceed 250 queries/s sit two to three orders of magnitude inside the 1.0 s search SLA, so the SLA does not discriminate; latency headroom, simplicity and memory do.
-- SymSpell is the fastest by a wide margin (p95 0.19 ms against 2.9 ms for the milestone trie at 50,000 tokens, k = 2) and ranks first under latency-first and balanced weightings.
-- Its cost is memory (about 318 MB against 4 to 55 MB for the others), a 3-second build, and awkward incremental updates. Under a memory-lean weighting the bigram index ranks first.
-- The milestone's trie, implemented literally, was slower than SymSpell and used 55 MB; flattened into typed arrays it drops to 4.4 MB and is roughly equal to the bigram index on speed, but is the longest implementation.
-- `pg_trgm` returned only 17% of true matches at its default threshold (70% at a lowered one), so it cannot be the fuzzy engine. The exact PostgreSQL scan returned everything and met the SLA at 50 clients, which makes it the low-complexity option.
-- For the dispatcher every in-memory heap variant is about 50,000x inside the 10 ms limit, so speed does not decide it. The PostgreSQL query is about 1.7 ms, still inside the limit, and is durable, transactional with the loan record, served in the same order as the heap, and served every hold exactly once under 50 concurrent clients. That removes a second copy of the queue to keep consistent.
-- If an in-memory heap is kept, the binary heap is simplest and fastest on plain push and pop; its only weakness, cancellation cost, is fixed by an id index.
+- **Search rule.** A candidate had to return exact results, exceed 250 queries/s on one thread, and use no more than twice the memory of the smallest such candidate; among those, the lowest p95 wins. SymSpell is the fastest (p95 0.19 ms) but uses about 318 MB and fails the memory gate. The literal trie (55 MB), BK-tree and linear scan also fail a gate.
+- **Trie vs bigram index.** Only these two remain. In repeated, order-alternated runs the flat trie is faster from 50,000 tokens up (p95 0.73 ms against 1.25 ms at 50,000; 2.4 ms against 21.6 ms at 400,000) and smaller at every size (4.4 MB against 5.6 MB at 50,000). The bigram index is slightly faster only at 20,000 tokens.
+- **Same algorithm, better implementation.** The flat version is about 12 times smaller and 1.7 times faster than the pseudocode implemented literally, so the milestone's algorithm survives; its data layout changes.
+- **`pg_trgm` is ruled out for fuzzy matching:** it returned only 17% of true matches at its default threshold (70% at a lowered one).
+- **Dispatch.** Every in-memory heap variant is far inside the 10 ms limit, so speed does not decide it. The PostgreSQL query is about 1.7 ms (p99 2.6 ms), serves in the same order as the heap, served every hold exactly once under 50 concurrent clients, uses no memory in the Node process, survives restarts, and is transactional with the loan record. That removes a second copy of the queue to keep consistent.
 
 ## Consequences
 
-- PBL Milestone 1 needs updating: Task 2 pseudocode, Task 3 complexity analysis and memory figures, and the claims listed in section 5 of the report (the roughly 40-node-visit figure and the independence of search cost from catalog size do not hold).
-- The search engine becomes a TypeScript module inside the Node API, not a separate Python service.
-- A SymSpell index must be rebuilt or incrementally updated when the catalog changes, and rebuilt on process start (about 3 seconds at 50,000 tokens).
-- A database dispatcher removes the need to keep an in-memory queue in sync, and the milestone's Redis-backed heap partitions become unnecessary. An in-memory heap, if used, is only a cache.
+- PBL Milestone 1 needs updating (report section 6): Task 2 pseudocode and representation, Task 3 complexity and memory figures, removal of the Redis-backed heap partitions, and the claims in report section 5 (the roughly 40-node-visit figure and the independence of search cost from catalog size do not hold; the ILIKE baseline measured 22 ms, not 650 ms or more).
+- The search engine is a TypeScript module inside the Node API, not a separate Python service.
+- The flat trie is immutable: catalog changes trigger a rebuild (about 235 ms at 50,000 tokens) and an atomic swap. Searches in flight use the old trie.
+- Search latency still grows slowly with catalog size (p50 1.3 ms at 400,000 tokens, against 0.42 ms at 50,000).
+- Dispatch order under concurrency is not strictly global because `SKIP LOCKED` lets a client skip a locked row; no hold is lost or served twice. Dropping `SKIP LOCKED` would give strict order at the cost of waiting.
 
 ## Open items that could change this decision
 
-- PostgreSQL numbers come from a local Docker container with default settings; re-measure on the Render database.
-- Choosing a database dispatcher departs from the milestone's "complete binary heap" deliverable; the team must decide what the course deliverable should demonstrate.
-- Results used synthetic data and one laptop; re-run on the real catalog and the Render instance.
-- The Render plan's RAM limit has not been checked against the SymSpell footprint.
-- Weights 60/25/15 (latency, simplicity, memory) are an interpretation of the agreed priorities and have not been confirmed by the team.
+- Results use synthetic data on one laptop, and PostgreSQL ran in a local Docker container with port-forwarding overhead. Re-run on the real catalog and the Render database.
+- Single-thread, in-process search was not driven through Express with 50 concurrent users.
+- Search matches whole tokens only; IDF and popularity ranking, multi-token titles and Unicode normalisation are not benchmarked.

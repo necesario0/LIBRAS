@@ -13,6 +13,7 @@ npm test               # correctness: every candidate vs brute-force reference
 npm run bench:search   # fuzzy search latency, memory, scaling  -> results/search.md
 npm run bench:heap     # hold dispatcher throughput             -> results/heap.md
 npm run bench:claims   # checks numbers quoted in the milestone -> results/claims.md
+npm run bench:h2h      # flat trie vs bigram index, repeated runs -> results/head-to-head.md
 npm run bench:pg       # PostgreSQL candidates (needs the container below) -> results/pg.md
 npm run matrix         # weighted decision matrix               -> results/decision-matrix.md
 ```
