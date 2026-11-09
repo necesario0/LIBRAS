@@ -1,0 +1,20 @@
+{
+  "name": "libras-algorithm-benchmarks",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Prototype benchmark code for the LIBRAS algorithm choices (Bounded Trie Levenshtein Search and Role-Weighted Min-Heap Dispatcher)",
+  "engines": { "node": ">=22.18" },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --test \"test/*.test.ts\"",
+    "bench:search": "node --expose-gc src/bench-search.ts",
+    "bench:heap": "node --expose-gc src/bench-heap.ts",
+    "bench:claims": "node --expose-gc src/verify-claims.ts",
+    "bench": "npm run bench:search && npm run bench:heap && npm run bench:claims"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  }
+}
