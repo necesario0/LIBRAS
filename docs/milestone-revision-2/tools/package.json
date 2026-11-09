@@ -1,0 +1,7 @@
+{
+  "name": "libras-milestone-build",
+  "private": true,
+  "type": "module",
+  "description": "Builds the Revision 2 milestone PDF and DOCX from Markdown",
+  "dependencies": { "docx": "^9.0.0", "marked": "^12.0.0" }
+}

@@ -1,0 +1,220 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Project LIBRAS - PBL Milestone 1 (Revision 2) - Summary Slides</title>
+<style>
+  @page { size: 960px 540px; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: "Segoe UI", Arial, Helvetica, sans-serif; color: #e8ebf7; }
+  .slide { position: relative; width: 960px; height: 540px; overflow: hidden; page-break-after: always; break-after: page;
+    background: radial-gradient(circle at 12% 18%, rgba(48,160,190,.55), rgba(48,160,190,0) 38%),
+                radial-gradient(circle at 88% 88%, rgba(110,80,210,.55), rgba(110,80,210,0) 40%), #12122e;
+    padding: 56px 64px 0; }
+  .slide:last-child { page-break-after: auto; break-after: auto; }
+  .eyebrow { font-size: 13px; font-weight: 700; letter-spacing: .8px; color: #5ee6f2; text-transform: uppercase; margin: 0 0 6px; }
+  h1 { font-size: 46px; margin: 0 0 14px; color: #f3f5ff; }
+  h2 { font-size: 31px; margin: 0 0 18px; color: #f3f5ff; }
+  p { margin: 0 0 8px; font-size: 15px; line-height: 1.45; color: #d6daf0; }
+  .sub { font-size: 20px; color: #c9cdea; line-height: 1.4; max-width: 820px; }
+  .cards { display: flex; gap: 18px; margin-bottom: 18px; }
+  .card { flex: 1; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.08); border-radius: 14px; padding: 16px 20px; }
+  .card h3 { margin: 0 0 8px; font-size: 18px; line-height: 1.25; }
+  .cy { color: #5ee6f2; } .pu { color: #b79bff; } .am { color: #ffc46b; } .gr { color: #7ff0a8; }
+  .card p, .card li { font-size: 14.5px; line-height: 1.45; color: #dadff3; }
+  .card ul { margin: 4px 0 0 18px; padding: 0; }
+  .big { font-size: 40px; font-weight: 800; margin: 0; line-height: 1.05; }
+  .stat { text-align: center; }
+  .stat p { font-size: 13px; margin: 4px 0 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  th { text-align: left; color: #5ee6f2; font-weight: 700; padding: 6px 10px; border-bottom: 1px solid rgba(255,255,255,.25); }
+  td { padding: 6px 10px; border-bottom: 1px solid rgba(255,255,255,.1); color: #e2e6f8; vertical-align: top; }
+  td b { color: #fff; }
+  code { font-family: Consolas, "Courier New", monospace; color: #ffd98c; font-size: .95em; }
+  .footer { position: absolute; left: 64px; bottom: 22px; font-size: 12px; color: #9ea4cc; }
+  .footer span { color: #5ee6f2; }
+  .win td:first-child { color: #fff; }
+  .tier { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12); border-radius: 12px; padding: 9px 16px; margin-bottom: 7px; font-size: 14px; }
+  .tier b { color: #5ee6f2; }
+  .arrow { text-align: center; color: #9ea4cc; font-size: 12px; margin: -2px 0 3px; }
+</style></head>
+<body>
+
+<!-- 1 Title -->
+<section class="slide">
+  <div style="height:104px"></div>
+  <p class="eyebrow">PBL Milestone 1 · ALGOCOM × SOFTENG · Revision 2</p>
+  <h1 style="font-size:62px">Project LIBRAS</h1>
+  <p class="sub">Library Borrowing and Records Administration System: dual-core algorithmic optimization on a decoupled service-layer architecture</p>
+  <div class="cards" style="position:absolute; left:64px; right:64px; bottom:72px; margin:0;">
+    <div class="card"><h3 class="pu">Group 1 · III-BCSAD</h3><p>University of Makati · CCIS · AY 2026–2027</p></div>
+    <div class="card"><h3 class="pu">Advisers</h3><p>Prof. Nomar Maestro · Prof. Era Marie Gannaban</p></div>
+  </div>
+  <div class="footer">Project LIBRAS · PBL Milestone 1 (Revision 2) · Group 1 &nbsp;|&nbsp; <span>1 / 12</span></div>
+</section>
+
+<!-- 2 Problem -->
+<section class="slide">
+  <p class="eyebrow">The problem</p>
+  <h2>Circulation at UMak LLC must meet strict SLAs</h2>
+  <div class="cards">
+    <div class="card stat"><p class="big cy">&lt;30 s</p><p>Checkout (was 4 min 10 s by manual ledger)</p></div>
+    <div class="card stat"><p class="big pu">&lt;15 s</p><p>Routine book return</p></div>
+    <div class="card stat"><p class="big am">&lt;1.0 s</p><p>Catalog search under 50 concurrent patrons</p></div>
+  </div>
+  <div class="card">
+    <h3 class="am">Two computational bottlenecks</h3>
+    <p><b>Typo-tolerant search:</b> SQL <code>ILIKE '%term%'</code> is a substring match with no typo tolerance. It found only 3.7% of the words within two edits, and it still scans every row.</p>
+    <p><b>Hold dispatch:</b> one returned copy needs its top-priority patron resolved instantly, with no race conditions or starvation.</p>
+  </div>
+  <div class="footer">Project LIBRAS · PBL Milestone 1 (Revision 2) · Group 1 &nbsp;|&nbsp; <span>2 / 12</span></div>
+</section>
+
+<!-- 3 Formulation -->
+<section class="slide">
+  <p class="eyebrow">Problem formulation</p>
+  <h2>Two coupled optimization problems</h2>
+  <div class="cards">
+    <div class="card"><h3 class="cy">1 · Approximate string match</h3>
+      <p>Minimize d<sub>Lev</sub>(Q, w) subject to d ≤ k<sub>max</sub> = 2</p>
+      <p>Rank by (1 − d / max(|Q|,|w|)) · IDF · Popularity</p></div>
+    <div class="card"><h3 class="pu">2 · Priority scheduling</h3>
+      <p>Select r* = argmin PriorityScore(r<sub>i</sub>)</p>
+      <p>where PriorityScore = t<sub>i</sub> − W(ρ<sub>i</sub>); smaller means higher priority</p></div>
+  </div>
+  <p>Inputs: lexicon D with N ≥ 50,000 tokens · query Q with 1 ≤ |Q| ≤ 64 · hold pool R with K ≤ 5,000 requests</p>
+  <div class="footer">Project LIBRAS · PBL Milestone 1 (Revision 2) · Group 1 &nbsp;|&nbsp; <span>3 / 12</span></div>
+</section>
+
+<!-- 4 Constraints -->
+<section class="slide">
+  <p class="eyebrow">Constraints</p>
+  <h2>Boundaries and role-tier weights</h2>
+  <div class="cards">
+    <div class="card"><h3 class="cy">Hard boundaries</h3>
+      <ul><li>Query truncated at 64 characters on ingress</li><li>Search radius capped at k<sub>max</sub> = 2</li><li>Arrival timestamps strictly increasing (NTP-synced)</li><li>Claim window of 48 h, then automatic expiry</li></ul></div>
+    <div class="card"><h3 class="pu">Role priority shift</h3>
+      <table><tr><th>Role</th><th>Shift</th></tr>
+      <tr><td>Faculty</td><td>+24 h advance</td></tr><tr><td>NTP</td><td>+12 h advance</td></tr>
+      <tr><td>Student</td><td>0 (pure FIFO)</td></tr><tr><td>Visitor</td><td>−24 h deprioritized</td></tr></table></div>
+  </div>
+  <div class="footer">Project LIBRAS · PBL Milestone 1 (Revision 2) · Group 1 &nbsp;|&nbsp; <span>4 / 12</span></div>
+</section>
+
+<!-- 5 Selection -->
+<section class="slide">
+  <p class="eyebrow">Algorithm selection</p>
+  <h2>Dual-engine architecture</h2>
+  <div class="cards">
+    <div class="card"><h3 class="cy">Engine 1 · Bounded Levenshtein Trie Search</h3>
+      <p>Dynamic programming over a prefix tree. Shared prefixes are evaluated once, and branch-and-bound pruning skips dead subtrees. Stored as flat typed arrays.</p></div>
+    <div class="card"><h3 class="pu">Engine 2 · Role-Weighted Priority Queue Dispatcher</h3>
+      <p>Greedy choice on an ordered index: the first entry is always the winning patron. Implemented as an indexed PostgreSQL query.</p></div>
+  </div>
+  <div class="card"><h3 class="am">Alternatives tested and not chosen</h3>
+    <p><b>Search:</b> SymSpell (318 MB), per-node-object trie (55 MB), BK-tree, bigram index, <code>pg_trgm</code> (17% recall), <code>ILIKE</code> (3.7% recall), linear scan.</p>
+    <p><b>Queue:</b> 4-ary, lazy-delete and pairing heaps, sorted array, unsorted scan. Full results on slide 9.</p></div>
+  <div class="footer">Project LIBRAS · PBL Milestone 1 (Revision 2) · Group 1 &nbsp;|&nbsp; <span>5 / 12</span></div>
+</section>
+
+<!-- 6 Search mechanics -->
+<section class="slide">
+  <p class="eyebrow">Algorithm mechanics · search</p>
+  <h2>DP rows travel down the trie</h2>
+  <div class="cards">
+    <div class="card"><h3 class="cy">Recurrence</h3>
+      <p>Match: D(i,j) = D(i−1,j−1)</p><p>Else: 1 + min(delete, insert, substitute)</p><p>One row of m + 1 cells per trie node</p></div>
+    <div class="card"><h3 class="pu">Pruning invariant</h3>
+      <p>If min(Row<sub>u</sub>) &gt; 2, no descendant can recover (Lemma 2), so the whole subtree is skipped with zero false negatives.</p></div>
+    <div class="card stat" style="flex:.6"><p class="big gr">96.7%</p><p>of trie nodes unvisited at k = 2 (99.6% at k = 1)</p></div>
+  </div>
+  <p>Result: recall 100% against a brute-force reference on every benchmark query.</p>
+  <div class="footer">Project LIBRAS · PBL Milestone 1 (Revision 2) · Group 1 &nbsp;|&nbsp; <span>6 / 12</span></div>
+</section>
+
+<!-- 7 Dispatch mechanics -->
+<section class="slide">
+  <p class="eyebrow">Algorithm mechanics · dispatch</p>
+  <h2>An ordered index keeps the winner first</h2>
+  <div class="cards">
+    <div class="card"><h3 class="cy">Enqueue</h3><p><code>INSERT</code> into <code>holds</code></p><p>O(log K)</p></div>
+    <div class="card"><h3 class="pu">Peek</h3><p><code>SELECT ... ORDER BY score, seq LIMIT 1</code></p><p>O(log K)</p></div>
+    <div class="card"><h3 class="am">Dispatch</h3><p><code>DELETE ... FOR UPDATE SKIP LOCKED</code>, one transaction with the copy status update</p><p>O(log K)</p></div>
+  </div>
+  <div class="card"><h3 class="gr">Worked example</h3>
+    <p>Faculty arriving at t scores t − 24 h and beats a Student who arrived at t − 12 h, so the returned copy goes to Faculty. With 50 concurrent clients, each of 2,000 holds was served exactly once.</p></div>
+  <div class="footer">Project LIBRAS · PBL Milestone 1 (Revision 2) · Group 1 &nbsp;|&nbsp; <span>7 / 12</span></div>
+</section>
+
+<!-- 8 Scalability -->
+<section class="slide">
+  <p class="eyebrow">Scalability analysis</p>
+  <h2>Complexity and resource profile</h2>
+  <table>
+    <tr><th>Operation</th><th>Worst case</th><th>Measured (synthetic catalog)</th></tr>
+    <tr><td>Fuzzy search</td><td>O(m³·|Σ|³) nodes; O(m⁴·|Σ|³) time</td><td>About 8,400 nodes at m = 12, k = 2; p95 0.73 ms at 50,000 tokens</td></tr>
+    <tr><td>Hold enqueue / dispatch</td><td>O(log K)</td><td>About 1.7 ms through PostgreSQL (limit 10 ms)</td></tr>
+    <tr><td>Hold peek</td><td>O(log K)</td><td>Index lookup; in-memory heap is O(1)</td></tr>
+    <tr><td>Trie memory</td><td>O(N·L<sub>avg</sub>)</td><td>4.4 MB at 50,000 tokens; 16.9 MB at 200,000</td></tr>
+    <tr><td>Queue memory</td><td>O(K) in PostgreSQL</td><td>None in the Node.js process</td></tr>
+  </table>
+  <div class="footer">Project LIBRAS · PBL Milestone 1 (Revision 2) · Group 1 &nbsp;|&nbsp; <span>8 / 12</span></div>
+</section>
+
+<!-- 9 Evidence -->
+<section class="slide">
+  <p class="eyebrow">Empirical selection</p>
+  <h2>Why these algorithms: measured against alternatives</h2>
+  <table class="win">
+    <tr><th>Search candidate (50,000 tokens, k = 2)</th><th>p95 (ms)</th><th>Memory</th><th>Outcome</th></tr>
+    <tr><td>SymSpell</td><td>0.19</td><td>318 MB</td><td>Fastest; fails memory rule</td></tr>
+    <tr><td>Trie, object per node</td><td>2.93</td><td>55 MB</td><td>Fails memory rule</td></tr>
+    <tr><td>Bigram index</td><td>1.97</td><td>5.6 MB</td><td>Passes; slower as catalog grows</td></tr>
+    <tr><td><b>Flat trie (chosen)</b></td><td><b>1.93</b></td><td><b>4.4 MB</b></td><td><b>Passes; fastest from 50,000 tokens up</b></td></tr>
+  </table>
+  <p style="margin-top:10px">Rule: exact results, at least 250 queries/s, memory within 2× the smallest passing option, then lowest p95. In repeated runs the flat trie p95 was 0.73 ms against 1.25 ms (bigram) at 50,000 tokens and 2.4 ms against 21.6 ms at 400,000.</p>
+  <p><b>Queue:</b> every in-memory heap is about 50,000× inside the 10 ms limit; the PostgreSQL query (1.7 ms) was chosen for durability, atomicity with the loan record, and no queue state in the application.</p>
+  <div class="footer">Project LIBRAS · PBL Milestone 1 (Revision 2) · Group 1 &nbsp;|&nbsp; <span>9 / 12</span></div>
+</section>
+
+<!-- 10 Architecture -->
+<section class="slide">
+  <p class="eyebrow">Decoupled service-layer architecture</p>
+  <h2 style="font-size:26px; margin-bottom:12px">Algorithms are modules behind narrow interfaces</h2>
+  <div class="tier"><b>Presentation</b> · React Native borrower app · React.js librarian portal</div>
+  <div class="arrow">↓ HTTPS</div>
+  <div class="tier"><b>Hosting and ingress (Render)</b> · HTTPS, JWT, CORS, rate limit 100 req/min in Express middleware</div>
+  <div class="arrow">↓ Internal call</div>
+  <div class="tier"><b>Node.js / Express / TypeScript</b> · business rules, mailer · <b>SearchEngine</b> (flat trie, atomic swap) · <b>HoldQueue</b> (SQL repository)</div>
+  <div class="arrow">↓ SQL, row locking</div>
+  <div class="tier"><b>PostgreSQL 16</b> · catalog, accounts, loans, fines · hold queue with index on (title, score, seq)</div>
+  <div class="footer">Project LIBRAS · PBL Milestone 1 (Revision 2) · Group 1 &nbsp;|&nbsp; <span>10 / 12</span></div>
+</section>
+
+<!-- 11 Benchmarking -->
+<section class="slide">
+  <p class="eyebrow">Benchmarking and validation</p>
+  <h2>Empirical validation against the SLAs</h2>
+  <div class="cards">
+    <div class="card"><h3 class="cy">DEV-ALGO-101 · Search</h3><ul><li>Results equal a brute-force reference for k = 0, 1, 2</li><li>p95 under 35 ms at 50,000 tokens</li><li>Coverage above 95%</li></ul></div>
+    <div class="card"><h3 class="pu">DEV-ALGO-102 · Dispatch</h3><ul><li>Order equals the reference heap</li><li>Under 10 ms at K = 1,000 and 5,000</li><li>No duplicate serves across 50 concurrent clients</li></ul></div>
+  </div>
+  <div class="cards">
+    <div class="card"><h3 class="am">Tooling</h3><p>Node.js benchmark harness (<code>process.hrtime</code>, forced GC) · PostgreSQL 16 · <code>node:test</code></p></div>
+    <div class="card"><h3 class="am">Load target</h3><p>Search ≤ 1.0 s at 50 users</p><p>Method: Big-O before, profiling after</p></div>
+  </div>
+  <div class="footer">Project LIBRAS · PBL Milestone 1 (Revision 2) · Group 1 &nbsp;|&nbsp; <span>11 / 12</span></div>
+</section>
+
+<!-- 12 Citations -->
+<section class="slide">
+  <p class="eyebrow">Key citations</p>
+  <h2>IEEE-referenced foundations</h2>
+  <div class="cards">
+    <div class="card"><h3 class="cy">Algorithm foundations</h3><p>[1] Levenshtein, 1966</p><p>[2] Cormen et al., CLRS 4th ed., 2022</p><p>[9] Navarro, ACM Comput. Surv., 2001</p></div>
+    <div class="card"><h3 class="pu">Automata and search</h3><p>[10] Schulz and Mihov, IJDAR, 2002</p><p>[23] Ukkonen, Inf. Control, 1985</p><p>[24] Burkhard and Keller, CACM, 1973</p><p>[25] Gravano et al., VLDB, 2001</p></div>
+    <div class="card"><h3 class="am">Architecture and data</h3><p>[13] Fowler, PoEAA, 2002</p><p>[17] Newman, Building Microservices, 2021</p><p>[28] PostgreSQL 16 documentation</p></div>
+  </div>
+  <p>Full list [1]–[28] in the proposal · github.com/necesario0/LIBRAS</p>
+  <div class="footer">Project LIBRAS · PBL Milestone 1 (Revision 2) · Group 1 &nbsp;|&nbsp; <span>12 / 12</span></div>
+</section>
+
+</body></html>
