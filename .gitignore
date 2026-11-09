@@ -82,3 +82,5 @@ ehthumbs_vista.db
 
 # Node
 node_modules/
+benchmarks/results/*-quick.*
+benchmarks/results/full-run.log

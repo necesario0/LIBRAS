@@ -8,9 +8,10 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
     "test": "node --test \"test/*.test.ts\"",
-    "bench:search": "node --expose-gc src/bench-search.ts",
-    "bench:heap": "node --expose-gc src/bench-heap.ts",
-    "bench:claims": "node --expose-gc src/verify-claims.ts",
+    "bench:search": "node --expose-gc --max-old-space-size=8192 src/bench-search.ts",
+    "bench:heap": "node --expose-gc --max-old-space-size=8192 src/bench-heap.ts",
+    "bench:claims": "node --expose-gc --max-old-space-size=8192 src/verify-claims.ts",
+    "matrix": "node src/decision-matrix.ts",
     "bench": "npm run bench:search && npm run bench:heap && npm run bench:claims"
   },
   "devDependencies": {
