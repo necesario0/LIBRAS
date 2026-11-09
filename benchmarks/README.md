@@ -1,6 +1,6 @@
 # LIBRAS algorithm benchmarks
 
-Prototype benchmark code for the two algorithm choices in PBL Milestone 1 (Bounded Trie Levenshtein Search and Role-Weighted Min-Heap Dispatcher) against alternative algorithms. The write-up is in [`docs/algorithm-benchmark-report.md`](../docs/algorithm-benchmark-report.md) and the decision record is [`docs/adr/0001-fuzzy-search-and-hold-dispatch-algorithms.md`](../docs/adr/0001-fuzzy-search-and-hold-dispatch-algorithms.md).
+Prototype benchmark code for the two algorithm choices in PBL Milestone 1 against alternative algorithms. The chosen algorithms are **Bounded Levenshtein Trie Search** (catalog search) and **Role-Weighted Priority Queue Dispatcher** (hold dispatch); the milestone's original names were Bounded Levenshtein Trie Automaton Search and Role-Weighted Composite Min-Heap Hold Dispatcher. The write-up is in [`docs/algorithm-benchmark-report.md`](../docs/algorithm-benchmark-report.md) and the decision record is [`docs/adr/0001-fuzzy-search-and-hold-dispatch-algorithms.md`](../docs/adr/0001-fuzzy-search-and-hold-dispatch-algorithms.md).
 
 Written in TypeScript to match the project stack (Node.js, Express, TypeScript). Needs Node 22.18 or newer, which runs `.ts` files directly.
 

@@ -12,8 +12,8 @@ Constraints: search within 1.0 s at 50 concurrent patrons and about 250 queries/
 
 ## Decision
 
-1. **Fuzzy search: use the flattened Bounded Levenshtein Trie** (`trie-dp-flat`): the milestone's algorithm (trie, one DP row per node, branch-and-bound on the row minimum) implemented with typed-array nodes, 32-bit child offsets, preallocated DP rows and an explicit stack. Rebuild and atomically swap the trie when the catalog changes.
-2. **Hold dispatch: use a PostgreSQL indexed priority query as the single hold queue**: `DELETE FROM holds WHERE id = (SELECT id FROM holds WHERE title = $1 ORDER BY score, seq LIMIT 1 FOR UPDATE SKIP LOCKED) RETURNING id`, on an index over (title, score, seq), with the milestone's score (arrival time minus role weight). If an in-memory structure is ever needed as a cache, use the complete binary min-heap with an id-to-position index.
+1. **Fuzzy search: Bounded Levenshtein Trie Search**, in its flattened form (`trie-dp-flat`): the milestone's algorithm (trie, one DP row per node, branch-and-bound on the row minimum) implemented with typed-array nodes, 32-bit child offsets, preallocated DP rows and an explicit stack. Rebuild and atomically swap the trie when the catalog changes.
+2. **Hold dispatch: Role-Weighted Priority Queue Dispatcher**, implemented as a PostgreSQL indexed priority query that is the single hold queue: `DELETE FROM holds WHERE id = (SELECT id FROM holds WHERE title = $1 ORDER BY score, seq LIMIT 1 FOR UPDATE SKIP LOCKED) RETURNING id`, on an index over (title, score, seq), with the milestone's score (arrival time minus role weight). If an in-memory structure is ever needed as a cache, use the complete binary min-heap with an id-to-position index.
 
 ## Why
 

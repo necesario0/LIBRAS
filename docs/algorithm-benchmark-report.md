@@ -4,6 +4,15 @@ Compares the two algorithms chosen in PBL Milestone 1 against alternatives, to d
 
 - **Search engine under test:** Bounded Levenshtein Trie Automaton Search (DP matrix, branch-and-bound).
 - **Dispatcher under test:** Role-Weighted Composite Min-Heap Hold Dispatcher (complete binary heap).
+
+### Final algorithm names
+
+| Role | Name to use | One-sentence description |
+| --- | --- | --- |
+| Catalog search | **Bounded Levenshtein Trie Search** | Typo-tolerant search (up to 2 edits): catalog words are stored in a trie, edit distance is computed along each branch with dynamic programming, and a branch is abandoned as soon as it cannot match (branch-and-bound pruning). Paradigms: dynamic programming and branch-and-bound over a trie. |
+| Hold dispatch | **Role-Weighted Priority Queue Dispatcher** | When a book is returned it goes to the highest-priority waiting patron, where priority is arrival time adjusted by role (Faculty up to 24 hours ahead, Student first come first served). The queue is kept in priority order, so finding the next patron is O(log K). Production implementation: an index-ordered priority queue in PostgreSQL (B-tree index with row locking); the in-memory equivalent is a binary min-heap with an id index. |
+
+The search name drops "Automaton" from the original title and the dispatcher name drops "Composite Min-Heap", because production no longer uses a heap. If a course requirement needs the word "heap", present the binary min-heap as the algorithm and the PostgreSQL query as its production implementation.
 - **Code and raw results:** [`benchmarks/`](../benchmarks/README.md). **Decision record:** [ADR 0001](adr/0001-fuzzy-search-and-hold-dispatch-algorithms.md).
 
 Status: draft for the team to review. The results are reported as measured; the recommendation follows them and the team's stated requirement (lowest latency that stays light on memory), including where it differs from the submitted milestone.
