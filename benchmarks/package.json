@@ -13,6 +13,7 @@
     "bench:search": "node --expose-gc --max-old-space-size=8192 src/bench-search.ts",
     "bench:heap": "node --expose-gc --max-old-space-size=8192 src/bench-heap.ts",
     "bench:claims": "node --expose-gc --max-old-space-size=8192 src/verify-claims.ts",
+    "bench:worstcase": "node src/verify-worst-case.ts",
     "bench:h2h": "node --expose-gc --max-old-space-size=8192 src/bench-head-to-head.ts",
     "bench:pg": "node --expose-gc src/bench-pg.ts",
     "matrix": "node src/decision-matrix.ts",

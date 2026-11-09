@@ -86,3 +86,4 @@ benchmarks/results/*-quick.*
 benchmarks/results/full-run.log
 benchmarks/results/pg-run.log
 benchmarks/results/h2h-run.log
+benchmarks/results/worst-case-quick.md
