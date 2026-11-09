@@ -1,13 +1,12 @@
 // Reservation dispatcher benchmark: team's binary min-heap vs alternatives.
 //   npm run bench:heap
-import { mulberry32, pick, randInt } from "./prng.ts";
 import {
   environmentInfo, fmtInt, gc, mdTable, measureRetained, median, nowNs, percentile, writeResult,
 } from "./harness.ts";
 import { dispatcherFactories, TEAM_CHOICE } from "./registry.ts";
-import { BinaryHeapDispatcher } from "./heap/binary-heap.ts";
-import { makeReservation } from "./heap/types.ts";
-import type { Dispatcher, Reservation, Role } from "./heap/types.ts";
+import { churnScript, makeReservations } from "./heap/workloads.ts";
+import type { Op } from "./heap/workloads.ts";
+import type { Dispatcher, Reservation } from "./heap/types.ts";
 
 const QUICK = process.argv.includes("--quick");
 const SIZES = QUICK ? [100, 1_000, 5_000] : [100, 1_000, 5_000, 50_000];
@@ -16,22 +15,6 @@ const CHURN_OPS = QUICK ? 20_000 : 100_000;
 const BATCH = 500; // ops per timed batch for the p99 estimate (timer overhead is too large for single ops)
 // Skip combinations that are quadratic and would take minutes; they are reported as "skipped".
 const TOO_SLOW = (name: string, k: number) => k >= 50_000 && (name === "linear-scan");
-
-const ROLES: Role[] = ["Faculty", "Student", "NTP", "Visitor"];
-
-function makeReservations(count: number, seed: number): Reservation[] {
-  const rng = mulberry32(seed);
-  let t = 1_700_000_000_000;
-  const out: Reservation[] = [];
-  for (let i = 0; i < count; i++) {
-    t += randInt(rng, 1, 5000);
-    // Mostly students, some faculty/NTP, few visitors - roughly a university mix.
-    const r = rng();
-    const role: Role = r < 0.7 ? "Student" : r < 0.85 ? "Faculty" : r < 0.95 ? "NTP" : "Visitor";
-    out.push(makeReservation(i, t, role));
-  }
-  return out;
-}
 
 const mark = (name: string) => (TEAM_CHOICE.has(name) ? `**${name}**` : name);
 const nsPerOp = (ns: number, ops: number) => (ns / ops).toFixed(ns / ops >= 100 ? 0 : 1);
@@ -70,38 +53,6 @@ function steady(make: () => Dispatcher, k: number) {
 }
 
 // ---- Workload C: churn with cancellations (hold cancelled or 48h claim window expired) ----------
-interface Op { kind: "push" | "pop" | "remove"; r?: Reservation; id?: number }
-
-function churnScript(k: number): { preload: Reservation[]; ops: Op[] } {
-  const rng = mulberry32(3);
-  const pool = makeReservations(k + CHURN_OPS, 4);
-  const model = new BinaryHeapDispatcher(true); // only used to keep the live set consistent
-  const live: number[] = [];
-  const pos = new Map<number, number>();
-  const addLive = (id: number) => { pos.set(id, live.length); live.push(id); };
-  const dropLive = (id: number) => {
-    const i = pos.get(id)!; const last = live.pop()!;
-    pos.delete(id);
-    if (i < live.length) { live[i] = last; pos.set(last, i); }
-  };
-  const preload = pool.slice(0, k);
-  for (const r of preload) { model.push(r); addLive(r.id); }
-  let next = k;
-  const ops: Op[] = [];
-  while (ops.length < CHURN_OPS && next < pool.length) {
-    const x = rng();
-    if (x < 0.4 || live.length === 0) {
-      const r = pool[next++]!; ops.push({ kind: "push", r }); model.push(r); addLive(r.id);
-    } else if (x < 0.8) {
-      const top = model.popMin()!; ops.push({ kind: "pop" }); dropLive(top.id);
-    } else {
-      const id = live[randInt(rng, 0, live.length - 1)]!;
-      ops.push({ kind: "remove", id }); model.remove(id); dropLive(id);
-    }
-  }
-  void pick;
-  return { preload, ops };
-}
 
 function churn(make: () => Dispatcher, script: { preload: Reservation[]; ops: Op[] }) {
   const samples: number[] = [];
@@ -145,7 +96,7 @@ const churnRows: Record<string, Record<number, number | null>> = {};
 
 for (const k of SIZES) {
   console.log(`K = ${fmtInt(k)}`);
-  const script = churnScript(k);
+  const script = churnScript(k, CHURN_OPS);
   for (const make of dispatcherFactories) {
     const name = make().name;
     if (TOO_SLOW(name, k)) {

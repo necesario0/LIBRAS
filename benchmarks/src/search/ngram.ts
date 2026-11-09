@@ -3,7 +3,8 @@ import type { Match, SearchIndex } from "./types.ts";
 
 /**
  * Bigram inverted index with the classic count filter, then exact verification.
- * This is the in-memory analogue of PostgreSQL pg_trgm: words sharing too few
+ * Unlike PostgreSQL pg_trgm (which uses a similarity threshold and misses matches), the count
+ * filter below is exact: words sharing too few
  * q-grams with the query cannot be within edit distance k.
  *
  * Filter (Gravano et al.): with q-grams padded by q-1 sentinels on each end, two
@@ -13,7 +14,7 @@ import type { Match, SearchIndex } from "./types.ts";
  */
 export class NgramIndex implements SearchIndex {
   readonly name = "ngram-bigram";
-  readonly description = "Bigram inverted index + count filter + verify (pg_trgm analogue)";
+  readonly description = "Bigram inverted index + exact count filter + verify";
   words: readonly string[] = [];
   postings = new Map<string, number[]>();
   byLength = new Map<number, number[]>();

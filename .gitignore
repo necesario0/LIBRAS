@@ -84,3 +84,4 @@ ehthumbs_vista.db
 node_modules/
 benchmarks/results/*-quick.*
 benchmarks/results/full-run.log
+benchmarks/results/pg-run.log

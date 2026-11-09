@@ -14,17 +14,17 @@ Status: draft for the team to review. The results are reported as measured; the 
 | --- | --- |
 | Does the milestone's trie meet the SLAs? | Yes, by a wide margin. p99 is 3.9 ms at N = 50,000 and k = 2 against a 1.0 s limit, at 530 queries/s on one thread against a 250 queries/s peak. |
 | Is it the best search option? | No, on latency. SymSpell is about 39x faster at p50 and 15x at p95 (0.19 ms vs 2.9 ms) but needs about 318 MB of RAM against 4 to 55 MB for the trie and bigram index. A bigram index is the best balance on memory. |
-| Which search option is recommended? | SymSpell under the agreed latency-first weighting, provided the server has the RAM; the bigram index if memory is tight. See section 4. |
-| Is the heap the right dispatcher? | Yes. The binary heap family wins or ties everywhere that matters. Add an id-to-position index so cancellations and 48-hour claim expiries cost O(log K) instead of O(K). |
-| Do the milestone's numbers hold? | Several do not (section 5). The 40-node-visit figure is off by about 200x and "independent of catalog size" is not what was measured. |
+| Which search option is recommended? | SymSpell under the agreed latency-first weighting, provided the server has the RAM. An exact PostgreSQL scan is the simplest option that still meets the SLA. `pg_trgm` is not acceptable as the fuzzy engine because it misses most matches (section 3.4). See section 4. |
+| Is the heap the right dispatcher? | As an in-memory structure, yes: add an id-to-position index so cancellations cost O(log K). But a PostgreSQL indexed query dispatches in about 1.7 ms, in the correct order, with no double serves under 50 clients, and it is durable, so it is the stronger production choice. See section 4.2. |
+| Do the milestone's numbers hold? | Several do not (section 5). The 40-node-visit figure is off by about 200x, "independent of catalog size" is not what was measured, and the ILIKE baseline measured 22 ms, not the 650 ms or more claimed. |
 
-Everything below runs in memory on one thread with synthetic data. PostgreSQL-based candidates are not measured yet (section 7).
+The in-memory numbers run on one thread with synthetic data. The PostgreSQL numbers use a local Docker container, so they include port-forwarding overhead.
 
 ## 2. Method
 
 - **Data.** The real UMak catalog is not available, so a seeded synthetic lexicon was generated: 50,000 unique tokens (mean length 9.4) from a mix of real academic words and syllable-model pseudo-words and surnames, plus a 20,000-token call-number and ISBN lexicon. Queries are lexicon words with 0 to 2 random edits (substitute, delete, insert, transpose) and 5% random no-match strings.
 - **Correctness first.** Every candidate is tested against a brute-force full Levenshtein reference (27 automated tests) and returned zero mismatches in every benchmark query, at k = 1 and k = 2. Dispatchers are tested against a re-sorting queue model, including cancellations and FIFO order for equal roles.
-- **Search candidates.** `trie-dp` (milestone pseudocode, implemented literally), `trie-dp-flat` (same algorithm in typed arrays), `linear-scan` (cutoff DP over every word), `bk-tree`, `symspell` (symmetric delete), `ngram-bigram` (bigram inverted index with count filter, the in-memory analogue of `pg_trgm`).
+- **Search candidates.** `trie-dp` (milestone pseudocode, implemented literally), `trie-dp-flat` (same algorithm in typed arrays), `linear-scan` (cutoff DP over every word), `bk-tree`, `symspell` (symmetric delete), `ngram-bigram` (bigram inverted index with an exact count filter; unlike PostgreSQL `pg_trgm` it never drops a true match). PostgreSQL candidates are covered in section 3.4.
 - **Dispatcher candidates.** Binary heap as specified, binary heap with id index, 4-ary heap with index, binary heap with lazy deletion, pairing heap with lazy deletion, sorted array, unsorted linear scan. Priority is arrival time minus role weight, as in the milestone.
 - **Measurement.** Per-query nanosecond timing after warm-up; p50, p95 and p99 reported. Memory is retained bytes after a forced GC. Dispatcher costs are nanoseconds per operation, median of repeated runs, with p99 from batches of 500 operations.
 - **Hardware.** AMD Ryzen 7 PRO 5850U laptop, 15.3 GB RAM, Node 24, Windows 11.
@@ -86,6 +86,34 @@ Observations:
 - The 4-ary, lazy-delete and pairing heaps are competitive but none is better by enough to justify leaving the textbook structure.
 - An unsorted scan is 70x slower than the heap at K = 5,000 in the steady state, yet still about 6.6 microseconds, so it would also meet the SLA. The heap is chosen on headroom and simplicity of reasoning, not necessity.
 
+### 3.4 PostgreSQL candidates
+
+PostgreSQL 16 in a local Docker container, same 50,000-token lexicon, k = 2, 400 queries. Latency is a client round trip. Recall is the share of truly matching words returned. Full output: [`benchmarks/results/pg.md`](../benchmarks/results/pg.md).
+
+| Candidate | Index | p50 (ms) | p95 (ms) | Recall | Queries/s at 50 clients | p95 at 50 clients (ms) |
+| --- | --- | --- | --- | --- | --- | --- |
+| ILIKE '%term%' (milestone baseline 1) | none | 21.8 | 23.9 | 3.7% | 257 | 312 |
+| `levenshtein_less_equal` scan (exact) | none | 8.85 | 10.5 | 100% | 656 | 186 |
+| `pg_trgm` GIN, default threshold 0.3, then verify | GIN | 1.52 | 2.58 | 16.9% | 2,378 | 84.8 |
+| `pg_trgm` GIN, threshold 0.1, then verify | GIN | 6.16 | 12.5 | 69.8% | 972 | 128 |
+
+Observations:
+
+- **`pg_trgm` is fast but misses most typo matches.** Trigram similarity is not edit distance: a short word with one or two edits can share too few trigrams to pass the threshold. Lowering the threshold raises recall but still misses 30% and costs latency. It cannot guarantee the "every word within 2 edits" result the milestone specifies, so it is not acceptable as the fuzzy engine on its own. This also qualifies the security milestone's R-04 countermeasure: a trigram GIN index fixes unindexed wildcard flooding, but it does not provide typo tolerance.
+- **ILIKE is not a fuzzy search at all.** It returns substring matches, so it found 3.7% of the true matches, and it took about 22 ms at 50,000 tokens. The milestone's "650 ms or more" figure was not reproduced.
+- **An exact scan in the database is viable at this scale.** `levenshtein_less_equal` with a length prefilter returns every correct match with no extra memory or synchronisation logic, and with 50 clients at once its p95 was 186 ms, inside the 1.0 s SLA. Its cost grows with catalog size, and it competes with transaction traffic for database CPU, so it has less headroom than an in-memory index.
+
+Hold dispatch, K = 5,000 holds for one title, using an indexed `DELETE ... WHERE id = (SELECT ... ORDER BY score, seq LIMIT 1 FOR UPDATE SKIP LOCKED)`:
+
+| Workload | p50 (ms) | p95 (ms) | p99 (ms) |
+| --- | --- | --- | --- |
+| Steady state (each pop and push timed) | 1.67 | 2.19 | 2.58 |
+| Churn with cancels (40% push, 40% pop, 20% cancel) | 1.62 | 1.99 | 2.36 |
+
+- The serve order of 500 consecutive pops equals the in-memory binary heap's order.
+- With 50 concurrent clients draining 2,000 holds, every hold was served exactly once (2,000 distinct of 2,000), which is the milestone's "zero race conditions" requirement. With `SKIP LOCKED`, strict global order is not guaranteed under concurrency (a client skips a locked top row), but nothing is lost or duplicated.
+- At about 1.7 ms it is roughly 15,000 times slower than the in-memory heap, and still about six times inside the 10 ms limit.
+
 ## 4. Decision
 
 ### 4.1 Fuzzy search
@@ -100,13 +128,23 @@ A weighted matrix ([`benchmarks/results/decision-matrix.md`](../benchmarks/resul
 
 Process note: the first scoring formula (ratio to best) produced an absurd memory-lean ranking because one extreme candidate squashed all others, so it was replaced with min-max scoring before any result was reported. The weights 60/25/15 are my numeric reading of "correctness and latency first, then simplicity, then memory"; the team should confirm or adjust them.
 
-**Recommendation.** Under the agreed priorities, SymSpell ranks first. Use it only if the deployed server can hold the index (about 320 MB at 50,000 tokens, on top of normal Node and Express usage); the Render plan's RAM limit should be checked before committing, which has not been done. If memory is constrained, or the catalog will change often, the bigram index is the better fit, and it maps directly onto PostgreSQL `pg_trgm`, which the security milestone already names as the fix for risk R-04. That makes the bigram index and `pg_trgm` the most defensible second choice. This choice should be revisited once the PostgreSQL candidates are measured.
+**Recommendation.** Under the agreed priorities, SymSpell ranks first. Use it only if the deployed server can hold the index (about 320 MB at 50,000 tokens, on top of normal Node and Express usage); the Render plan's RAM limit should be checked before committing, which has not been done. If memory is constrained, or the catalog will change often, the in-process bigram index (with its exact count filter) is the better fit.
+
+Two further points from the PostgreSQL measurements (section 3.4):
+
+- **Do not use `pg_trgm` as the fuzzy engine.** It is not equivalent to the in-process bigram index above: its similarity threshold drops most true matches (17% recall at the default). The in-process bigram index in this repo uses an exact count filter and returned every match.
+- **The simplest option that meets the SLA is an exact `levenshtein_less_equal` scan in PostgreSQL.** It needs no extra memory or index maintenance, returned every correct match, and held p95 to 186 ms with 50 concurrent clients. It is a reasonable first implementation, with SymSpell as the upgrade if the catalog grows well beyond 50,000 tokens or database CPU becomes contended. This is a judgement call about simplicity against latency headroom, so the team should make it explicitly.
 
 The milestone's trie is not recommended as the primary engine: it is slower than SymSpell and uses far more memory than the bigram index in its literal form. If the team wants to keep a trie, use the flattened implementation.
 
 ### 4.2 Hold dispatcher
 
-Keep the complete binary min-heap and add an id-to-position index (`binary-heap+index`) so that cancellations and claim-window expiries run in O(log K). This changes the milestone's text very little and removes its one real weakness.
+Two defensible answers, depending on where the queue lives:
+
+- **Production system of record: PostgreSQL indexed query.** One indexed `DELETE ... ORDER BY score, seq LIMIT 1 FOR UPDATE SKIP LOCKED` dispatched in about 1.7 ms (p99 2.6 ms), in the same order as the heap, with no hold served twice under 50 concurrent clients. It is durable across restarts, transactional with the loan record, and needs no second copy of the queue to keep in sync. That correctness and simplicity outweigh its latency, which is still about six times inside the 10 ms limit. The milestone's Redis-backed heap partitions are not needed for this.
+- **If an in-memory structure is kept** (for example as a cache): keep the complete binary min-heap and add an id-to-position index (`binary-heap+index`) so cancellations and claim-window expiries run in O(log K). This changes the milestone's text very little and removes the heap's one real weakness.
+
+The first option departs from the milestone's "complete binary heap" as the deliverable, so it is a decision for the team about what the course deliverable should demonstrate, not only an engineering one.
 
 ## 5. Claims in the submitted milestone versus measurements
 
@@ -119,7 +157,8 @@ Keep the complete binary min-heap and add an id-to-position index (`binary-heap+
 | Average search "well within the 35 ms SLA" | p99 3.9 ms | Holds |
 | Heap under 400 KB for K = 5,000 | 551 KB including the reservation records in JavaScript; 53 KB for the heap structure alone | Depends on what is counted and on JavaScript object overhead |
 | Random insert sifts up about 1.6 levels | 0.58 with the assumed role mix; 0 when all roles are equal | Holds only if most inserts outrank their parents; arrivals are time-ordered so most do not |
-| Extraction under 10 ms | About 0.1 microseconds | Holds, by a huge margin |
+| Extraction under 10 ms | About 0.1 microseconds in memory; about 1.7 ms through PostgreSQL | Holds in both cases |
+| SQL `ILIKE '%term%'` degrades to 650 ms or more on tens of thousands of records | 22 ms at 50,000 tokens on a local container; also returns only 3.7% of the true fuzzy matches | Latency claim not reproduced on a token table (a larger table of full records may differ); the baseline is wrong for a different reason, because it is not a fuzzy match |
 
 The independence-from-N and 40-node figures are the ones to correct in the milestone. One caveat on the N result: the synthetic lexicon gets denser as it grows, because it is generated from one syllable model, which may exaggerate growth compared with a real catalog.
 
@@ -132,7 +171,7 @@ The independence-from-N and 40-node figures are the ones to correct in the miles
 
 ## 7. Limitations and next steps
 
-1. **PostgreSQL candidates are missing.** `pg_trgm` with a GIN index, `ILIKE` and an indexed `ORDER BY priority LIMIT 1` need a running PostgreSQL. Docker Desktop was not running on this machine. Starting it (or giving a connection string) lets these be added in one step. A database-side dispatcher also survives restarts and is transactional, which an in-memory heap is not; that matters for correctness.
+1. **PostgreSQL numbers come from a Docker container on a Windows laptop**, default configuration, with port-forwarding overhead in every round trip. A server beside the Node process on Render will differ. A table of full bibliographic records (the milestone's ILIKE scenario) was not modelled; only the token table was.
 2. **Synthetic data.** Re-run on real catalog exports when available, especially for pruning and branching figures.
 3. **Single thread, in-process.** The SRS asks for 50 concurrent patrons; this was not simulated through Express and HTTP. The 250 queries/s gate was applied to single-thread throughput as a proxy.
 4. **Search only matches whole tokens.** The IDF and popularity ranking, multi-token titles and Unicode normalisation are not benchmarked.

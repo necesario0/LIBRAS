@@ -1,0 +1,126 @@
+{
+  "env": {
+    "node": "v24.16.0",
+    "platform": "win32 x64",
+    "cpus": "16x AMD Ryzen 7 PRO 5850U with Radeon Graphics",
+    "totalMemGB": 15.3,
+    "date": "2026-11-09T18:57:02.752Z"
+  },
+  "quick": false,
+  "search": {
+    "pg-ilike-scan": {
+      "description": "Milestone baseline 1: ILIKE '%term%' with no index (substring match, not edit distance)",
+      "usesIndex": false,
+      "seq": {
+        "n": 400,
+        "mean": 21959880.25,
+        "p50": 21807600,
+        "p95": 23883800,
+        "p99": 24853500,
+        "max": 28709800
+      },
+      "concurrent": {
+        "n": 400,
+        "mean": 189127112.25,
+        "p50": 191200600,
+        "p95": 311530500,
+        "p99": 353833300,
+        "max": 407377800
+      },
+      "qps50": 256.69415026760043,
+      "recall": 0.03737989219592219,
+      "precision": 0.09449052132701422
+    },
+    "pg-levenshtein-scan": {
+      "description": "fuzzystrmatch levenshtein_less_equal over every row, with a length prefilter (exact, no index)",
+      "usesIndex": false,
+      "seq": {
+        "n": 400,
+        "mean": 8745093.75,
+        "p50": 8847700,
+        "p95": 10461900,
+        "p99": 11300500,
+        "max": 13103300
+      },
+      "concurrent": {
+        "n": 400,
+        "mean": 74168321.5,
+        "p50": 63247200,
+        "p95": 185660500,
+        "p99": 253303800,
+        "max": 298519100
+      },
+      "qps50": 656.3288312457155,
+      "recall": 1,
+      "precision": 1
+    },
+    "pg-trgm-gin-0.3": {
+      "description": "pg_trgm GIN candidate filter (default similarity threshold 0.3) then exact levenshtein verify",
+      "usesIndex": true,
+      "seq": {
+        "n": 400,
+        "mean": 1628223.75,
+        "p50": 1517500,
+        "p95": 2577900,
+        "p99": 3224000,
+        "max": 3411500
+      },
+      "concurrent": {
+        "n": 400,
+        "mean": 20648640.25,
+        "p50": 10449800,
+        "p95": 84819300,
+        "p99": 133914700,
+        "max": 142577200
+      },
+      "qps50": 2377.547393435354,
+      "recall": 0.16897117412702134,
+      "precision": 1
+    },
+    "pg-trgm-gin-0.1": {
+      "description": "pg_trgm GIN candidate filter with a low threshold (0.1) for higher recall, then exact verify",
+      "usesIndex": true,
+      "seq": {
+        "n": 400,
+        "mean": 6712454.25,
+        "p50": 6156900,
+        "p95": 12475700,
+        "p99": 14859200,
+        "max": 20042400
+      },
+      "concurrent": {
+        "n": 400,
+        "mean": 49244010.25,
+        "p50": 38619200,
+        "p95": 127968600,
+        "p99": 199585200,
+        "max": 249058800
+      },
+      "qps50": 972.1489059922287,
+      "recall": 0.6983829388329037,
+      "precision": 1
+    }
+  },
+  "dispatch": {
+    "steady": {
+      "n": 7600,
+      "mean": 1732758.1973684211,
+      "p50": 1671700,
+      "p95": 2193700,
+      "p99": 2581300,
+      "max": 7254000
+    },
+    "churn": {
+      "n": 4000,
+      "mean": 1660484.55,
+      "p50": 1617900,
+      "p95": 1992000,
+      "p99": 2363800,
+      "max": 3128900
+    },
+    "orderMatches": true,
+    "concServed": 2000,
+    "concDistinct": 2000,
+    "concWall": 0.4186233
+  }
+}
