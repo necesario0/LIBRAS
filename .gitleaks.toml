@@ -1,0 +1,5 @@
+# Secret scanning rules for CI (see .github/workflows/ci.yml).
+# The default gitleaks rules apply. Add an allowlist entry here only for a
+# value that is public by design, and say why.
+[extend]
+useDefault = true
