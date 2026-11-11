@@ -2,12 +2,13 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { loadConfig } from "../src/config.ts";
 
-const local = { SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test" };
+const local = { SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test", SUPABASE_SECRET_KEY: "sb_secret_test" };
 const production = {
   NODE_ENV: "production",
   DATABASE_URL: "postgresql://postgres.abc:pw@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres",
   SUPABASE_URL: "https://abc.supabase.co",
   SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test",
+  SUPABASE_SECRET_KEY: "sb_secret_test",
   BREVO_API_KEY: "xkeysib-test",
   EMAIL_FROM_ADDRESS: "library@example.com",
 };
