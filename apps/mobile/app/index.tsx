@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useScreenTop } from "../src/hooks/useScreenTop";
 import { BookIllustration } from "../src/components/BookIllustration";
@@ -10,8 +10,8 @@ import { colors, fontSize, fontFamily, radii, spacing } from "../src/theme/token
 
 /**
  * The first screen (Figma "iPhone 17 - 89"): the book, the university's name
- * and SIGN UP. "continue with umak email" is the passwordless sign-in, which is
- * out of scope for Tier 1, and "already have an account?" arrives with sign-in.
+ * and SIGN UP, with "already have an account?" leading to sign-in. "continue
+ * with umak email" is the passwordless sign-in, which is out of scope for Tier 1.
  */
 export default function WelcomeScreen() {
   const router = useRouter();
@@ -39,6 +39,14 @@ export default function WelcomeScreen() {
             onPress={() => router.push("/sign-up/account-type")}
             testID="welcome-sign-up"
           />
+          <Pressable
+            onPress={() => router.push("/sign-in")}
+            accessibilityRole="link"
+            hitSlop={8}
+            testID="welcome-sign-in"
+          >
+            <Text style={styles.signIn}>already have an account?</Text>
+          </Pressable>
         </View>
       </ScrollView>
       <View style={[styles.footer, { paddingBottom: insets.bottom + 25 }]}>
@@ -58,6 +66,12 @@ const styles = StyleSheet.create({
     color: colors.black,
     textAlign: "center",
   },
-  actions: { alignSelf: "stretch", paddingHorizontal: spacing.screen, marginTop: 60 },
+  actions: { alignSelf: "stretch", alignItems: "center", paddingHorizontal: spacing.screen, marginTop: 60, gap: spacing.md },
+  signIn: {
+    fontFamily: fontFamily.regular,
+    fontSize: fontSize.label,
+    color: colors.linkSubtle,
+    textDecorationLine: "underline",
+  },
   footer: { paddingTop: spacing.lg },
 });

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { ComponentRef, Ref } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import type { KeyboardTypeOptions, ReturnKeyTypeOptions, TextInputProps } from "react-native";
 import { colors, controlHeight, fontFamily, fontSize, radii, spacing } from "../theme/tokens";
@@ -53,6 +54,14 @@ interface TextFieldProps {
   onSubmitEditing?: () => void;
   maxLength?: number;
   labelSize?: number;
+  /**
+   * The login frames: no label above the field, and the text is 16 pt and 19 pt
+   * in whether it is a placeholder or typed. The label is still read out by screen readers.
+   */
+  bare?: boolean;
+  /** Outlines the field in red without a message of its own (the message is shown elsewhere). */
+  invalid?: boolean;
+  inputRef?: Ref<ComponentRef<typeof TextInput>>;
 }
 
 /**
@@ -78,6 +87,9 @@ export function TextField({
   onSubmitEditing,
   maxLength,
   labelSize,
+  bare = false,
+  invalid = false,
+  inputRef,
 }: TextFieldProps) {
   const [focused, setFocused] = useState(false);
   const [revealed, setRevealed] = useState(false);
@@ -86,15 +98,16 @@ export function TextField({
 
   return (
     <View style={styles.group}>
-      <FieldLabel label={label} required={required} hint={hint} size={labelSize} />
+      {bare ? null : <FieldLabel label={label} required={required} hint={hint} size={labelSize} />}
       <View
         style={[
           styles.field,
           focused && styles.fieldFocused,
-          error !== undefined && !focused && styles.fieldInvalid,
+          (error !== undefined || invalid) && !focused && styles.fieldInvalid,
         ]}
       >
         <TextInput
+          ref={inputRef}
           testID={testID}
           value={value}
           onChangeText={onChangeText}
@@ -111,7 +124,7 @@ export function TextField({
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           accessibilityLabel={label}
-          style={[styles.input, filled ? styles.inputFilled : styles.inputEmpty]}
+          style={[styles.input, bare ? styles.inputBare : filled ? styles.inputFilled : styles.inputEmpty]}
         />
         {showEye ? (
           <Pressable
@@ -150,6 +163,7 @@ const styles = StyleSheet.create({
   input: { flex: 1, height: "100%", paddingVertical: 0, color: colors.black, fontFamily: fontFamily.regular },
   inputEmpty: { fontSize: fontSize.body, paddingLeft: spacing.sm + 1, paddingRight: spacing.sm + 1 },
   inputFilled: { fontSize: fontSize.label, paddingLeft: 18, paddingRight: spacing.sm + 1 },
+  inputBare: { fontSize: fontSize.body, paddingLeft: 18, paddingRight: spacing.sm + 1 },
   eye: { paddingRight: spacing.md, alignItems: "center", justifyContent: "center" },
   error: { fontFamily: fontFamily.regular, fontSize: fontSize.small, color: colors.error },
 });
