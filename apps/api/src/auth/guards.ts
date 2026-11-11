@@ -1,8 +1,9 @@
 import type { RequestHandler, Response } from "express";
-import type { StaffProfile } from "@libras/shared";
+import type { MemberProfile, StaffProfile } from "@libras/shared";
 import type { AppDeps } from "../app.ts";
 import { AppError } from "../errors.ts";
 import type { Identity } from "./auth-provider.ts";
+import { findMemberProfile } from "../members/profile.ts";
 import { findStaffProfile } from "./staff.ts";
 
 const BEARER = /^Bearer (\S+)$/;
@@ -17,6 +18,10 @@ export function notStaff(): AppError {
     "not_staff",
     "This account cannot be used here. The desk page is for library staff only. Members sign in on the LIBRAS mobile app.",
   );
+}
+
+export function notMember(): AppError {
+  return new AppError(403, "not_member", "This account is not a library Member. Sign up in the LIBRAS app to get one.");
 }
 
 /** The access token from `Authorization: Bearer <token>`, or undefined. */
@@ -56,6 +61,23 @@ export function requireLibrarian(deps: AppDeps): RequestHandler[] {
   ];
 }
 
+/**
+ * Route middleware: the request must come from a signed-in Member. Responds 401
+ * `not_signed_in` without a live session and 403 `not_member` when the person
+ * has no Member profile (staff, for example). Handlers after it read `memberOf(res)`.
+ */
+export function requireMember(deps: AppDeps): RequestHandler[] {
+  return [
+    requireIdentity(deps),
+    async (_req, res, next) => {
+      const member = await findMemberProfile(deps.db, identityOf(res));
+      if (!member) throw notMember();
+      res.locals.member = member;
+      next();
+    },
+  ];
+}
+
 /** The signed-in person. Only valid after `requireIdentity`, `requireLibrarian` or a later guard built on them. */
 export function identityOf(res: Response): Identity {
   const identity = res.locals.identity as Identity | undefined;
@@ -68,4 +90,11 @@ export function librarianOf(res: Response): StaffProfile {
   const librarian = res.locals.librarian as StaffProfile | undefined;
   if (!librarian) throw new Error("librarianOf was called on a route that is not guarded by requireLibrarian");
   return librarian;
+}
+
+/** The signed-in Member. Only valid after `requireMember`. */
+export function memberOf(res: Response): MemberProfile {
+  const member = res.locals.member as MemberProfile | undefined;
+  if (!member) throw new Error("memberOf was called on a route that is not guarded by requireMember");
+  return member;
 }

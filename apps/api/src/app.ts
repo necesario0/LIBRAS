@@ -1,6 +1,6 @@
 import express from "express";
 import type { Express, Router } from "express";
-import type { AuthProvider } from "./auth/auth-provider.ts";
+import type { AccountAdmin, AuthProvider } from "./auth/auth-provider.ts";
 import type { Clock } from "./clock.ts";
 import type { Database } from "./db.ts";
 import type { EmailSender } from "./email.ts";
@@ -8,6 +8,7 @@ import { createErrorHandler, notFoundHandler } from "./errors.ts";
 import type { Logger } from "./logger.ts";
 import { authRouter } from "./routes/auth.ts";
 import { healthRouter } from "./routes/health.ts";
+import { membersRouter } from "./routes/members.ts";
 import { staffRouter } from "./routes/staff.ts";
 
 /** Everything the API reaches outside itself. Tests swap the clock and the email sender. */
@@ -15,6 +16,8 @@ export interface AppDeps {
   db: Database;
   /** Accounts, passwords and sessions (Supabase Auth). */
   auth: AuthProvider;
+  /** Creates accounts and confirms their email: the sign-up flow only. */
+  accounts: AccountAdmin;
   clock: Clock;
   email: EmailSender;
   logger: Logger;
@@ -37,6 +40,7 @@ export function createApp(deps: AppDeps, options: AppOptions = {}): Express {
   app.use(healthRouter(deps));
   app.use(authRouter(deps));
   app.use(staffRouter(deps));
+  app.use(membersRouter(deps));
 
   if (options.extraRoutes) {
     const extra = express.Router();

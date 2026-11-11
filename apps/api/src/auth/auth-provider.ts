@@ -26,3 +26,18 @@ export interface AuthProvider {
   /** Ends the session the access token belongs to. Safe to call with a token that no longer works. */
   signOut(accessToken: string): Promise<void>;
 }
+
+/**
+ * Creating and confirming accounts. Needs Supabase's secret key, so it is the
+ * one part of the API that holds it. Only the sign-up flow uses it.
+ */
+export interface AccountAdmin {
+  /**
+   * Creates an account whose email is not confirmed yet, so it cannot sign in.
+   * Returns its id, or undefined when the email already has an account.
+   */
+  createUnverifiedAccount(email: string, password: string): Promise<string | undefined>;
+  setPassword(userId: string, password: string): Promise<void>;
+  /** Marks the email as confirmed: from now on the person can sign in. */
+  confirmEmail(userId: string): Promise<void>;
+}

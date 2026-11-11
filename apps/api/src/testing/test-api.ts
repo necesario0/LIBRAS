@@ -2,6 +2,7 @@ import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { createApp } from "../app.ts";
 import type { AppOptions } from "../app.ts";
+import { SupabaseAuthAdmin } from "../auth/supabase-auth-admin.ts";
 import { SupabaseAuth } from "../auth/supabase-auth.ts";
 import { LOCAL_DATABASE_URL, loadConfig } from "../config.ts";
 import { createDatabase } from "../db.ts";
@@ -44,7 +45,8 @@ export async function startTestApi(options: TestApiOptions = {}): Promise<TestAp
   const emails = new CapturingEmailSender();
   const config = loadConfig();
   const auth = new SupabaseAuth({ url: config.supabaseUrl, publishableKey: config.supabasePublishableKey });
-  const app = createApp({ db, auth, clock, email: emails, logger }, options);
+  const accounts = new SupabaseAuthAdmin({ url: config.supabaseUrl, secretKey: config.supabaseSecretKey });
+  const app = createApp({ db, auth, accounts, clock, email: emails, logger }, options);
 
   const server = await new Promise<Server>((resolve, reject) => {
     const listening = app.listen(0, "127.0.0.1", () => resolve(listening));

@@ -21,6 +21,8 @@ const REFUSAL_CODES = new Set([
   "no_authorization",
   "user_not_found",
   "user_banned",
+  // A sign-up that was never verified. Same answer as a wrong password.
+  "email_not_confirmed",
 ]);
 
 export function isRecord(value: unknown): value is Record<string, unknown> {

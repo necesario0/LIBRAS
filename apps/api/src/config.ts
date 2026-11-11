@@ -6,6 +6,11 @@ export interface Config {
   supabaseUrl: string;
   /** The Supabase publishable (anon) key: enough to sign people in, nothing more. */
   supabasePublishableKey: string;
+  /**
+   * The Supabase secret (service role) key. The sign-up flow uses it to create
+   * an account and to confirm its email once the emailed code is accepted.
+   */
+  supabaseSecretKey: string;
 }
 
 /** What scripts and tests need to administer accounts. The running API never loads this. */
@@ -58,6 +63,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     isProduction: isProductionEnv(env),
     supabaseUrl: required(env, "SUPABASE_URL", LOCAL_SUPABASE_URL),
     supabasePublishableKey: requiredKey(env, "SUPABASE_PUBLISHABLE_KEY"),
+    supabaseSecretKey: requiredKey(env, "SUPABASE_SECRET_KEY"),
   };
 }
 
