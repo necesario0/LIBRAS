@@ -69,7 +69,14 @@ async function main() {
 
   if (!(await apiIsUp())) {
     console.log("Starting the API ...");
-    children.push(spawn(process.execPath, ["apps/api/src/server.ts"], { cwd: repoRoot, env, stdio: "inherit" }));
+    // with-local-supabase.ts reads the local Supabase keys, then runs the server.
+    children.push(
+      spawn(process.execPath, ["scripts/with-local-supabase.ts", process.execPath, "src/server.ts"], {
+        cwd: join(repoRoot, "apps", "api"),
+        env,
+        stdio: "inherit",
+      }),
+    );
     await waitFor("the API (is the database running? npm run db:start)", apiIsUp, 60_000);
   }
 
@@ -90,6 +97,7 @@ async function main() {
 
   // A sleeping screen hides the app from Maestro: keep it awake and unlocked.
   adb("shell", "svc", "power", "stayon", "true");
+  adb("shell", "settings", "put", "system", "screen_off_timeout", "2147483647");
   adb("shell", "input", "keyevent", "KEYCODE_WAKEUP");
   adb("shell", "input", "keyevent", "82");
 
