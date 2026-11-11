@@ -7,11 +7,9 @@ appId: ph.edu.umak.libras
 - launchApp:
     clearState: true
 - runScript:
-    file: scripts/create-member.js
-- evalScript: ${output.member = { email: output.email, password: output.password }}
+    file: scripts/create-members.js
 - runScript:
     file: scripts/create-books.js
-- evalScript: ${output.books = { word: output.word, typo: output.typo, title: output.title, loanTitle: output.loanTitle, other: output.other, nothing: output.nothing }}
 
 # Sign in.
 - extendedWaitUntil:
@@ -21,10 +19,10 @@ appId: ph.edu.umak.libras
     id: welcome-sign-in
 - tapOn:
     id: sign-in-email
-- inputText: ${output.member.email}
+- inputText: ${output.email}
 - tapOn:
     id: sign-in-password
-- inputText: ${output.member.password}
+- inputText: ${output.password}
 - hideKeyboard
 - tapOn:
     id: sign-in-continue
@@ -44,9 +42,9 @@ appId: ph.edu.umak.libras
 # An exact word finds the Book and shows how many Copies are available.
 - tapOn:
     id: search-input
-- inputText: ${output.books.word}
+- inputText: ${output.word}
 - extendedWaitUntil:
-    visible: ${output.books.title}
+    visible: ${output.title}
     timeout: 15000
 - assertVisible: "2 of 3 available"
 - assertVisible: "Zxqy, Ana M."
@@ -55,29 +53,29 @@ appId: ph.edu.umak.libras
 
 # A typo still finds it.
 - eraseText: 40
-- inputText: ${output.books.typo}
+- inputText: ${output.typo}
 - extendedWaitUntil:
-    visible: ${output.books.title}
+    visible: ${output.title}
     timeout: 15000
 - assertVisible: "2 of 3 available"
 
 # A Book whose only Copy is on loan says so.
 - eraseText: 40
-- inputText: ${output.books.other}
+- inputText: ${output.other}
 - extendedWaitUntil:
-    visible: ${output.books.loanTitle}
+    visible: ${output.loanTitle}
     timeout: 15000
 - assertVisible: "None available"
 - takeScreenshot: search-none-available
 
 # Nothing matches: a clear "no books found", not an error.
 - eraseText: 40
-- inputText: ${output.books.nothing}
+- inputText: ${output.nothing}
 - extendedWaitUntil:
     visible: "No books found"
     timeout: 15000
 - assertNotVisible: "Search is not working"
-- assertNotVisible: ${output.books.title}
+- assertNotVisible: ${output.title}
 - takeScreenshot: search-no-results
 
 # Clearing the search brings the hint back.

@@ -5,6 +5,7 @@
 //
 // Device: ANDROID_SERIAL if set, otherwise the first connected device, otherwise
 // the AVD named by LIBRAS_AVD (default Medium_Phone) is started and stopped again.
+// An argument names one flow to run (`sign-in` for .maestro/sign-in.yaml); the default is all of them.
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -118,7 +119,10 @@ async function main() {
   if (install.status !== 0) throw new Error("adb install failed");
 
   console.log("Running Maestro ...");
-  const result = sh("maestro", ["--device", serial, "test", join(root, ".maestro")], { stdio: "inherit" });
+  // `npm run e2e -w @libras/mobile -- sign-in` runs just .maestro/sign-in.yaml.
+  const flow = process.argv[2];
+  const target = flow === undefined ? join(root, ".maestro") : join(root, ".maestro", `${flow}.yaml`);
+  const result = sh("maestro", ["--device", serial, "test", target], { stdio: "inherit" });
   process.exitCode = result.status ?? 1;
 }
 

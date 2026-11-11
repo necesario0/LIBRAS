@@ -1,6 +1,7 @@
-import { useRouter } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useAuth } from "../src/auth/AuthContext";
 import { useScreenTop } from "../src/hooks/useScreenTop";
 import { BookIllustration } from "../src/components/BookIllustration";
 import { Button } from "../src/components/Button";
@@ -9,11 +10,22 @@ import { Wordmark } from "../src/components/Wordmark";
 import { colors, fontSize, fontFamily, radii, spacing } from "../src/theme/tokens";
 
 /**
+ * The root route. A signed-in Member who lands here (a fresh launch with a
+ * stored session, or just after signing in) goes on to their home screen; the
+ * navigation guard keeps the welcome and sign-in screens off the stack, so this
+ * is the one place that decides where "/" leads.
+ */
+export default function RootScreen() {
+  const { state } = useAuth();
+  return state.status === "signedIn" ? <Redirect href="/home" /> : <WelcomeScreen />;
+}
+
+/**
  * The first screen (Figma "iPhone 17 - 89"): the book, the university's name
  * and SIGN UP, with "already have an account?" leading to sign-in. "continue
  * with umak email" is the passwordless sign-in, which is out of scope for Tier 1.
  */
-export default function WelcomeScreen() {
+function WelcomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const screenTop = useScreenTop();
