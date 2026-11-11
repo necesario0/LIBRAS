@@ -10,6 +10,7 @@ import type { EmailSender } from "./email.ts";
 import { createErrorHandler, notFoundHandler } from "./errors.ts";
 import type { Logger } from "./logger.ts";
 import { authRouter } from "./routes/auth.ts";
+import { digitalIdRouter } from "./routes/digital-id.ts";
 import { healthRouter } from "./routes/health.ts";
 import { membersRouter } from "./routes/members.ts";
 import { staffRouter } from "./routes/staff.ts";
@@ -60,6 +61,7 @@ export function createApp(deps: AppDeps, options: AppOptions = {}): Express {
   app.use(authRouter(deps));
   app.use(staffRouter(deps, signInLimiter));
   app.use(membersRouter(deps, signInLimiter));
+  app.use(digitalIdRouter(deps));
 
   if (options.extraRoutes) {
     const extra = express.Router();
