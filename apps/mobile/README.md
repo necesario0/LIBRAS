@@ -38,6 +38,8 @@ adb install -r apps/mobile/build/libras.apk  # onto a running emulator or a devi
 
 The app is a release build with its JavaScript bundled in, so there is no live reload: rebuild the APK after a change. Expo Go is not used (see Expo limitations below).
 
+After one full build, a change to JavaScript only needs Gradle again, without `expo prebuild --clean` (which throws the native build away): from `apps/mobile/android` run `gradlew.bat assembleRelease -I ../scripts/short-native-build.init.gradle --no-daemon` with `JAVA_HOME`, `ANDROID_HOME`, `LIBRAS_NATIVE_BUILD_DIR=C:/lb` and `LIBRAS_CMAKE_VERSION=3.31.6` set (see `scripts/build-apk.mjs`), then copy `android/app/build/outputs/apk/release/app-release.apk` to `build/libras.apk`. That took about 2.5 minutes instead of 27. A reinstall of `node_modules` makes Gradle redo the native part once.
+
 `EXPO_PUBLIC_API_URL` is baked in at build time. A build whose URL starts with `http://` (or is unset) allows cleartext traffic; an `https://` build does not. For a phone on the same network, set it to `http://<your-computer-LAN-ip>:3000` and rebuild.
 
 To build against the hosted API on Render, run `npm run build:apk:hosted -w @libras/mobile`. It takes `EXPO_PUBLIC_API_URL` from its first argument, the environment or `.env.hosted` (written by `npm run setup:hosted`), refuses anything that is not `https://`, and asks the API for `/health` before the long build starts (a sleeping free Render service takes about a minute to answer). It reads only that one value from `.env.hosted`. The build is about 25 minutes, so it is not run casually. See the Deployment section of the root README.
