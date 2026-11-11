@@ -15,9 +15,15 @@ appId: ph.edu.umak.libras
     id: account-type-umak_student
 - tapOn:
     id: account-type-continue
+# The emulator sometimes doubles the first character of text typed right after a tap: check it and retype.
 - tapOn:
     id: name-first
-- inputText: Cobby
+- retry:
+    maxRetries: 3
+    commands:
+      - eraseText: 20
+      - inputText: Cobby
+      - assertVisible: Cobby
 - tapOn:
     id: name-last
 - inputText: Baldonado

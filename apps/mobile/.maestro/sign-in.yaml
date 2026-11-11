@@ -24,9 +24,16 @@ appId: ph.edu.umak.libras
 - assertVisible: "Enter your password."
 
 # A wrong password: one message that does not say which field was wrong.
+# The emulator sometimes doubles the first character of text typed right after a
+# tap (the same happens on the sign-up screens), so the typed text is checked and retyped.
 - tapOn:
     id: sign-in-email
-- inputText: ${output.email}
+- retry:
+    maxRetries: 3
+    commands:
+      - eraseText: 80
+      - inputText: ${output.email}
+      - assertVisible: ${output.email}
 - tapOn:
     id: sign-in-password
 - inputText: not-the-password
@@ -39,8 +46,16 @@ appId: ph.edu.umak.libras
 # The right password signs the Member in and opens the landing screen.
 - tapOn:
     id: sign-in-password
-- eraseText: 40
-- inputText: ${output.password}
+- tapOn:
+    id: sign-in-password-toggle
+- retry:
+    maxRetries: 3
+    commands:
+      - tapOn:
+          id: sign-in-password
+      - eraseText: 80
+      - inputText: ${output.password}
+      - assertVisible: ${output.password}
 - hideKeyboard
 - tapOn:
     id: sign-in-continue
@@ -83,10 +98,24 @@ appId: ph.edu.umak.libras
     id: welcome-sign-in
 - tapOn:
     id: sign-in-email
-- inputText: ${output.unverifiedEmail}
+- retry:
+    maxRetries: 3
+    commands:
+      - eraseText: 80
+      - inputText: ${output.unverifiedEmail}
+      - assertVisible: ${output.unverifiedEmail}
 - tapOn:
     id: sign-in-password
-- inputText: ${output.unverifiedPassword}
+- tapOn:
+    id: sign-in-password-toggle
+- retry:
+    maxRetries: 3
+    commands:
+      - tapOn:
+          id: sign-in-password
+      - eraseText: 80
+      - inputText: ${output.unverifiedPassword}
+      - assertVisible: ${output.unverifiedPassword}
 - hideKeyboard
 - tapOn:
     id: sign-in-continue
