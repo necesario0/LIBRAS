@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { createApp } from "./app.ts";
+import { SupabaseAuth } from "./auth/supabase-auth.ts";
 import { systemClock } from "./clock.ts";
 import { loadConfig } from "./config.ts";
 import { createDatabase } from "./db.ts";
@@ -17,6 +18,7 @@ const db = createDatabase(config.databaseUrl, logger);
 
 const app = createApp({
   db,
+  auth: new SupabaseAuth({ url: config.supabaseUrl, publishableKey: config.supabasePublishableKey }),
   clock: systemClock,
   email: config.isProduction ? new UnconfiguredEmailSender() : new ConsoleEmailSender(),
   logger,

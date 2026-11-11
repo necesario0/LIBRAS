@@ -11,15 +11,17 @@
     "./testing": "./src/testing/index.ts"
   },
   "scripts": {
-    "dev": "node --watch src/server.ts",
+    "dev": "node scripts/with-local-supabase.ts node --watch src/server.ts",
     "start": "node src/server.ts",
     "typecheck": "tsc -p tsconfig.json",
-    "test": "node --test --test-concurrency=1 \"test/**/*.test.ts\""
+    "test": "node scripts/with-local-supabase.ts node --test --test-concurrency=1 \"test/**/*.test.ts\"",
+    "seed": "node scripts/with-local-supabase.ts node src/seed/index.ts"
   },
   "dependencies": {
     "@libras/shared": "*",
     "express": "^5.3.0",
-    "pg": "^8.23.1"
+    "pg": "^8.23.1",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
