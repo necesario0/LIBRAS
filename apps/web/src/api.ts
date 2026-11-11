@@ -1,4 +1,6 @@
 import type {
+  DeskMember,
+  IdentifyMemberResponse,
   RefreshSessionResponse,
   Session,
   StaffMeResponse,
@@ -84,19 +86,32 @@ async function refresh(session: Session): Promise<Session | undefined> {
  * session once if the access token has expired. Returns undefined when there
  * is no usable session left, and the caller shows the sign-in page.
  */
-async function authorized(path: string): Promise<Response | undefined> {
+async function authorized(path: string, init: RequestInit = {}): Promise<Response | undefined> {
   let session = loadSession();
   if (!session) return undefined;
-  let response = await send(path, { session });
+  let response = await send(path, { ...init, session });
   if (response.status === 401) {
     session = await refresh(session);
     if (!session) {
       clearSession();
       return undefined;
     }
-    response = await send(path, { session });
+    response = await send(path, { ...init, session });
   }
   return response;
+}
+
+/**
+ * The Member a Digital ID belongs to, with their Account Type and Loans against
+ * their limit. `code` is the canonical 12 digits from the scan input point.
+ * Returns undefined when the Librarian's session is gone. Throws ApiError:
+ * `digital_id_expired`, `digital_id_invalid`, `invalid_request` or `unreachable`.
+ */
+export async function identifyMember(code: string): Promise<DeskMember | undefined> {
+  const response = await authorized("/desk/members/identify", { method: "POST", body: JSON.stringify({ code }) });
+  if (!response) return undefined;
+  if (!response.ok) throw await failure(response);
+  return ((await response.json()) as IdentifyMemberResponse).member;
 }
 
 /**
