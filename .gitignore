@@ -89,3 +89,6 @@ benchmarks/results/h2h-run.log
 benchmarks/results/worst-case-quick.md
 docs/milestone/tools/node_modules/
 !docs/milestone/parts/
+
+# Microsoft Office lock files
+~$*
