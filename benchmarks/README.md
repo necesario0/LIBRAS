@@ -6,9 +6,10 @@ Written in TypeScript to match the project stack (Node.js, Express, TypeScript).
 
 ## Run
 
+The package is an npm workspace of the repository, so install from the repository root (`npm install`), then:
+
 ```bash
 cd benchmarks
-npm install
 npm test               # correctness: every candidate vs brute-force reference
 npm run bench:search   # fuzzy search latency, memory, scaling  -> results/search.md
 npm run bench:heap     # hold dispatcher throughput             -> results/heap.md

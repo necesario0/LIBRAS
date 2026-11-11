@@ -1,0 +1,47 @@
+{
+  "name": "libras",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "LIBRAS - the library system for the University of Makati",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "benchmarks"
+  ],
+  "scripts": {
+    "dev": "npm run db:start && npm run dev -w @libras/api",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:status": "supabase status",
+    "db:reset": "supabase db reset",
+    "seed": "npm run seed -w @libras/api",
+    "setup:hosted": "bash scripts/setup-hosted.sh",
+    "db:migrate:hosted": "node --env-file-if-exists=.env.hosted apps/api/scripts/migrate-hosted.ts",
+    "seed:hosted": "node --env-file-if-exists=.env.hosted apps/api/src/seed/index.ts",
+    "email:test": "node --env-file-if-exists=.env.hosted apps/api/scripts/send-test-email.ts",
+    "check:hosted": "node --env-file-if-exists=.env.hosted apps/api/scripts/check-hosted.ts",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint . --max-warnings 0",
+    "test": "npm run test --workspaces --if-present",
+    "test:api": "npm run test -w @libras/api",
+    "test:benchmarks": "npm run test -w libras-algorithm-benchmarks",
+    "test:e2e": "npm run test:e2e -w @libras/web",
+    "check": "npm run typecheck && npm run lint && npm run test"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.19.2",
+    "eslint": "^10.14.0",
+    "supabase": "^3.1.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.72.2"
+  },
+  "overrides": {
+    "minimatch": "^11.0.8",
+    "glob": "^14.0.4"
+  }
+}

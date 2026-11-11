@@ -1,0 +1,294 @@
+@import "./tokens.css";
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  font-weight: 400;
+  color: var(--color-text);
+  background: var(--color-surface);
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Brand mark: the round logo and the word "Libras" */
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-lg);
+  line-height: 1;
+}
+.brand__logo {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-pill);
+  object-fit: cover;
+}
+
+/* Buttons and fields */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--control-height);
+  padding: 0 var(--space-5);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-primary);
+  color: #fff;
+  cursor: pointer;
+}
+.button:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+.button:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+.button--quiet {
+  background: var(--color-field);
+  color: var(--color-text);
+}
+.button--quiet:hover:not(:disabled) {
+  background: var(--color-border);
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  height: var(--control-height);
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  background: var(--color-field);
+}
+.field:focus-within {
+  border-color: var(--color-primary);
+  background: var(--color-surface);
+}
+.field__input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0 var(--space-4) 0 19px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-text);
+}
+.field__input::placeholder {
+  color: var(--color-text-muted);
+}
+.field__input:focus-visible {
+  outline: none;
+}
+.field__toggle {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin-right: var(--space-1);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+}
+.field__toggle:hover {
+  background: var(--color-border);
+}
+
+.alert {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-notice);
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.page-message {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: var(--color-text-muted);
+}
+
+/* Sign-in page */
+.sign-in {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(420px, 560px);
+  min-height: 100%;
+}
+.sign-in__aside {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-5);
+  padding: var(--space-7);
+  background: var(--color-primary-soft);
+  text-align: center;
+}
+.sign-in__illustration {
+  position: relative;
+  width: min(100%, 520px);
+  aspect-ratio: 1 / 0.68;
+  overflow: hidden;
+}
+/* The source image is a 2000px square with the book in the middle: crop to the book. */
+.sign-in__illustration img {
+  position: absolute;
+  width: 238%;
+  max-width: none;
+  left: -69%;
+  top: -117.5%;
+  mix-blend-mode: multiply;
+}
+.sign-in__tagline {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: 300;
+  line-height: 1.2;
+}
+.sign-in__panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: var(--space-7);
+}
+.sign-in__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+  max-width: 380px;
+  margin: 0 auto;
+}
+.sign-in__form .brand {
+  align-self: flex-start;
+}
+.sign-in__title {
+  margin: var(--space-5) 0 0;
+  font-size: var(--text-lg);
+  font-weight: 500;
+}
+.sign-in__lede {
+  margin: calc(var(--space-2) * -1) 0 var(--space-3);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+.sign-in__form .button {
+  margin-top: var(--space-2);
+  width: 100%;
+}
+
+@media (max-width: 860px) {
+  .sign-in {
+    grid-template-columns: 1fr;
+  }
+  .sign-in__aside {
+    display: none;
+  }
+}
+
+/* Desk page */
+.desk {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+.desk__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--color-border);
+}
+.desk__who {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+.desk__name {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font-size: var(--text-sm);
+}
+.desk__role {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+.desk__main {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: var(--space-6);
+  background: var(--color-primary-soft);
+}
+.desk__ready {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  width: min(100%, 640px);
+  padding: var(--space-7) var(--space-6);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  text-align: center;
+}
+.desk__status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-4);
+  border-radius: var(--radius-pill);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+.desk__status::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--color-primary);
+}
+.desk__title {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-lg);
+  font-weight: 500;
+}
+.desk__hint {
+  margin: 0;
+  max-width: 440px;
+  color: var(--color-text-muted);
+  line-height: 1.6;
+}

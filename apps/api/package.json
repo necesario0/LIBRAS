@@ -1,0 +1,30 @@
+{
+  "name": "@libras/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "LIBRAS API: Node.js, Express and TypeScript, backed by Supabase PostgreSQL",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "exports": {
+    "./testing": "./src/testing/index.ts"
+  },
+  "scripts": {
+    "dev": "node scripts/with-local-supabase.ts node --watch src/server.ts",
+    "start": "node src/server.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node scripts/with-local-supabase.ts node --test --test-concurrency=1 \"test/**/*.test.ts\"",
+    "seed": "node scripts/with-local-supabase.ts node src/seed/index.ts"
+  },
+  "dependencies": {
+    "@libras/shared": "*",
+    "express": "^5.3.0",
+    "pg": "^8.23.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/pg": "^8.23.1"
+  }
+}

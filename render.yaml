@@ -1,0 +1,48 @@
+# Render Blueprint for the LIBRAS API (ADR 0003). No secret lives in this file:
+# every `sync: false` variable is asked for once, in the Render dashboard, when
+# the Blueprint is created. `npm run setup:hosted` walks through it.
+#
+# The service installs only the API workspace (and the shared package it
+# imports). There is no build step: Node 24 (from .node-version) runs the
+# TypeScript directly.
+services:
+  - type: web
+    name: libras-api
+    runtime: node
+    plan: free
+    # Singapore is the closest region to Makati. Create the Supabase project in
+    # the same region (Southeast Asia, Singapore) to keep database calls fast.
+    region: singapore
+    branch: main
+    autoDeployTrigger: commit
+    buildCommand: npm ci --workspace=@libras/api --omit=dev
+    startCommand: npm run start -w @libras/api
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Supabase: Project Settings > Data API (URL) and API Keys (publishable key).
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      # The secret key: sign-up creates a Member's account and confirms its email with it.
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      # Supabase "Session pooler" connection string, with the database password filled in.
+      - key: DATABASE_URL
+        sync: false
+      # Brevo API key and the sender address verified in Brevo.
+      - key: BREVO_API_KEY
+        sync: false
+      - key: EMAIL_FROM_ADDRESS
+        sync: false
+      - key: EMAIL_FROM_NAME
+        value: LIBRAS
+      # Render's load balancer is one reverse proxy in front of the API. The sign-in rate limit counts
+      # failures per client address, which Express reads from X-Forwarded-For (README, "Client address").
+      - key: TRUST_PROXY
+        value: "1"
+      # Optional, add in the dashboard when needed (see README, Deployment):
+      #   CORS_ALLOWED_ORIGINS  comma separated origins of hosted web pages that call the API
+      #   DATABASE_CA_CERT      PEM CA certificate of the Supabase database, to verify its TLS certificate

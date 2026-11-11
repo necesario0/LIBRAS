@@ -1,0 +1,16 @@
+# Smoke test: the app launches on an emulator and its status screen shows the API health result.
+# Needs an API on port 3000 (npm run e2e starts one).
+appId: ph.edu.umak.libras
+---
+- launchApp:
+    clearState: true
+# Wait for the app to be up before following the link: a link sent while it starts is lost.
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 30000
+- openLink: libras://status
+- extendedWaitUntil:
+    visible: "API status: ok"
+    timeout: 30000
+- assertVisible: "Database: ok"
+- assertVisible: "Service status"
