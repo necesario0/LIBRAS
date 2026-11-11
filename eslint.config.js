@@ -37,7 +37,7 @@ export default tseslint.config(
     // Maestro runs these scripts in its own JavaScript engine, which provides these globals.
     files: ["apps/mobile/.maestro/scripts/**"],
     languageOptions: {
-      globals: { output: "writable", http: "readonly", json: "readonly", EMAIL: "readonly" },
+      globals: { output: "writable", http: "readonly", json: "readonly", EMAIL: "readonly", VERIFY: "readonly" },
     },
   },
   {

@@ -96,6 +96,8 @@ export const spacing = {
   xl: 24,
   xxl: 32,
   screen: 25,
+  /** The side gutter of the Home frame, whose content is 366 pt wide on a 402 pt screen. */
+  home: 18,
 } as const;
 
 export const radii = {
