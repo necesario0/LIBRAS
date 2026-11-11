@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useScreenTop } from "../src/hooks/useScreenTop";
 import { BookIllustration } from "../src/components/BookIllustration";
 import { Button } from "../src/components/Button";
 import { ConsentText } from "../src/components/ConsentText";
@@ -15,11 +16,12 @@ import { colors, fontSize, fontFamily, radii, spacing } from "../src/theme/token
 export default function WelcomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const screenTop = useScreenTop();
 
   return (
     <View style={styles.screen}>
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: insets.top + 7 }]}
+        contentContainerStyle={[styles.content, { paddingTop: screenTop + 7 }]}
         showsVerticalScrollIndicator={false}
       >
         <Wordmark />

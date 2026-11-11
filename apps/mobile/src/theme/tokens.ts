@@ -102,3 +102,6 @@ export const radii = {
 
 /** Height of text fields and buttons. */
 export const controlHeight = 44;
+
+/** The status bar area of a Figma phone frame. Screens position their content from below it. */
+export const statusBarHeight = 62;

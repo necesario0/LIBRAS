@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Keyboard, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useScreenTop } from "../hooks/useScreenTop";
 import { colors, fontFamily, fontSize, spacing } from "../theme/tokens";
 import { BookIllustration } from "./BookIllustration";
 import { ConsentText } from "./ConsentText";
@@ -33,18 +34,19 @@ interface OnboardingScreenProps {
 /**
  * The frame every profile step shares (Figma "Create your profile"): the
  * wordmark, the book, the heading and one line under it, then the form; the
- * step progress and the consent line stay at the foot. The consent line makes
- * room for the keyboard while it is open, as in the frames.
+ * step progress and the consent line stay at the foot. The foot makes room
+ * for the keyboard while it is open.
  */
 export function OnboardingScreen({ step, formGap, children }: OnboardingScreenProps) {
   const insets = useSafeAreaInsets();
+  const screenTop = useScreenTop();
   const keyboardVisible = useKeyboardVisible();
 
   return (
     <KeyboardAvoiding style={styles.screen}>
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={[styles.content, { paddingTop: insets.top + 5 }]}
+        contentContainerStyle={[styles.content, { paddingTop: screenTop + 5 }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -58,12 +60,14 @@ export function OnboardingScreen({ step, formGap, children }: OnboardingScreenPr
         <Text style={styles.subtitle}>create an account so you can manage your book journey</Text>
         <View style={[styles.form, { marginTop: formGap }]}>{children}</View>
       </ScrollView>
-      <View style={[styles.footer, { paddingBottom: insets.bottom + (keyboardVisible ? spacing.sm : 25) }]}>
-        <View style={styles.progress}>
-          <StepProgress step={step} />
+      {keyboardVisible ? null : (
+        <View style={[styles.footer, { paddingBottom: insets.bottom + 25 }]}>
+          <View style={styles.progress}>
+            <StepProgress step={step} />
+          </View>
+          <ConsentText />
         </View>
-        {keyboardVisible ? null : <ConsentText />}
-      </View>
+      )}
     </KeyboardAvoiding>
   );
 }

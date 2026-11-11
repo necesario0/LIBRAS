@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { Animated, Easing, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useScreenTop } from "../../src/hooks/useScreenTop";
 import { VERIFICATION_CODE_LENGTH as CODE_LENGTH } from "@libras/shared";
 import { api } from "../../src/api";
 import { ConsentText } from "../../src/components/ConsentText";
@@ -33,6 +34,7 @@ function Spinner({ children }: { children: ReactNode }) {
 export default function VerifyScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const screenTop = useScreenTop();
   const { pending, setPending, setMember, draft } = useSignUp();
   const [code, setCode] = useState("");
   const [focused, setFocused] = useState(false);
@@ -84,7 +86,7 @@ export default function VerifyScreen() {
   return (
     <KeyboardAvoiding style={styles.screen}>
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: insets.top + 5 }]}
+        contentContainerStyle={[styles.content, { paddingTop: screenTop + 5 }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -161,7 +163,7 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.subheading,
-    lineHeight: fontSize.subheading * 0.89,
+    lineHeight: fontSize.subheading + 3,
     color: colors.black,
     textAlign: "center",
     marginTop: 83,
@@ -175,7 +177,7 @@ const styles = StyleSheet.create({
     borderColor: colors.panelBorder,
     borderRadius: radii.panel,
     paddingVertical: spacing.md,
-    paddingHorizontal: 42,
+    paddingHorizontal: spacing.lg,
     alignItems: "center",
     justifyContent: "center",
     gap: 7,

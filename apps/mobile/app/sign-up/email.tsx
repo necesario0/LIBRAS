@@ -1,7 +1,9 @@
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import type { ScrollViewInstance } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useScreenTop } from "../../src/hooks/useScreenTop";
 import { SIGN_UP_MESSAGES, emailSchema, isUmakEmail, requiresUmakEmail } from "@libras/shared";
 import { api } from "../../src/api";
 import { ApiError } from "../../src/api/client";
@@ -32,11 +34,18 @@ const EARLIER_STEP = {
 export default function EmailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const screenTop = useScreenTop();
   const keyboardVisible = useKeyboardVisible();
+  const scroll = useRef<ScrollViewInstance>(null);
   const { draft, update, setPending, setFieldErrors } = useSignUp();
   const [emailError, setEmailError] = useState<string | undefined>();
   const [termsError, setTermsError] = useState<string | undefined>();
   const [sending, setSending] = useState(false);
+
+  // With the keyboard up, bring the checkbox and Continue into view above it.
+  useEffect(() => {
+    if (keyboardVisible) scroll.current?.scrollToEnd({ animated: true });
+  }, [keyboardVisible]);
 
   async function onContinue() {
     if (sending) return;
@@ -85,7 +94,8 @@ export default function EmailScreen() {
   return (
     <KeyboardAvoiding style={styles.screen}>
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: insets.top + 18 }]}
+        ref={scroll}
+        contentContainerStyle={[styles.content, { paddingTop: screenTop + 18 }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -131,12 +141,14 @@ export default function EmailScreen() {
           />
         </View>
       </ScrollView>
-      <View style={[styles.footer, { paddingBottom: insets.bottom + (keyboardVisible ? spacing.sm : 25) }]}>
-        <View style={styles.progress}>
-          <StepProgress step={4} />
+      {keyboardVisible ? null : (
+        <View style={[styles.footer, { paddingBottom: insets.bottom + 25 }]}>
+          <View style={styles.progress}>
+            <StepProgress step={4} />
+          </View>
+          <ConsentText />
         </View>
-        {keyboardVisible ? null : <ConsentText />}
-      </View>
+      )}
     </KeyboardAvoiding>
   );
 }

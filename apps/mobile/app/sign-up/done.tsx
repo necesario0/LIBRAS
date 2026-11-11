@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useScreenTop } from "../../src/hooks/useScreenTop";
 import { BookIllustration } from "../../src/components/BookIllustration";
 import { Button } from "../../src/components/Button";
 import { Wordmark } from "../../src/components/Wordmark";
@@ -14,6 +15,7 @@ import { colors, fontFamily, fontSize, radii, spacing } from "../../src/theme/to
 export default function DoneScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const screenTop = useScreenTop();
   const { member, reset } = useSignUp();
 
   function onContinue() {
@@ -23,7 +25,7 @@ export default function DoneScreen() {
   }
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top + 18, paddingBottom: insets.bottom + 25 }]}>
+    <View style={[styles.screen, { paddingTop: screenTop + 18, paddingBottom: insets.bottom + 25 }]}>
       <Wordmark />
       <View style={styles.book}>
         <BookIllustration width={173} height={117} />
