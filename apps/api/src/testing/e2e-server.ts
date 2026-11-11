@@ -42,7 +42,7 @@ const app = createApp(
     email: emails,
     logger: consoleLogger,
   },
-  { extraRoutes: mailboxRoutes(emails) },
+  { extraRoutes: mailboxRoutes(emails), warmCatalog: true },
 );
 
 const server = app.listen(config.port, "127.0.0.1", () => {
