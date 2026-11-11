@@ -1,6 +1,7 @@
 import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { createApp } from "../app.ts";
+import type { AppOptions } from "../app.ts";
 import { systemClock } from "../clock.ts";
 import { LOCAL_DATABASE_URL } from "../config.ts";
 import { createDatabase } from "../db.ts";
@@ -16,7 +17,7 @@ export interface TestApi {
   close(): Promise<void>;
 }
 
-export interface TestApiOptions {
+export interface TestApiOptions extends AppOptions {
   /** Defaults to `TEST_DATABASE_URL`, then to the local Supabase PostgreSQL. */
   databaseUrl?: string;
 }
@@ -33,7 +34,7 @@ const silentLogger: Logger = {
 export async function startTestApi(options: TestApiOptions = {}): Promise<TestApi> {
   const logger = silentLogger;
   const db = createDatabase(options.databaseUrl ?? process.env.TEST_DATABASE_URL ?? LOCAL_DATABASE_URL, logger);
-  const app = createApp({ db, clock: systemClock, email: { send: async () => {} }, logger });
+  const app = createApp({ db, clock: systemClock, email: { send: async () => {} }, logger }, options);
 
   const server = await new Promise<Server>((resolve, reject) => {
     const listening = app.listen(0, "127.0.0.1", () => resolve(listening));
