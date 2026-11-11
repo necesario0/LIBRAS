@@ -36,9 +36,6 @@ export function Button({ label, onPress, testID, tone = "primary", radius = radi
       accessibilityRole="button"
       accessibilityState={{ disabled: inactive, busy: loading === true }}
       onPress={inactive ? undefined : onPress}
-      // Not a keyboard focus target: Android would draw its grey focus highlight over the button
-      // when a screen opens after one with a text field (seen on the screen that follows the code step).
-      focusable={false}
       testID={testID}
       style={[styles.button, { backgroundColor: background[tone], borderRadius: radius }, disabled === true && styles.disabled]}
     >
