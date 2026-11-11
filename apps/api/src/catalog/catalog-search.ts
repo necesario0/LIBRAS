@@ -51,6 +51,11 @@ export class CatalogSearch {
     }
   }
 
+  /** Rebuilds the index from the catalog as it is now and waits for the swap. For callers that must see a change at once, such as end-to-end fixtures. */
+  async refresh(): Promise<void> {
+    await this.#startRebuild();
+  }
+
   async search(query: string, limit: number): Promise<CatalogSearchOutcome> {
     const { index } = await this.#fresh();
     const { total, hits } = index.search(query, { limit });

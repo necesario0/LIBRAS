@@ -48,7 +48,7 @@ export interface AppOptions {
    * Adds routes after the real ones and before the error handling. For tests
    * that need a route the product does not have, such as one that throws.
    */
-  extraRoutes?: (router: Router, deps: AppDeps) => void;
+  extraRoutes?: (router: Router, deps: AppDeps, services: { catalog: CatalogSearch }) => void;
 }
 
 export function createApp(deps: AppDeps, options: AppOptions = {}): Express {
@@ -70,7 +70,7 @@ export function createApp(deps: AppDeps, options: AppOptions = {}): Express {
 
   if (options.extraRoutes) {
     const extra = express.Router();
-    options.extraRoutes(extra, deps);
+    options.extraRoutes(extra, deps, { catalog });
     app.use(extra);
   }
 
