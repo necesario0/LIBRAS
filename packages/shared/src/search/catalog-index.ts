@@ -47,9 +47,12 @@ export interface CatalogIndex {
   search(query: string, options?: CatalogSearchOptions): CatalogSearchResult;
 }
 
+const PLAIN_ASCII = /^[ -~]*$/;
+
 /** Lowercase, accents removed. "María" becomes "maria". */
 export function normalizeText(text: string): string {
-  return text.normalize("NFD").replace(/\p{M}+/gu, "").toLowerCase();
+  // Most catalog text is plain ASCII, where there is no accent to remove: skip the slow Unicode pass.
+  return PLAIN_ASCII.test(text) ? text.toLowerCase() : text.normalize("NFD").replace(/\p{M}+/gu, "").toLowerCase();
 }
 
 /** The words of a text: normalised, split on anything that is not a letter or a digit. */

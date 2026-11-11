@@ -4,6 +4,7 @@ import { after, before, describe, it } from "node:test";
 import type { BookSearchResult, CatalogSearchResponse } from "@libras/shared";
 import { createTestAccount, createTestMember, signInDirect, startTestApi } from "../src/testing/index.ts";
 import type { TestApi, TestMember } from "../src/testing/index.ts";
+import { eventually } from "./eventually.ts";
 
 /** A word no real or generated title contains: random letters, so tests never meet other data in the shared database. */
 function uniqueWord(prefix = "zq"): string {
@@ -40,10 +41,23 @@ describe("GET /catalog/search", () => {
     });
   }
 
-  async function results(query: string): Promise<BookSearchResult[]> {
-    const response = await search(query);
-    assert.equal(response.status, 200);
-    return ((await response.json()) as CatalogSearchResponse).results;
+  /**
+   * The Books a search returns. A Book added to the catalog reaches search once the index has been
+   * rebuilt in the background, so this waits for at least `atLeast` results (every caller adds the Books it expects first).
+   */
+  async function results(query: string, atLeast = 1): Promise<BookSearchResult[]> {
+    return (await resultsWithTotal(query, atLeast)).results;
+  }
+
+  async function resultsWithTotal(query: string, atLeast = 1, extra = ""): Promise<CatalogSearchResponse> {
+    return eventually(
+      async () => {
+        const response = await search(query, member.accessToken, extra);
+        assert.equal(response.status, 200);
+        return (await response.json()) as CatalogSearchResponse;
+      },
+      (body) => body.total >= atLeast,
+    );
   }
 
   before(async () => {
@@ -171,8 +185,7 @@ describe("GET /catalog/search", () => {
     it("returns at most `limit` Books and still says how many matched", async () => {
       const word = uniqueWord("zz");
       for (let i = 0; i < 4; i++) await addBook(`${capitalize(word)} Volume ${i}`, [], ["available"]);
-      const response = await search(word, member.accessToken, "&limit=2");
-      const body = (await response.json()) as CatalogSearchResponse;
+      const body = await resultsWithTotal(word, 4, "&limit=2");
       assert.equal(body.results.length, 2);
       assert.equal(body.total, 4);
     });

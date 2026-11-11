@@ -4,6 +4,7 @@ import { after, before, describe, it } from "node:test";
 import type { CatalogSearchResponse } from "@libras/shared";
 import { createTestMember, startTestApi } from "../src/testing/index.ts";
 import type { TestApi, TestMember } from "../src/testing/index.ts";
+import { eventually } from "./eventually.ts";
 
 function uniqueWord(prefix: string): string {
   const letters = randomUUID().replaceAll("-", "").replace(/[0-9]/g, (digit) => "abcdefghij"[Number(digit)] ?? "a");
@@ -28,6 +29,13 @@ describe("when the catalog changes", () => {
     return { status: response.status, body: (await response.json()) as CatalogSearchResponse };
   }
 
+  /** Waits for the background rebuild: the ids a search returns, once `done` accepts them. */
+  async function idsWhen(query: string, done: (ids: string[]) => boolean): Promise<string[]> {
+    const ids = await eventually(async () => (await search(query)).body.results.map((book) => book.id), done);
+    assert.ok(done(ids), `the search for "${query}" never reached the expected result, last saw ${JSON.stringify(ids)}`);
+    return ids;
+  }
+
   before(async () => {
     api = await startTestApi();
     member = await createTestMember(api);
@@ -37,33 +45,33 @@ describe("when the catalog changes", () => {
     await api.close();
   });
 
-  it("finds a new Book on the next search, and stops finding a deleted one", async () => {
+  it("finds a new Book once the index is rebuilt, and stops finding a deleted one", async () => {
     await search("warm up"); // the index exists before the change
     const word = uniqueWord("qa");
     assert.equal((await search(word)).body.total, 0);
 
     const id = await addBook(`Brand New ${word}`);
-    assert.deepEqual((await search(word)).body.results.map((book) => book.id), [id]);
+    assert.deepEqual(await idsWhen(word, (ids) => ids.length === 1), [id]);
 
     await api.db.query("delete from public.books where id = $1", [id]);
-    assert.equal((await search(word)).body.total, 0);
+    await idsWhen(word, (ids) => ids.length === 0);
   });
 
   it("finds a Book whose title is edited", async () => {
     const before = uniqueWord("qb");
     const after = uniqueWord("qc");
     const id = await addBook(`Draft ${before}`);
-    assert.equal((await search(before)).body.total, 1);
+    await idsWhen(before, (ids) => ids.length === 1);
     await api.db.query("update public.books set title = $2 where id = $1", [id, `Final ${after}`]);
-    assert.equal((await search(before)).body.total, 0);
-    assert.deepEqual((await search(after)).body.results.map((book) => book.id), [id]);
+    assert.deepEqual(await idsWhen(after, (ids) => ids.length === 1), [id]);
+    await idsWhen(before, (ids) => ids.length === 0);
   });
 
   it("does not fail or lose any search that is in flight while the index is rebuilt and swapped", async () => {
     // Books that exist before and during the whole run: every search for one of them must always find it.
     const steady = uniqueWord("qd");
     const steadyId = await addBook(`Steady ${steady}`);
-    await search(steady);
+    await idsWhen(steady, (ids) => ids.length === 1);
 
     let changing = true;
     const failures: string[] = [];
@@ -78,12 +86,12 @@ describe("when the catalog changes", () => {
     };
     const searchers = Array.from({ length: 8 }, searcher);
 
-    // Meanwhile the catalog keeps changing: each insert makes the next search rebuild the index.
+    // Meanwhile the catalog keeps changing: each insert makes a search start a rebuild in the background.
     const added: string[] = [];
     for (let i = 0; i < 6; i++) {
       const word = uniqueWord("qe");
       added.push(await addBook(`Added during the run ${word}`));
-      assert.deepEqual((await search(word)).body.results.map((book) => book.id), [added[i]]);
+      assert.deepEqual(await idsWhen(word, (ids) => ids.length === 1), [added[i]]);
     }
     changing = false;
     await Promise.all(searchers);

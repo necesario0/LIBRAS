@@ -45,6 +45,8 @@ export interface CatalogOptions {
   seed?: number;
   /** Stop once the Books' title and author words reach this many distinct tokens. */
   searchTokens?: number;
+  /** The first accession number (and barcode) counter. Another catalog in the same database needs a different range. Default 1. */
+  firstCopyNumber?: number;
 }
 
 type Rng = () => number;
@@ -215,7 +217,7 @@ export function generateCatalog(options: CatalogOptions = {}): SampleCatalog {
   ];
 
   const books: SampleBook[] = [];
-  let copyNumber = 0;
+  let copyNumber = (options.firstCopyNumber ?? 1) - 1;
   while (seen.size < target) {
     const title = pick(rng, titleTemplates)();
     const authors = Array.from({ length: pickSkewed(rng, [1, 1, 1, 2, 2, 3]) }, author);

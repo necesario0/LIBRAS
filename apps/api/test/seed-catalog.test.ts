@@ -8,7 +8,7 @@ import type { TestApi } from "../src/testing/index.ts";
 describe("seeding the catalog", () => {
   let api: TestApi;
   // A small catalog from its own seed, so it does not collide with the full sample catalog or with other tests.
-  const catalog = generateCatalog({ seed: 777_001, searchTokens: 400 });
+  const catalog = generateCatalog({ seed: 777_001, searchTokens: 400, firstCopyNumber: 9_000_001 });
   const isbns = catalog.books.map((book) => book.isbn);
   const accessions = catalog.books.flatMap((book) => book.copies.map((copy) => copy.accessionNumber));
 

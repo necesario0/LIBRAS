@@ -23,9 +23,10 @@ export interface CatalogSearchOutcome {
  * built from; each search reads it, and when it has moved the index is rebuilt
  * from one consistent snapshot of the database and the reference is swapped in
  * a single assignment. A search that already holds the old index finishes on
- * it, so a rebuild never fails or corrupts a search in flight. Searches that
- * start while the rebuild runs wait for it (all of them share one rebuild), so
- * a Book added a moment ago is found by the next search.
+ * it, so a rebuild never fails or corrupts a search in flight, and searches
+ * that start while it runs keep using the old index instead of waiting. The
+ * cost is that a catalog change shows up in search results a moment later
+ * (one rebuild, about a second at the benchmark scale), not instantly.
  *
  * Availability is not in the index: it is read from the Copies for the Books
  * that matched, so it is always current.
@@ -74,21 +75,27 @@ export class CatalogSearch {
     return { total, results };
   }
 
-  /** The index for the catalog as it is now: the current one when nothing changed, else a freshly built one. */
+  /**
+   * The index to search with. The first call builds it and waits. After that a
+   * search never waits for a rebuild: when the catalog has changed, a rebuild
+   * starts in the background (all searches share one) and searches keep using
+   * the current index until the new one is swapped in.
+   */
   async #fresh(): Promise<Snapshot> {
-    for (;;) {
-      const current = this.#current;
-      const { rows } = await this.#db.query<{ revision: string }>("select revision from public.catalog_revision");
-      const revision = BigInt(rows[0]?.revision ?? 0);
-      if (current && current.revision >= revision) return current;
-      // One rebuild serves every search that arrives while it runs. If the catalog changed again after
-      // that rebuild took its snapshot, go round once more so this search sees the change it read.
-      this.#rebuilding ??= this.#rebuild().finally(() => {
-        this.#rebuilding = undefined;
-      });
-      const built = await this.#rebuilding;
-      if (built.revision >= revision) return built;
+    const current = this.#current;
+    if (!current) return this.#startRebuild();
+    const { rows } = await this.#db.query<{ revision: string }>("select revision from public.catalog_revision");
+    if (current.revision < BigInt(rows[0]?.revision ?? 0)) {
+      this.#startRebuild().catch((error: unknown) => this.#logger.error("Could not rebuild the catalog search index", error));
     }
+    return current;
+  }
+
+  #startRebuild(): Promise<Snapshot> {
+    this.#rebuilding ??= this.#rebuild().finally(() => {
+      this.#rebuilding = undefined;
+    });
+    return this.#rebuilding;
   }
 
   async #rebuild(): Promise<Snapshot> {

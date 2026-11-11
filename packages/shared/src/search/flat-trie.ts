@@ -33,62 +33,65 @@ export interface FlatTrie {
   readonly wordIndexAt: Int32Array;
 }
 
-interface PointerNode {
-  kids: Map<number, PointerNode>;
-  wordIndex: number;
-}
-
 /**
  * Builds the flat trie for `words`. Compare words as they are: lowercase them
  * and strip accents first (see `normalizeText`) when the search should ignore
  * them. A word listed twice is stored once, at its first position.
  */
 export function buildTrie(words: readonly string[]): FlatTrie {
-  // A temporary pointer trie, flattened breadth-first below.
-  const root: PointerNode = { kids: new Map(), wordIndex: -1 };
+  // Pass 1: a trie in typed arrays, children kept as linked lists. A node is its
+  // index; there are at most one node per letter of input, plus the root.
+  let letters = 0;
   let maxDepth = 0;
+  for (const word of words) {
+    letters += word.length;
+    if (word.length > maxDepth) maxDepth = word.length;
+  }
+  const capacity = letters + 1;
+  const firstChild = new Int32Array(capacity).fill(-1);
+  const nextSibling = new Int32Array(capacity).fill(-1);
+  const letterOf = new Uint16Array(capacity);
+  const wordAt = new Int32Array(capacity).fill(-1);
+  let nodes = 1;
   words.forEach((word, wordIndex) => {
-    let node = root;
+    let node = 0;
     for (let i = 0; i < word.length; i++) {
       const code = word.charCodeAt(i);
-      let next = node.kids.get(code);
-      if (!next) {
-        next = { kids: new Map(), wordIndex: -1 };
-        node.kids.set(code, next);
+      let child = firstChild[node]!;
+      while (child !== -1 && letterOf[child] !== code) child = nextSibling[child]!;
+      if (child === -1) {
+        child = nodes++;
+        letterOf[child] = code;
+        nextSibling[child] = firstChild[node]!;
+        firstChild[node] = child;
       }
-      node = next;
+      node = child;
     }
-    if (node.wordIndex === -1) node.wordIndex = wordIndex;
-    if (word.length > maxDepth) maxDepth = word.length;
+    if (wordAt[node] === -1) wordAt[node] = wordIndex;
   });
 
-  const order: PointerNode[] = [root];
-  for (let i = 0; i < order.length; i++) for (const child of order[i]!.kids.values()) order.push(child);
-  const position = new Map<PointerNode, number>();
-  order.forEach((node, i) => position.set(node, i));
-
-  const nodeCount = order.length;
+  // Pass 2: flatten breadth-first, so each node's children are contiguous edges.
+  const nodeCount = nodes;
+  const queue = new Int32Array(nodeCount); // queue[position] = node
   const childStart = new Int32Array(nodeCount + 1);
-  let edges = 0;
-  for (let i = 0; i < nodeCount; i++) {
-    childStart[i] = edges;
-    edges += order[i]!.kids.size;
-  }
-  childStart[nodeCount] = edges;
-
-  const edgeChar = new Uint16Array(edges);
-  const edgeTarget = new Int32Array(edges);
+  const edgeChar = new Uint16Array(nodeCount - 1);
+  const edgeTarget = new Int32Array(nodeCount - 1);
   const wordIndexAt = new Int32Array(nodeCount);
-  for (let i = 0; i < nodeCount; i++) {
-    const node = order[i]!;
-    wordIndexAt[i] = node.wordIndex;
-    let edge = childStart[i]!;
-    for (const [code, child] of node.kids) {
-      edgeChar[edge] = code;
-      edgeTarget[edge] = position.get(child)!;
+  let tail = 1;
+  let edge = 0;
+  for (let position = 0; position < nodeCount; position++) {
+    const node = queue[position]!;
+    wordIndexAt[position] = wordAt[node]!;
+    childStart[position] = edge;
+    for (let child = firstChild[node]!; child !== -1; child = nextSibling[child]!) {
+      queue[tail] = child;
+      edgeChar[edge] = letterOf[child]!;
+      edgeTarget[edge] = tail;
+      tail++;
       edge++;
     }
   }
+  childStart[nodeCount] = edge;
   return { words, nodeCount, maxDepth, childStart, edgeChar, edgeTarget, wordIndexAt };
 }
 
