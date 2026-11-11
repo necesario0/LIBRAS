@@ -50,9 +50,9 @@ export default tseslint.config(
     rules: { "@typescript-eslint/no-require-imports": "off" },
   },
   {
-    // The benchmark prototypes index typed arrays in hot loops, where a
-    // non-null assertion is the cheapest correct option.
-    files: ["benchmarks/**"],
+    // The benchmark prototypes and the promoted flat trie index typed arrays in
+    // hot loops, where a non-null assertion is the cheapest correct option.
+    files: ["benchmarks/**", "packages/shared/src/search/flat-trie.ts"],
     rules: {
       "@typescript-eslint/no-non-null-assertion": "off",
     },
