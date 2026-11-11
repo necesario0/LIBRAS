@@ -34,6 +34,22 @@ describe("loadConfig: allowed web origins", () => {
   });
 });
 
+describe("loadConfig: reverse proxies", () => {
+  it("trusts none by default, so a client cannot choose its own address", () => {
+    assert.equal(loadConfig(local).trustProxy, 0);
+  });
+
+  it("reads the number of proxies in front of the API", () => {
+    assert.equal(loadConfig({ ...local, TRUST_PROXY: "1" }).trustProxy, 1);
+  });
+
+  it("refuses anything that is not a small count", () => {
+    for (const bad of ["true", "-1", "1.5", "99"]) {
+      assert.throws(() => loadConfig({ ...local, TRUST_PROXY: bad }), /TRUST_PROXY/);
+    }
+  });
+});
+
 describe("loadConfig: email service", () => {
   it("needs no email service outside production", () => {
     assert.equal(loadConfig(local).email, undefined);

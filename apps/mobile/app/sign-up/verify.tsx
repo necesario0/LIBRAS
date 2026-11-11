@@ -1,4 +1,4 @@
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { Animated, Easing, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
@@ -30,19 +30,28 @@ function Spinner({ children }: { children: ReactNode }) {
  * the person types the 6-digit code from the email. The code is checked as soon
  * as the sixth digit is in. A wrong or expired code shows what happened, and
  * "Didn't get a code?" asks for a new one.
+ *
+ * Sign-in also leads here, with `?email=`, when the password was right but the
+ * email was never verified: the code from sign-up may be gone or expired, so
+ * the screen says so and "Didn't get a code?" is the way out.
  */
 export default function VerifyScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const screenTop = useScreenTop();
   const { pending, setPending, setMember, draft } = useSignUp();
+  const { email: emailFromSignIn } = useLocalSearchParams<{ email?: string }>();
   const [code, setCode] = useState("");
   const [focused, setFocused] = useState(false);
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState<string | undefined>();
-  const [notice, setNotice] = useState<string | undefined>();
+  const [notice, setNotice] = useState<string | undefined>(
+    emailFromSignIn === undefined
+      ? undefined
+      : "Your email is not verified yet. Enter the code we emailed you, or ask for a new one.",
+  );
   const [resending, setResending] = useState(false);
-  const email = pending?.email ?? draft.email.trim().toLowerCase();
+  const email = pending?.email ?? emailFromSignIn ?? draft.email.trim().toLowerCase();
 
   async function verify(entered: string) {
     setChecking(true);

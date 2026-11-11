@@ -13,6 +13,8 @@ export interface Config {
    * an account and to confirm its email once the emailed code is accepted.
    */
   supabaseSecretKey: string;
+  /** Reverse proxies in front of the API (`TRUST_PROXY`), for the client address. 0 locally. */
+  trustProxy: number;
   /** Web pages (exact origins) that may call the API from a browser. Empty: none. */
   corsAllowedOrigins: string[];
   /** The email service. Required in production; elsewhere unset means emails are printed to the console. */
@@ -67,6 +69,17 @@ function required(env: NodeJS.ProcessEnv, name: string, localDefault: string): s
   return value;
 }
 
+/** Parses TRUST_PROXY: the number of reverse proxies in front of the API. Unset means none. */
+function trustProxyHops(env: NodeJS.ProcessEnv): number {
+  const raw = env.TRUST_PROXY;
+  if (raw === undefined || raw === "") return 0;
+  const hops = Number(raw);
+  if (!Number.isInteger(hops) || hops < 0 || hops > 5) {
+    throw new Error(`TRUST_PROXY must be the number of reverse proxies in front of the API (0 to 5), not "${raw}"`);
+  }
+  return hops;
+}
+
 /** Parses CORS_ALLOWED_ORIGINS: a comma separated list of exact origins such as https://desk.example.com. */
 function corsOrigins(env: NodeJS.ProcessEnv): string[] {
   const origins: string[] = [];
@@ -110,6 +123,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     supabaseUrl: required(env, "SUPABASE_URL", LOCAL_SUPABASE_URL),
     supabasePublishableKey: requiredKey(env, "SUPABASE_PUBLISHABLE_KEY"),
     supabaseSecretKey: requiredKey(env, "SUPABASE_SECRET_KEY"),
+    trustProxy: trustProxyHops(env),
     corsAllowedOrigins: corsOrigins(env),
     email: emailConfig(env),
   };

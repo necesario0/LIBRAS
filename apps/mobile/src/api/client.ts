@@ -2,7 +2,11 @@ import type {
   ApiErrorBody,
   CatalogSearchResponse,
   HealthResponse,
+  MemberMeResponse,
+  MemberSignInResponse,
+  RefreshSessionResponse,
   ResendSignUpCodeRequest,
+  SignInRequest,
   SignUpCodeSentResponse,
   SignUpRequest,
   VerifySignUpRequest,
@@ -73,6 +77,7 @@ export function createApiClient({ baseUrl, fetch: fetchImpl = fetch, timeoutMs =
 
   const post = <T>(path: string, body: unknown) =>
     request<T>(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const bearer = (accessToken: string) => ({ Authorization: `Bearer ${accessToken}` });
 
   return {
     getHealth: () => request<HealthResponse>("/health"),
@@ -92,6 +97,15 @@ export function createApiClient({ baseUrl, fetch: fetchImpl = fetch, timeoutMs =
     verifySignUp: (body: VerifySignUpRequest) => post<VerifySignUpResponse>("/members/sign-up/verify", body),
     /** Emails a new code. The old one stops working. */
     resendSignUpCode: (body: ResendSignUpCodeRequest) => post<SignUpCodeSentResponse>("/members/sign-up/resend", body),
+    /** Signs a Member in. Failures: `invalid_credentials`, `email_not_verified`, `too_many_attempts`. */
+    signIn: (body: SignInRequest) => post<MemberSignInResponse>("/members/sign-in", body),
+    /** Swaps a refresh token for a new session. A refresh token works once. */
+    refreshSession: (refreshToken: string) => post<RefreshSessionResponse>("/auth/refresh", { refreshToken }),
+    /** Ends the session on the server. Never fails for a session that is already gone. */
+    signOut: (accessToken: string) =>
+      request<null>("/auth/sign-out", { method: "POST", headers: bearer(accessToken) }),
+    /** The signed-in Member's profile. `not_signed_in` (401) when the access token no longer works. */
+    getMe: (accessToken: string) => request<MemberMeResponse>("/members/me", { headers: bearer(accessToken) }),
   };
 }
 

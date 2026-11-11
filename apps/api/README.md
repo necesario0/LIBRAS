@@ -20,7 +20,7 @@ How to run it and its tests is in the [root README](../../README.md).
 
 ## Hosted configuration
 
-In production (`NODE_ENV=production`, as on Render) the API refuses to start without `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `BREVO_API_KEY` and `EMAIL_FROM_ADDRESS`, and sends email through `BrevoEmailSender`. Elsewhere, with those two Brevo settings unset, email is printed to the console. `CORS_ALLOWED_ORIGINS` (exact origins, comma separated) lets hosted web pages call the API; the default is none. `scripts/` holds the hosted commands (`migrate-hosted.ts`, `check-hosted.ts`, `send-test-email.ts`); see the Deployment section of the root README.
+In production (`NODE_ENV=production`, as on Render) the API refuses to start without `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `BREVO_API_KEY` and `EMAIL_FROM_ADDRESS`, and sends email through `BrevoEmailSender`. Elsewhere, with those two Brevo settings unset, email is printed to the console. `TRUST_PROXY` (number of reverse proxies in front of the API, `1` on Render, default 0) sets Express `trust proxy` so the sign-in limiter sees the real client address. `CORS_ALLOWED_ORIGINS` (exact origins, comma separated) lets hosted web pages call the API; the default is none. `scripts/` holds the hosted commands (`migrate-hosted.ts`, `check-hosted.ts`, `send-test-email.ts`); see the Deployment section of the root README.
 
 ## Rules for new code
 
@@ -63,6 +63,7 @@ describe("Hold ready email", () => {
 - `api.emails` is a `CapturingEmailSender`: `sent`, `lastTo(address)`, `clear()`.
 - `api.db` is the API's `pg` pool on the real local PostgreSQL, for arranging data that has no endpoint yet.
 - `startTestApi({ extraRoutes })` mounts test-only routes, for example one that throws. `startTestApi({ databaseUrl })` points the API at another database.
+- `startTestApi({ trustProxy: 1, signInLimit: { maxFailures, windowMinutes } })`: with `trustProxy: 1` a test gives each request a client address of its own through `X-Forwarded-For` (without it every test request is 127.0.0.1); `signInLimit` lowers the sign-in limit so a test needs fewer failures (each one reaches Supabase Auth, which has its own limit).
 - Test files run one at a time (`--test-concurrency=1`) because they share one database.
 
 ## Test helpers for Members
@@ -76,6 +77,10 @@ ana.accessToken; // Authorization: Bearer <accessToken>
 ```
 
 `studentSignUpBody()` is a valid UMAK Student sign-up with a unique email, username and student number. `codeFromEmail(api.emails.lastTo(email))` reads the verification code. `createTestAccount(api)` makes a bare Supabase account (no Member profile) and, with `{ staff }`, a Librarian.
+
+## Member sign-in and who may call a route
+
+`POST /members/sign-in` (`members/sign-in.ts`, `signInMember`) is the one place a Member session starts. A route that needs a Member is `router.get(path, ...requireMember(deps), (_req, res) => { memberOf(res) })`; any signed-in person is `requireIdentity(deps)`; a Librarian is `...requireLibrarian(deps)`. Sessions are renewed at `POST /auth/refresh` and ended at `POST /auth/sign-out`. `SignInLimiter` (`auth/sign-in-limit.ts`) blocks a client address after repeated refusals; both sign-in routes go through it. Details for later tickets: the spec2-notes `ticket-9.md` (outside the repository) and the README, "Client address and the sign-in limit".
 
 ## The end-to-end API
 

@@ -24,6 +24,7 @@ const config: ExpoConfig = {
   plugins: [
     "expo-router",
     "expo-font",
+    "expo-secure-store",
     ["expo-build-properties", { android: { usesCleartextTraffic: allowCleartext } }],
   ],
   experiments: { typedRoutes: true },

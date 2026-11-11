@@ -9,9 +9,17 @@ import type { Logger } from "./logger.ts";
 export class AppError extends Error {
   readonly status: number;
   readonly code: string;
+  /** Extra response headers, such as Retry-After. */
+  readonly headers: Readonly<Record<string, string>>;
 
-  constructor(status: number, code: string, message: string, options?: ErrorOptions) {
+  constructor(
+    status: number,
+    code: string,
+    message: string,
+    options?: ErrorOptions & { headers?: Readonly<Record<string, string>> },
+  ) {
     super(message, options);
+    this.headers = options?.headers ?? {};
     this.name = "AppError";
     this.status = status;
     this.code = code;
@@ -47,7 +55,7 @@ export function createErrorHandler(logger: Logger): ErrorRequestHandler {
     }
     if (error instanceof AppError) {
       if (error.status >= 500) logger.error(`${req.method} ${req.path} failed: ${error.code}`, error);
-      res.status(error.status).json(errorBody(error.code, error.message));
+      res.set(error.headers).status(error.status).json(errorBody(error.code, error.message));
       return;
     }
     if (bodyParserErrorType(error) === "entity.parse.failed") {

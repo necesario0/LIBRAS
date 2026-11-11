@@ -107,12 +107,19 @@ Hosted settings live in `.env.hosted` at the repository root. It is gitignored a
 | `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` | Supabase: Project Settings, API Keys | yes | |
 | `SUPABASE_SECRET_KEY` | the same page | yes | Member sign-up creates the account and confirms its email with it; the seed script uses it too. It is a secret: never in source, never in the app |
 | `BREVO_API_KEY`, `EMAIL_FROM_ADDRESS` | Brevo: SMTP & API keys, and a verified sender | yes | Production refuses to start without them |
+| `TRUST_PROXY` | `render.yaml` sets it to `1` | yes | Reverse proxies in front of the API; see "Client address and the sign-in limit" below. Unset (0) when clients connect directly, as locally |
 | `CORS_ALLOWED_ORIGINS` | you | optional | See the CORS decision below |
 | `EXPO_PUBLIC_API_URL` | the Render service address | no | Used by `build:apk:hosted` and `check:hosted` |
 
 ### Web pages and CORS
 
 The mobile app is not a browser, so it needs no CORS. A hosted Librarian web page would be a different origin from the API, so the API has an allowlist: `CORS_ALLOWED_ORIGINS` is a comma separated list of exact origins (for example `https://libras-desk.onrender.com`). A listed origin gets the CORS headers, including for the preflight request; any other origin gets none. There is no wildcard and no cookie support: the clients send a bearer token. The default is an empty list, which is right until `apps/web` is hosted. To host it later, make a Render static site that runs `npm ci && npm run build -w @libras/web` with `VITE_API_URL` set to the API address, then add the site's origin to `CORS_ALLOWED_ORIGINS` in the Render dashboard.
+
+### Client address and the sign-in limit
+
+Failed sign-ins are limited per client address (5 failures in 15 minutes, then a block with a `Retry-After` header, for both Members and Librarians). On Render the API sits behind Render's load balancer, so the connection's address is the proxy's and the real client is in the `X-Forwarded-For` header. `TRUST_PROXY` is the number of proxies Express trusts: it takes the client address that many entries from the end of the header, so anything a client prepends is ignored. `render.yaml` sets `1`. Never set it higher than the real number of proxies, because then a client can pick its own address and the limit means nothing. Locally it is unset (0) and the header is ignored.
+
+Not verified on a live service: if Render puts another proxy (a CDN) in front of its load balancer, `1` yields that proxy's address for everyone, so one Member's failures would block all of them. After the first deploy, check the address the API sees (for example log `req.ip` for a request from your phone and from another network) and adjust `TRUST_PROXY`. The limit is kept in the API's memory, which is right for the one free instance; a restart forgets it. Supabase Auth also has its own limit per address (30 sign-ins per 5 minutes by default) and the API is the only address it sees, so that limit is shared by every Member of the hosted app; raise it in the Supabase dashboard (Authentication, Rate Limits) if a demo needs many sign-ins in a short time.
 
 ### What a free Render service does
 

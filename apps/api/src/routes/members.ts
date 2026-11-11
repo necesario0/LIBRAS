@@ -5,6 +5,7 @@ import {
   accountTypeSchema,
   hasSignUpForm,
   resendSignUpCodeRequestSchema,
+  signInRequestSchema,
   signUpRequestSchema,
   verifySignUpRequestSchema,
 } from "@libras/shared";
@@ -12,7 +13,9 @@ import type { MemberMeResponse, VerifySignUpResponse } from "@libras/shared";
 import type { z } from "zod";
 import type { AppDeps } from "../app.ts";
 import { memberOf, requireMember } from "../auth/guards.ts";
+import type { SignInLimiter } from "../auth/sign-in-limit.ts";
 import { AppError } from "../errors.ts";
+import { signInMember } from "../members/sign-in.ts";
 import { resendSignUpCode, startSignUp, verifySignUp } from "../members/sign-up.ts";
 import { parseBody } from "../validation.ts";
 
@@ -31,9 +34,14 @@ function signUpRefusal(error: z.ZodError): AppError {
   return new AppError(400, "invalid_request", message ?? "Check what you entered and try again.");
 }
 
-/** Sign-up and the Member's own profile. Sign-in for Members is added by the ticket that builds it. */
-export function membersRouter(deps: AppDeps): Router {
+/** Sign-up, sign-in and the Member's own profile. */
+export function membersRouter(deps: AppDeps, limiter: SignInLimiter): Router {
   const router = Router();
+
+  router.post("/members/sign-in", async (req, res) => {
+    const { email, password } = parseBody(signInRequestSchema, req.body, "Enter your email and password.");
+    res.json(await limiter.attempt(req.ip, () => signInMember(deps, email, password)));
+  });
 
   router.post("/members/sign-up", async (req, res) => {
     // An Account Type whose form is not built yet is refused by name, not as a malformed request.

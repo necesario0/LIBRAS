@@ -17,6 +17,8 @@ export const colors = {
   textMuted: "#747474",
   /** Text links. */
   link: "#170D0D",
+  /** The "already have an account?" link of the welcome screen. */
+  linkSubtle: "#383333",
   /** Failure state, for error messages. Not in the Figma frames read so far. */
   danger: "#B3261E",
   /** Sign-up screens: the "SIGN UP" button, and the second CTA colour of the design. */

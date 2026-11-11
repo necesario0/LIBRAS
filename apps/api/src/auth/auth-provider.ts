@@ -17,8 +17,12 @@ export interface SignedIn {
  * or issues a token itself: Supabase Auth does (ADR 0003).
  */
 export interface AuthProvider {
-  /** Returns undefined when the email and password do not match an account. */
-  signInWithPassword(email: string, password: string): Promise<SignedIn | undefined>;
+  /**
+   * Returns undefined when the email and password do not match an account, and
+   * "unverified" when they do but the email was never verified (so the person
+   * cannot sign in yet). The second answer is only ever given for a correct password.
+   */
+  signInWithPassword(email: string, password: string): Promise<SignedIn | "unverified" | undefined>;
   /** Swaps a refresh token for a new session. Returns undefined when the token is unknown, used or revoked. */
   refresh(refreshToken: string): Promise<SignedIn | undefined>;
   /** Returns who an access token belongs to, or undefined when it is invalid, expired or signed out. */
