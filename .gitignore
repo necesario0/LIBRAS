@@ -98,3 +98,7 @@ apps/mobile/android/
 apps/mobile/ios/
 apps/mobile/.expo/
 apps/mobile/expo-env.d.ts
+
+# Playwright output
+apps/web/test-results/
+apps/web/playwright-report/

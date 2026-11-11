@@ -32,8 +32,12 @@ jobs:
         run: npm run lint
       - name: Start the local Supabase PostgreSQL
         run: npm run db:start
+      # From here on the npm scripts read the Supabase URL and keys from
+      # `supabase status -o env` themselves (apps/api/scripts/with-local-supabase.ts).
       - name: Tests (API over HTTP against PostgreSQL, and the benchmark package)
         run: npm test
+      - name: Browser end-to-end test (desk page in Chrome, real API, real Supabase)
+        run: npm run test:e2e
       - name: Stop Supabase
         if: always()
         run: npm run db:stop

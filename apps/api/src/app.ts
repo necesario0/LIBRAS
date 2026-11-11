@@ -1,15 +1,20 @@
 import express from "express";
 import type { Express, Router } from "express";
+import type { AuthProvider } from "./auth/auth-provider.ts";
 import type { Clock } from "./clock.ts";
 import type { Database } from "./db.ts";
 import type { EmailSender } from "./email.ts";
 import { createErrorHandler, notFoundHandler } from "./errors.ts";
 import type { Logger } from "./logger.ts";
+import { authRouter } from "./routes/auth.ts";
 import { healthRouter } from "./routes/health.ts";
+import { staffRouter } from "./routes/staff.ts";
 
 /** Everything the API reaches outside itself. Tests swap the clock and the email sender. */
 export interface AppDeps {
   db: Database;
+  /** Accounts, passwords and sessions (Supabase Auth). */
+  auth: AuthProvider;
   clock: Clock;
   email: EmailSender;
   logger: Logger;
@@ -30,6 +35,8 @@ export function createApp(deps: AppDeps, options: AppOptions = {}): Express {
 
   // Each feature adds its router here.
   app.use(healthRouter(deps));
+  app.use(authRouter(deps));
+  app.use(staffRouter(deps));
 
   if (options.extraRoutes) {
     const extra = express.Router();

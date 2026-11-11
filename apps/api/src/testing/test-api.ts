@@ -2,7 +2,8 @@ import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { createApp } from "../app.ts";
 import type { AppOptions } from "../app.ts";
-import { LOCAL_DATABASE_URL } from "../config.ts";
+import { SupabaseAuth } from "../auth/supabase-auth.ts";
+import { LOCAL_DATABASE_URL, loadConfig } from "../config.ts";
 import { createDatabase } from "../db.ts";
 import type { Database } from "../db.ts";
 import type { Logger } from "../logger.ts";
@@ -34,14 +35,16 @@ const silentLogger: Logger = {
 
 /**
  * Starts the real API on a free local port against the real local
- * PostgreSQL. Tests talk to it over HTTP only.
+ * PostgreSQL and the real local Supabase Auth. Tests talk to it over HTTP only.
  */
 export async function startTestApi(options: TestApiOptions = {}): Promise<TestApi> {
   const logger = silentLogger;
   const db = createDatabase(options.databaseUrl ?? process.env.TEST_DATABASE_URL ?? LOCAL_DATABASE_URL, logger);
   const clock = new FakeClock();
   const emails = new CapturingEmailSender();
-  const app = createApp({ db, clock, email: emails, logger }, options);
+  const config = loadConfig();
+  const auth = new SupabaseAuth({ url: config.supabaseUrl, publishableKey: config.supabasePublishableKey });
+  const app = createApp({ db, auth, clock, email: emails, logger }, options);
 
   const server = await new Promise<Server>((resolve, reject) => {
     const listening = app.listen(0, "127.0.0.1", () => resolve(listening));

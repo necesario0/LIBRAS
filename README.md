@@ -10,7 +10,7 @@ One repository, npm workspaces.
 | --- | --- | --- |
 | `apps/api` | `@libras/api` | The API: Node.js, Express and TypeScript, backed by Supabase PostgreSQL |
 | `apps/mobile` | `@libras/mobile` | The Member mobile app (React Native with Expo). Placeholder for now |
-| `apps/web` | `@libras/web` | The Librarian desk page and phone scanner page. Placeholder for now |
+| `apps/web` | `@libras/web` | The Librarian desk page (and, later, the phone scanner page). Vite and React |
 | `packages/shared` | `@libras/shared` | Types, validation schemas and the search module shared by the API and the clients |
 | `benchmarks` | `libras-algorithm-benchmarks` | The algorithm benchmark prototypes behind ADR 0001 |
 | `supabase` | | Local Supabase configuration and database migrations |
@@ -36,6 +36,8 @@ curl http://localhost:3000/health
 
 No `.env` file is needed locally. To change the port or the database, copy `.env.example` to `.env` and edit it.
 
+No Supabase key lives in the source. `npm run dev`, `npm test`, `npm run test:api`, `npm run seed` and `npm run test:e2e` read `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_SECRET_KEY` from the running local stack (`npx supabase status -o env`, through `apps/api/scripts/with-local-supabase.ts`), so the database must be started first with `npm run db:start`. A variable you set yourself, in the environment or in `.env`, wins, and nothing is looked up when `NODE_ENV=production`: production sets all three explicitly. To run a one-off command the same way: `node apps/api/scripts/with-local-supabase.ts <command>`.
+
 | Command | What it does |
 | --- | --- |
 | `npm run dev` | Start the database and the API |
@@ -43,6 +45,7 @@ No `.env` file is needed locally. To change the port or the database, copy `.env
 | `npm run db:status` | Show the local Supabase URLs and keys |
 | `npm run db:reset` | Recreate the local database from `supabase/migrations` |
 | `npm run db:stop` | Stop the local Supabase stack |
+| `npm run seed` | Create the demo Librarian (`librarian@libras.test`, local only). Safe to run again |
 
 ## Run the tests and checks locally
 
@@ -53,6 +56,7 @@ npm run db:start
 npm test              # every package: the API tests and the benchmark tests
 npm run test:api      # only the API tests
 npm run test:benchmarks
+npm run test:e2e      # the desk page in Chrome against the real API (needs Chrome installed)
 npm run typecheck
 npm run lint
 npm run check         # typecheck, lint and tests together, the same as CI
