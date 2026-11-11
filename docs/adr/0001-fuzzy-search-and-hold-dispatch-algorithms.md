@@ -1,7 +1,8 @@
 # 0001: Algorithms for fuzzy catalog search and hold dispatch
 
-**Status:** Proposed (needs team confirmation)
+**Status:** Accepted (2026-11-11)
 **Date:** 2026-11-09
+**Notes on acceptance:** Visitor and Alumni cannot borrow, so they cannot place Holds and the Visitor weight is unused. Hold is the only queue concept; the team decided not to build reservations (see `GLOSSARY.md`).
 **Evidence:** [algorithm benchmark report](../algorithm-benchmark-report.md), raw output in `benchmarks/results/`
 
 ## Context
