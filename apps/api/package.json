@@ -7,6 +7,9 @@
   "engines": {
     "node": ">=22.18"
   },
+  "exports": {
+    "./testing": "./src/testing/index.ts"
+  },
   "scripts": {
     "dev": "node --watch src/server.ts",
     "start": "node src/server.ts",

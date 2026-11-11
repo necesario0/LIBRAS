@@ -6,6 +6,7 @@ import { LOCAL_DATABASE_URL } from "../config.ts";
 import { createDatabase } from "../db.ts";
 import type { Database } from "../db.ts";
 import type { Logger } from "../logger.ts";
+import { CapturingEmailSender } from "./capturing-email-sender.ts";
 import { FakeClock } from "./fake-clock.ts";
 
 export interface TestApi {
@@ -13,6 +14,8 @@ export interface TestApi {
   baseUrl: string;
   /** The clock the API runs on. It stands still until the test moves it. */
   clock: FakeClock;
+  /** Every email the API sent. Nothing leaves the machine. */
+  emails: CapturingEmailSender;
   /** The API's connection to the real local PostgreSQL, for arranging the data a test needs. */
   db: Database;
   /** Stops the server and closes the database connections. Call it in `after`. */
@@ -37,7 +40,8 @@ export async function startTestApi(options: TestApiOptions = {}): Promise<TestAp
   const logger = silentLogger;
   const db = createDatabase(options.databaseUrl ?? process.env.TEST_DATABASE_URL ?? LOCAL_DATABASE_URL, logger);
   const clock = new FakeClock();
-  const app = createApp({ db, clock, email: { send: async () => {} }, logger }, options);
+  const emails = new CapturingEmailSender();
+  const app = createApp({ db, clock, email: emails, logger }, options);
 
   const server = await new Promise<Server>((resolve, reject) => {
     const listening = app.listen(0, "127.0.0.1", () => resolve(listening));
@@ -48,6 +52,7 @@ export async function startTestApi(options: TestApiOptions = {}): Promise<TestAp
   return {
     baseUrl: `http://127.0.0.1:${port}`,
     clock,
+    emails,
     db,
     async close() {
       await new Promise<void>((resolve, reject) => {

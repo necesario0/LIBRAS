@@ -26,4 +26,12 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
     },
   },
+  {
+    // The benchmark prototypes index typed arrays in hot loops, where a
+    // non-null assertion is the cheapest correct option.
+    files: ["benchmarks/**"],
+    rules: {
+      "@typescript-eslint/no-non-null-assertion": "off",
+    },
+  },
 );
