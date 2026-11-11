@@ -1,6 +1,25 @@
 export type { ApiErrorBody, HealthResponse } from "./api.ts";
 export { CODE128_QUIET_ZONE_MODULES, encodeCode128C } from "./barcode/code128.ts";
 export type { Code128Symbol } from "./barcode/code128.ts";
+export {
+  DIGITAL_ID_LENGTH,
+  DIGITAL_ID_MESSAGES,
+  DIGITAL_ID_NUMBER_DIGITS,
+  DIGITAL_ID_TOKEN_DIGITS,
+  DIGITAL_ID_WINDOW_SECONDS,
+  digitalIdCodeSchema,
+  formatDigitalId,
+  identifyMemberRequestSchema,
+} from "./digital-id.ts";
+export type {
+  DeskMember,
+  DigitalIdResponse,
+  IdentifyMemberRequest,
+  IdentifyMemberResponse,
+  LoanStanding,
+} from "./digital-id.ts";
+export { SCAN_INPUT_MAX_LENGTH, SCAN_INPUT_PATTERN, SCAN_MESSAGES, readScan } from "./scan.ts";
+export type { ScanReading, ScanRejection } from "./scan.ts";
 export { refreshSessionRequestSchema, signInRequestSchema } from "./auth.ts";
 export type {
   RefreshSessionRequest,
