@@ -1,0 +1,86 @@
+# A signed-in Member opens their Digital ID from the home screen: a barcode with
+# the same 12-digit code beneath it, which is replaced by itself when the API's
+# 60-second window turns, with no tap. Needs the end-to-end API on port 3000
+# (npm run e2e starts it). Takes up to about 80 seconds: it waits for a real window.
+appId: ph.edu.umak.libras
+---
+- launchApp:
+    clearState: true
+- runScript: scripts/create-members.js
+
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 30000
+- tapOn:
+    id: welcome-sign-in
+# The emulator sometimes doubles the first character typed after a tap: check and retype.
+- tapOn:
+    id: sign-in-email
+- retry:
+    maxRetries: 3
+    commands:
+      - eraseText: 80
+      - inputText: ${output.email}
+      - assertVisible: ${output.email}
+- tapOn:
+    id: sign-in-password
+- tapOn:
+    id: sign-in-password-toggle
+- retry:
+    maxRetries: 3
+    commands:
+      - tapOn:
+          id: sign-in-password
+      - eraseText: 80
+      - inputText: ${output.password}
+      - assertVisible: ${output.password}
+- hideKeyboard
+- tapOn:
+    id: sign-in-continue
+
+# The home screen has the entry.
+- extendedWaitUntil:
+    visible:
+      id: home-digital-id
+    timeout: 20000
+- takeScreenshot: digital-id-home-entry
+- tapOn:
+    id: home-digital-id
+
+# The barcode and the same code as text, grouped in fours.
+- assertVisible: "Show this to the librarian"
+- extendedWaitUntil:
+    visible:
+      id: digital-id-code
+    timeout: 15000
+- assertVisible:
+    id: digital-id-barcode
+- assertVisible:
+    text: "[0-9]{4} [0-9]{4} [0-9]{4}"
+    id: digital-id-code
+- assertVisible:
+    id: digital-id-countdown
+- takeScreenshot: digital-id-first
+- copyTextFrom:
+    id: digital-id-code
+- evalScript: ${output.firstCode = maestro.copiedText}
+
+# Without any tap, the code is replaced once the window turns (at most 60 s away).
+- extendedWaitUntil:
+    notVisible: ${output.firstCode}
+    timeout: 75000
+- assertVisible:
+    text: "[0-9]{4} [0-9]{4} [0-9]{4}"
+    id: digital-id-code
+- takeScreenshot: digital-id-next
+- copyTextFrom:
+    id: digital-id-code
+- assertTrue: ${maestro.copiedText != output.firstCode}
+# The Digital ID number (the first six digits, "NNNN NN") stays the same: only the token rotates.
+- assertTrue: ${maestro.copiedText.substring(0, 7) == output.firstCode.substring(0, 7)}
+
+# Done returns home.
+- tapOn:
+    id: digital-id-done
+- assertVisible:
+    id: home-digital-id

@@ -39,6 +39,16 @@ export interface DigitalIdResponse {
   serverTime: string;
 }
 
+/**
+ * Milliseconds until the next code, given how long ago (by the phone's own
+ * steady timer) the answer arrived. Only differences of the phone's time are
+ * used, so a phone clock that is minutes off still refreshes on the API's window.
+ */
+export function msUntilRefresh(id: DigitalIdResponse, msSinceReceived: number): number {
+  const left = Date.parse(id.refreshAt) - Date.parse(id.serverTime) - msSinceReceived;
+  return Math.max(0, left);
+}
+
 /** A Member's Loans against their Loan Policy limit. */
 export interface LoanStanding {
   current: number;

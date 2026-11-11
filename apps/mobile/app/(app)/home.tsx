@@ -4,6 +4,7 @@ import { useAuth, useMember } from "../../src/auth/AuthContext";
 import { BookIllustration } from "../../src/components/BookIllustration";
 import { Button } from "../../src/components/Button";
 import { Wordmark } from "../../src/components/Wordmark";
+import { DigitalIdEntry } from "../../src/digital-id/DigitalIdEntry";
 import { useScreenTop } from "../../src/hooks/useScreenTop";
 import { colors, fontFamily, fontSize, radii, spacing } from "../../src/theme/tokens";
 
@@ -31,6 +32,9 @@ export default function HomeScreen() {
       <Text style={styles.message} testID="home-email">
         {member.email}
       </Text>
+      <View style={styles.digitalId}>
+        <DigitalIdEntry />
+      </View>
       <View style={styles.action}>
         <Button label="Sign out" tone="muted" radius={radii.formButton} onPress={() => void signOut()} testID="home-sign-out" />
       </View>
@@ -55,5 +59,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: spacing.md,
   },
+  digitalId: { alignSelf: "stretch", marginTop: spacing.xxl },
   action: { alignSelf: "stretch", marginTop: "auto", paddingHorizontal: spacing.sm },
 });

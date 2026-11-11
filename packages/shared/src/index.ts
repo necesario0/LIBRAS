@@ -10,6 +10,7 @@ export {
   digitalIdCodeSchema,
   formatDigitalId,
   identifyMemberRequestSchema,
+  msUntilRefresh,
 } from "./digital-id.ts";
 export type {
   DeskMember,

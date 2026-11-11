@@ -37,7 +37,12 @@ export const colors = {
   listBorder: "#111C4E",
   /** Border of a panel that holds a message. */
   panelBorder: "rgba(0,0,0,0.32)",
+  /** The highlighted word of a heading ("Show this to the librarian", Figma 617:3265). */
+  highlight: "#FFA800",
 } as const;
+
+/** Raised cards (Figma 617:3265: x 0, y 7, blur 17.9, black 25%). */
+export const cardShadow = "0px 7px 17.9px rgba(0, 0, 0, 0.25)";
 
 /** Montserrat is the only family. Keys are the names registered with `useFonts`. */
 export const fontFamily = {
@@ -51,6 +56,8 @@ export const fontSize = {
   display: 40,
   heading: 36,
   hero: 35,
+  /** "Show this to the librarian". */
+  headline: 32,
   title: 26,
   subheading: 20,
   body: 16,
@@ -100,10 +107,17 @@ export const radii = {
   panel: 12,
   /** The college list. */
   list: 10,
+  /** The dashed frame around the Digital ID (Figma 617:3265). */
+  ticket: 15,
+  /** The outlined "Cancel request" button of the Digital ID screen. */
+  outlineButton: 46,
 } as const;
 
 /** Height of text fields and buttons. */
 export const controlHeight = 44;
+
+/** Height of the outlined button of the borrow flow (Figma 617:3265). */
+export const outlineButtonHeight = 61;
 
 /** The status bar area of a Figma phone frame. Screens position their content from below it. */
 export const statusBarHeight = 62;

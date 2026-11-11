@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { SCAN_MESSAGES, formatDigitalId, readScan } from "../src/index.ts";
+import { SCAN_MESSAGES, formatDigitalId, msUntilRefresh, readScan } from "../src/index.ts";
 
 describe("reading a scan", () => {
   it("reads a Digital ID as a USB scanner sends it", () => {
@@ -34,6 +34,24 @@ describe("reading a scan", () => {
         raw,
       );
     }
+  });
+});
+
+describe("timing the next Digital ID", () => {
+  const id = {
+    code: "482109375512",
+    windowStartsAt: "2026-11-24T08:00:00.000Z",
+    refreshAt: "2026-11-24T08:01:00.000Z",
+    serverTime: "2026-11-24T08:00:20.000Z",
+  };
+
+  it("counts from the API's clock, not the phone's: 40 s left when just received", () => {
+    assert.equal(msUntilRefresh(id, 0), 40_000);
+  });
+
+  it("subtracts the time since the answer arrived, and never goes below zero", () => {
+    assert.equal(msUntilRefresh(id, 15_500), 24_500);
+    assert.equal(msUntilRefresh(id, 90_000), 0);
   });
 });
 
