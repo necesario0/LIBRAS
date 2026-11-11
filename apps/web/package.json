@@ -1,0 +1,6 @@
+{
+  "name": "@libras/web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "LIBRAS Librarian web pages (desk page and phone scanner page). Placeholder until the first Librarian ticket."
+}

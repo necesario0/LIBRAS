@@ -1,0 +1,6 @@
+{
+  "name": "@libras/mobile",
+  "version": "0.1.0",
+  "private": true,
+  "description": "LIBRAS mobile app for Members (React Native with Expo, Android APK). Placeholder until the first mobile ticket."
+}
