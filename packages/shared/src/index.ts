@@ -24,6 +24,7 @@ export type { AccountType } from "./accounts.ts";
 export type {
   MemberMeResponse,
   MemberProfile,
+  MemberSignInResponse,
   SignUpCodeSentResponse,
   VerifySignUpResponse,
 } from "./members.ts";

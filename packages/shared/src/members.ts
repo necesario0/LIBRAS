@@ -1,3 +1,4 @@
+import type { Session } from "./auth.ts";
 import type { UmakStudentDetails } from "./sign-up.ts";
 
 interface MemberBase {
@@ -33,5 +34,11 @@ export interface VerifySignUpResponse {
 
 /** The body of `GET /members/me`. */
 export interface MemberMeResponse {
+  member: MemberProfile;
+}
+
+/** The body of `POST /members/sign-in`. */
+export interface MemberSignInResponse {
+  session: Session;
   member: MemberProfile;
 }

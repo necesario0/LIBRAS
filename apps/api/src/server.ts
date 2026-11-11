@@ -30,7 +30,7 @@ const app = createApp(
     email,
     logger,
   },
-  { corsAllowedOrigins: config.corsAllowedOrigins },
+  { corsAllowedOrigins: config.corsAllowedOrigins, trustProxy: config.trustProxy },
 );
 
 const server = app.listen(config.port, () => {

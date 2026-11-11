@@ -21,9 +21,13 @@ const REFUSAL_CODES = new Set([
   "no_authorization",
   "user_not_found",
   "user_banned",
-  // A sign-up that was never verified. Same answer as a wrong password.
-  "email_not_confirmed",
 ]);
+
+/**
+ * Supabase says this only when the password was right, so telling the person
+ * their email is unverified gives nothing away to someone guessing.
+ */
+const UNVERIFIED_CODE = "email_not_confirmed";
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -65,9 +69,12 @@ export class SupabaseAuth implements AuthProvider {
     this.#publishableKey = options.publishableKey;
   }
 
-  async signInWithPassword(email: string, password: string): Promise<SignedIn | undefined> {
-    const body = await this.#request("POST", "/token?grant_type=password", { body: { email, password } });
-    return body === undefined ? undefined : signedInFrom(body);
+  async signInWithPassword(email: string, password: string): Promise<SignedIn | "unverified" | undefined> {
+    const reply = await this.#send("POST", "/token?grant_type=password", { body: { email, password } }, [
+      UNVERIFIED_CODE,
+    ]);
+    if ("refusedWith" in reply) return reply.refusedWith === UNVERIFIED_CODE ? "unverified" : undefined;
+    return signedInFrom(reply.body);
   }
 
   async refresh(refreshToken: string): Promise<SignedIn | undefined> {
@@ -100,6 +107,17 @@ export class SupabaseAuth implements AuthProvider {
     options: { body?: unknown; accessToken?: string },
     extraRefusalCodes: readonly string[] = [],
   ): Promise<unknown> {
+    const reply = await this.#send(method, path, options, extraRefusalCodes);
+    return "refusedWith" in reply ? undefined : reply.body;
+  }
+
+  /** Like #request, but says which refusal code Supabase Auth gave. */
+  async #send(
+    method: "GET" | "POST",
+    path: string,
+    options: { body?: unknown; accessToken?: string },
+    extraRefusalCodes: readonly string[] = [],
+  ): Promise<{ body: unknown } | { refusedWith: string }> {
     let response: Response;
     try {
       response = await fetch(`${this.#authUrl}${path}`, {
@@ -118,15 +136,15 @@ export class SupabaseAuth implements AuthProvider {
       });
     }
 
-    if (response.status === 204) return null;
+    if (response.status === 204) return { body: null };
     const body: unknown = await response.json().catch(() => undefined);
-    if (response.ok) return body;
+    if (response.ok) return { body };
 
     if (response.status === 429) {
       throw new AppError(429, "too_many_attempts", "Too many attempts. Please wait a minute and try again.");
     }
     const code = isRecord(body) && typeof body.error_code === "string" ? body.error_code : undefined;
-    if (code !== undefined && (REFUSAL_CODES.has(code) || extraRefusalCodes.includes(code))) return undefined;
+    if (code !== undefined && (REFUSAL_CODES.has(code) || extraRefusalCodes.includes(code))) return { refusedWith: code };
     throw new Error(`Supabase Auth ${method} ${path} failed with ${response.status} ${code ?? "(no code)"}`);
   }
 }
