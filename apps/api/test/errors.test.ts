@@ -76,4 +76,17 @@ describe("error responses", () => {
       error: { code: "invalid_json", message: "The request body is not valid JSON." },
     });
   });
+
+  it("answers a body that is too large with a payload_too_large code", async () => {
+    const response = await fetch(`${api.baseUrl}/test/echo`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ padding: "x".repeat(200_000) }),
+    });
+
+    assert.equal(response.status, 413);
+    assert.deepEqual(await response.json(), {
+      error: { code: "payload_too_large", message: "The request body is too large." },
+    });
+  });
 });

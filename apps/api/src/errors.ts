@@ -54,6 +54,10 @@ export function createErrorHandler(logger: Logger): ErrorRequestHandler {
       res.status(400).json(errorBody("invalid_json", "The request body is not valid JSON."));
       return;
     }
+    if (bodyParserErrorType(error) === "entity.too.large") {
+      res.status(413).json(errorBody("payload_too_large", "The request body is too large."));
+      return;
+    }
     logger.error(`${req.method} ${req.path} failed with an unhandled error`, error);
     res.status(500).json(errorBody("internal_error", "Something went wrong on our side. Please try again."));
   };
