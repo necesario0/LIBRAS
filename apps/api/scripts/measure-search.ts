@@ -77,11 +77,24 @@ try {
 
   const first = await timed("introduction");
   console.log(`first search, builds the index (${count} Books): ${first.toFixed(0)} ms`);
-  const rebuildProbe = await api.db.query("insert into public.books (title, authors) values ('Rebuild probe', '{}') returning id");
-  const afterChange = await timed("introduction");
-  await api.db.query("delete from public.books where id = $1", [rebuildProbe.rows[0].id]);
-  console.log(`first search after a catalog change, rebuilds: ${afterChange.toFixed(0)} ms`);
-  await timed("introduction"); // rebuild after the delete, so the numbers below are steady state
+
+  // A catalog change: searches keep answering from the old index while the new one is built. Measure
+  // how long until the change is visible, and the slowest search that ran meanwhile.
+  const waitFor = async (query: string, visible: boolean): Promise<{ visibleAfterMs: number; slowestMs: number }> => {
+    const start = performance.now();
+    let slowest = 0;
+    for (;;) {
+      const response = await fetch(`${api.baseUrl}/catalog/search?q=${encodeURIComponent(query)}`, { headers });
+      const body = (await response.json()) as { total: number };
+      slowest = Math.max(slowest, performance.now() - start);
+      if ((body.total > 0) === visible) return { visibleAfterMs: performance.now() - start, slowestMs: slowest };
+    }
+  };
+  const probe = await api.db.query("insert into public.books (title, authors) values ('Rebuildprobe Zzyzx', '{}') returning id");
+  const during = await Promise.all([waitFor("rebuildprobe", true), (async () => (await Promise.all(Array.from({ length: 40 }, () => timed("introduction")))).reduce((a, b) => Math.max(a, b), 0))()]);
+  console.log(`catalog change visible in search after ${during[0].visibleAfterMs.toFixed(0)} ms; slowest other search meanwhile: ${during[1].toFixed(0)} ms`);
+  await api.db.query("delete from public.books where id = $1", [probe.rows[0].id]);
+  await waitFor("rebuildprobe", false); // steady state again before the numbers below
 
   const kinds = ["exact word", "1 typo", "2 typos", "two words", "ISBN", "no match"];
   const sequential = kinds.map(() => [] as number[]);
