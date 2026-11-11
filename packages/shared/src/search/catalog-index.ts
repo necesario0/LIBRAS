@@ -69,6 +69,16 @@ export function typoBoundFor(wordLength: number): number {
   return 2;
 }
 
+/**
+ * How many typos a query word may have. Typo tolerance is for misspelled words:
+ * a word that contains a digit (an ISBN, an accession number, a call number
+ * part, a year) must match exactly, so an identifier that is one character off
+ * finds nothing instead of a look-alike.
+ */
+function typoBoundForQueryWord(word: string): number {
+  return /\p{N}/u.test(word) ? 0 : typoBoundFor(word.length);
+}
+
 /** The form identifiers are compared in: letters and digits only, upper case. "QA76.9 .D3" and "qa769d3" are the same. */
 function identifierKey(text: string): string {
   return normalizeText(text).replace(/[^\p{L}\p{N}]+/gu, "").toUpperCase();
@@ -157,13 +167,16 @@ class TrieCatalogIndex implements CatalogIndex {
   }
 
   search(query: string, options: CatalogSearchOptions = {}): CatalogSearchResult {
+    // An ISBN, accession number or LC call number matches exactly. When the query is one, those Books
+    // are the answer and nothing else: no fuzzy hits are added behind them.
     const exact = this.#identifiers.get(identifierKey(query)) ?? [];
-    const byDistance = this.#matchWords(query);
-    const ranked: Array<[bookIndex: number, distance: number]> = exact.map((bookIndex) => [bookIndex, 0]);
-    const isExact = new Set(exact);
-    const wordHits = [...byDistance].filter(([bookIndex]) => !isExact.has(bookIndex));
-    wordHits.sort((a, b) => a[1] - b[1] || a[0] - b[0]);
-    ranked.push(...wordHits);
+    let ranked: Array<[bookIndex: number, distance: number]>;
+    if (exact.length > 0) {
+      ranked = exact.map((bookIndex) => [bookIndex, 0]);
+    } else {
+      ranked = [...this.#matchWords(query)];
+      ranked.sort((a, b) => a[1] - b[1] || a[0] - b[0]);
+    }
 
     const limit = options.limit ?? ranked.length;
     return {
@@ -179,7 +192,7 @@ class TrieCatalogIndex implements CatalogIndex {
     const perWord: Array<Map<number, number>> = [];
     for (const word of words) {
       const best = new Map<number, number>();
-      for (const match of searchTrie(this.#trie, word, typoBoundFor(word.length))) {
+      for (const match of searchTrie(this.#trie, word, typoBoundForQueryWord(word))) {
         const start = this.#postingStart[match.wordIndex] ?? 0;
         const end = this.#postingStart[match.wordIndex + 1] ?? start;
         for (let p = start; p < end; p++) {
