@@ -6,14 +6,7 @@ appId: ph.edu.umak.libras
 ---
 - launchApp:
     clearState: true
-- runScript:
-    file: scripts/create-member.js
-- evalScript: ${output.member = { email: output.email, password: output.password, firstName: output.firstName }}
-- runScript:
-    file: scripts/create-member.js
-    env:
-      VERIFY: "no"
-- evalScript: ${output.unverified = { email: output.email, password: output.password }}
+- runScript: scripts/create-members.js
 
 # Welcome leads to sign-in.
 - extendedWaitUntil:
@@ -33,7 +26,7 @@ appId: ph.edu.umak.libras
 # A wrong password: one message that does not say which field was wrong.
 - tapOn:
     id: sign-in-email
-- inputText: ${output.member.email}
+- inputText: ${output.email}
 - tapOn:
     id: sign-in-password
 - inputText: not-the-password
@@ -47,14 +40,14 @@ appId: ph.edu.umak.libras
 - tapOn:
     id: sign-in-password
 - eraseText: 40
-- inputText: ${output.member.password}
+- inputText: ${output.password}
 - hideKeyboard
 - tapOn:
     id: sign-in-continue
 - extendedWaitUntil:
     visible: "Welcome, Cobby!"
     timeout: 20000
-- assertVisible: ${output.member.email}
+- assertVisible: ${output.email}
 - takeScreenshot: signed-in
 
 # Closing and reopening the app keeps the Member signed in.
@@ -90,16 +83,16 @@ appId: ph.edu.umak.libras
     id: welcome-sign-in
 - tapOn:
     id: sign-in-email
-- inputText: ${output.unverified.email}
+- inputText: ${output.unverifiedEmail}
 - tapOn:
     id: sign-in-password
-- inputText: ${output.unverified.password}
+- inputText: ${output.unverifiedPassword}
 - hideKeyboard
 - tapOn:
     id: sign-in-continue
 - extendedWaitUntil:
     visible: "Check your email to finish signing in"
     timeout: 20000
-- assertVisible: ${output.unverified.email}
+- assertVisible: ${output.unverifiedEmail}
 - assertVisible: "Your email is not verified yet.*"
 - takeScreenshot: sign-in-unverified
