@@ -1,0 +1,107 @@
+# A UMAK Student signs up end to end: the form, the terms, the emailed code and
+# the active account. Needs the end-to-end API on port 3000 (npm run e2e starts it):
+# the code is read from the emails that API captured.
+appId: ph.edu.umak.libras
+---
+- launchApp:
+    clearState: true
+- runScript: scripts/new-student.js
+
+# Welcome, then step 1: account type and name.
+- tapOn:
+    id: welcome-sign-up
+- assertVisible: "Select your account type"
+- tapOn:
+    id: account-type-umak_student
+- tapOn:
+    id: account-type-continue
+- tapOn:
+    id: name-first
+- inputText: Cobby
+- tapOn:
+    id: name-last
+- inputText: Baldonado
+- hideKeyboard
+- tapOn:
+    id: name-continue
+
+# Step 2: student details. The college comes from a list.
+- tapOn:
+    id: student-number
+- inputText: ${output.studentNumber}
+- hideKeyboard
+- tapOn:
+    id: student-college
+- tapOn:
+    id: student-college-option-CCIS
+- tapOn:
+    id: student-continue
+
+# Step 3: username and password. A password that does not match is refused.
+- tapOn:
+    id: account-username
+- inputText: ${output.username}
+- tapOn:
+    id: account-password
+- inputText: ${output.password}
+- tapOn:
+    id: account-confirm-password
+- inputText: not-the-same-password
+- hideKeyboard
+- tapOn:
+    id: account-continue
+- assertVisible: "The passwords do not match. Please try again."
+- tapOn:
+    id: account-confirm-password
+- eraseText: 60
+- inputText: ${output.password}
+- hideKeyboard
+- tapOn:
+    id: account-continue
+
+# Step 4: an email that is not @umak.edu.ph is refused with a message that says how to fix it.
+- tapOn:
+    id: email-input
+- inputText: someone@gmail.com
+- hideKeyboard
+- tapOn:
+    id: email-accept-terms
+- tapOn:
+    id: email-continue
+- assertVisible: "This account type needs your @umak.edu.ph email address.*"
+- tapOn:
+    id: email-input
+- eraseText: 40
+- inputText: ${output.email}
+- hideKeyboard
+
+# The terms must be accepted before the account is created.
+- tapOn:
+    id: email-accept-terms
+- tapOn:
+    id: email-continue
+- assertVisible: "Accept the terms to create your account."
+- tapOn:
+    id: email-accept-terms
+- tapOn:
+    id: email-continue
+
+# Verification: a wrong code is refused, then the code from the email is accepted.
+- assertVisible: "Check your email to finish signing in"
+- assertVisible: ${output.email}
+- tapOn:
+    id: verify-code
+- inputText: "000000"
+- assertVisible: "That code is not right.*"
+- eraseText: 6
+- runScript:
+    file: scripts/read-code.js
+    env:
+      EMAIL: ${output.email}
+- inputText: ${output.code}
+
+# The account is active at once.
+- extendedWaitUntil:
+    visible: "Welcome, Cobby!"
+    timeout: 20000
+- assertVisible: "Your email is verified and your account is active.*"

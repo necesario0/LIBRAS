@@ -16,7 +16,7 @@ const repoRoot = join(root, "..", "..");
 const { env, isWindows } = androidEnv();
 const avd = process.env.LIBRAS_AVD ?? "Medium_Phone";
 const apk = join(root, "build", "libras.apk");
-const healthUrl = `http://127.0.0.1:${process.env.PORT ?? 3000}/health`;
+const apiUrl = `http://127.0.0.1:${process.env.PORT ?? 3000}`;
 
 const NEWLINE = String.fromCharCode(10);
 const TAB = String.fromCharCode(9);
@@ -46,11 +46,17 @@ async function waitFor(label, check, timeoutMs) {
   throw new Error(`Timed out waiting for ${label}`);
 }
 
-async function apiIsUp() {
+/**
+ * What answers on the API port: nothing, the end-to-end API (the only one that
+ * serves captured emails, which the sign-up flow reads its code from), or some
+ * other API, such as `npm run dev`.
+ */
+async function apiState() {
   try {
-    return (await fetch(healthUrl)).ok;
+    if (!(await fetch(`${apiUrl}/health`)).ok) return "other";
+    return (await fetch(`${apiUrl}/e2e/emails`)).ok ? "e2e" : "other";
   } catch {
-    return false;
+    return "down";
   }
 }
 
@@ -67,17 +73,23 @@ function cleanup() {
 async function main() {
   if (!existsSync(apk)) throw new Error(`${apk} not found. Run npm run build:apk -w @libras/mobile first.`);
 
-  if (!(await apiIsUp())) {
-    console.log("Starting the API ...");
+  const state = await apiState();
+  if (state === "other") {
+    throw new Error(
+      `Another API is running on ${apiUrl}. Stop it (the dev server, for example): the end-to-end tests need the API that captures emails.`,
+    );
+  }
+  if (state === "down") {
+    console.log("Starting the end-to-end API (emails are captured, not sent) ...");
     // with-local-supabase.ts reads the local Supabase keys, then runs the server.
     children.push(
-      spawn(process.execPath, ["scripts/with-local-supabase.ts", process.execPath, "src/server.ts"], {
+      spawn(process.execPath, ["scripts/with-local-supabase.ts", process.execPath, "src/testing/e2e-server.ts"], {
         cwd: join(repoRoot, "apps", "api"),
         env,
         stdio: "inherit",
       }),
     );
-    await waitFor("the API (is the database running? npm run db:start)", apiIsUp, 60_000);
+    await waitFor("the API (is the database running? npm run db:start)", async () => (await apiState()) === "e2e", 60_000);
   }
 
   serial ??= findDevice();

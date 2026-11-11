@@ -1,4 +1,12 @@
-import type { ApiErrorBody, HealthResponse } from "@libras/shared";
+import type {
+  ApiErrorBody,
+  HealthResponse,
+  ResendSignUpCodeRequest,
+  SignUpCodeSentResponse,
+  SignUpRequest,
+  VerifySignUpRequest,
+  VerifySignUpResponse,
+} from "@libras/shared";
 
 /** A failure a Member can be shown: `message` is safe text, `code` is stable. */
 export class ApiError extends Error {
@@ -62,8 +70,17 @@ export function createApiClient({ baseUrl, fetch: fetchImpl = fetch, timeoutMs =
     return body as T;
   }
 
+  const post = <T>(path: string, body: unknown) =>
+    request<T>(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+
   return {
     getHealth: () => request<HealthResponse>("/health"),
+    /** Starts a sign-up: the API emails a verification code. */
+    signUp: (body: SignUpRequest) => post<SignUpCodeSentResponse>("/members/sign-up", body),
+    /** Accepts the emailed code: the account is active from here on. */
+    verifySignUp: (body: VerifySignUpRequest) => post<VerifySignUpResponse>("/members/sign-up/verify", body),
+    /** Emails a new code. The old one stops working. */
+    resendSignUpCode: (body: ResendSignUpCodeRequest) => post<SignUpCodeSentResponse>("/members/sign-up/resend", body),
   };
 }
 

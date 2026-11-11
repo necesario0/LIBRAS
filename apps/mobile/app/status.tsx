@@ -5,7 +5,7 @@ import { Button } from "../src/components/Button";
 import { useHealth } from "../src/hooks/useHealth";
 import { colors, radii, spacing, typography } from "../src/theme/tokens";
 
-/** The shell's only screen: shows what `GET /health` says about the API. */
+/** Developer check, reached by the link `libras://status`: shows what `GET /health` says about the API. */
 export default function HealthScreen() {
   const insets = useSafeAreaInsets();
   const { state, retry } = useHealth();

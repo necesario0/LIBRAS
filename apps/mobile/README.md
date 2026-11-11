@@ -2,7 +2,7 @@
 
 The Member mobile app: React Native with TypeScript, built with Expo SDK 58 (React Native 0.88, new architecture) and Expo Router, targeting an Android APK (ADR 0002). It talks only to the API (`apps/api`) and takes shared types from `@libras/shared`.
 
-Today it has one screen that calls `GET /health` and shows the result.
+Today it has the welcome screen and the UMAK Student sign-up flow (account type, name, student details, username and password, email, emailed code, welcome). `libras://status` opens the developer screen that calls `GET /health`.
 
 ## Layout
 
@@ -44,7 +44,7 @@ The app is a release build with its JavaScript bundled in, so there is no live r
 
 ## End-to-end test
 
-The smoke test launches the installed APK on an emulator and checks that the health result is on screen.
+Two flows run: the smoke test (the `libras://status` screen shows the health result) and `sign-up-umak-student.yaml`, which signs a student up through the real screens and reads the verification code from the emails the end-to-end API captured (see `apps/api/README.md`).
 
 ```bash
 npm run db:start
@@ -52,7 +52,7 @@ npm run build:apk -w @libras/mobile
 npm run e2e -w @libras/mobile
 ```
 
-`npm run e2e` starts the API if it is not running, starts the emulator if no device is connected, installs `build/libras.apk` and runs every flow in `.maestro/` with Maestro. It stops what it started. It is not part of `npm test` because it needs an emulator.
+`npm run e2e` starts the end-to-end API (the one that captures emails; it refuses to run if another API already holds port 3000), starts the emulator if no device is connected, installs `build/libras.apk` and runs every flow in `.maestro/` with Maestro. It stops what it started. It is not part of `npm test` because it needs an emulator.
 
 Checks that need no emulator: `npm run typecheck` and `npm run lint` from the repo root.
 

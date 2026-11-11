@@ -34,6 +34,22 @@ export default tseslint.config(
     },
   },
   {
+    // Maestro runs these scripts in its own JavaScript engine, which provides these globals.
+    files: ["apps/mobile/.maestro/scripts/**"],
+    languageOptions: {
+      globals: { output: "writable", http: "readonly", json: "readonly", EMAIL: "readonly" },
+    },
+  },
+  {
+    // Metro loads its config and transformer as CommonJS.
+    files: ["apps/mobile/*.js"],
+    languageOptions: {
+      sourceType: "commonjs",
+      globals: { require: "readonly", module: "writable", __dirname: "readonly" },
+    },
+    rules: { "@typescript-eslint/no-require-imports": "off" },
+  },
+  {
     // The benchmark prototypes index typed arrays in hot loops, where a
     // non-null assertion is the cheapest correct option.
     files: ["benchmarks/**"],

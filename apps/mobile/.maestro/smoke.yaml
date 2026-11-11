@@ -1,9 +1,10 @@
-# Smoke test: the app launches on an emulator and shows the API health result.
+# Smoke test: the app launches on an emulator and its status screen shows the API health result.
 # Needs the local API running (npm run dev, from the repo root).
 appId: ph.edu.umak.libras
 ---
 - launchApp:
     clearState: true
+- openLink: libras://status
 - extendedWaitUntil:
     visible: "API status: ok"
     timeout: 60000
