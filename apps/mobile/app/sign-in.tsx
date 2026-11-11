@@ -141,5 +141,5 @@ const styles = StyleSheet.create({
     marginTop: -15,
     paddingHorizontal: spacing.screen,
   },
-  form: { alignSelf: "stretch", paddingHorizontal: spacing.screen, marginTop: spacing.md, gap: spacing.sm },
+  form: { alignSelf: "stretch", paddingHorizontal: spacing.screen, marginTop: spacing.xs, gap: spacing.sm },
 });
