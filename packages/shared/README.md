@@ -8,4 +8,8 @@ There is no build step. The package exports its TypeScript source (`src/index.ts
 - only syntax that can be erased is allowed (no enums, namespaces or parameter properties);
 - code here must run in Node, React Native and the browser, so it must not import Node built-ins.
 
-Pure-function tests go in `test/*.test.ts` and use Node's built-in test runner, like `benchmarks/test`. Add a `test` script (`node --test "test/**/*.test.ts"`) with the first test.
+Pure-function tests go in `test/*.test.ts` and use Node's built-in test runner, like `benchmarks/test` (`npm test -w @libras/shared`).
+
+- `barcode/code128.ts`: `encodeCode128C(digits)`, the bar and space widths of a Code 128 subset C barcode (the app draws them). Tested against bwip-js output.
+- `digital-id.ts`: Digital ID constants, types and wording, `formatDigitalId`, `msUntilRefresh`.
+- `scan.ts`: `readScan(raw)`, the whitelist and classification every desk scan goes through.
