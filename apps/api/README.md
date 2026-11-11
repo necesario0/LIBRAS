@@ -16,6 +16,8 @@ How to run it and its tests is in the [root README](../../README.md).
 | `src/members/` | Member profiles, the sign-up flow (pending sign-up, emailed code, activation) |
 | `src/auth/` | Sign-in sessions, guards (`requireLibrarian`, `requireMember`), identity pass-through to PostgreSQL |
 | `src/audit/` | The append-only, hash-chained audit log: `record`, `verify`, the event whitelist |
+| `src/catalog/` | `CatalogSearch`: the in-memory search index, its rebuild-and-swap, and live availability |
+| `src/seed/` | `npm run seed`: the Librarian and the sample catalog (`catalog-generator.ts` is pure and reproducible, `catalog.ts` writes it) |
 | `src/testing/` | The HTTP test harness, also exported as `@libras/api/testing`, and the end-to-end server `e2e-server.ts` |
 | `test/` | Tests, `*.test.ts`, run with Node's built-in test runner |
 
@@ -83,9 +85,13 @@ ana.accessToken; // Authorization: Bearer <accessToken>
 
 `POST /members/sign-in` (`members/sign-in.ts`, `signInMember`) is the one place a Member session starts. A route that needs a Member is `router.get(path, ...requireMember(deps), (_req, res) => { memberOf(res) })`; any signed-in person is `requireIdentity(deps)`; a Librarian is `...requireLibrarian(deps)`. Sessions are renewed at `POST /auth/refresh` and ended at `POST /auth/sign-out`. `SignInLimiter` (`auth/sign-in-limit.ts`) blocks a client address after repeated refusals; both sign-in routes go through it. Details for later tickets: the spec2-notes `ticket-9.md` (outside the repository) and the README, "Client address and the sign-in limit".
 
+## Catalog search
+
+`GET /catalog/search?q=<text>&limit=<n>` (`routes/catalog.ts`, behind the one `requireMember` guard) answers `{ query, total, results }`: Books best match first, each with `availableCopies` and `totalCopies`. No match is `200` with an empty `results`; a search that cannot run is a `400 invalid_request` or a 5xx error body. `CatalogSearch` (`catalog/catalog-search.ts`) holds one immutable index built with the shared search module (`@libras/shared`: `buildCatalogIndex`, the flat trie of ADR 0001). Every change to Books or to what identifies a Copy bumps `catalog_revision` (statement triggers); a search that sees a newer revision starts one rebuild in the background and keeps answering from the current index until the new one is swapped in with a single assignment, so a search in flight is never disturbed. A catalog change therefore shows in results a moment later, not on the very next request: a test that changes the catalog waits with `eventually` (`test/eventually.ts`). Availability is read from the Copies for the matched Books on every search. `npm run measure:search -w @libras/api` measures latency over HTTP on the seeded catalog (`npm run seed` first).
+
 ## The end-to-end API
 
-`src/testing/e2e-server.ts` is the API for end-to-end tests: the real app, but emails are captured and readable at `GET /e2e/emails?to=<address>`. It is a separate entry point that `server.ts` never imports, listens on loopback only, and exits at once when `NODE_ENV=production`, so production cannot expose it (tests in `test/e2e-mailbox.test.ts`). `npm run e2e -w @libras/mobile` starts it.
+`src/testing/e2e-server.ts` is the API for end-to-end tests: the real app, but emails are captured and readable at `GET /e2e/emails?to=<address>`, and a Book can be added at `POST /e2e/books` (`testing/catalog-fixture-routes.ts`; it answers once search can find the Book). It is a separate entry point that `server.ts` never imports, listens on loopback only, and exits at once when `NODE_ENV=production`, so production cannot expose it (tests in `test/e2e-mailbox.test.ts`). `npm run e2e -w @libras/mobile` starts it.
 
 ## Audit log
 
