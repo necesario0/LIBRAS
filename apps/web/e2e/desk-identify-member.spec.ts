@@ -69,6 +69,7 @@ test("a Librarian identifies a Member by the Digital ID typed in and ended with 
   await expect(card.getByTestId("desk-member-loans")).toHaveText("0 of 3");
   await expect(card).toContainText("7-day loan period");
   await expect(page.getByLabel("Scan or type a code")).toHaveValue("");
+  await page.screenshot({ path: test.info().outputPath("desk-member.png") });
 
   // Typed by hand the way the app prints it, with spaces between the groups.
   const printed = (await codeOnTheMembersPhone()).replace(/(\d{4})(?=\d)/g, "$1 ");
@@ -88,6 +89,7 @@ test("an expired Digital ID is rejected with a clear message", async ({ page }) 
     "This Digital ID has expired. Ask the Member to show the code on their screen now.",
   );
   await expect(page.getByRole("region", { name: "Ana Cruz Santos" })).toHaveCount(0);
+  await page.screenshot({ path: test.info().outputPath("desk-expired.png") });
 });
 
 test("scan input outside the whitelist or not a Digital ID is refused on the desk", async ({ page }) => {
