@@ -1,0 +1,23 @@
+// Windows limits paths to 260 characters and CMake mirrors each source path
+// inside its build directory, so native modules deep in node_modules overflow
+// it. Two fixes, both applied to every Android module:
+//  - a newer CMake, whose bundled Ninja understands long paths;
+//  - a short CMake build directory.
+// Used by build-apk.mjs through `gradlew -I`, with LIBRAS_NATIVE_BUILD_DIR and
+// LIBRAS_CMAKE_VERSION set.
+def shortDir = System.getenv("LIBRAS_NATIVE_BUILD_DIR")
+def cmakeVersion = System.getenv("LIBRAS_CMAKE_VERSION")
+if (shortDir) {
+  allprojects { project ->
+    ["com.android.library", "com.android.application"].each { id ->
+      project.pluginManager.withPlugin(id) {
+        def android = project.extensions.getByName("android")
+        android.externalNativeBuild.cmake.buildStagingDirectory =
+          new File(shortDir, project.name.replaceAll("[^A-Za-z0-9]", "").take(12))
+        if (cmakeVersion) {
+          android.externalNativeBuild.cmake.version = cmakeVersion
+        }
+      }
+    }
+  }
+}

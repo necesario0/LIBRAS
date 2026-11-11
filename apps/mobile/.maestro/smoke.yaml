@@ -1,0 +1,11 @@
+# Smoke test: the app launches on an emulator and shows the API health result.
+# Needs the local API running (npm run dev, from the repo root).
+appId: ph.edu.umak.libras
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "API status: ok"
+    timeout: 30000
+- assertVisible: "Database: ok"
+- assertVisible: "Service status"
