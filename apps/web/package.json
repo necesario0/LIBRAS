@@ -2,5 +2,26 @@
   "name": "@libras/web",
   "version": "0.1.0",
   "private": true,
-  "description": "LIBRAS Librarian web pages (desk page and phone scanner page). Placeholder until the first Librarian ticket."
+  "type": "module",
+  "description": "LIBRAS Librarian web pages: the desk page now, the phone scanner page later",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc -p tsconfig.json",
+    "test:e2e": "node ../api/scripts/with-local-supabase.ts playwright test"
+  },
+  "dependencies": {
+    "@fontsource/montserrat": "^5.3.0",
+    "@libras/shared": "*",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@libras/api": "*",
+    "@playwright/test": "^1.65.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "vite": "^8.3.8"
+  }
 }

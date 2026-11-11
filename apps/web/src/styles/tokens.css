@@ -1,0 +1,43 @@
+/*
+ * Design tokens for the Librarian pages, taken from the mobile Figma designs
+ * (the Figma file defines almost no variables, so these are read off the
+ * frames). Every page and component uses these, never raw values.
+ */
+@import "@fontsource/montserrat/300.css";
+@import "@fontsource/montserrat/400.css";
+@import "@fontsource/montserrat/500.css";
+@import "@fontsource/montserrat/600.css";
+
+:root {
+  --font-sans: "Montserrat", system-ui, sans-serif;
+
+  --color-primary: #005dc3; /* the "progress bar" blue: buttons, links, accents */
+  --color-primary-hover: #004ea5;
+  --color-primary-soft: #e8f1fb; /* a tint of the primary, for quiet panels */
+  --color-surface: #ffffff;
+  --color-field: #f0f0f0; /* input background */
+  --color-text: #000000;
+  --color-text-muted: #747474; /* placeholders and secondary text */
+  --color-border: #e4e4e4;
+  --color-danger: #d92d2d;
+  --color-danger-soft: #fdecec;
+
+  --radius-pill: 999px; /* inputs and buttons are fully rounded in the designs */
+  --radius-card: 24px;
+  --radius-notice: 16px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  --control-height: 44px;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-md: 16px;
+  --text-lg: 26px;
+  --text-xl: 35px;
+}

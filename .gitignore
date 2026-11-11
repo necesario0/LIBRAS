@@ -92,3 +92,7 @@ docs/milestone/tools/node_modules/
 
 # Microsoft Office lock files
 ~$*
+
+# Playwright output
+apps/web/test-results/
+apps/web/playwright-report/

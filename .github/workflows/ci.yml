@@ -34,6 +34,8 @@ jobs:
         run: npm run db:start
       - name: Tests (API over HTTP against PostgreSQL, and the benchmark package)
         run: npm test
+      - name: Browser end-to-end test (desk page in Chrome, real API, real Supabase)
+        run: npm run test:e2e
       - name: Stop Supabase
         if: always()
         run: npm run db:stop

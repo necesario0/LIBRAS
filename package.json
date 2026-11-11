@@ -24,6 +24,7 @@
     "test": "npm run test --workspaces --if-present",
     "test:api": "npm run test -w @libras/api",
     "test:benchmarks": "npm run test -w libras-algorithm-benchmarks",
+    "test:e2e": "npm run test:e2e -w @libras/web",
     "check": "npm run typecheck && npm run lint && npm run test"
   },
   "devDependencies": {

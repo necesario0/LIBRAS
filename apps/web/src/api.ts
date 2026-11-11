@@ -1,0 +1,115 @@
+import type {
+  RefreshSessionResponse,
+  Session,
+  StaffMeResponse,
+  StaffProfile,
+  StaffSignInResponse,
+} from "@libras/shared";
+import { clearSession, loadSession, saveSession } from "./session.ts";
+
+/** Where the API is. `/api` is proxied to the API by Vite in development and by the host in production. */
+const API_BASE = import.meta.env.VITE_API_URL ?? "/api";
+
+/** An error response from the API: a stable `code` and a `message` that is safe to show. */
+export class ApiError extends Error {
+  readonly status: number;
+  readonly code: string;
+  constructor(status: number, code: string, message: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.code = code;
+  }
+}
+
+async function send(path: string, init: RequestInit & { session?: Session }): Promise<Response> {
+  const { session, headers, ...rest } = init;
+  try {
+    return await fetch(`${API_BASE}${path}`, {
+      ...rest,
+      headers: {
+        ...(rest.body === undefined ? {} : { "content-type": "application/json" }),
+        ...(session ? { authorization: `Bearer ${session.accessToken}` } : {}),
+        ...headers,
+      },
+    });
+  } catch {
+    throw new ApiError(0, "unreachable", "We could not reach the server. Check your connection and try again.");
+  }
+}
+
+async function failure(response: Response): Promise<ApiError> {
+  const body: unknown = await response.json().catch(() => undefined);
+  const error = (body as { error?: { code?: unknown; message?: unknown } } | undefined)?.error;
+  if (typeof error?.code === "string" && typeof error.message === "string") {
+    return new ApiError(response.status, error.code, error.message);
+  }
+  return new ApiError(response.status, "unexpected", "Something went wrong. Please try again.");
+}
+
+/** Signs a Librarian in. Throws ApiError: `invalid_credentials`, `not_staff`, `invalid_request` or `unreachable`. */
+export async function signIn(email: string, password: string): Promise<StaffProfile> {
+  const response = await send("/staff/sign-in", { method: "POST", body: JSON.stringify({ email, password }) });
+  if (!response.ok) throw await failure(response);
+  const body = (await response.json()) as StaffSignInResponse;
+  saveSession(body.session);
+  return body.staff;
+}
+
+/** Ends the session on the server and in this browser. Never throws: the person is signed out either way. */
+export async function signOut(): Promise<void> {
+  const session = loadSession();
+  clearSession();
+  if (!session) return;
+  try {
+    await send("/auth/sign-out", { method: "POST", session });
+  } catch {
+    // The token expires by itself, and the browser has already forgotten it.
+  }
+}
+
+async function refresh(session: Session): Promise<Session | undefined> {
+  const response = await send("/auth/refresh", {
+    method: "POST",
+    body: JSON.stringify({ refreshToken: session.refreshToken }),
+  });
+  if (!response.ok) return undefined;
+  const body = (await response.json()) as RefreshSessionResponse;
+  saveSession(body.session);
+  return body.session;
+}
+
+/**
+ * Calls a Librarian-only endpoint with the stored session, renewing the
+ * session once if the access token has expired. Returns undefined when there
+ * is no usable session left, and the caller shows the sign-in page.
+ */
+async function authorized(path: string): Promise<Response | undefined> {
+  let session = loadSession();
+  if (!session) return undefined;
+  let response = await send(path, { session });
+  if (response.status === 401) {
+    session = await refresh(session);
+    if (!session) {
+      clearSession();
+      return undefined;
+    }
+    response = await send(path, { session });
+  }
+  return response;
+}
+
+/**
+ * The Librarian the stored session belongs to, or undefined when nobody is
+ * signed in (no session, expired, signed out elsewhere, or not staff).
+ */
+export async function currentStaff(): Promise<StaffProfile | undefined> {
+  const response = await authorized("/staff/me");
+  if (!response) return undefined;
+  if (response.status === 401 || response.status === 403) {
+    clearSession();
+    return undefined;
+  }
+  if (!response.ok) throw await failure(response);
+  return ((await response.json()) as StaffMeResponse).staff;
+}
