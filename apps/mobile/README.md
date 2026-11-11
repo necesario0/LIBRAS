@@ -40,7 +40,7 @@ The app is a release build with its JavaScript bundled in, so there is no live r
 
 `EXPO_PUBLIC_API_URL` is baked in at build time. A build whose URL starts with `http://` (or is unset) allows cleartext traffic; an `https://` build does not. For a phone on the same network, set it to `http://<your-computer-LAN-ip>:3000` and rebuild.
 
-`LIBRAS_ABIS` (default `arm64-v8a,x86_64`) sets the CPU architectures in the APK. Use `x86_64` alone for a faster emulator-only build.
+`LIBRAS_ABIS` (default `arm64-v8a,x86,x86_64`) sets the CPU architectures in the APK. Use `x86_64` alone for a faster emulator-only build.
 
 ## End-to-end test
 

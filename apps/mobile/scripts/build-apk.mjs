@@ -13,7 +13,7 @@ import { androidEnv } from "./env.mjs";
 
 const realRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const { env, isWindows } = androidEnv();
-const abis = process.env.LIBRAS_ABIS ?? "arm64-v8a,x86_64";
+const abis = process.env.LIBRAS_ABIS ?? "arm64-v8a,x86,x86_64";
 
 const nativeBuildDir = process.env.LIBRAS_NATIVE_BUILD_DIR ?? join(process.env.SystemDrive ?? "C:", "/lb");
 const root = realRoot;

@@ -33,6 +33,7 @@ export function androidEnv() {
     join(javaHome, "bin"),
     join(androidHome, "platform-tools"),
     join(androidHome, "emulator"),
+    join(androidHome, "cmdline-tools", "latest", "bin"),
     maestroBin,
     process.env.PATH ?? process.env.Path,
   ]

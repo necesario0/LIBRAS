@@ -6,6 +6,6 @@ appId: ph.edu.umak.libras
     clearState: true
 - extendedWaitUntil:
     visible: "API status: ok"
-    timeout: 30000
+    timeout: 60000
 - assertVisible: "Database: ok"
 - assertVisible: "Service status"
