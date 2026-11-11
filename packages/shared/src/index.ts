@@ -30,6 +30,7 @@ export type {
 export {
   SIGN_UP_MESSAGES,
   UMAK_COLLEGES,
+  VERIFICATION_CODE_LENGTH,
   contactNumberSchema,
   emailSchema,
   nameSchema,

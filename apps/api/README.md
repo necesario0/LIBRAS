@@ -13,7 +13,9 @@ How to run it and its tests is in the [root README](../../README.md).
 | `src/routes/` | One router per feature. `health.ts` is the pattern to copy |
 | `src/errors.ts` | `AppError` and the error handler |
 | `src/clock.ts`, `src/email.ts`, `src/db.ts`, `src/logger.ts` | The things the API reaches outside itself, passed in as `AppDeps` |
-| `src/testing/` | The HTTP test harness, also exported as `@libras/api/testing` |
+| `src/members/` | Member profiles, the sign-up flow (pending sign-up, emailed code, activation) |
+| `src/auth/` | Sign-in sessions, guards (`requireLibrarian`, `requireMember`), identity pass-through to PostgreSQL |
+| `src/testing/` | The HTTP test harness, also exported as `@libras/api/testing`, and the end-to-end server `e2e-server.ts` |
 | `test/` | Tests, `*.test.ts`, run with Node's built-in test runner |
 
 ## Rules for new code
@@ -58,3 +60,19 @@ describe("Hold ready email", () => {
 - `api.db` is the API's `pg` pool on the real local PostgreSQL, for arranging data that has no endpoint yet.
 - `startTestApi({ extraRoutes })` mounts test-only routes, for example one that throws. `startTestApi({ databaseUrl })` points the API at another database.
 - Test files run one at a time (`--test-concurrency=1`) because they share one database.
+
+## Test helpers for Members
+
+```ts
+import { createTestMember, studentSignUpBody, codeFromEmail, signInDirect } from "@libras/api/testing";
+
+const ana = await createTestMember(api, { firstName: "Ana" }); // signs up, reads the emailed code, verifies, signs in
+ana.member;      // MemberProfile
+ana.accessToken; // Authorization: Bearer <accessToken>
+```
+
+`studentSignUpBody()` is a valid UMAK Student sign-up with a unique email, username and student number. `codeFromEmail(api.emails.lastTo(email))` reads the verification code. `createTestAccount(api)` makes a bare Supabase account (no Member profile) and, with `{ staff }`, a Librarian.
+
+## The end-to-end API
+
+`src/testing/e2e-server.ts` is the API for end-to-end tests: the real app, but emails are captured and readable at `GET /e2e/emails?to=<address>`. It is a separate entry point that `server.ts` never imports, listens on loopback only, and exits at once when `NODE_ENV=production`, so production cannot expose it (tests in `test/e2e-mailbox.test.ts`). `npm run e2e -w @libras/mobile` starts it.

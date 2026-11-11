@@ -36,7 +36,7 @@ curl http://localhost:3000/health
 
 No `.env` file is needed locally. To change the port or the database, copy `.env.example` to `.env` and edit it.
 
-No Supabase key lives in the source. `npm run dev`, `npm test`, `npm run test:api`, `npm run seed` and `npm run test:e2e` read `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_SECRET_KEY` from the running local stack (`npx supabase status -o env`, through `apps/api/scripts/with-local-supabase.ts`), so the database must be started first with `npm run db:start`. A variable you set yourself, in the environment or in `.env`, wins, and nothing is looked up when `NODE_ENV=production`: production sets all three explicitly. To run a one-off command the same way: `node apps/api/scripts/with-local-supabase.ts <command>`.
+No Supabase key lives in the source. `npm run dev`, `npm test`, `npm run test:api`, `npm run seed` and `npm run test:e2e` read `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_SECRET_KEY` from the running local stack (`npx supabase status -o env`, through `apps/api/scripts/with-local-supabase.ts`), so the database must be started first with `npm run db:start`. A variable you set yourself, in the environment or in `.env`, wins, and nothing is looked up when `NODE_ENV=production`: production sets all three explicitly (the API itself needs the secret key: it creates and confirms accounts at sign-up). To run a one-off command the same way: `node apps/api/scripts/with-local-supabase.ts <command>`.
 
 | Command | What it does |
 | --- | --- |

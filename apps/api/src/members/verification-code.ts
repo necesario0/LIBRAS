@@ -1,6 +1,7 @@
 import { createHash, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
+import { VERIFICATION_CODE_LENGTH } from "@libras/shared";
 
-export const CODE_LENGTH = 6;
+export const CODE_LENGTH = VERIFICATION_CODE_LENGTH;
 /** How long an emailed code works. */
 export const CODE_LIFETIME_MS = 10 * 60 * 1000;
 /** Wrong guesses allowed against one code. The code stops working after that and a new one must be requested. */

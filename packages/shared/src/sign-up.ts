@@ -15,6 +15,7 @@ export const SIGN_UP_MESSAGES = {
   passwordTooLong: "Use at most 72 characters for your password.",
   passwordsDiffer: "The passwords do not match. Please try again.",
   nameRequired: "This field is required.",
+  nameTooLong: "Use at most 60 characters.",
   usernameInvalid: "Use 3 to 30 letters, numbers, dots or underscores.",
   contactNumberInvalid: "Enter a valid contact number, or leave it empty.",
   studentNumberInvalid: "Enter your student number, for example K12256165.",
@@ -37,10 +38,14 @@ export const passwordSchema = z
   .min(8, { error: SIGN_UP_MESSAGES.passwordTooShort })
   .max(72, { error: SIGN_UP_MESSAGES.passwordTooLong });
 
-export const nameSchema = trimmed.min(1, { error: SIGN_UP_MESSAGES.nameRequired }).max(60);
+export const nameSchema = trimmed
+  .min(1, { error: SIGN_UP_MESSAGES.nameRequired })
+  .max(60, { error: SIGN_UP_MESSAGES.nameTooLong });
 
 /** A name that may be left empty. An empty value means "none". */
-export const optionalNameSchema = trimmed.max(60).transform((value) => (value === "" ? undefined : value)).optional();
+export const optionalNameSchema = trimmed
+  .max(60, { error: SIGN_UP_MESSAGES.nameTooLong })
+  .transform((value) => (value === "" ? undefined : value)).optional();
 
 export const usernameSchema = trimmed.regex(/^[A-Za-z0-9_.]{3,30}$/, { error: SIGN_UP_MESSAGES.usernameInvalid });
 
@@ -52,8 +57,13 @@ export const contactNumberSchema = trimmed
   .transform((value) => (value === "" ? undefined : value))
   .optional();
 
-/** The 6 digits the verification email carries. */
-export const verificationCodeSchema = z.string().trim().regex(/^\d{6}$/, { error: SIGN_UP_MESSAGES.codeInvalid });
+/** How many digits the emailed verification code has. */
+export const VERIFICATION_CODE_LENGTH = 6;
+
+export const verificationCodeSchema = z
+  .string()
+  .trim()
+  .regex(new RegExp(`^\\d{${VERIFICATION_CODE_LENGTH}}$`), { error: SIGN_UP_MESSAGES.codeInvalid });
 
 /** The colleges in the Figma college list. A data change, not a code change, when UMAK adds one. */
 export const UMAK_COLLEGES = ["CLAS", "CHK", "CBFS", "CCIS", "CITE", "CITE-HSU", "CGPP", "CCSE", "CET"] as const;
