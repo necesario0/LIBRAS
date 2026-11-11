@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { after, before, describe, it } from "node:test";
 import type pg from "pg";
 import { createAuditLog } from "../src/audit/index.ts";
+import { canonicalEntry, canonicalJson } from "../src/audit/canonical.ts";
 import type { AuditEvent, AuditLog } from "../src/audit/index.ts";
 import { withIdentity } from "../src/auth/index.ts";
 import { withTransaction } from "../src/db.ts";
@@ -95,16 +96,59 @@ describe("the audit log", () => {
     });
 
     it("hashes awkward text the same way the API verifies it", async () => {
-      const awkward = `quote " back \\ newline \n tab \t bell \u0007 del \u007f é ñ 漢字 😀 </script>`;
+      const awkward = `q" b\\ n\n t\t \u0007 \u001f \u007f é ñ 漢字 \u{1f600} </script>`;
+      assert.ok(awkward.length <= 64);
       await audit.record(failedSignIn(null));
       // Data holds only whitelisted fields, so put the awkward text where text goes: the client address field.
       await audit.record({
         type: "sign_in_failed",
         subject: "awkward.name+tag@umak.edu.ph",
-        data: { portal: "staff", reason: "refused", clientAddress: awkward.slice(0, 64) },
+        data: { portal: "staff", reason: "refused", clientAddress: awkward },
       });
       const verification = await audit.verify();
       assert.equal(verification.intact, true, JSON.stringify(verification));
+    });
+
+    it("serialises any data shape a later event type may use exactly as the database does", async () => {
+      // Later event types bring their own data: nested objects, arrays, integers, booleans, null.
+      const data = {
+        zeta: [3, -7, 0, true, false, null, "x", { b: 1, a: [] }],
+        alpha: { nested: { deeper: "漢字 \u{1f600} \u0001 \u001b" }, empty: {} },
+        Big: 9007199254740991,
+        under_score: 'q"\\/\n',
+      };
+      const content = {
+        prevHash: "a".repeat(64),
+        seq: 42,
+        occurredAt: new Date("2026-11-24T09:00:00.007Z"),
+        type: "sign_in_failed",
+        actorId: "0b6f7a9e-3c1d-4e2f-8a5b-6c7d8e9f0a1b",
+        subject: "Sébastien <x>",
+        data,
+      };
+      const { rows } = await api.db.query<{ canonical: string }>(
+        "select public.audit_entry_canonical($1, $2, $3, $4, $5, $6, $7::jsonb) as canonical",
+        [content.prevHash, content.seq, content.occurredAt, content.type, content.actorId, content.subject, JSON.stringify(data)],
+      );
+
+      // A known-good literal, written out by hand, so both sides are checked against the format and not only each other.
+      const expected =
+        `["libras-audit-v1","${"a".repeat(64)}",42,"2026-11-24T09:00:00.007Z","sign_in_failed",` +
+        `"0b6f7a9e-3c1d-4e2f-8a5b-6c7d8e9f0a1b","Sébastien <x>",` +
+        `{"Big":9007199254740991,"alpha":{"empty":{},"nested":{"deeper":"漢字 \u{1f600} \\u0001 \\u001b"}},` +
+        `"under_score":"q\\"\\\\/\\n","zeta":[3,-7,0,true,false,null,"x",{"a":[],"b":1}]}]`;
+      assert.equal(canonicalEntry(content), expected);
+      assert.equal(rows[0]?.canonical, expected);
+    });
+
+    it("refuses data the canonical form cannot hold the same way on both sides", async () => {
+      for (const data of [{ ratio: 1.5 }, { "bad key": 1 }, { big: 2 ** 60 }]) {
+        await assert.rejects(
+          api.db.query("select public.audit_canonical_json($1::jsonb)", [JSON.stringify(data)]),
+          /ASCII identifiers|safe integers/,
+        );
+        assert.throws(() => canonicalJson(data), /ASCII identifiers|safe integers/);
+      }
     });
 
     it("keeps an entry recorded inside a transaction only if that transaction commits", async () => {
