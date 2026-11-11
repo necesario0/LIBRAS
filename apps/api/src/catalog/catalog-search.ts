@@ -1,4 +1,4 @@
-import { buildCatalogIndex } from "@libras/shared";
+import { buildCatalogIndexAsync } from "@libras/shared";
 import type { BookSearchResult, CatalogIndex, IndexedBook } from "@libras/shared";
 import { withTransaction } from "../db.ts";
 import type { Database } from "../db.ts";
@@ -126,7 +126,7 @@ export class CatalogSearch {
       callNumber: row.lc_call_number,
       accessionNumbers: row.accession_numbers,
     }));
-    const built: Snapshot = { revision: snapshot.revision, index: buildCatalogIndex(indexed) };
+    const built: Snapshot = { revision: snapshot.revision, index: await buildCatalogIndexAsync(indexed) };
     this.#current = built; // the atomic swap: one assignment
     this.#logger.info(`Catalog search index built: ${indexed.length} Books, ${built.index.tokenCount} words (revision ${built.revision})`);
     return built;

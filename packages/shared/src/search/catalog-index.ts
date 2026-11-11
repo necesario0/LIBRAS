@@ -74,6 +74,9 @@ function identifierKey(text: string): string {
   return normalizeText(text).replace(/[^\p{L}\p{N}]+/gu, "").toUpperCase();
 }
 
+/** Books or words handled between two yields while building. About a millisecond or two of work. */
+const STEP = 1_000;
+
 class TrieCatalogIndex implements CatalogIndex {
   readonly bookCount: number;
   readonly tokenCount: number;
@@ -84,10 +87,28 @@ class TrieCatalogIndex implements CatalogIndex {
   readonly #postings: Int32Array;
   readonly #identifiers: ReadonlyMap<string, readonly number[]>;
 
-  constructor(books: readonly IndexedBook[]) {
-    this.#bookIds = books.map((book) => book.id);
-    this.bookCount = books.length;
+  private constructor(
+    bookIds: readonly string[],
+    tokenCount: number,
+    trie: FlatTrie,
+    postingStart: Int32Array,
+    postings: Int32Array,
+    identifiers: ReadonlyMap<string, readonly number[]>,
+  ) {
+    this.#bookIds = bookIds;
+    this.bookCount = bookIds.length;
+    this.tokenCount = tokenCount;
+    this.#trie = trie;
+    this.#postingStart = postingStart;
+    this.#postings = postings;
+    this.#identifiers = identifiers;
+  }
 
+  /**
+   * Builds the index in steps: it yields every `STEP` Books (and every `STEP`
+   * words), so an async caller can let the event loop run between steps.
+   */
+  static *build(books: readonly IndexedBook[]): Generator<void, TrieCatalogIndex, void> {
     const booksOfWord = new Map<string, number[]>();
     const identifiers = new Map<string, number[]>();
     const addIdentifier = (value: string | null | undefined, bookIndex: number) => {
@@ -97,7 +118,8 @@ class TrieCatalogIndex implements CatalogIndex {
       if (!list) identifiers.set(key, [bookIndex]);
       else if (list[list.length - 1] !== bookIndex) list.push(bookIndex);
     };
-    books.forEach((book, bookIndex) => {
+    for (let bookIndex = 0; bookIndex < books.length; bookIndex++) {
+      const book = books[bookIndex] as IndexedBook;
       for (const word of new Set([...tokenize(book.title), ...book.authors.flatMap(tokenize)])) {
         const list = booksOfWord.get(word);
         if (list) list.push(bookIndex);
@@ -106,22 +128,32 @@ class TrieCatalogIndex implements CatalogIndex {
       addIdentifier(book.isbn, bookIndex);
       addIdentifier(book.callNumber, bookIndex);
       for (const accession of book.accessionNumbers ?? []) addIdentifier(accession, bookIndex);
-    });
+      if (bookIndex % STEP === STEP - 1) yield;
+    }
 
     const words = [...booksOfWord.keys()];
-    this.tokenCount = words.length;
-    this.#trie = buildTrie(words);
-    this.#postingStart = new Int32Array(words.length + 1);
+    yield;
+    const trie = buildTrie(words);
+    yield;
+    const postingStart = new Int32Array(words.length + 1);
     let total = 0;
     for (const list of booksOfWord.values()) total += list.length;
-    this.#postings = new Int32Array(total);
+    const postings = new Int32Array(total);
     let offset = 0;
-    words.forEach((word, wordIndex) => {
-      this.#postingStart[wordIndex] = offset;
-      for (const bookIndex of booksOfWord.get(word) ?? []) this.#postings[offset++] = bookIndex;
-    });
-    this.#postingStart[words.length] = offset;
-    this.#identifiers = identifiers;
+    for (let wordIndex = 0; wordIndex < words.length; wordIndex++) {
+      postingStart[wordIndex] = offset;
+      for (const bookIndex of booksOfWord.get(words[wordIndex] as string) ?? []) postings[offset++] = bookIndex;
+      if (wordIndex % STEP === STEP - 1) yield;
+    }
+    postingStart[words.length] = offset;
+    return new TrieCatalogIndex(
+      books.map((book) => book.id),
+      words.length,
+      trie,
+      postingStart,
+      postings,
+      identifiers,
+    );
   }
 
   search(query: string, options: CatalogSearchOptions = {}): CatalogSearchResult {
@@ -179,7 +211,28 @@ class TrieCatalogIndex implements CatalogIndex {
   }
 }
 
-/** Builds the index for `books`. Equal matches are returned in this order, so pass the Books sorted the way results should read (by title). */
+/** Builds the index for `books` without a pause. Equal matches are returned in this order, so pass the Books sorted the way results should read (by title). */
 export function buildCatalogIndex(books: readonly IndexedBook[]): CatalogIndex {
-  return new TrieCatalogIndex(books);
+  const steps = TrieCatalogIndex.build(books);
+  for (;;) {
+    const step = steps.next();
+    if (step.done) return step.value;
+  }
+}
+
+const pauseOneTick = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+/**
+ * The same index, built in short steps with `pause` (default: a timer tick)
+ * between them. A server calls this so that a rebuild of a large catalog does
+ * not hold up the searches that arrive meanwhile: no step lasts more than a
+ * few milliseconds, except building the trie itself (about 0.1 s at 50,000 words).
+ */
+export async function buildCatalogIndexAsync(books: readonly IndexedBook[], pause: () => Promise<void> = pauseOneTick): Promise<CatalogIndex> {
+  const steps = TrieCatalogIndex.build(books);
+  for (;;) {
+    const step = steps.next();
+    if (step.done) return step.value;
+    await pause();
+  }
 }

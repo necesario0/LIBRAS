@@ -57,7 +57,7 @@ export type {
 } from "./sign-up.ts";
 export { buildTrie, searchTrie } from "./search/flat-trie.ts";
 export type { FlatTrie, TrieMatch } from "./search/flat-trie.ts";
-export { buildCatalogIndex, normalizeText, tokenize, typoBoundFor } from "./search/catalog-index.ts";
+export { buildCatalogIndex, buildCatalogIndexAsync, normalizeText, tokenize, typoBoundFor } from "./search/catalog-index.ts";
 export type {
   CatalogHit,
   CatalogIndex,

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { buildCatalogIndex, normalizeText, tokenize, typoBoundFor } from "../src/search/catalog-index.ts";
+import { buildCatalogIndex, buildCatalogIndexAsync, normalizeText, tokenize, typoBoundFor } from "../src/search/catalog-index.ts";
 import type { IndexedBook } from "../src/search/catalog-index.ts";
 
 const books: IndexedBook[] = [
@@ -131,5 +131,28 @@ describe("catalog index search", () => {
 
   it("works for an empty catalog", () => {
     assert.deepEqual(buildCatalogIndex([]).search("anything"), { total: 0, hits: [] });
+  });
+});
+
+describe("building the index in steps", () => {
+  it("gives the same answers as the one-piece build and lets other work run between steps", async () => {
+    // Enough Books for several steps.
+    const many: IndexedBook[] = Array.from({ length: 2500 }, (_, i) => ({
+      id: `m${i}`,
+      title: `Volume ${i} of Collected Studies`,
+      authors: [`Author${i}, Given`],
+      isbn: `97800000${String(i).padStart(5, "0")}`,
+    }));
+    let pauses = 0;
+    const stepped = await buildCatalogIndexAsync(many, async () => {
+      pauses += 1;
+    });
+    const whole = buildCatalogIndex(many);
+    assert.ok(pauses >= 3, `only ${pauses} pauses`);
+    assert.equal(stepped.bookCount, whole.bookCount);
+    assert.equal(stepped.tokenCount, whole.tokenCount);
+    for (const query of ["collected studies", "author1999", "volumme 77", "9780000000042", "nothing like it"]) {
+      assert.deepEqual(stepped.search(query), whole.search(query), query);
+    }
   });
 });
