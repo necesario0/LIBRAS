@@ -42,7 +42,13 @@ const app = createApp(
     email: emails,
     logger: consoleLogger,
   },
-  { extraRoutes: mailboxRoutes(emails) },
+  {
+    extraRoutes: mailboxRoutes(emails),
+    // Every request reaches this server from the same address, so the real
+    // limit would lock the next test run out after a few deliberate wrong
+    // passwords. The block itself is proved by the API tests, not here.
+    signInLimit: { maxFailures: 1_000, windowMinutes: 15 },
+  },
 );
 
 const server = app.listen(config.port, "127.0.0.1", () => {
