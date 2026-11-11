@@ -2,6 +2,7 @@ import express from "express";
 import type { Express, Router } from "express";
 import type { AccountAdmin, AuthProvider } from "./auth/auth-provider.ts";
 import type { Clock } from "./clock.ts";
+import { cors } from "./cors.ts";
 import type { Database } from "./db.ts";
 import type { EmailSender } from "./email.ts";
 import { createErrorHandler, notFoundHandler } from "./errors.ts";
@@ -24,6 +25,8 @@ export interface AppDeps {
 }
 
 export interface AppOptions {
+  /** Origins of web pages that may call the API from a browser (exact, e.g. https://desk.example.com). Default: none. */
+  corsAllowedOrigins?: readonly string[];
   /**
    * Adds routes after the real ones and before the error handling. For tests
    * that need a route the product does not have, such as one that throws.
@@ -34,6 +37,7 @@ export interface AppOptions {
 export function createApp(deps: AppDeps, options: AppOptions = {}): Express {
   const app = express();
   app.disable("x-powered-by");
+  app.use(cors(options.corsAllowedOrigins ?? []));
   app.use(express.json({ limit: "100kb" }));
 
   // Each feature adds its router here.

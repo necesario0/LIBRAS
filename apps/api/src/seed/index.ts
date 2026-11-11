@@ -20,7 +20,7 @@ function librarianFromEnvironment(env: NodeJS.ProcessEnv, isProduction: boolean)
 }
 
 const config = loadConfig();
-const db = createDatabase(config.databaseUrl, console);
+const db = createDatabase(config.databaseUrl, console, config.databaseCaCertificate);
 try {
   const librarian = librarianFromEnvironment(process.env, config.isProduction);
   await seedLibrarians(db, [librarian]);

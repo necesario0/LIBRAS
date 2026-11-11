@@ -9,6 +9,7 @@
     "typecheck": "tsc -p tsconfig.json",
     "prebuild": "expo prebuild --platform android",
     "build:apk": "node scripts/build-apk.mjs",
+    "build:apk:hosted": "node scripts/build-apk-hosted.mjs",
     "e2e": "node scripts/e2e.mjs"
   },
   "dependencies": {

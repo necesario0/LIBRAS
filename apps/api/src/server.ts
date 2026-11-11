@@ -6,7 +6,7 @@ import { SupabaseAuth } from "./auth/supabase-auth.ts";
 import { systemClock } from "./clock.ts";
 import { loadConfig } from "./config.ts";
 import { createDatabase } from "./db.ts";
-import { ConsoleEmailSender, UnconfiguredEmailSender } from "./email.ts";
+import { BrevoEmailSender, ConsoleEmailSender } from "./email.ts";
 import { consoleLogger } from "./logger.ts";
 
 // Local development reads the repository's .env file. Hosted environments set real variables.
@@ -15,16 +15,23 @@ if (existsSync(envFile)) process.loadEnvFile(envFile);
 
 const config = loadConfig();
 const logger = consoleLogger;
-const db = createDatabase(config.databaseUrl, logger);
+const db = createDatabase(config.databaseUrl, logger, config.databaseCaCertificate);
 
-const app = createApp({
-  db,
-  auth: new SupabaseAuth({ url: config.supabaseUrl, publishableKey: config.supabasePublishableKey }),
-  accounts: new SupabaseAuthAdmin({ url: config.supabaseUrl, secretKey: config.supabaseSecretKey }),
-  clock: systemClock,
-  email: config.isProduction ? new UnconfiguredEmailSender() : new ConsoleEmailSender(),
-  logger,
-});
+const email = config.email
+  ? new BrevoEmailSender({ apiKey: config.email.apiKey, from: { address: config.email.fromAddress, name: config.email.fromName } })
+  : new ConsoleEmailSender();
+
+const app = createApp(
+  {
+    db,
+    auth: new SupabaseAuth({ url: config.supabaseUrl, publishableKey: config.supabasePublishableKey }),
+    accounts: new SupabaseAuthAdmin({ url: config.supabaseUrl, secretKey: config.supabaseSecretKey }),
+    clock: systemClock,
+    email,
+    logger,
+  },
+  { corsAllowedOrigins: config.corsAllowedOrigins },
+);
 
 const server = app.listen(config.port, () => {
   logger.info(`LIBRAS API listening on http://localhost:${config.port}`);
