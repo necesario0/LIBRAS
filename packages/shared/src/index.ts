@@ -1,4 +1,6 @@
 export type { ApiErrorBody, HealthResponse } from "./api.ts";
+export { CODE128_QUIET_ZONE_MODULES, encodeCode128C } from "./barcode/code128.ts";
+export type { Code128Symbol } from "./barcode/code128.ts";
 export { refreshSessionRequestSchema, signInRequestSchema } from "./auth.ts";
 export type {
   RefreshSessionRequest,
