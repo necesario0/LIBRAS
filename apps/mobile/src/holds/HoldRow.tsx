@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { HOLD_STATUS_LABELS } from "@libras/shared";
+import { HOLD_STATUS_LABELS, formatLibraryDateTime } from "@libras/shared";
 import type { Hold, HoldStatus } from "@libras/shared";
 import { BookCover } from "../components/BookCover";
 import { colors, fontFamily, fontSize, radii, spacing } from "../theme/tokens";
@@ -30,7 +30,9 @@ interface HoldRowProps {
 
 /**
  * One of the Member's Holds: the Book, its status and when the Hold was placed.
- * A waiting Hold has a Cancel button that asks once more before it leaves the queue.
+ * A ready Hold says that a Copy is set aside and when the Pickup Window ends, in
+ * the library's time. A waiting or ready Hold has a Cancel button that asks once
+ * more: a waiting Hold leaves the queue, a ready one gives its Copy up.
  */
 export function HoldRow({ hold, onCancel }: HoldRowProps) {
   const [confirming, setConfirming] = useState(false);
@@ -69,15 +71,30 @@ export function HoldRow({ hold, onCancel }: HoldRowProps) {
         </View>
       </View>
 
+      {hold.status === "ready" && hold.pickupEndsAt !== null ? (
+        <View style={styles.pickup} testID="hold-pickup">
+          <Text style={styles.pickupTitle}>A Copy is set aside for you</Text>
+          <Text style={styles.pickupBody}>
+            {"Show your Digital ID at the library desk by "}
+            <Text style={styles.pickupUntil}>
+              {formatLibraryDateTime(hold.pickupEndsAt)}
+            </Text>
+            {" to borrow it. After that your Hold expires."}
+          </Text>
+        </View>
+      ) : null}
+
       {failure === undefined ? null : (
         <Text style={styles.failure} accessibilityRole="alert" testID="hold-cancel-error">
           {failure}
         </Text>
       )}
 
-      {hold.status !== "waiting" ? null : confirming ? (
+      {hold.status !== "waiting" && hold.status !== "ready" ? null : confirming ? (
         <View style={styles.confirm}>
-          <Text style={styles.confirmText}>Leave the queue for this Book?</Text>
+          <Text style={styles.confirmText}>
+            {hold.status === "ready" ? "Give up the Copy that is set aside for you?" : "Leave the queue for this Book?"}
+          </Text>
           <View style={styles.actions}>
             <Pressable
               accessibilityRole="button"
@@ -122,6 +139,10 @@ const styles = StyleSheet.create({
   placed: { fontFamily: fontFamily.regular, fontSize: fontSize.micro, color: colors.textFaint },
   pill: { borderRadius: radii.panel, paddingHorizontal: spacing.sm, paddingVertical: 3 },
   pillText: { fontFamily: fontFamily.medium, fontSize: fontSize.micro },
+  pickup: { borderRadius: radii.panel, backgroundColor: colors.successSurface, paddingVertical: spacing.md, paddingHorizontal: spacing.lg, gap: 2 },
+  pickupTitle: { fontFamily: fontFamily.semiBold, fontSize: fontSize.small, color: colors.availableText },
+  pickupBody: { fontFamily: fontFamily.regular, fontSize: fontSize.caption, lineHeight: 18, color: colors.textSecondary },
+  pickupUntil: { fontFamily: fontFamily.semiBold, color: colors.black },
   failure: { fontFamily: fontFamily.regular, fontSize: fontSize.caption, color: colors.danger },
   confirm: { gap: spacing.sm },
   confirmText: { fontFamily: fontFamily.regular, fontSize: fontSize.caption, color: colors.textSecondary },
