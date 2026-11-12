@@ -150,8 +150,17 @@ appId: ph.edu.umak.libras
 - takeScreenshot: hold-ready-borrowed
 
 # The Hold is over: Home has no active Hold, and the Holds screen lists it as borrowed.
+# Home still shows the search from before the Digital ID: clear it to see the summary.
 - tapOn:
     id: borrowed-home
+- extendedWaitUntil:
+    visible:
+      id: search-input
+    timeout: 15000
+- tapOn:
+    id: search-input
+- eraseText: 40
+- hideKeyboard
 - extendedWaitUntil:
     visible: "No active Holds"
     timeout: 15000
