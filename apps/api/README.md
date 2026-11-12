@@ -15,6 +15,7 @@ How to run it and its tests is in the [root README](../../README.md).
 | `src/clock.ts`, `src/email.ts`, `src/db.ts`, `src/logger.ts` | The things the API reaches outside itself, passed in as `AppDeps` |
 | `src/members/` | Member profiles, the sign-up flow (pending sign-up, emailed code, activation) |
 | `src/auth/` | Sign-in sessions, guards (`requireLibrarian`, `requireMember`), identity pass-through to PostgreSQL |
+| `src/audit/` | The append-only, hash-chained audit log: `record`, `verify`, the event whitelist |
 | `src/catalog/` | `CatalogSearch`: the in-memory search index, its rebuild-and-swap, and live availability |
 | `src/seed/` | `npm run seed`: the Librarian and the sample catalog (`catalog-generator.ts` is pure and reproducible, `catalog.ts` writes it) |
 | `src/testing/` | The HTTP test harness, also exported as `@libras/api/testing`, and the end-to-end server `e2e-server.ts` |
@@ -102,3 +103,13 @@ Tests: `test/digital-id.test.ts` (HTTP, fake clock), `test/digital-id-code.test.
 ## The end-to-end API
 
 `src/testing/e2e-server.ts` is the API for end-to-end tests: the real app, but emails are captured and readable at `GET /e2e/emails?to=<address>`, and a Book can be added at `POST /e2e/books` (`testing/catalog-fixture-routes.ts`; it answers once search can find the Book). It is a separate entry point that `server.ts` never imports, listens on loopback only, and exits at once when `NODE_ENV=production`, so production cannot expose it (tests in `test/e2e-mailbox.test.ts`). `npm run e2e -w @libras/mobile` starts it.
+
+## Audit log
+
+`src/audit/` and the migration `supabase/migrations/20261112131200_audit_log.sql`. An append-only log of failed sign-ins (and, as they arrive, Loans, returns and Hold dispatches). Each entry stores a SHA-256 hash over its content and the previous entry's hash.
+
+- **Record:** `createAuditLog(deps).record({ type, actorId?, subject?, data }, tx?)`. Time comes from `deps.clock`. Pass the client of a transaction (`withTransaction(deps.db, (tx) => ...)`) to record atomically with a change; record last in that transaction, because other writers of the log wait for it to end. The transaction must be READ COMMITTED (the default); the database refuses others.
+- **Whitelist:** event types and the exact shape of `subject` and `data` are in `src/audit/events.ts` (strict objects, so an unlisted field such as a password cannot be recorded). The database has its own list, `public.audit_event_types`: a new type needs an entry in `events.ts` and an `insert` in a migration.
+- **Chain:** the database, not the API, assigns the gapless `seq`, the `prev_hash` and the `hash` in a BEFORE INSERT trigger that holds an advisory lock until the transaction ends. Updates, deletes and TRUNCATE are refused by ENABLE ALWAYS triggers; `anon`, `authenticated` and `service_role` have no privileges, and row-level security is on with no policy.
+- **Verify:** `createAuditLog(deps).verify({ anchor? })` recomputes every hash in TypeScript (`src/audit/canonical.ts`) and reports `content_changed`, `broken_link`, `missing_entry` or `anchor_mismatch` with the entry. From a terminal: `npm run audit:verify -w @libras/api` (local) or `npm run audit:verify:hosted -w @libras/api` (reads `.env.hosted`), optionally `-- --anchor <seq>:<hash>`.
+- **Limits:** the table owner (the role migrations and the API use) can still ALTER or DROP the table or disable the triggers. Changes made that way are detected by verification, except removing the newest entries, or rewriting every entry from the changed one onwards; only a head (`seq:hash`) kept outside the database and passed as `anchor` detects those.
