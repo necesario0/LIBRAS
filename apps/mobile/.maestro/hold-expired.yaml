@@ -1,0 +1,134 @@
+# A UMAK Student's Hold becomes ready when the only Copy comes back, and the
+# Member does not come to the desk. The Pickup Window runs out: the end-to-end API
+# runs the expiry sweep, as the API's timer does, with nobody opening the app. The
+# app then shows the Hold as expired on the Holds screen, Home counts no active
+# Hold, and the Book page no longer sets a Copy aside: the Copy is available again.
+# Needs the end-to-end API on port 3000 (npm run e2e starts it).
+appId: ph.edu.umak.libras
+---
+- launchApp:
+    clearState: true
+- runScript: scripts/create-hold-ready.js
+
+# The UMAK Student signs in. The emulator sometimes doubles the first character
+# typed after a tap: check and retype.
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 30000
+- tapOn:
+    id: welcome-sign-in
+- tapOn:
+    id: sign-in-email
+- retry:
+    maxRetries: 3
+    commands:
+      - eraseText: 80
+      - inputText: ${output.email}
+      - assertVisible: ${output.email}
+- tapOn:
+    id: sign-in-password
+- inputText: ${output.password}
+- hideKeyboard
+- tapOn:
+    id: sign-in-continue
+
+# The Book's only Copy is out: the Member places a Hold.
+- extendedWaitUntil:
+    visible:
+      id: home-holds
+    timeout: 20000
+- tapOn:
+    id: search-input
+- inputText: ${output.heldWord}
+- extendedWaitUntil:
+    visible: ${output.heldTitle}
+    timeout: 15000
+- tapOn: ${output.heldTitle}
+- extendedWaitUntil:
+    visible:
+      id: book-sheet
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: hold-place
+    timeout: 15000
+- tapOn:
+    id: hold-place
+- extendedWaitUntil:
+    visible:
+      id: hold-placed
+    timeout: 15000
+- tapOn:
+    id: book-close
+- extendedWaitUntil:
+    visible:
+      id: search-results
+    timeout: 10000
+- tapOn:
+    id: search-input
+- eraseText: 40
+- hideKeyboard
+
+# The Copy comes back at the desk and is set aside for the Member.
+- runScript: scripts/return-held-copy.js
+- extendedWaitUntil:
+    visible: "1 waiting"
+    timeout: 15000
+- tapOn:
+    id: home-holds
+- extendedWaitUntil:
+    visible:
+      id: hold-pickup
+    timeout: 15000
+- assertVisible: "Ready for pickup"
+
+# The Pickup Window runs out and the sweep expires the Hold. The Holds screen
+# reads again when it is opened again.
+- runScript: scripts/expire-held-hold.js
+- tapOn:
+    id: holds-back
+- extendedWaitUntil:
+    visible: "No active Holds"
+    timeout: 15000
+- tapOn:
+    id: home-holds
+- extendedWaitUntil:
+    visible:
+      id: holds-past
+    timeout: 15000
+- assertVisible: ${output.heldTitle}
+- assertVisible: "Expired"
+- assertNotVisible: "Ready for pickup"
+- assertNotVisible:
+    id: hold-pickup
+- assertNotVisible:
+    id: hold-cancel
+- assertNotVisible:
+    id: holds-active
+- takeScreenshot: hold-expired-list
+
+# The Copy is no longer set aside: the Book is available and offers no Hold.
+- tapOn:
+    id: holds-back
+- extendedWaitUntil:
+    visible:
+      id: search-input
+    timeout: 15000
+- tapOn:
+    id: search-input
+- inputText: ${output.heldWord}
+- extendedWaitUntil:
+    visible: ${output.heldTitle}
+    timeout: 15000
+- assertNotVisible: "None available"
+- tapOn: ${output.heldTitle}
+- extendedWaitUntil:
+    visible:
+      id: book-sheet
+    timeout: 15000
+- assertVisible: "Available"
+- assertNotVisible:
+    id: hold-placed
+- assertNotVisible:
+    id: hold-digital-id
+- takeScreenshot: hold-expired-book

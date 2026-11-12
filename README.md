@@ -108,6 +108,7 @@ Hosted settings live in `.env.hosted` at the repository root. It is gitignored a
 | `SUPABASE_SECRET_KEY` | the same page | yes | Member sign-up creates the account and confirms its email with it; the seed script uses it too. It is a secret: never in source, never in the app |
 | `BREVO_API_KEY`, `EMAIL_FROM_ADDRESS` | Brevo: SMTP & API keys, and a verified sender | yes | Production refuses to start without them |
 | `TRUST_PROXY` | `render.yaml` sets it to `1` | yes | Reverse proxies in front of the API; see "Client address and the sign-in limit" below. Unset (0) when clients connect directly, as locally |
+| `SWEEP_SECRET` | `npm run schedule:hosted` makes one and saves it here; paste it into the Render service | optional, but needed for Pickup Windows to end while the service sleeps | At least 32 characters. See "Pickup Window expiry" below |
 | `CORS_ALLOWED_ORIGINS` | you | optional | See the CORS decision below |
 | `EXPO_PUBLIC_API_URL` | the Render service address | no | Used by `build:apk:hosted` and `check:hosted` |
 
@@ -138,6 +139,16 @@ Not verified on a live service: if Render puts another proxy (a CDN) in front of
 ### What a free Render service does
 
 It goes to sleep after 15 minutes without traffic and takes about a minute to wake on the next request, and the mobile app gives up after 10 seconds. A sleeping or restarting API forgets every phone pairing (they live in its memory): the scanner page says the pairing was lost and the Librarian types the new code. Before a demo run `npm run check:hosted` a few minutes ahead (and once more just before), which wakes it and confirms it is healthy.
+
+### Pickup Window expiry while the service sleeps
+
+A Hold's Pickup Window must end on time even when nobody uses the app and Render has put the service to sleep (ADR 0007). The API sweeps every minute while it is awake. To wake it, a schedule in the Supabase database (pg_cron and pg_net) calls it every five minutes with the shared secret. After the deploy:
+
+1. `npm run db:migrate:hosted` (the expiry migration).
+2. `npm run schedule:hosted`. It makes a `SWEEP_SECRET`, saves it in `.env.hosted` and on the clipboard, and installs the schedule (it enables pg_cron and pg_net itself and keeps the service address and the secret in Supabase Vault). Run it again any time to update; `npm run schedule:hosted -- --remove` removes the schedule.
+3. In the Render dashboard, open `libras-api`, Environment, add `SWEEP_SECRET` with the value from `.env.hosted`, save (Render restarts the service). Run `npm run schedule:hosted` once more: it asks the API whether it accepts the secret and says what is missing if not.
+
+A call every five minutes also keeps the free service awake, which uses about 744 of the 750 free hours a month: fine for one service. Change `PICKUP_SWEEP_SCHEDULE` in `apps/api/scripts/pickup-sweep-schedule.ts` to hourly if sleeping matters more than minute-accurate expiry.
 
 ### Human checklist
 

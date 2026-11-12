@@ -297,7 +297,11 @@ describe("Holds: seeing and cancelling them", () => {
       const other = await h.addBook(`Not Cancellable ${status}`);
       const placed = await place(ana, other);
       await h.api().db.query(
-        "update public.holds set status = $2::public.hold_status, fulfilled_at = case when $2 = 'fulfilled' then placed_at end where id = $1",
+        `update public.holds
+            set status = $2::public.hold_status,
+                fulfilled_at = case when $2 = 'fulfilled' then placed_at end,
+                expired_at = case when $2 = 'expired' then placed_at end
+          where id = $1`,
         [placed.id, status],
       );
       const refused = await cancel(ana, placed.id);

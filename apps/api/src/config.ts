@@ -17,6 +17,12 @@ export interface Config {
   trustProxy: number;
   /** Web pages (exact origins) that may call the API from a browser. Empty: none. */
   corsAllowedOrigins: string[];
+  /**
+   * The shared secret of the calls the database's schedule makes to wake the API and run
+   * the Pickup Window sweep (`SWEEP_SECRET`, at least 32 characters). Optional: unset, the
+   * API sweeps on its own timer only, which stops when the host puts the service to sleep.
+   */
+  sweepSecret: string | undefined;
   /** The email service. Required in production; elsewhere unset means emails are printed to the console. */
   email: EmailConfig | undefined;
 }
@@ -101,6 +107,18 @@ function corsOrigins(env: NodeJS.ProcessEnv): string[] {
   return origins;
 }
 
+/** The minimum length of SWEEP_SECRET: it is the only thing between the internet and the sweep. */
+export const MIN_SWEEP_SECRET_LENGTH = 32;
+
+function sweepSecret(env: NodeJS.ProcessEnv): string | undefined {
+  const secret = env.SWEEP_SECRET;
+  if (!secret) return undefined;
+  if (secret.length < MIN_SWEEP_SECRET_LENGTH) {
+    throw new Error(`SWEEP_SECRET must be at least ${MIN_SWEEP_SECRET_LENGTH} characters (generate one with \`openssl rand -hex 32\`)`);
+  }
+  return secret;
+}
+
 /** Brevo settings. Both are needed together, and production cannot start without them. */
 function emailConfig(env: NodeJS.ProcessEnv): EmailConfig | undefined {
   const apiKey = env.BREVO_API_KEY;
@@ -125,6 +143,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     supabaseSecretKey: requiredKey(env, "SUPABASE_SECRET_KEY"),
     trustProxy: trustProxyHops(env),
     corsAllowedOrigins: corsOrigins(env),
+    sweepSecret: sweepSecret(env),
     email: emailConfig(env),
   };
 }
