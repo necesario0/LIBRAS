@@ -5,7 +5,7 @@ import type { Hold, RecordReturnResponse } from "@libras/shared";
 import { createAuditLog } from "../src/audit/index.ts";
 import { createTestMember } from "../src/testing/index.ts";
 import type { TestMember } from "../src/testing/index.ts";
-import { dispatchHarness } from "./dispatch-harness.ts";
+import { dispatchHarness, pause, started } from "./dispatch-harness.ts";
 import { refusal } from "./loans-harness.ts";
 import type { CopyStatus, TestBook, TestCopy, TestLibrarian } from "./loans-harness.ts";
 
@@ -290,31 +290,11 @@ describe("Cancelling a ready Hold", () => {
 
 describe("Hold dispatch at the same moment", () => {
   const h = dispatchHarness();
+  const { assertConsistent, whileAuditLogIsHeld } = h;
   let omar: TestLibrarian;
   let lenders: TestMember[];
   let waiters: TestMember[];
 
-  /**
-   * What must hold for a Book however requests interleave: every set-aside Copy has exactly
-   * one ready Hold and every ready Hold a set-aside Copy of its own, and no Hold is left
-   * waiting while a Copy sits available.
-   */
-  const assertConsistent = async (bookId: string) => {
-    const { rows } = await h.api().db.query(
-      `select
-         (select count(*)::int from public.copies c
-           where c.book_id = $1 and c.status = 'set_aside'
-             and (select count(*) from public.holds r where r.copy_id = c.id and r.status = 'ready') <> 1) as set_aside_without_one_ready_hold,
-         (select count(*)::int from public.holds r
-            left join public.copies c on c.id = r.copy_id
-           where r.book_id = $1 and r.status = 'ready' and c.status is distinct from 'set_aside') as ready_without_set_aside_copy,
-         (select count(*)::int from public.holds w
-           where w.book_id = $1 and w.status = 'waiting'
-             and exists (select 1 from public.copies c where c.book_id = $1 and c.status = 'available')) as waiting_beside_available_copy`,
-      [bookId],
-    );
-    assert.deepEqual(rows[0], { set_aside_without_one_ready_hold: 0, ready_without_set_aside_copy: 0, waiting_beside_available_copy: 0 });
-  };
   const statusesOf = (responses: Response[]) => responses.map((response) => response.status);
   const dispatchesOf = async (afterSeq: number, bookId: string) =>
     (await createAuditLog(h.api()).entries({ afterSeq, limit: 1000 })).filter(
@@ -529,35 +509,6 @@ describe("Hold dispatch at the same moment", () => {
     }
   });
 
-  const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-  /**
-   * Runs `work` while another transaction holds the audit log. A return, a Loan and a
-   * dispatch write the log last, so each started inside `work` has done everything but
-   * commit, and keeps its row locks, until `work` ends. This fixes the order of a race.
-   */
-  const whileAuditLogIsHeld = async <T>(work: () => Promise<T>): Promise<T> => {
-    const blocker = await h.api().db.connect();
-    try {
-      await blocker.query("begin");
-      await createAuditLog(h.api()).record(
-        { type: "sign_in_failed", subject: null, data: { portal: "member", reason: "refused", clientAddress: null } },
-        blocker,
-      );
-      return await work();
-    } finally {
-      // Rolled back: the audit log keeps no trace of it.
-      await blocker.query("rollback");
-      blocker.release();
-    }
-  };
-  /** Starts a request and tells whether it has been answered yet. */
-  const started = (request: Promise<Response>) => {
-    const call = { response: request, answered: false };
-    void request.then(() => {
-      call.answered = true;
-    });
-    return call;
-  };
 
   it("makes a Hold placed while a return is still being recorded wait for it, so the Hold is never left behind", async () => {
     const book = await h.lentBook("Placed During The Return", lenders[0] as TestMember);
