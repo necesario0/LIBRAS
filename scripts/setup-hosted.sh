@@ -261,6 +261,11 @@ if ! git check-ignore -q "$ENV_FILE"; then
   exit 1
 fi
 step "$ENV_FILE is ignored by git"
+if ! command -v node >/dev/null 2>&1; then
+  warn "Node.js is not on this shell's PATH, and the wizard needs it. Open a new Git Bash window (or add Node's folder to PATH), check that 'node -v' works, then run this wizard again."
+  exit 1
+fi
+step "node $(node -v) is available"
 if [[ ! -d node_modules ]]; then
   warn "Dependencies are not installed. Run: npm ci   and then run this wizard again."
   exit 1

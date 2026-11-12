@@ -90,7 +90,7 @@ The hosted system is three services, all on free tiers (ADR 0003):
 
 | Command | What it does |
 | --- | --- |
-| `npm run setup:hosted` | The guided setup wizard (`scripts/setup-hosted.sh`). Opens each dashboard, asks for each value, writes `.env.hosted` and the GitHub secrets, applies the migrations, creates the Librarian, checks the API and sends a test email |
+| `npm run setup:hosted` | The guided setup wizard (`scripts/setup-hosted.sh`, launched by `scripts/run-setup-hosted.mjs` so Windows uses Git Bash, not WSL). Opens each dashboard, asks for each value, writes `.env.hosted` and the GitHub secrets, applies the migrations, creates the Librarian, checks the API and sends a test email |
 | `npm run db:migrate:hosted` | Applies `supabase/migrations` to the hosted database. It first lists the pending migrations and asks you to type `apply`. `-- --dry-run` only lists them. `-- --yes` skips the question. Safe to run again |
 | `npm run seed:hosted` | Creates (or resets) the Librarian from `SEED_LIBRARIAN_EMAIL` and `SEED_LIBRARIAN_PASSWORD` in `.env.hosted`. Later seed steps (catalog, Loan Policy) run here too |
 | `npm run check:hosted` | Asks the hosted API for `/health` until it answers (up to five minutes, to cover Render waking up) |
