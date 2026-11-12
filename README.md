@@ -129,7 +129,7 @@ It goes to sleep after 15 minutes without traffic and takes about a minute to wa
 
 Do these in order, from the repository root, in Git Bash.
 
-1. **Get this work onto GitHub `main`.** Render builds from GitHub, and `render.yaml` must be on the `main` branch there. Merge the deployment work (branch `spec-2/6-setup-deploy`, or `spec-2-tier1` once it contains it) into `main` and push. Until then the wizard warns at the Render stage and you can stop and resume.
+1. **Get this work onto GitHub `main`.** Render builds from GitHub, and `render.yaml` must be on the `main` branch there. Merge the deployment work (branch `spec-2/6-setup`, or `spec-2-tier1` once it contains it) into `main` and push. Until then the wizard warns at the Render stage and you can stop and resume.
 2. **Prepare the computer.** `npm ci`. Then `gh auth login` if `gh auth status` says you are signed out (the wizard needs it to store GitHub secrets). Docker is not needed for this.
 3. **Run the wizard:** `npm run setup:hosted`. It has eight stages and can be stopped with Ctrl-C and run again: it remembers what it saved in `.env.hosted`. What you will do in each stage:
    1. *Check this computer.* Nothing to do. It stops if `.env.hosted` is not gitignored.
