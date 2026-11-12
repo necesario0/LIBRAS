@@ -120,7 +120,8 @@ export const LOAN_MESSAGES = {
   copyNotFound: "No Copy has this barcode or accession number. Scan it again, or type the accession number printed on the Copy.",
   cannotBorrow: "This Member's Account Type cannot borrow, so no Loan was recorded. They may use the Copy inside the library.",
   limitReached: "This Member is at their loan limit, so no Loan was recorded. A Copy must be returned before they borrow another.",
-  copyOnLoan: "This Copy is already on Loan, so no Loan was recorded. Record its return first if it has come back.",
+  copyOnLoan:
+    "This Copy is already on Loan, so no Loan was recorded. If it has come back, choose Done with this Member and scan it again to record its return.",
   copySetAside: "This Copy is set aside for another Member's Hold, so no Loan was recorded. Put it back on the hold shelf.",
 } as const;
 

@@ -8,6 +8,8 @@ interface Props {
   busy: boolean;
   /** What the desk expects next, shown in the empty field. */
   placeholder: string;
+  /** When this changes the field takes the focus back, as after a click on a button elsewhere on the page. */
+  focusKey?: unknown;
 }
 
 /**
@@ -15,13 +17,13 @@ interface Props {
  * code into this field and presses Enter; so can a person. The field keeps the
  * focus, so a scan never needs a click first, and empties after each scan.
  */
-export function ScanField({ input, busy, placeholder }: Props) {
+export function ScanField({ input, busy, placeholder, focusKey }: Props) {
   const [text, setText] = useState("");
   const field = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!busy) field.current?.focus();
-  }, [busy]);
+  }, [busy, focusKey]);
 
   function submit(event: FormEvent) {
     event.preventDefault();
