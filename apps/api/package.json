@@ -16,7 +16,9 @@
     "typecheck": "tsc -p tsconfig.json",
     "test": "node scripts/with-local-supabase.ts node --test --test-concurrency=1 \"test/**/*.test.ts\"",
     "seed": "node scripts/with-local-supabase.ts node src/seed/index.ts",
-    "measure:search": "node scripts/with-local-supabase.ts node scripts/measure-search.ts"
+    "measure:search": "node scripts/with-local-supabase.ts node scripts/measure-search.ts",
+    "audit:verify": "node src/audit/verify-cli.ts",
+    "audit:verify:hosted": "node --env-file-if-exists=../../.env.hosted src/audit/verify-cli.ts"
   },
   "dependencies": {
     "@libras/shared": "*",

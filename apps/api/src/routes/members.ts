@@ -9,6 +9,7 @@ import {
 import type { MemberMeResponse, VerifySignUpResponse } from "@libras/shared";
 import type { z } from "zod";
 import type { AppDeps } from "../app.ts";
+import { createAuditLog, recordingSignInFailures } from "../audit/index.ts";
 import { memberOf, requireMember } from "../auth/guards.ts";
 import type { SignInLimiter } from "../auth/sign-in-limit.ts";
 import { AppError } from "../errors.ts";
@@ -34,10 +35,16 @@ function signUpRefusal(error: z.ZodError): AppError {
 /** Sign-up, sign-in and the Member's own profile. */
 export function membersRouter(deps: AppDeps, limiter: SignInLimiter): Router {
   const router = Router();
+  const audit = createAuditLog(deps);
 
   router.post("/members/sign-in", async (req, res) => {
     const { email, password } = parseBody(signInRequestSchema, req.body, "Enter your email and password.");
-    res.json(await limiter.attempt(req.ip, () => signInMember(deps, email, password)));
+    const attempt = { portal: "member", email, clientAddress: req.ip } as const;
+    res.json(
+      await limiter.attempt(req.ip, () =>
+        recordingSignInFailures({ audit, logger: deps.logger }, attempt, () => signInMember(deps, email, password)),
+      ),
+    );
   });
 
   router.post("/members/sign-up", async (req, res) => {
