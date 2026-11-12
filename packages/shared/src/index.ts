@@ -113,6 +113,8 @@ export {
   confirmLoanRequestSchema,
   copyCodeSchema,
   formatLibraryDate,
+  formatLibraryDay,
+  libraryDaysBetween,
   isCurrentLoan,
   isLoanOverdue,
   loanDueAt,

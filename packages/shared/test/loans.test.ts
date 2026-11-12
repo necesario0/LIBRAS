@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { formatLibraryDate, isLoanOverdue, loanDueAt } from "../src/index.ts";
+import { formatLibraryDate, formatLibraryDay, isLoanOverdue, libraryDaysBetween, loanDueAt } from "../src/index.ts";
 
 describe("a Loan's due date", () => {
   it("is the end of the library day (UTC+8) that many days after the checkout day", () => {
@@ -27,8 +27,15 @@ describe("a Loan's due date", () => {
 
 describe("printing a date of the library's calendar", () => {
   it("shows the day in Manila, whatever the reader's own time zone", () => {
-    assert.equal(formatLibraryDate("2026-11-19T15:59:59.999Z"), "19 Nov 2026");
-    assert.equal(formatLibraryDate("2026-11-19T16:00:00.000Z"), "20 Nov 2026");
-    assert.equal(formatLibraryDate("2026-12-31T18:00:00.000Z"), "1 Jan 2027");
+    assert.equal(formatLibraryDate("2026-11-19T15:59:59.999Z"), "Nov 19, 2026");
+    assert.equal(formatLibraryDate("2026-11-19T16:00:00.000Z"), "Nov 20, 2026");
+    assert.equal(formatLibraryDate("2026-12-31T18:00:00.000Z"), "Jan 1, 2027");
+    assert.equal(formatLibraryDay("2026-11-19T15:59:59.999Z"), "Nov 19");
+  });
+
+  it("counts whole library days between two times", () => {
+    assert.equal(libraryDaysBetween("2026-11-12T02:00:00.000Z", "2026-11-19T15:59:59.999Z"), 7);
+    assert.equal(libraryDaysBetween("2026-11-12T15:59:00.000Z", "2026-11-12T16:01:00.000Z"), 1);
+    assert.equal(libraryDaysBetween("2026-11-20T02:00:00.000Z", "2026-11-19T15:59:59.999Z"), -1);
   });
 });

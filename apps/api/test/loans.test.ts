@@ -100,6 +100,11 @@ function loansHarness() {
       assert.equal(response.status, 200);
       return ((await response.json()) as DigitalIdResponse).code;
     },
+    myLoans: async (member: TestMember) => {
+      const response = await send("GET", "/members/me/loans", member.accessToken);
+      assert.equal(response.status, 200);
+      return (await response.json()) as MyLoansResponse;
+    },
     loansOf: async (member: TestMember) => {
       const response = await send("GET", "/members/me/loans", member.accessToken);
       assert.equal(response.status, 200);
@@ -235,7 +240,8 @@ describe("Confirming a Loan at the desk", () => {
     const fourth = await confirm(member, (book.copies[3] as TestCopy).barcode);
 
     assert.deepEqual(await refusal(fourth), { status: 409, code: "loan_limit_reached", message: LOAN_MESSAGES.limitReached });
-    assert.equal((await h.loansOf(member)).length, 3);
+    const mine = await h.myLoans(member);
+    assert.deepEqual([mine.loans.length, mine.loanLimit, mine.loanPeriodDays], [3, 3, 7]);
     // The refused Copy stays on the shelf.
     const { rows } = await h.api().db.query("select status from public.copies where id = $1", [(book.copies[3] as TestCopy).id]);
     assert.equal(rows[0].status, "available");
@@ -249,7 +255,7 @@ describe("Confirming a Loan at the desk", () => {
       const response = await confirm(member, (book.copies[0] as TestCopy).barcode);
 
       assert.deepEqual(await refusal(response), { status: 403, code: "cannot_borrow", message: LOAN_MESSAGES.cannotBorrow });
-      assert.deepEqual(await h.loansOf(member), []);
+      assert.deepEqual(await h.myLoans(member), { loans: [], loanLimit: 0, loanPeriodDays: null });
     });
   }
 

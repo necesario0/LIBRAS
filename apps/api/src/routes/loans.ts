@@ -19,7 +19,7 @@ export function loansRouter(deps: AppDeps): Router {
   });
 
   router.get("/members/me/loans", ...requireMember(deps), async (_req, res) => {
-    const body: MyLoansResponse = { loans: await listLoans(deps, identityOf(res)) };
+    const body: MyLoansResponse = await listLoans(deps, identityOf(res));
     res.json(body);
   });
 

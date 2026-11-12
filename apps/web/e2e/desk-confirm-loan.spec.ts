@@ -105,7 +105,7 @@ function dueDateOfALoanConfirmedNow(): string {
     new Date(Date.now() + 7 * 24 * 3_600_000),
   );
   const part = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
-  return `${part("day")} ${part("month").slice(0, 3)} ${part("year")}`;
+  return `${part("month").slice(0, 3)} ${part("day")}, ${part("year")}`;
 }
 
 test("a Librarian confirms a Loan: the Digital ID, then the Copy, each typed and ended with Enter", async ({ page }) => {

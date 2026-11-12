@@ -35,10 +35,22 @@ export function isLoanOverdue(dueAt: Date, now: Date): boolean {
   return now.getTime() > dueAt.getTime();
 }
 
-/** "19 Nov 2026": the library's calendar day of an ISO 8601 time. */
+/** "Nov 19": the library's calendar day of an ISO 8601 time, without the year. */
+export function formatLibraryDay(iso: string): string {
+  const shifted = new Date(Date.parse(iso) + OFFSET_MS);
+  return `${MONTHS[shifted.getUTCMonth()]} ${shifted.getUTCDate()}`;
+}
+
+/** "Nov 19, 2026": the library's calendar day of an ISO 8601 time, written as the designs write dates. */
 export function formatLibraryDate(iso: string): string {
   const shifted = new Date(Date.parse(iso) + OFFSET_MS);
-  return `${shifted.getUTCDate()} ${MONTHS[shifted.getUTCMonth()]} ${shifted.getUTCFullYear()}`;
+  return `${formatLibraryDay(iso)}, ${shifted.getUTCFullYear()}`;
+}
+
+/** Whole library days from the day of `fromIso` to the day of `toIso`: 7 from a checkout on Nov 12 to a due date of Nov 19. */
+export function libraryDaysBetween(fromIso: string, toIso: string): number {
+  const day = (iso: string) => Math.floor((Date.parse(iso) + OFFSET_MS) / DAY_MS);
+  return day(toIso) - day(fromIso);
 }
 
 /** One of the Member's Loans. */
@@ -72,6 +84,10 @@ export function isCurrentLoan(loan: Pick<Loan, "returnedAt">): boolean {
  */
 export interface MyLoansResponse {
   loans: Loan[];
+  /** The Loan Policy limit of the Member's Account Type: how many Copies they may have out at once. Zero means they cannot borrow. */
+  loanLimit: number;
+  /** The Loan Policy loan period in days, or null for an Account Type that cannot borrow. */
+  loanPeriodDays: number | null;
 }
 
 /** A Copy as the desk names it: its barcode or its accession number, already through the scan whitelist. */

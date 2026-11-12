@@ -1,6 +1,6 @@
 import type pg from "pg";
 import { LOAN_MESSAGES, isLoanOverdue, loanDueAt } from "@libras/shared";
-import type { AccountType, DeskLoan, Loan } from "@libras/shared";
+import type { AccountType, DeskLoan, Loan, MyLoansResponse } from "@libras/shared";
 import type { AppDeps } from "../app.ts";
 import { createAuditLog } from "../audit/index.ts";
 import type { Identity } from "../auth/auth-provider.ts";
@@ -217,11 +217,11 @@ interface LoanRow {
  * The Member's own Loans: current ones first, the one due soonest at the top,
  * then past ones, the latest return first. Read as the Member, so row-level
  * security shows nobody else's. Overdue is worked out from the due date by the
- * API's clock.
+ * API's clock. With them comes the loan limit of the Member's Loan Policy.
  */
-export async function listLoans(deps: AppDeps, identity: Identity): Promise<Loan[]> {
+export async function listLoans(deps: AppDeps, identity: Identity): Promise<MyLoansResponse> {
   const now = deps.clock.now();
-  const rows = await withIdentity(deps.db, identity, async (scope) => {
+  const { rows, policy } = await withIdentity(deps.db, identity, async (scope) => {
     const result = await scope.query<LoanRow>(
       `select l.id, c.book_id, b.title, b.authors, c.accession_number, l.checked_out_at, l.due_at, l.returned_at
          from public.loans l
@@ -234,9 +234,16 @@ export async function listLoans(deps: AppDeps, identity: Identity): Promise<Loan
                  l.checked_out_at desc`,
       [identity.userId],
     );
-    return result.rows;
+    const policy = await scope.query<{ loan_limit: number; loan_period_days: number | null }>(
+      `select p.loan_limit, p.loan_period_days
+         from public.members m
+         join public.loan_policies p on p.account_type = m.account_type
+        where m.user_id = $1`,
+      [identity.userId],
+    );
+    return { rows: result.rows, policy: policy.rows[0] };
   });
-  return rows.map((row) => ({
+  const loans: Loan[] = rows.map((row) => ({
     id: row.id,
     bookId: row.book_id,
     bookTitle: row.title,
@@ -247,4 +254,5 @@ export async function listLoans(deps: AppDeps, identity: Identity): Promise<Loan
     returnedAt: row.returned_at === null ? null : row.returned_at.toISOString(),
     overdue: row.returned_at === null && isLoanOverdue(row.due_at, now),
   }));
+  return { loans, loanLimit: policy?.loan_limit ?? 0, loanPeriodDays: policy?.loan_period_days ?? null };
 }
