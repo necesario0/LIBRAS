@@ -46,6 +46,15 @@ export const colors = {
   successSurface: "#E5F6EC",
   /** A neutral status pill, for example no Copy available (Figma "74% match" pill). */
   pill: "#F1F1F3",
+  /** Book page: the call number pill (Figma 1187:1479). */
+  callNumber: "#9DCCFF",
+  /** Book page: the "Available" pill and its text (Figma 614:1170, 614:1171). */
+  availableSurface: "#C7FFD5",
+  availableText: "#188132",
+  /** Book page: body copy under a heading (Figma 617:1184). */
+  textBody: "#6E6E6E",
+  /** The sheet that holds a Book page (Figma 609:1159 grabber). */
+  grabber: "#D9D9D9",
 } as const;
 
 /** Montserrat is the only family. Keys are the names registered with `useFonts`. */
@@ -53,6 +62,10 @@ export const fontFamily = {
   regular: "Montserrat_400Regular",
   medium: "Montserrat_500Medium",
   semiBold: "Montserrat_600SemiBold",
+  extraLight: "Montserrat_200ExtraLight",
+  /** The Book page's call number and its label (Figma: IBM Plex Mono and Roboto Mono). */
+  monoLabel: "IBMPlexMono_400Regular",
+  mono: "RobotoMono_400Regular",
 } as const;
 
 /** Sizes seen in the frames, largest first. */
@@ -117,6 +130,8 @@ export const radii = {
   list: 10,
   /** The Home search bar. */
   search: 65,
+  /** The sheet that holds a Book page. */
+  sheet: 38,
 } as const;
 
 /** Height of text fields and buttons. */

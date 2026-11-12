@@ -1,9 +1,12 @@
+import { IBMPlexMono_400Regular } from "@expo-google-fonts/ibm-plex-mono";
 import {
+  Montserrat_200ExtraLight,
   Montserrat_400Regular,
   Montserrat_500Medium,
   Montserrat_600SemiBold,
   useFonts,
 } from "@expo-google-fonts/montserrat";
+import { RobotoMono_400Regular } from "@expo-google-fonts/roboto-mono";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
@@ -16,6 +19,9 @@ void SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
+    IBMPlexMono_400Regular,
+    Montserrat_200ExtraLight,
+    RobotoMono_400Regular,
     Montserrat_400Regular,
     Montserrat_500Medium,
     Montserrat_600SemiBold,
