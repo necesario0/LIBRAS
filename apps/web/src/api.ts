@@ -27,7 +27,7 @@ export class ApiError extends Error {
   }
 }
 
-async function send(path: string, init: RequestInit & { session?: Session }): Promise<Response> {
+export async function send(path: string, init: RequestInit & { session?: Session }): Promise<Response> {
   const { session, headers, ...rest } = init;
   try {
     return await fetch(`${API_BASE}${path}`, {
@@ -43,7 +43,7 @@ async function send(path: string, init: RequestInit & { session?: Session }): Pr
   }
 }
 
-async function failure(response: Response): Promise<ApiError> {
+export async function failure(response: Response): Promise<ApiError> {
   const body: unknown = await response.json().catch(() => undefined);
   const error = (body as { error?: { code?: unknown; message?: unknown } } | undefined)?.error;
   if (typeof error?.code === "string" && typeof error.message === "string") {
@@ -160,4 +160,24 @@ export async function recordReturn(copy: string): Promise<ReturnedLoan | undefin
   if (!response) return undefined;
   if (!response.ok) throw await failure(response);
   return ((await response.json()) as RecordReturnResponse).loan;
+}
+
+/**
+ * Opens the desk page's scanner stream (pairing code, pairing events, scans from
+ * the paired phone): the response whose body is the event stream, to be read
+ * until it ends or `signal` aborts. `deskId` resumes the earlier pairing after a
+ * reconnect. Returns undefined when the Librarian's session is gone. The caller
+ * checks `response.ok`.
+ */
+export async function openScannerStream(deskId: string | undefined, signal: AbortSignal): Promise<Response | undefined> {
+  const query = deskId === undefined ? "" : `?desk=${encodeURIComponent(deskId)}`;
+  return authorized(`/desk/scanner/events${query}`, { signal, headers: { accept: "text/event-stream" } });
+}
+
+/** Unpairs the phone from this desk page. Resolves with false when the Librarian's session is gone. Throws ApiError. */
+export async function unpairScanner(deskId: string): Promise<boolean> {
+  const response = await authorized("/desk/scanner/unpair", { method: "POST", body: JSON.stringify({ deskId }) });
+  if (!response) return false;
+  if (!response.ok) throw await failure(response);
+  return true;
 }

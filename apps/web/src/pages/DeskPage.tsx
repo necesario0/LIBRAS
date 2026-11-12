@@ -4,9 +4,11 @@ import { ApiError, confirmLoan, identifyMember, recordReturn } from "../api.ts";
 import { Brand } from "../components/Brand.tsx";
 import { LoanNotice } from "../components/LoanNotice.tsx";
 import { MemberCard } from "../components/MemberCard.tsx";
+import { PairingPanel } from "../components/PairingPanel.tsx";
 import { ReturnNotice } from "../components/ReturnNotice.tsx";
 import { ScanField } from "../scan/ScanField.tsx";
 import { useScanInput } from "../scan/scan-input.ts";
+import { useDeskScanner } from "../scanner/useDeskScanner.ts";
 
 interface Props {
   staff: StaffProfile;
@@ -64,6 +66,7 @@ function messageOf(error: unknown): string {
  * shown here. A Digital ID identifies a Member; a Copy scanned after it
  * confirms a Loan for that Member. A Copy scanned with no Member at the desk
  * records its return, and "Done with this Member" puts the desk back to that.
+ * The pairing panel beside it links the Librarian's phone as a second scan source.
  */
 export function DeskPage({ staff, onSignOut }: Props) {
   const [state, setState] = useState<DeskState>({ kind: "ready", outcome: { kind: "none" } });
@@ -135,6 +138,9 @@ export function DeskPage({ staff, onSignOut }: Props) {
     queue.current = queue.current.then(() => handle(reading));
   });
 
+  // The paired phone is the second source of the same scan input point.
+  const phone = useDeskScanner({ onScan: (text) => scanInput.submit(text, "phone"), onSessionEnded: onSignOut });
+
   const status = statusOf(state);
   const busy = state.kind === "identifying" || state.kind === "confirming" || state.kind === "returning";
 
@@ -153,38 +159,41 @@ export function DeskPage({ staff, onSignOut }: Props) {
         </div>
       </header>
       <main className="desk__main">
-        <section className="desk__ready" aria-labelledby="desk-title">
-          <span className={`desk__status desk__status--${status}`} role="status">
-            {STATUS[status]}
-          </span>
-          <h1 className="desk__title" id="desk-title">
-            Ready for scanning
-          </h1>
-          <p className="desk__hint" data-testid="desk-hint">
-            {identified
-              ? "Scan the Copy's barcode to confirm a Loan for this Member. If it cannot be read, type the accession number."
-              : "Scan a Member's Digital ID to start a Loan, or scan a Copy to record a return."}
-          </p>
-          <ScanField
-            input={scanInput}
-            busy={busy}
-            focusKey={identified?.digitalId}
-            placeholder={identified ? "Copy barcode or accession number, then Enter" : "Digital ID or Copy, then Enter"}
-          />
-          {outcome.kind === "refused" && (
-            <p className="alert desk__alert" role="alert">
-              {outcome.message}
+        <div className="desk__layout">
+          <section className="desk__ready" aria-labelledby="desk-title">
+            <span className={`desk__status desk__status--${status}`} role="status">
+              {STATUS[status]}
+            </span>
+            <h1 className="desk__title" id="desk-title">
+              Ready for scanning
+            </h1>
+            <p className="desk__hint" data-testid="desk-hint">
+              {identified
+                ? "Scan the Copy's barcode to confirm a Loan for this Member. If it cannot be read, type the accession number."
+                : "Scan a Member's Digital ID to start a Loan, or scan a Copy to record a return."}
             </p>
-          )}
-          {outcome.kind === "confirmed" && <LoanNotice loan={outcome.loan} />}
-          {outcome.kind === "returned" && <ReturnNotice loan={outcome.loan} />}
-          {identified && <MemberCard member={identified.member} />}
-          {identified && (
-            <button className="button button--quiet desk__done" type="button" onClick={finishWithMember}>
-              Done with this Member
-            </button>
-          )}
-        </section>
+            <ScanField
+              input={scanInput}
+              busy={busy}
+              focusKey={identified?.digitalId}
+              placeholder={identified ? "Copy barcode or accession number, then Enter" : "Digital ID or Copy, then Enter"}
+            />
+            {outcome.kind === "refused" && (
+              <p className="alert desk__alert" role="alert">
+                {outcome.message}
+              </p>
+            )}
+            {outcome.kind === "confirmed" && <LoanNotice loan={outcome.loan} />}
+            {outcome.kind === "returned" && <ReturnNotice loan={outcome.loan} />}
+            {identified && <MemberCard member={identified.member} />}
+            {identified && (
+              <button className="button button--quiet desk__done" type="button" onClick={finishWithMember}>
+                Done with this Member
+              </button>
+            )}
+          </section>
+          <PairingPanel state={phone.state} onUnpair={() => void phone.unpair()} />
+        </div>
       </main>
     </div>
   );
