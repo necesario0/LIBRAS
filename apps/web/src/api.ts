@@ -1,4 +1,5 @@
 import type {
+  ConfirmLoanResponse,
   DeskMember,
   IdentifyMemberResponse,
   RefreshSessionResponse,
@@ -112,6 +113,22 @@ export async function identifyMember(code: string): Promise<DeskMember | undefin
   if (!response) return undefined;
   if (!response.ok) throw await failure(response);
   return ((await response.json()) as IdentifyMemberResponse).member;
+}
+
+/**
+ * Confirms a Loan for the Member whose Digital ID was scanned: `digitalId` is
+ * that code and `copy` is the Copy's barcode or accession number from the scan
+ * input point. Resolves with the Loan and the Member with the Loan counted, or
+ * undefined when the Librarian's session is gone. Throws ApiError with the
+ * reason to show: `loan_limit_reached`, `cannot_borrow`, `copy_on_loan`,
+ * `copy_set_aside`, `copy_not_found`, `digital_id_expired`, `digital_id_invalid`,
+ * `digital_id_used`, `invalid_request` or `unreachable`.
+ */
+export async function confirmLoan(digitalId: string, copy: string): Promise<ConfirmLoanResponse | undefined> {
+  const response = await authorized("/desk/loans", { method: "POST", body: JSON.stringify({ digitalId, copy }) });
+  if (!response) return undefined;
+  if (!response.ok) throw await failure(response);
+  return (await response.json()) as ConfirmLoanResponse;
 }
 
 /**

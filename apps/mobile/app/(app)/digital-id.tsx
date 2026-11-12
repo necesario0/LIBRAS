@@ -2,10 +2,12 @@ import { useRouter } from "expo-router";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { formatDigitalId } from "@libras/shared";
+import { useAuth } from "../../src/auth/AuthContext";
 import { Button } from "../../src/components/Button";
 import { Barcode } from "../../src/digital-id/Barcode";
 import { useDigitalId, useSecondsLeft } from "../../src/digital-id/useDigitalId";
 import { useScreenTop } from "../../src/hooks/useScreenTop";
+import { useNewLoan } from "../../src/loans/useLoans";
 import { cardShadow, colors, fontFamily, fontSize, radii, spacing } from "../../src/theme/tokens";
 
 /** Inner width of the dashed frame that the barcode may use, quiet zones included. */
@@ -22,6 +24,9 @@ function mmss(seconds: number): string {
  * Code 128 barcode with the same code printed beneath it, replaced by itself
  * every 60 seconds. The Figma frame also shows the Book being borrowed; this
  * screen identifies the Member only, so that card is left out here.
+ *
+ * While it is open the screen watches for a Loan: when the Librarian confirms
+ * one at the desk, it gives way to "Successfully Borrowed".
  */
 export default function DigitalIdScreen() {
   const router = useRouter();
@@ -29,6 +34,8 @@ export default function DigitalIdScreen() {
   const screenTop = useScreenTop();
   const { state, retry } = useDigitalId();
   const secondsLeft = useSecondsLeft(state);
+  const { request } = useAuth();
+  useNewLoan(request, (loan) => router.replace({ pathname: "/borrowed", params: { loanId: loan.id } }));
 
   return (
     <ScrollView

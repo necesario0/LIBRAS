@@ -6,6 +6,7 @@ import { useAuth, useMember } from "../../src/auth/AuthContext";
 import { useCatalogSearch } from "../../src/catalog/useCatalogSearch";
 import { DigitalIdEntry } from "../../src/digital-id/DigitalIdEntry";
 import { HoldsSummary } from "../../src/holds/HoldsSummary";
+import { LoansSummary } from "../../src/loans/LoansSummary";
 import { useScreenTop } from "../../src/hooks/useScreenTop";
 import { BookResultRow } from "../../src/home/BookResultRow";
 import { HomeHeader } from "../../src/home/HomeHeader";
@@ -16,9 +17,9 @@ import { colors, fontFamily, fontSize, radii, spacing } from "../../src/theme/to
 /**
  * Home for a signed-in Member: the Figma "Home dashboard" layout (node
  * 1032:1994), trimmed to what Tier 1 builds. The greeting and the search bar
- * are there, and under them the entry to the Digital ID and the summary of the
- * Member's Holds; the recommendation sections and the Loans summary arrive with
- * the tickets that build them. The results replace those sections under the search bar.
+ * are there, and under them the entry to the Digital ID and the summaries of the
+ * Member's Loans and Holds; the recommendation sections are left out of Tier 1.
+ * The results replace those sections under the search bar.
  *
  * Signing out stays reachable from here (a small button where the design has
  * the notification and menu buttons, which lead nowhere yet).
@@ -72,6 +73,7 @@ export default function HomeScreen() {
               Search by title, author, ISBN, accession number or call number. Small typos are fine.
             </Text>
             <DigitalIdEntry />
+            <LoansSummary />
             <HoldsSummary />
           </>
         ) : null}

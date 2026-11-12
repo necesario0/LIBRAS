@@ -107,3 +107,16 @@ export {
   placeHoldRequestSchema,
 } from "./holds.ts";
 export type { CancelHoldResponse, Hold, HoldStatus, MyHoldsResponse, PlaceHoldRequest, PlaceHoldResponse } from "./holds.ts";
+export {
+  LIBRARY_UTC_OFFSET_HOURS,
+  LOAN_MESSAGES,
+  confirmLoanRequestSchema,
+  copyCodeSchema,
+  formatLibraryDate,
+  formatLibraryDay,
+  libraryDaysBetween,
+  isCurrentLoan,
+  isLoanOverdue,
+  loanDueAt,
+} from "./loans.ts";
+export type { ConfirmLoanRequest, ConfirmLoanResponse, DeskLoan, Loan, MyLoansResponse } from "./loans.ts";

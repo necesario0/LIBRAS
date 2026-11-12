@@ -8,6 +8,7 @@ import type {
   MemberMeResponse,
   MemberSignInResponse,
   MyHoldsResponse,
+  MyLoansResponse,
   PlaceHoldResponse,
   RefreshSessionResponse,
   ResendSignUpCodeRequest,
@@ -113,6 +114,8 @@ export function createApiClient({ baseUrl, fetch: fetchImpl = fetch, timeoutMs =
     /** Takes the Member out of a Book's queue. Failures: `hold_not_found` (404), `hold_not_cancellable` (409). */
     cancelHold: (accessToken: string, holdId: string) =>
       request<CancelHoldResponse>(`/holds/${encodeURIComponent(holdId)}/cancel`, { method: "POST", headers: bearer(accessToken) }),
+    /** The Member's own Loans, current ones first, with the loan limit and loan period of their Loan Policy. */
+    getLoans: (accessToken: string) => request<MyLoansResponse>("/members/me/loans", { headers: bearer(accessToken) }),
     /** Starts a sign-up: the API emails a verification code. */
     signUp: (body: SignUpRequest) => post<SignUpCodeSentResponse>("/members/sign-up", body),
     /** Accepts the emailed code: the account is active from here on. */

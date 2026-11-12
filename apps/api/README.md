@@ -17,6 +17,7 @@ How to run it and its tests is in the [root README](../../README.md).
 | `src/auth/` | Sign-in sessions, guards (`requireLibrarian`, `requireMember`), identity pass-through to PostgreSQL |
 | `src/audit/` | The append-only, hash-chained audit log: `record`, `verify`, the event whitelist |
 | `src/holds/` | Holds: `placeHold`, `listHolds`, `cancelHold`, and the priority weights (`priority.ts`) |
+| `src/loans/` | Loans: `confirmLoan` (the desk) and `listLoans` (My Loans) |
 | `src/catalog/` | `CatalogSearch`: the in-memory search index, its rebuild-and-swap, and live availability |
 | `src/seed/` | `npm run seed`: the Librarian and the sample catalog (`catalog-generator.ts` is pure and reproducible, `catalog.ts` writes it) |
 | `src/testing/` | The HTTP test harness, also exported as `@libras/api/testing`, and the end-to-end server `e2e-server.ts` |
@@ -88,7 +89,7 @@ ana.accessToken; // Authorization: Bearer <accessToken>
 
 ## Digital ID and Loan Policy
 
-A Digital ID is 12 digits: the Member's fixed 6-digit Digital ID number, then a 6-digit TOTP-style token (HMAC-SHA-256 of the 60-second window under a 32-byte per-Member secret). ADR 0004 records why. `digital-id/code.ts` is the derivation (pure); `digital-id/index.ts` has `currentDigitalId(deps, memberId)`, which creates the number and secret on first use with the CSPRNG, and `verifyDigitalId(deps, code)`, which accepts the current and the previous window by `deps.clock`, compares in constant time, and throws 400 `digital_id_expired` (up to an hour old) or `digital_id_invalid`. It returns `{ memberId, window }`: the pair that names one shown code, for the Loan ticket to mark as used.
+A Digital ID is 12 digits: the Member's fixed 6-digit Digital ID number, then a 6-digit TOTP-style token (HMAC-SHA-256 of the 60-second window under a 32-byte per-Member secret). ADR 0004 records why. `digital-id/code.ts` is the derivation (pure); `digital-id/index.ts` has `currentDigitalId(deps, memberId)`, which creates the number and secret on first use with the CSPRNG, and `verifyDigitalId(deps, code)`, which accepts the current and the previous window by `deps.clock`, compares in constant time, and throws 400 `digital_id_expired` (up to an hour old) or `digital_id_invalid`. It returns `{ memberId, window }`: the pair that names one shown code, which confirming a Loan marks as used (see Loans).
 
 - `GET /members/me/digital-id` (Member) -> `DigitalIdResponse` `{ code, windowStartsAt, refreshAt, serverTime }`, `Cache-Control: no-store`.
 - `POST /desk/members/identify` `{ code }` (Librarian) -> `{ member: { id, fullName, accountType, loans: { current, limit, loanPeriodDays } } }`. 400 `invalid_request` unless `code` is exactly 12 digits.
@@ -114,13 +115,27 @@ Tests: `test/digital-id.test.ts` (HTTP, fake clock), `test/digital-id-code.test.
 
 Tests: `test/holds.test.ts` (HTTP: placing, every refusal, cancelling, privacy, the row-level security check through a route that queries as the signed-in Member, the dispatcher's columns) and the pure weights.
 
+## Loans
+
+`src/loans/`, `routes/loans.ts` and the migration `supabase/migrations/20261112220000_loans.sql`. A Loan exists only once a Librarian confirms it at the desk; no Member endpoint creates one, and clients have `select` only on `public.loans`.
+
+- `POST /desk/loans` `{ digitalId, copy }` (Librarian) -> `201 { loan, member }`. `digitalId` is the 12 digits that were scanned (verified again here, by `verifyDigitalId`), `copy` is the Copy's barcode or its accession number (typed in either case). `loan` is `{ id, bookTitle, accessionNumber, checkedOutAt, dueAt }` and `member` is the `DeskMember` with the Loan counted. Refusals, each with a message the desk page shows (`LOAN_MESSAGES`): `400 invalid_request`, `400 digital_id_expired` / `digital_id_invalid`, `409 digital_id_used`, `404 copy_not_found`, `403 cannot_borrow` (Loan Policy limit of zero: Visitor, Alumni), `409 loan_limit_reached`, `409 copy_on_loan`, `409 copy_set_aside`.
+- `GET /members/me/loans` (Member) -> `{ loans, loanLimit, loanPeriodDays }`: every Loan of the Member, current ones first (due soonest at the top), then returned ones. Each has `checkedOutAt`, `dueAt`, `returnedAt` and `overdue` (still out and past `dueAt` by `deps.clock`). Read through `withIdentity`, so row-level security is the second layer (`loans_read_own`; Librarians read all through `loans_read_staff`, which is how the desk counts a Member's Loans).
+- **Due date.** `loanDueAt` (`@libras/shared`): the last millisecond of the library day (UTC+8, `LIBRARY_UTC_OFFSET_HOURS`) that is the Loan Policy's `loan_period_days` after the checkout day. A Loan is overdue from the next day.
+- **One transaction** (`confirmLoan`): lock the Member's row, then the Copy's row (`for no key update`), check the limit and the Copy's status, insert the Loan, set the Copy `on_loan`, record the audit event `loan_confirmed` last. Setting the Copy `on_loan` is what makes the live count of available Copies fall for search, the Book page and the Hold action. Two requests at once for one Copy, or for a Member's last allowed Loan, yield exactly one Loan; the partial unique index `loans_one_open_per_copy` (one open Loan per Copy) is the database's own backstop. Any later writer that needs both locks (returns, Hold dispatch) must take them in the same order: Member, then Copy.
+- **An open Loan** is one with `returned_at` null. The return ticket sets `returned_at` and frees the Copy; nothing else needs to change for My Loans to show it as past.
+- **Set-aside Copies.** `copyRefusal` in `src/loans/index.ts` is the one place that decides whether a Copy may go out to a Member. Today every `set_aside` Copy is refused (`copy_set_aside`); Hold dispatch lets the Member of the ready Hold through there.
+- **Used Digital IDs.** `public.digital_id_uses` records the Member and window of a code that confirmed a Loan, and the Librarian. That Librarian may confirm more Loans with the same code while it is still accepted (several Copies in one visit); any other Librarian gets `digital_id_used`. A refused Loan records nothing. No client role can read the table.
+
+Tests: `test/loans.test.ts` (HTTP: confirmation and due date, availability falling, every refusal, the audit entry, three races, My Loans order and overdue with the fake clock, privacy and the row-level security checks).
+
 ## The end-to-end API
 
-`src/testing/e2e-server.ts` is the API for end-to-end tests: the real app, but emails are captured and readable at `GET /e2e/emails?to=<address>`, and a Book can be added at `POST /e2e/books` (`testing/catalog-fixture-routes.ts`; it answers once search can find the Book). It is a separate entry point that `server.ts` never imports, listens on loopback only, and exits at once when `NODE_ENV=production`, so production cannot expose it (tests in `test/e2e-mailbox.test.ts`). `npm run e2e -w @libras/mobile` starts it.
+`src/testing/e2e-server.ts` is the API for end-to-end tests: the real app, but emails are captured and readable at `GET /e2e/emails?to=<address>`, a Book can be added at `POST /e2e/books` (`testing/catalog-fixture-routes.ts`; it answers once search can find the Book), and a Librarian confirms a Loan for a Member at `POST /e2e/loans` `{ email, bookId, daysAgo? }` (`testing/loan-fixture-routes.ts`: the real confirmation with the code on the Member's phone; `daysAgo` sets the clock back to make an overdue Loan). It is a separate entry point that `server.ts` never imports, listens on loopback only, and exits at once when `NODE_ENV=production`, so production cannot expose it (tests in `test/e2e-mailbox.test.ts`). `npm run e2e -w @libras/mobile` starts it.
 
 ## Audit log
 
-`src/audit/` and the migration `supabase/migrations/20261112131200_audit_log.sql`. An append-only log of failed sign-ins (and, as they arrive, Loans, returns and Hold dispatches). Each entry stores a SHA-256 hash over its content and the previous entry's hash.
+`src/audit/` and the migration `supabase/migrations/20261112131200_audit_log.sql`. An append-only log of failed sign-ins and confirmed Loans (and, as they arrive, returns and Hold dispatches). Each entry stores a SHA-256 hash over its content and the previous entry's hash.
 
 - **Record:** `createAuditLog(deps).record({ type, actorId?, subject?, data }, tx?)`. Time comes from `deps.clock`. Pass the client of a transaction (`withTransaction(deps.db, (tx) => ...)`) to record atomically with a change; record last in that transaction, because other writers of the log wait for it to end. The transaction must be READ COMMITTED (the default); the database refuses others.
 - **Whitelist:** event types and the exact shape of `subject` and `data` are in `src/audit/events.ts` (strict objects, so an unlisted field such as a password cannot be recorded). The database has its own list, `public.audit_event_types`: a new type needs an entry in `events.ts` and an `insert` in a migration.

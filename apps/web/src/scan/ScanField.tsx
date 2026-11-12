@@ -6,6 +6,8 @@ import type { ScanInputPoint } from "./scan-input.ts";
 interface Props {
   input: ScanInputPoint;
   busy: boolean;
+  /** What the desk expects next, shown in the empty field. */
+  placeholder: string;
 }
 
 /**
@@ -13,7 +15,7 @@ interface Props {
  * code into this field and presses Enter; so can a person. The field keeps the
  * focus, so a scan never needs a click first, and empties after each scan.
  */
-export function ScanField({ input, busy }: Props) {
+export function ScanField({ input, busy, placeholder }: Props) {
   const [text, setText] = useState("");
   const field = useRef<HTMLInputElement>(null);
 
@@ -41,11 +43,10 @@ export function ScanField({ input, busy }: Props) {
           id="scan-input"
           className="field__input scan-field__input"
           type="text"
-          inputMode="numeric"
           autoComplete="off"
           spellCheck={false}
           maxLength={SCAN_INPUT_MAX_LENGTH * 2}
-          placeholder="Digital ID, then Enter"
+          placeholder={placeholder}
           value={text}
           onChange={(event) => setText(event.target.value)}
           onBlur={() => {

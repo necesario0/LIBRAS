@@ -55,6 +55,8 @@ export const colors = {
   availableText: "#188132",
   /** Book page: body copy under a heading (Figma 617:1184). */
   textBody: "#6E6E6E",
+  /** Fill of the "Overdue" pill; its text is `danger`. */
+  dangerSurface: "#FDECEC",
   /** The sheet that holds a Book page (Figma 609:1159 grabber). */
   grabber: "#D9D9D9",
 } as const;
@@ -143,6 +145,8 @@ export const radii = {
   search: 65,
   /** The sheet that holds a Book page. */
   sheet: 38,
+  /** The yellow call to action of the borrow flow ("Borrow", "View My Books", Figma 617:3570). */
+  callToAction: 34,
 } as const;
 
 /** Height of text fields and buttons. */
@@ -150,6 +154,12 @@ export const controlHeight = 44;
 
 /** Height of the outlined button of the borrow flow (Figma 617:3265). */
 export const outlineButtonHeight = 61;
+
+/** Height of the yellow call to action of the borrow flow (Figma 617:3570). */
+export const callToActionHeight = 57;
+
+/** Height of the outlined "Home" button beside it (Figma 617:3547). */
+export const outlineActionHeight = 54;
 
 /** Height of the Home search bar. */
 export const searchBarHeight = 46;
