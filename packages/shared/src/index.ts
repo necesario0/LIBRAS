@@ -98,3 +98,12 @@ export {
   catalogSearchQuerySchema,
 } from "./catalog.ts";
 export type { BookDetail, BookDetailResponse, BookSearchResult, CatalogSearchQuery, CatalogSearchResponse } from "./catalog.ts";
+export {
+  HOLD_MESSAGES,
+  HOLD_STATUSES,
+  HOLD_STATUS_LABELS,
+  holdIdSchema,
+  isActiveHold,
+  placeHoldRequestSchema,
+} from "./holds.ts";
+export type { CancelHoldResponse, Hold, HoldStatus, MyHoldsResponse, PlaceHoldRequest, PlaceHoldResponse } from "./holds.ts";
