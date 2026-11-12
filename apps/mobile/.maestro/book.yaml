@@ -1,0 +1,134 @@
+# A Member opens a Book from the search results and sees its details and how many
+# Copies exist and are available. A Visitor sees the same page with a note that
+# their Account Type cannot borrow.
+# Needs the end-to-end API on port 3000 (npm run e2e starts it).
+appId: ph.edu.umak.libras
+---
+- launchApp:
+    clearState: true
+- runScript: scripts/create-members.js
+- runScript: scripts/create-book-page.js
+
+# A UMAK Student signs in and searches for the Book.
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 30000
+- tapOn:
+    id: welcome-sign-in
+- tapOn:
+    id: sign-in-email
+- retry:
+    maxRetries: 3
+    commands:
+      - eraseText: 80
+      - inputText: ${output.email}
+      - assertVisible: ${output.email}
+- tapOn:
+    id: sign-in-password
+- inputText: ${output.password}
+- hideKeyboard
+- tapOn:
+    id: sign-in-continue
+- extendedWaitUntil:
+    visible:
+      id: search-input
+    timeout: 20000
+- tapOn:
+    id: search-input
+- inputText: ${output.word}
+- extendedWaitUntil:
+    visible: ${output.title}.*
+    timeout: 15000
+
+# Opening the result shows the Book's details and its Copies.
+- tapOn: ${output.title}.*
+- extendedWaitUntil:
+    visible:
+      id: book-sheet
+    timeout: 15000
+- assertVisible: "Call number"
+- assertVisible: ${output.callNumber}
+- assertVisible: ${output.title}
+- assertVisible: ${output.authors}
+- assertVisible: ${output.edition}
+- assertVisible: "Available"
+- assertVisible: "1960"
+- assertVisible: "3 copies"
+- assertVisible: "in the library"
+- assertVisible: ${output.isbn}
+# A UMAK Student can borrow, so there is no cannot-borrow note.
+- assertNotVisible:
+    id: cannot-borrow-note
+- takeScreenshot: book-student
+
+# Closing the page returns to the results.
+- tapOn:
+    id: book-close
+- extendedWaitUntil:
+    visible:
+      id: search-results
+    timeout: 10000
+- assertNotVisible:
+    id: book-sheet
+
+# A Book with no Copy available says so.
+- tapOn:
+    id: search-input
+- eraseText: 40
+- inputText: ${output.noneWord}
+- extendedWaitUntil:
+    visible: ${output.noneTitle}
+    timeout: 15000
+- tapOn: ${output.noneTitle}
+- extendedWaitUntil:
+    visible:
+      id: book-sheet
+    timeout: 15000
+- assertVisible: "None available"
+- assertVisible: "1 copy"
+- takeScreenshot: book-none-available
+- tapOn:
+    id: book-close
+- tapOn:
+    id: home-sign-out
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 20000
+
+# A Visitor sees the Book and is told they cannot borrow.
+- tapOn:
+    id: welcome-sign-in
+- tapOn:
+    id: sign-in-email
+- retry:
+    maxRetries: 3
+    commands:
+      - eraseText: 80
+      - inputText: ${output.visitorEmail}
+      - assertVisible: ${output.visitorEmail}
+- tapOn:
+    id: sign-in-password
+- inputText: ${output.visitorPassword}
+- hideKeyboard
+- tapOn:
+    id: sign-in-continue
+- extendedWaitUntil:
+    visible:
+      id: search-input
+    timeout: 20000
+- tapOn:
+    id: search-input
+- inputText: ${output.word}
+- extendedWaitUntil:
+    visible: ${output.title}.*
+    timeout: 15000
+- tapOn: ${output.title}.*
+- extendedWaitUntil:
+    visible:
+      id: book-sheet
+    timeout: 15000
+- assertVisible: "3 copies"
+- assertVisible:
+    id: cannot-borrow-note
+- assertVisible: "Visitor accounts cannot borrow"
+- takeScreenshot: book-visitor

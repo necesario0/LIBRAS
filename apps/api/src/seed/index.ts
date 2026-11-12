@@ -1,7 +1,9 @@
-// The seed script: `npm run seed`. Later tickets add the catalog, the Loan
-// Policy and the settings here. Safe to run again.
+// The seed script: `npm run seed`. Later tickets add the Loan Policy and
+// the settings here. Safe to run again.
 import { loadConfig } from "../config.ts";
 import { createDatabase } from "../db.ts";
+import { seedCatalog } from "./catalog.ts";
+import { generateCatalog } from "./catalog-generator.ts";
 import { seedLibrarians } from "./librarians.ts";
 import type { LibrarianSeed } from "./librarians.ts";
 
@@ -25,6 +27,8 @@ try {
   const librarian = librarianFromEnvironment(process.env, config.isProduction);
   await seedLibrarians(db, [librarian]);
   console.log(`Librarian ready: ${librarian.email}`);
+  const catalog = await seedCatalog(db, generateCatalog());
+  console.log(`Catalog ready: ${catalog.books} Books, ${catalog.copies} Copies`);
 } finally {
   await db.end();
 }

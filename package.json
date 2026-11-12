@@ -19,7 +19,7 @@
     "db:status": "supabase status",
     "db:reset": "supabase db reset",
     "seed": "npm run seed -w @libras/api",
-    "setup:hosted": "bash scripts/setup-hosted.sh",
+    "setup:hosted": "node scripts/run-setup-hosted.mjs",
     "db:migrate:hosted": "node --env-file-if-exists=.env.hosted apps/api/scripts/migrate-hosted.ts",
     "seed:hosted": "node --env-file-if-exists=.env.hosted apps/api/src/seed/index.ts",
     "email:test": "node --env-file-if-exists=.env.hosted apps/api/scripts/send-test-email.ts",

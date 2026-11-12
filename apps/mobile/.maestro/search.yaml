@@ -1,0 +1,93 @@
+# A signed-in Member searches the catalog from Home: an exact word, a word with
+# a typo, a Book with no Copy available, a search that finds nothing (which is
+# not an error), and a search that cannot run (which is).
+# Needs the end-to-end API on port 3000 (npm run e2e starts it).
+appId: ph.edu.umak.libras
+---
+- launchApp:
+    clearState: true
+- runScript:
+    file: scripts/create-members.js
+- runScript:
+    file: scripts/create-books.js
+
+# Sign in.
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 30000
+- tapOn:
+    id: welcome-sign-in
+- tapOn:
+    id: sign-in-email
+- inputText: ${output.email}
+- tapOn:
+    id: sign-in-password
+- inputText: ${output.password}
+- hideKeyboard
+- tapOn:
+    id: sign-in-continue
+
+# Home: the greeting and the search bar, and none of the recommendation sections.
+- extendedWaitUntil:
+    visible: "Hi, Cobby"
+    timeout: 20000
+- assertVisible:
+    id: search-input
+- assertVisible:
+    id: search-hint
+- assertNotVisible: "Book of the month!"
+- assertNotVisible: "You might also like these"
+- takeScreenshot: home-idle
+
+# An exact word finds the Book and shows how many Copies are available.
+- tapOn:
+    id: search-input
+- inputText: ${output.word}
+- extendedWaitUntil:
+    visible: ${output.title}
+    timeout: 15000
+- assertVisible: "2 of 3 available"
+- assertVisible: "Zxqy, Ana M."
+- assertNotVisible: "No books found"
+- takeScreenshot: search-results
+
+# A typo still finds it.
+- eraseText: 40
+- inputText: ${output.typo}
+- extendedWaitUntil:
+    visible: ${output.title}
+    timeout: 15000
+- assertVisible: "2 of 3 available"
+
+# A Book whose only Copy is on loan says so.
+- eraseText: 40
+- inputText: ${output.other}
+- extendedWaitUntil:
+    visible: ${output.loanTitle}
+    timeout: 15000
+- assertVisible: "None available"
+- takeScreenshot: search-none-available
+
+# Nothing matches: a clear "no books found", not an error.
+- eraseText: 40
+- inputText: ${output.nothing}
+- extendedWaitUntil:
+    visible: "No books found"
+    timeout: 15000
+- assertNotVisible: "Search is not working"
+- assertNotVisible: ${output.title}
+- takeScreenshot: search-no-results
+
+# Clearing the search brings the hint back.
+- eraseText: 60
+- extendedWaitUntil:
+    visible:
+      id: search-hint
+    timeout: 10000
+
+# Sign out stays reachable from Home.
+- tapOn:
+    id: home-sign-out
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 20000

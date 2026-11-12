@@ -1,8 +1,15 @@
 import type {
   ApiErrorBody,
+  BookDetailResponse,
+  CancelHoldResponse,
+  CatalogSearchResponse,
+  DigitalIdResponse,
   HealthResponse,
   MemberMeResponse,
   MemberSignInResponse,
+  MyHoldsResponse,
+  MyLoansResponse,
+  PlaceHoldResponse,
   RefreshSessionResponse,
   ResendSignUpCodeRequest,
   SignInRequest,
@@ -74,12 +81,41 @@ export function createApiClient({ baseUrl, fetch: fetchImpl = fetch, timeoutMs =
     return body as T;
   }
 
-  const post = <T>(path: string, body: unknown) =>
-    request<T>(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   const bearer = (accessToken: string) => ({ Authorization: `Bearer ${accessToken}` });
+  const post = <T>(path: string, body: unknown, accessToken?: string) =>
+    request<T>(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(accessToken === undefined ? {} : bearer(accessToken)) },
+      body: JSON.stringify(body),
+    });
 
   return {
     getHealth: () => request<HealthResponse>("/health"),
+    /**
+     * Searches the catalog by title or author (typos are tolerated) or by ISBN,
+     * accession number or call number. Needs a signed-in Member's access token.
+     * No match is a normal answer with an empty `results`, not an error.
+     */
+    searchCatalog: (accessToken: string, query: string, limit?: number) =>
+      request<CatalogSearchResponse>(
+        `/catalog/search?q=${encodeURIComponent(query)}${limit === undefined ? "" : `&limit=${limit}`}`,
+        { headers: { Authorization: `Bearer ${accessToken}` } },
+      ),
+    /** One Book with its details and how many Copies exist and are available. `book_not_found` (404) when there is no such Book. */
+    getBook: (accessToken: string, id: string) =>
+      request<BookDetailResponse>(`/catalog/books/${encodeURIComponent(id)}`, { headers: bearer(accessToken) }),
+    /**
+     * Puts the Member in the queue of a Book that has no available Copy. Failures: `cannot_borrow` (403),
+     * `book_not_found` (404), `copy_available` and `hold_exists` (409).
+     */
+    placeHold: (accessToken: string, bookId: string) => post<PlaceHoldResponse>("/holds", { bookId }, accessToken),
+    /** The Member's own Holds, active ones first. */
+    getHolds: (accessToken: string) => request<MyHoldsResponse>("/members/me/holds", { headers: bearer(accessToken) }),
+    /** Takes the Member out of a Book's queue. Failures: `hold_not_found` (404), `hold_not_cancellable` (409). */
+    cancelHold: (accessToken: string, holdId: string) =>
+      request<CancelHoldResponse>(`/holds/${encodeURIComponent(holdId)}/cancel`, { method: "POST", headers: bearer(accessToken) }),
+    /** The Member's own Loans, current ones first, with the loan limit and loan period of their Loan Policy. */
+    getLoans: (accessToken: string) => request<MyLoansResponse>("/members/me/loans", { headers: bearer(accessToken) }),
     /** Starts a sign-up: the API emails a verification code. */
     signUp: (body: SignUpRequest) => post<SignUpCodeSentResponse>("/members/sign-up", body),
     /** Accepts the emailed code: the account is active from here on. */
@@ -95,6 +131,9 @@ export function createApiClient({ baseUrl, fetch: fetchImpl = fetch, timeoutMs =
       request<null>("/auth/sign-out", { method: "POST", headers: bearer(accessToken) }),
     /** The signed-in Member's profile. `not_signed_in` (401) when the access token no longer works. */
     getMe: (accessToken: string) => request<MemberMeResponse>("/members/me", { headers: bearer(accessToken) }),
+    /** The Member's Digital ID for the current 60-second window. */
+    getDigitalId: (accessToken: string) =>
+      request<DigitalIdResponse>("/members/me/digital-id", { headers: bearer(accessToken) }),
   };
 }
 

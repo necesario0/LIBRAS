@@ -1,5 +1,10 @@
 import type {
+  ConfirmLoanResponse,
+  DeskMember,
+  IdentifyMemberResponse,
+  RecordReturnResponse,
   RefreshSessionResponse,
+  ReturnedLoan,
   Session,
   StaffMeResponse,
   StaffProfile,
@@ -22,7 +27,7 @@ export class ApiError extends Error {
   }
 }
 
-async function send(path: string, init: RequestInit & { session?: Session }): Promise<Response> {
+export async function send(path: string, init: RequestInit & { session?: Session }): Promise<Response> {
   const { session, headers, ...rest } = init;
   try {
     return await fetch(`${API_BASE}${path}`, {
@@ -38,7 +43,7 @@ async function send(path: string, init: RequestInit & { session?: Session }): Pr
   }
 }
 
-async function failure(response: Response): Promise<ApiError> {
+export async function failure(response: Response): Promise<ApiError> {
   const body: unknown = await response.json().catch(() => undefined);
   const error = (body as { error?: { code?: unknown; message?: unknown } } | undefined)?.error;
   if (typeof error?.code === "string" && typeof error.message === "string") {
@@ -84,19 +89,48 @@ async function refresh(session: Session): Promise<Session | undefined> {
  * session once if the access token has expired. Returns undefined when there
  * is no usable session left, and the caller shows the sign-in page.
  */
-async function authorized(path: string): Promise<Response | undefined> {
+async function authorized(path: string, init: RequestInit = {}): Promise<Response | undefined> {
   let session = loadSession();
   if (!session) return undefined;
-  let response = await send(path, { session });
+  let response = await send(path, { ...init, session });
   if (response.status === 401) {
     session = await refresh(session);
     if (!session) {
       clearSession();
       return undefined;
     }
-    response = await send(path, { session });
+    response = await send(path, { ...init, session });
   }
   return response;
+}
+
+/**
+ * The Member a Digital ID belongs to, with their Account Type and Loans against
+ * their limit. `code` is the canonical 12 digits from the scan input point.
+ * Returns undefined when the Librarian's session is gone. Throws ApiError:
+ * `digital_id_expired`, `digital_id_invalid`, `invalid_request` or `unreachable`.
+ */
+export async function identifyMember(code: string): Promise<DeskMember | undefined> {
+  const response = await authorized("/desk/members/identify", { method: "POST", body: JSON.stringify({ code }) });
+  if (!response) return undefined;
+  if (!response.ok) throw await failure(response);
+  return ((await response.json()) as IdentifyMemberResponse).member;
+}
+
+/**
+ * Confirms a Loan for the Member whose Digital ID was scanned: `digitalId` is
+ * that code and `copy` is the Copy's barcode or accession number from the scan
+ * input point. Resolves with the Loan and the Member with the Loan counted, or
+ * undefined when the Librarian's session is gone. Throws ApiError with the
+ * reason to show: `loan_limit_reached`, `cannot_borrow`, `copy_on_loan`,
+ * `copy_set_aside`, `copy_not_found`, `digital_id_expired`, `digital_id_invalid`,
+ * `digital_id_used`, `invalid_request` or `unreachable`.
+ */
+export async function confirmLoan(digitalId: string, copy: string): Promise<ConfirmLoanResponse | undefined> {
+  const response = await authorized("/desk/loans", { method: "POST", body: JSON.stringify({ digitalId, copy }) });
+  if (!response) return undefined;
+  if (!response.ok) throw await failure(response);
+  return (await response.json()) as ConfirmLoanResponse;
 }
 
 /**
@@ -112,4 +146,38 @@ export async function currentStaff(): Promise<StaffProfile | undefined> {
   }
   if (!response.ok) throw await failure(response);
   return ((await response.json()) as StaffMeResponse).staff;
+}
+
+/**
+ * Records the return of a Copy: `copy` is its barcode or accession number from
+ * the scan input point, with no Member involved. Resolves with the closed Loan,
+ * or undefined when the Librarian's session is gone. Throws ApiError with the
+ * reason to show: `copy_not_on_loan`, `copy_not_found`, `return_conflict`,
+ * `invalid_request` or `unreachable`.
+ */
+export async function recordReturn(copy: string): Promise<ReturnedLoan | undefined> {
+  const response = await authorized("/desk/returns", { method: "POST", body: JSON.stringify({ copy }) });
+  if (!response) return undefined;
+  if (!response.ok) throw await failure(response);
+  return ((await response.json()) as RecordReturnResponse).loan;
+}
+
+/**
+ * Opens the desk page's scanner stream (pairing code, pairing events, scans from
+ * the paired phone): the response whose body is the event stream, to be read
+ * until it ends or `signal` aborts. `deskId` resumes the earlier pairing after a
+ * reconnect. Returns undefined when the Librarian's session is gone. The caller
+ * checks `response.ok`.
+ */
+export async function openScannerStream(deskId: string | undefined, signal: AbortSignal): Promise<Response | undefined> {
+  const query = deskId === undefined ? "" : `?desk=${encodeURIComponent(deskId)}`;
+  return authorized(`/desk/scanner/events${query}`, { signal, headers: { accept: "text/event-stream" } });
+}
+
+/** Unpairs the phone from this desk page. Resolves with false when the Librarian's session is gone. Throws ApiError. */
+export async function unpairScanner(deskId: string): Promise<boolean> {
+  const response = await authorized("/desk/scanner/unpair", { method: "POST", body: JSON.stringify({ deskId }) });
+  if (!response) return false;
+  if (!response.ok) throw await failure(response);
+  return true;
 }

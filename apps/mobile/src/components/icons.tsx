@@ -1,6 +1,8 @@
 import { SvgXml } from "react-native-svg";
 import checkXml from "../../assets/icons/check.svg";
 import chevronBackXml from "../../assets/icons/chevron-back.svg";
+import closeXml from "../../assets/icons/close.svg";
+import homeSearchXml from "../../assets/icons/home-search.svg";
 import loaderXml from "../../assets/icons/loader.svg";
 import visibilityOffXml from "../../assets/icons/visibility-off.svg";
 import visibilityXml from "../../assets/icons/visibility.svg";
@@ -32,3 +34,7 @@ export const VisibilityOffIcon = icon(visibilityOffXml, 15, 15);
 export const VisibilityIcon = icon(visibilityXml, 20.17, 13.7523);
 /** The spinner shown while a code is being checked (24 pt). */
 export const LoaderIcon = icon(loaderXml, 24, 24);
+/** The magnifier of the Home search bar (24 pt). */
+export const SearchIcon = icon(homeSearchXml, 24, 24);
+/** The round close button of a sheet (37 pt, grey disc with a dark cross). */
+export const CloseIcon = icon(closeXml, 37, 37);

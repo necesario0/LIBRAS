@@ -13,6 +13,7 @@
   "dependencies": {
     "@fontsource/montserrat": "^5.3.0",
     "@libras/shared": "*",
+    "@zxing/library": "^0.23.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },
