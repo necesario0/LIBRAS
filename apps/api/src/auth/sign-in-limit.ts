@@ -30,11 +30,14 @@ const PRUNE_THRESHOLD = 10_000;
 export class SignInLimiter {
   readonly #clock: Clock;
   readonly #options: SignInLimitOptions;
+  readonly #what: string;
   readonly #failures = new Map<string, number[]>();
 
-  constructor(clock: Clock, options: SignInLimitOptions = DEFAULT_SIGN_IN_LIMIT) {
+  /** `failures` says what is being counted, for the message a blocked client reads. */
+  constructor(clock: Clock, options: SignInLimitOptions = DEFAULT_SIGN_IN_LIMIT, failures = "failed sign-ins") {
     this.#clock = clock;
     this.#options = options;
+    this.#what = failures;
   }
 
   /**
@@ -53,7 +56,7 @@ export class SignInLimiter {
       throw new AppError(
         429,
         "too_many_attempts",
-        `Too many failed sign-ins. Please wait ${Math.ceil(retryAfterSeconds / 60)} minute(s) and try again.`,
+        `Too many ${this.#what}. Please wait ${Math.ceil(retryAfterSeconds / 60)} minute(s) and try again.`,
         { headers: { "Retry-After": String(retryAfterSeconds) } },
       );
     }
