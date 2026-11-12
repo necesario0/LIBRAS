@@ -30,14 +30,3 @@ export function isUmakEmail(email: string): boolean {
   const at = email.lastIndexOf("@");
   return at > 0 && email.slice(at + 1).trim().toLowerCase() === UMAK_EMAIL_DOMAIN;
 }
-
-/**
- * Account Types that have a sign-up form today. Each ticket that builds
- * another form adds its type here, its schema to `signUpRequestSchema`, and
- * its `details` to `MemberDetails`.
- */
-export const SIGN_UP_ACCOUNT_TYPES: readonly AccountType[] = ["umak_student"];
-
-export function hasSignUpForm(accountType: AccountType): boolean {
-  return SIGN_UP_ACCOUNT_TYPES.includes(accountType);
-}

@@ -25,6 +25,67 @@ export function studentSignUpBody(overrides: Partial<StudentSignUp> = {}): Stude
   };
 }
 
+type FacultySignUp = Extract<SignUpRequest, { accountType: "faculty" }>;
+type NtpEmployeeSignUp = Extract<SignUpRequest, { accountType: "ntp_employee" }>;
+type VisitorSignUp = Extract<SignUpRequest, { accountType: "visitor" }>;
+type AlumniSignUp = Extract<SignUpRequest, { accountType: "alumni" }>;
+
+/** The fields every Account Type gives, with a unique email, username and password. */
+function commonBody(prefix: string, domain: string) {
+  const unique = randomUUID().replaceAll("-", "");
+  return {
+    email: `${prefix}-${unique.slice(0, 12)}@${domain}`,
+    password: `pw-${unique}`,
+    firstName: "Cobby",
+    lastName: "Baldonado",
+    username: `${prefix}_${unique.slice(0, 10)}`,
+    acceptedTerms: true as const,
+  };
+}
+
+/** A valid Faculty sign-up body. Pass overrides for the field under test. */
+export function facultySignUpBody(overrides: Partial<FacultySignUp> = {}): FacultySignUp & { email: string; password: string } {
+  return {
+    accountType: "faculty",
+    ...commonBody("faculty", "umak.edu.ph"),
+    details: { facultyNumber: `F${randomInt(1_000_000, 9_999_999)}`, college: "CCIS" },
+    ...overrides,
+  };
+}
+
+/** A valid NTP / Employee sign-up body. */
+export function ntpEmployeeSignUpBody(
+  overrides: Partial<NtpEmployeeSignUp> = {},
+): NtpEmployeeSignUp & { email: string; password: string } {
+  return {
+    accountType: "ntp_employee",
+    ...commonBody("ntp", "umak.edu.ph"),
+    details: { employeeNumber: `E${randomInt(1_000_000, 9_999_999)}`, college: "CCIS" },
+    ...overrides,
+  };
+}
+
+/** A valid Visitor sign-up body. A Visitor must give a contact number. */
+export function visitorSignUpBody(overrides: Partial<VisitorSignUp> = {}): VisitorSignUp & { email: string; password: string } {
+  return {
+    accountType: "visitor",
+    ...commonBody("visitor", "gmail.com"),
+    contactNumber: "09034984958",
+    details: { validIdNumber: "39458-3940-380", idType: "Passport", institution: "FEU (Far Eastern University)" },
+    ...overrides,
+  };
+}
+
+/** A valid Alumni sign-up body. */
+export function alumniSignUpBody(overrides: Partial<AlumniSignUp> = {}): AlumniSignUp & { email: string; password: string } {
+  return {
+    accountType: "alumni",
+    ...commonBody("alumni", "yahoo.com"),
+    details: { yearGraduated: "2025-2026", alumniIdNumber: `${randomInt(1_000_000, 9_999_999)}` },
+    ...overrides,
+  };
+}
+
 /** The 6-digit code in a verification email. Throws when there is no email, so a test fails clearly. */
 export function codeFromEmail(message: EmailMessage | undefined): string {
   const code = message === undefined ? undefined : /\b(\d{6})\b/.exec(message.text)?.[1];
@@ -45,7 +106,7 @@ export async function signInDirect(email: string, password: string): Promise<str
 }
 
 export interface TestMember {
-  member: MemberProfile;
+  member: Extract<MemberProfile, { accountType: "umak_student" }>;
   email: string;
   password: string;
   accessToken: string;
@@ -69,7 +130,7 @@ export async function createTestMember(api: TestApi, overrides: Partial<StudentS
   const code = codeFromEmail(api.emails.lastTo(body.email));
   const verify = await post("/members/sign-up/verify", { email: body.email, code });
   if (verify.status !== 200) throw new Error(`Test verification failed: ${verify.status} ${await verify.text()}`);
-  const { member } = (await verify.json()) as { member: MemberProfile };
+  const { member } = (await verify.json()) as { member: TestMember["member"] };
 
   const accessToken = await signInDirect(body.email, body.password);
   if (accessToken === undefined) throw new Error("The verified test Member could not sign in");

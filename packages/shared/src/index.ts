@@ -13,10 +13,8 @@ export type {
 export {
   ACCOUNT_TYPES,
   ACCOUNT_TYPE_LABELS,
-  SIGN_UP_ACCOUNT_TYPES,
   UMAK_EMAIL_DOMAIN,
   accountTypeSchema,
-  hasSignUpForm,
   isUmakEmail,
   requiresUmakEmail,
 } from "./accounts.ts";
@@ -29,14 +27,23 @@ export type {
   VerifySignUpResponse,
 } from "./members.ts";
 export {
+  ALUMNI_GRADUATION_YEARS,
   SIGN_UP_MESSAGES,
   UMAK_COLLEGES,
   VERIFICATION_CODE_LENGTH,
+  VISITOR_ID_TYPES,
+  alumniDetailsSchema,
+  alumniSignUpSchema,
   contactNumberSchema,
   emailSchema,
+  facultyDetailsSchema,
+  facultySignUpSchema,
   nameSchema,
+  ntpEmployeeDetailsSchema,
+  ntpEmployeeSignUpSchema,
   optionalNameSchema,
   passwordSchema,
+  requiredContactNumberSchema,
   resendSignUpCodeRequestSchema,
   signUpRequestSchema,
   studentNumberSchema,
@@ -46,14 +53,24 @@ export {
   usernameSchema,
   verificationCodeSchema,
   verifySignUpRequestSchema,
+  visitorDetailsSchema,
+  visitorIdTypeSchema,
+  visitorSignUpSchema,
+  yearGraduatedSchema,
 } from "./sign-up.ts";
 export type {
+  AlumniDetails,
+  FacultyDetails,
+  NtpEmployeeDetails,
   ParsedSignUpRequest,
   ResendSignUpCodeRequest,
   SignUpRequest,
   UmakCollege,
   UmakStudentDetails,
   VerifySignUpRequest,
+  VisitorDetails,
+  VisitorIdType,
+  YearGraduated,
 } from "./sign-up.ts";
 export { buildTrie, searchTrie } from "./search/flat-trie.ts";
 export type { FlatTrie, TrieMatch } from "./search/flat-trie.ts";

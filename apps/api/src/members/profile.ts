@@ -1,3 +1,4 @@
+import { accountTypeSchema } from "@libras/shared";
 import type { MemberProfile } from "@libras/shared";
 import type { Identity } from "../auth/auth-provider.ts";
 import { withIdentity } from "../auth/identity.ts";
@@ -19,21 +20,19 @@ export const MEMBER_COLUMNS =
 
 /** Turns a `public.members` row into what the app sees. */
 export function memberFromRow(row: MemberRow, email: string): MemberProfile {
-  if (row.account_type !== "umak_student") {
-    // Another Account Type has a row only once its sign-up form exists; its ticket adds the case here.
-    throw new Error(`Account Type ${row.account_type} has no profile mapping yet`);
-  }
+  const accountType = accountTypeSchema.parse(row.account_type);
+  // `details` was validated for this Account Type when the sign-up was accepted, and a check constraint keeps its keys.
   return {
     id: row.user_id,
     email,
-    accountType: row.account_type,
+    accountType,
     firstName: row.first_name,
     ...(row.middle_name === null ? {} : { middleName: row.middle_name }),
     lastName: row.last_name,
     username: row.username,
     ...(row.contact_number === null ? {} : { contactNumber: row.contact_number }),
-    details: row.details as MemberProfile["details"],
-  };
+    details: row.details,
+  } as MemberProfile;
 }
 
 /**
