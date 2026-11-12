@@ -56,6 +56,22 @@ export class CatalogSearch {
     await this.#startRebuild();
   }
 
+  /** One Book with its Copy counts, read live from the database (not from the index), or undefined when there is no such Book. */
+  async book(id: string): Promise<BookSearchResult | undefined> {
+    const { rows } = await this.#db.query<BookRow>(
+      `select b.id, b.title, b.authors, b.edition, b.publication_year, b.isbn, b.lc_call_number,
+              count(c.id)::int as total_copies,
+              (count(c.id) filter (where c.status = 'available'))::int as available_copies
+         from public.books b
+         left join public.copies c on c.book_id = b.id
+        where b.id = $1
+        group by b.id`,
+      [id],
+    );
+    const row = rows[0];
+    return row ? toResult(row) : undefined;
+  }
+
   async search(query: string, limit: number): Promise<CatalogSearchOutcome> {
     const { index } = await this.#fresh();
     const { total, hits } = index.search(query, { limit });

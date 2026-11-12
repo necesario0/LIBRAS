@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { CATALOG_SEARCH_MESSAGES, catalogSearchQuerySchema } from "@libras/shared";
-import type { CatalogSearchResponse } from "@libras/shared";
+import { BOOK_MESSAGES, CATALOG_SEARCH_MESSAGES, bookIdSchema, catalogSearchQuerySchema } from "@libras/shared";
+import type { BookDetailResponse, CatalogSearchResponse } from "@libras/shared";
 import type { AppDeps } from "../app.ts";
 import { requireMember } from "../auth/guards.ts";
 import type { CatalogSearch } from "../catalog/catalog-search.ts";
@@ -27,6 +27,15 @@ export function catalogRouter(deps: AppDeps, catalog: CatalogSearch): Router {
     const { q, limit } = parsed.data;
     const { total, results } = await catalog.search(q, limit);
     const body: CatalogSearchResponse = { query: q, total, results };
+    res.json(body);
+  });
+
+  router.get("/catalog/books/:id", async (req, res) => {
+    const id = bookIdSchema.safeParse(req.params.id);
+    if (!id.success) throw new AppError(400, "invalid_request", BOOK_MESSAGES.invalidId);
+    const book = await catalog.book(id.data);
+    if (!book) throw new AppError(404, "book_not_found", BOOK_MESSAGES.notFound);
+    const body: BookDetailResponse = { book };
     res.json(body);
   });
 
