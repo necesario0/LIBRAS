@@ -240,3 +240,21 @@ test("a Digital ID that expires while the Member is at the desk must be shown ag
   await expect(page.getByTestId("desk-hint")).toContainText("Scan a Member's Digital ID");
   expect(await loansOf(dan)).toEqual([]);
 });
+
+test("a Copy scanned before the Digital ID has been checked still confirms the Loan", async ({ page }) => {
+  const eve = await createMember("umak_student", "Eve", "Tan");
+  const [copy] = (await addBook("Quick At The Desk", 1)) as [DeskTestCopy];
+  await signInAtTheDesk(page);
+  // The API takes a moment to check the Digital ID, and the scanner does not wait for it.
+  await page.route("**/desk/members/identify", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    await route.continue();
+  });
+
+  await scan(page, await codeOnThePhoneOf(eve));
+  await scan(page, copy.barcode);
+
+  await expect(page.getByRole("region", { name: "Loan confirmed" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Eve Tan" }).getByTestId("desk-member-loans")).toHaveText("1 of 3");
+  expect(await loansOf(eve)).toHaveLength(1);
+});

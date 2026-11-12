@@ -59,63 +59,56 @@ function messageOf(error: unknown): string {
  */
 export function DeskPage({ staff, onSignOut }: Props) {
   const [state, setState] = useState<DeskState>({ kind: "ready", outcome: { kind: "none" } });
-  // Only the newest scan may change the screen: an older answer that arrives late is dropped.
-  const latestScan = useRef(0);
+  // Scans are handled one at a time, in the order they arrive: a Copy scanned while the
+  // Digital ID before it is still being checked waits for the answer instead of being lost.
+  const queue = useRef<Promise<void>>(Promise.resolve());
+  // The Member at the desk as the scan being handled sees them, ahead of the next render.
+  const atDesk = useRef<Identified | undefined>(undefined);
 
   const identified = state.kind === "member" || state.kind === "confirming" ? state.identified : undefined;
   const outcome: Outcome = state.kind === "ready" || state.kind === "member" ? state.outcome : { kind: "none" };
 
-  /** Shows why a scan did nothing, keeping the Member who is at the desk. */
-  function refuse(message: string) {
-    const refused: Outcome = { kind: "refused", message };
-    setState(identified ? { kind: "member", identified, outcome: refused } : { kind: "ready", outcome: refused });
+  /** Shows the Member at the desk (or nobody) and what the last scan did. */
+  function show(member: Identified | undefined, result: Outcome) {
+    atDesk.current = member;
+    setState(member ? { kind: "member", identified: member, outcome: result } : { kind: "ready", outcome: result });
   }
 
-  function identify(code: string, scanNumber: number) {
+  async function identify(code: string) {
     setState({ kind: "identifying" });
-    identifyMember(code).then(
-      (member) => {
-        if (scanNumber !== latestScan.current) return;
-        if (member === undefined) onSignOut();
-        else setState({ kind: "member", identified: { member, digitalId: code }, outcome: { kind: "none" } });
-      },
-      (error: unknown) => {
-        if (scanNumber !== latestScan.current) return;
-        setState({ kind: "ready", outcome: { kind: "refused", message: messageOf(error) } });
-      },
-    );
+    try {
+      const member = await identifyMember(code);
+      if (member === undefined) onSignOut();
+      else show({ member, digitalId: code }, { kind: "none" });
+    } catch (error) {
+      show(undefined, { kind: "refused", message: messageOf(error) });
+    }
   }
 
-  function lend(to: Identified, copy: string, scanNumber: number) {
+  async function lend(to: Identified, copy: string) {
     setState({ kind: "confirming", identified: to });
-    confirmLoan(to.digitalId, copy).then(
-      (confirmed) => {
-        if (scanNumber !== latestScan.current) return;
-        if (confirmed === undefined) onSignOut();
-        else {
-          setState({
-            kind: "member",
-            identified: { member: confirmed.member, digitalId: to.digitalId },
-            outcome: { kind: "confirmed", loan: confirmed.loan },
-          });
-        }
-      },
-      (error: unknown) => {
-        if (scanNumber !== latestScan.current) return;
-        const refused: Outcome = { kind: "refused", message: messageOf(error) };
-        if (error instanceof ApiError && DIGITAL_ID_REFUSALS.has(error.code)) setState({ kind: "ready", outcome: refused });
-        else setState({ kind: "member", identified: to, outcome: refused });
-      },
-    );
+    try {
+      const confirmed = await confirmLoan(to.digitalId, copy);
+      if (confirmed === undefined) onSignOut();
+      else show({ member: confirmed.member, digitalId: to.digitalId }, { kind: "confirmed", loan: confirmed.loan });
+    } catch (error) {
+      const refused: Outcome = { kind: "refused", message: messageOf(error) };
+      // The Digital ID itself was refused: the Member must show it again.
+      show(error instanceof ApiError && DIGITAL_ID_REFUSALS.has(error.code) ? undefined : to, refused);
+    }
+  }
+
+  async function handle(reading: ScanReading) {
+    const member = atDesk.current;
+    if (reading.kind === "rejected") show(member, { kind: "refused", message: reading.message });
+    else if (reading.kind === "digital_id") await identify(reading.code);
+    // A Copy with no Member at the desk: a later ticket records its return here.
+    else if (!member) show(undefined, { kind: "refused", message: SCAN_MESSAGES.notDigitalId });
+    else await lend(member, reading.code);
   }
 
   const scanInput = useScanInput((reading: ScanReading) => {
-    const scanNumber = ++latestScan.current;
-    if (reading.kind === "rejected") refuse(reading.message);
-    else if (reading.kind === "digital_id") identify(reading.code, scanNumber);
-    // A Copy with no Member at the desk: a later ticket records its return here.
-    else if (!identified) refuse(SCAN_MESSAGES.notDigitalId);
-    else lend(identified, reading.code, scanNumber);
+    queue.current = queue.current.then(() => handle(reading));
   });
 
   const status = statusOf(state);
