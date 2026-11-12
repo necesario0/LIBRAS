@@ -54,3 +54,20 @@ export interface CatalogSearchResponse {
   total: number;
   results: BookSearchResult[];
 }
+
+/** The words the API and the app both show when a Book cannot be opened. */
+export const BOOK_MESSAGES = {
+  invalidId: "This link to a Book is not valid. Search for the Book again.",
+  notFound: "We could not find this Book. It may have been removed from the catalog.",
+} as const;
+
+/** A Book id as it appears in `GET /catalog/books/:id`. */
+export const bookIdSchema = z.uuid(BOOK_MESSAGES.invalidId);
+
+/** One Book with its details and Copy counts: the same fields a search result carries. */
+export type BookDetail = BookSearchResult;
+
+/** The body of `GET /catalog/books/:id`. Availability is read live from the Copies. */
+export interface BookDetailResponse {
+  book: BookDetail;
+}

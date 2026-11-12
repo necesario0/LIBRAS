@@ -1,4 +1,4 @@
-import type { MemberProfile } from "@libras/shared";
+import type { MemberProfile, UmakStudentDetails } from "@libras/shared";
 import type { Identity } from "../auth/auth-provider.ts";
 import { withIdentity } from "../auth/identity.ts";
 import type { Database } from "../db.ts";
@@ -19,21 +19,19 @@ export const MEMBER_COLUMNS =
 
 /** Turns a `public.members` row into what the app sees. */
 export function memberFromRow(row: MemberRow, email: string): MemberProfile {
-  if (row.account_type !== "umak_student") {
-    // Another Account Type has a row only once its sign-up form exists; its ticket adds the case here.
-    throw new Error(`Account Type ${row.account_type} has no profile mapping yet`);
-  }
-  return {
+  const base = {
     id: row.user_id,
     email,
-    accountType: row.account_type,
     firstName: row.first_name,
     ...(row.middle_name === null ? {} : { middleName: row.middle_name }),
     lastName: row.last_name,
     username: row.username,
     ...(row.contact_number === null ? {} : { contactNumber: row.contact_number }),
-    details: row.details as MemberProfile["details"],
   };
+  if (row.account_type === "umak_student") return { ...base, accountType: row.account_type, details: row.details as UmakStudentDetails };
+  if (row.account_type === "visitor" || row.account_type === "alumni") return { ...base, accountType: row.account_type, details: {} };
+  // Another Account Type has a row only once its sign-up form exists; its ticket adds the case here.
+  throw new Error(`Account Type ${row.account_type} has no profile mapping yet`);
 }
 
 /**

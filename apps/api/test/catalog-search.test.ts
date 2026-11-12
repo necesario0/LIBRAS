@@ -119,6 +119,70 @@ describe("GET /catalog/search", () => {
     });
   });
 
+  describe("exact identifiers: ISBN, accession number, LC call number", () => {
+    // One Book with all three identifiers and two Copies, and a look-alike Book whose title is
+    // one character away from each identifier. Fuzzy matching would return the look-alike.
+    const tag = uniqueWord("zk").toUpperCase();
+    const isbn = `9${Math.floor(Math.random() * 1e12).toString().padStart(12, "0")}`;
+    const nearIsbn = `${isbn.slice(0, 12)}${(Number(isbn[12]) + 1) % 10}`;
+    const callNumber = `QA${tag} .D2 C79 2001`;
+    const nearCallNumber = `QA${tag} .D2 C78 2001`;
+    const accessions = [`AC-${tag}-1`, `AC-${tag}-2`];
+    const nearAccession = `AC-${tag}-3`;
+    let bookId = "";
+    let lookalikeId = "";
+
+    before(async () => {
+      const { rows } = await api.db.query(
+        "insert into public.books (title, authors, isbn, lc_call_number) values ($1, '{}', $2, $3) returning id",
+        [`Exactly Findable ${uniqueWord()}`, isbn, callNumber],
+      );
+      bookId = rows[0].id;
+      bookIds.push(bookId);
+      for (const accession of accessions) {
+        await api.db.query("insert into public.copies (book_id, accession_number, barcode) values ($1, $2, $3)", [bookId, accession, `B-${randomUUID()}`]);
+      }
+      lookalikeId = await addBook(`${nearIsbn} ${nearCallNumber} ${nearAccession}`, ["Lookalike, Lou"], ["available"]);
+      await results(nearIsbn); // wait until the look-alike is in the index
+      await results(isbn);
+    });
+
+    const only = async (query: string) => (await results(query)).map((book) => book.id);
+
+    it("finds the Book by its ISBN, with or without hyphens, and nothing else", async () => {
+      assert.deepEqual(await only(isbn), [bookId]);
+      assert.deepEqual(await only(`${isbn.slice(0, 3)}-${isbn.slice(3, 4)}-${isbn.slice(4, 9)}-${isbn.slice(9, 12)}-${isbn.slice(12)}`), [bookId]);
+    });
+
+    it("finds the Book by the accession number of any of its Copies, and nothing else", async () => {
+      for (const accession of accessions) {
+        const found = await results(accession);
+        assert.deepEqual(found.map((book) => book.id), [bookId], accession);
+        assert.equal(found[0]?.totalCopies, 2);
+      }
+      assert.deepEqual(await only((accessions[0] ?? "").toLowerCase()), [bookId]);
+    });
+
+    it("finds the Book by its LC call number, in any case or punctuation, and nothing else", async () => {
+      assert.deepEqual(await only(callNumber), [bookId]);
+      assert.deepEqual(await only(callNumber.toLowerCase().replaceAll(" ", "")), [bookId]);
+    });
+
+    it("finds nothing for an identifier that is one character off, even though a Book's title is that close", async () => {
+      for (const near of [`${isbn.slice(0, 12)}${(Number(isbn[12]) + 2) % 10}`, `QA${tag} .D2 C77 2001`, `AC-${tag}-4`]) {
+        const response = await search(near);
+        assert.equal(response.status, 200, near);
+        const body = (await response.json()) as CatalogSearchResponse;
+        assert.deepEqual([body.total, body.results], [0, []], near);
+      }
+    });
+
+    it("still finds a Book by the exact words in its title, whatever they look like", async () => {
+      assert.deepEqual(await only(nearIsbn), [lookalikeId]);
+      assert.deepEqual(await only(nearAccession), [lookalikeId]);
+    });
+  });
+
   describe("typos", () => {
     it("still finds the Book when a title word has a typo", async () => {
       const word = uniqueWord("zt");

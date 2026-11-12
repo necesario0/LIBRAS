@@ -1,3 +1,4 @@
+import { useRouter } from "expo-router";
 import { ActivityIndicator, Keyboard, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CATALOG_SEARCH_MAX_QUERY_LENGTH } from "@libras/shared";
@@ -21,6 +22,7 @@ import { colors, fontFamily, fontSize, radii, spacing } from "../../src/theme/to
  * the notification and menu buttons, which lead nowhere yet).
  */
 export default function HomeScreen() {
+  const router = useRouter();
   const member = useMember();
   const { request, signOut } = useAuth();
   const insets = useSafeAreaInsets();
@@ -78,7 +80,7 @@ export default function HomeScreen() {
               {shown.total === 1 ? "1 book" : shown.total > shown.results.length ? `Top ${shown.results.length} of ${shown.total} books` : `${shown.total} books`}
             </Text>
             {shown.results.map((book) => (
-              <BookResultRow key={book.id} book={book} />
+              <BookResultRow key={book.id} book={book} onPress={() => router.push({ pathname: "/book/[id]", params: { id: book.id } })} />
             ))}
           </View>
         ) : null}
