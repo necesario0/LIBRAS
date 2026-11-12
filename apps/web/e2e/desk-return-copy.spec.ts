@@ -1,10 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { RETURN_MESSAGES, SCAN_MESSAGES } from "@libras/shared";
+import { LOAN_MESSAGES, RETURN_MESSAGES, SCAN_MESSAGES, formatLibraryDateTime } from "@libras/shared";
 import { createDeskFixtures, scan, signInAtTheDesk } from "./desk-fixtures.ts";
 import type { DeskTestCopy } from "./desk-fixtures.ts";
 
 const desk = createDeskFixtures();
-const { addBook, codeOnThePhoneOf, copyStatus, createMember, loansOf } = desk;
+const { addBook, bookOf, codeOnThePhoneOf, copyStatus, createMember, holdsOf, loansOf, placeHold } = desk;
 
 test.beforeAll(desk.setUp);
 test.afterAll(desk.cleanUp);
@@ -103,4 +103,50 @@ test("a Copy returned a second time is refused, and a Copy that came back late s
   await expect(page.getByRole("alert")).toHaveText(RETURN_MESSAGES.copyNotOnLoan);
   await expect(notice).toHaveCount(0);
   expect((await loansOf(ben)).filter((loan) => loan.returnedAt !== null)).toHaveLength(1);
+});
+
+test("a returned Copy with a waiting Hold is set aside: the desk says for which Member, and only that Member can borrow it", async ({ page }) => {
+  const ana = await createMember("umak_student", "Ana", "Santos");
+  const ben = await createMember("umak_student", "Ben", "Reyes");
+  const carla = await createMember("umak_student", "Carla", "Diaz");
+  const [copy] = (await addBook("Held At The Desk", 1)) as [DeskTestCopy];
+  const bookId = await bookOf(copy);
+  await signInAtTheDesk(page);
+
+  // Ana borrows the only Copy, and Ben places a Hold on the Book from his app.
+  await scan(page, await codeOnThePhoneOf(ana));
+  await scan(page, copy.barcode);
+  await expect(page.getByRole("region", { name: "Loan confirmed" })).toBeVisible();
+  await page.getByRole("button", { name: "Done with this Member" }).click();
+  await placeHold(ben, bookId);
+
+  // The Copy comes back: it is Ben's now.
+  await scan(page, copy.barcode);
+  const notice = page.getByRole("region", { name: "Return recorded" });
+  await expect(notice).toBeVisible();
+  await expect(page.getByRole("status")).toHaveText("Return recorded - set aside for a Hold");
+  await expect(notice.getByTestId("desk-return-member")).toHaveText("Ana Santos");
+  const held = notice.getByTestId("desk-return-held");
+  await expect(held).toContainText("Set aside for Ben Reyes");
+  await expect(held).toContainText("Put this Copy on the hold shelf, not back on the stacks.");
+  const [hold] = await holdsOf(ben);
+  expect(hold?.status).toBe("ready");
+  await expect(held.getByTestId("desk-return-held-until")).toHaveText(formatLibraryDateTime(hold?.pickupEndsAt ?? ""));
+  await page.screenshot({ path: test.info().outputPath("desk-return-set-aside.png") });
+  expect(await copyStatus(copy.barcode)).toBe("set_aside");
+
+  // Another Member cannot borrow it, and the desk says why.
+  await scan(page, await codeOnThePhoneOf(carla));
+  await scan(page, copy.barcode);
+  await expect(page.getByRole("alert")).toHaveText(LOAN_MESSAGES.copySetAside);
+  await page.screenshot({ path: test.info().outputPath("desk-loan-set-aside-refused.png") });
+  expect(await loansOf(carla)).toHaveLength(0);
+  await page.getByRole("button", { name: "Done with this Member" }).click();
+
+  // Ben can: the Loan is confirmed and his Hold is fulfilled.
+  await scan(page, await codeOnThePhoneOf(ben));
+  await scan(page, copy.barcode);
+  await expect(page.getByRole("region", { name: "Loan confirmed" })).toContainText("Held At The Desk");
+  expect((await holdsOf(ben))[0]?.status).toBe("fulfilled");
+  expect(await copyStatus(copy.barcode)).toBe("on_loan");
 });

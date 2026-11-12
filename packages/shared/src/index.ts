@@ -114,6 +114,7 @@ export {
   confirmLoanRequestSchema,
   copyCodeSchema,
   formatLibraryDate,
+  formatLibraryDateTime,
   formatLibraryDay,
   libraryDaysBetween,
   isCurrentLoan,

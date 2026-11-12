@@ -1,7 +1,7 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { HOLD_STATUS_LABELS, canBorrow } from "@libras/shared";
+import { HOLD_STATUS_LABELS, canBorrow, formatLibraryDateTime } from "@libras/shared";
 import type { AccountType, BookDetail } from "@libras/shared";
 import { useAuth } from "../auth/AuthContext";
 import { Button } from "../components/Button";
@@ -11,7 +11,8 @@ import { activeHolds, holdFailureMessage, placeHold, useHolds } from "./useHolds
 /**
  * The Hold action of the Book page. It appears only for a Member who can
  * borrow and only when the Book has no available Copy. With a Hold already
- * active it shows where the Member stands instead of a second button.
+ * active it shows where the Member stands instead of a second button: for a
+ * ready Hold, until when the Copy is set aside and the way to the Digital ID.
  * There is no Figma frame for it: it uses the page's own panel style.
  */
 export function HoldAction({ book, accountType }: { book: BookDetail; accountType: AccountType }) {
@@ -34,9 +35,14 @@ export function HoldAction({ book, accountType }: { book: BookDetail; accountTyp
         </Text>
         <Text style={styles.body}>
           {existing.status === "ready"
-            ? "A Copy is set aside for you. Collect it at the library desk."
+            ? `A Copy is set aside for you${
+                existing.pickupEndsAt === null ? "" : ` until ${formatLibraryDateTime(existing.pickupEndsAt)}`
+              }. Show your Digital ID at the library desk to borrow it.`
             : "You are in the queue. You will be told when a Copy is set aside for you."}
         </Text>
+        {existing.status === "ready" ? (
+          <Button label="Show my Digital ID" radius={radii.formButton} onPress={() => router.push("/digital-id")} testID="hold-digital-id" />
+        ) : null}
         <Button label="See my Holds" tone="muted" radius={radii.formButton} onPress={() => router.push("/holds")} testID="hold-see-all" />
       </View>
     );

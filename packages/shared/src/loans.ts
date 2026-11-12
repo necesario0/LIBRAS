@@ -47,6 +47,14 @@ export function formatLibraryDate(iso: string): string {
   return `${formatLibraryDay(iso)}, ${shifted.getUTCFullYear()}`;
 }
 
+/** "Nov 19, 2026, 4:05 PM": the library's calendar day and time of day of an ISO 8601 time. */
+export function formatLibraryDateTime(iso: string): string {
+  const shifted = new Date(Date.parse(iso) + OFFSET_MS);
+  const hours = shifted.getUTCHours();
+  const minutes = String(shifted.getUTCMinutes()).padStart(2, "0");
+  return `${formatLibraryDate(iso)}, ${hours % 12 === 0 ? 12 : hours % 12}:${minutes} ${hours < 12 ? "AM" : "PM"}`;
+}
+
 /** Whole library days from the day of `fromIso` to the day of `toIso`: 7 from a checkout on Nov 12 to a due date of Nov 19. */
 export function libraryDaysBetween(fromIso: string, toIso: string): number {
   const day = (iso: string) => Math.floor((Date.parse(iso) + OFFSET_MS) / DAY_MS);
@@ -143,6 +151,12 @@ export interface ReturnedLoan {
   returnedAt: string;
   /** The Copy came back after the end of its due day. Tier 1 charges nothing for it. */
   late: boolean;
+  /**
+   * The Member whose Hold the returned Copy is now set aside for, and the end of
+   * their Pickup Window: the Copy goes on the hold shelf. Null when no Hold was
+   * waiting: the Copy is available and goes back on the stacks.
+   */
+  heldFor: { memberName: string; pickupEndsAt: string } | null;
 }
 
 /** The body of `POST /desk/returns`. */
