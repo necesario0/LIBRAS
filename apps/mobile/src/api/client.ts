@@ -1,5 +1,6 @@
 import type {
   ApiErrorBody,
+  CatalogSearchResponse,
   DigitalIdResponse,
   HealthResponse,
   MemberMeResponse,
@@ -81,6 +82,16 @@ export function createApiClient({ baseUrl, fetch: fetchImpl = fetch, timeoutMs =
 
   return {
     getHealth: () => request<HealthResponse>("/health"),
+    /**
+     * Searches the catalog by title or author (typos are tolerated) or by ISBN,
+     * accession number or call number. Needs a signed-in Member's access token.
+     * No match is a normal answer with an empty `results`, not an error.
+     */
+    searchCatalog: (accessToken: string, query: string, limit?: number) =>
+      request<CatalogSearchResponse>(
+        `/catalog/search?q=${encodeURIComponent(query)}${limit === undefined ? "" : `&limit=${limit}`}`,
+        { headers: { Authorization: `Bearer ${accessToken}` } },
+      ),
     /** Starts a sign-up: the API emails a verification code. */
     signUp: (body: SignUpRequest) => post<SignUpCodeSentResponse>("/members/sign-up", body),
     /** Accepts the emailed code: the account is active from here on. */

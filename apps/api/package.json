@@ -15,7 +15,8 @@
     "start": "node src/server.ts",
     "typecheck": "tsc -p tsconfig.json",
     "test": "node scripts/with-local-supabase.ts node --test --test-concurrency=1 \"test/**/*.test.ts\"",
-    "seed": "node scripts/with-local-supabase.ts node src/seed/index.ts"
+    "seed": "node scripts/with-local-supabase.ts node src/seed/index.ts",
+    "measure:search": "node scripts/with-local-supabase.ts node scripts/measure-search.ts"
   },
   "dependencies": {
     "@libras/shared": "*",

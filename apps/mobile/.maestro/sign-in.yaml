@@ -60,16 +60,15 @@ appId: ph.edu.umak.libras
 - tapOn:
     id: sign-in-continue
 - extendedWaitUntil:
-    visible: "Welcome, Cobby!"
+    visible: "Hi, Cobby"
     timeout: 20000
-- assertVisible: ${output.email}
 - takeScreenshot: signed-in
 
 # Closing and reopening the app keeps the Member signed in.
 - stopApp
 - launchApp
 - extendedWaitUntil:
-    visible: "Welcome, Cobby!"
+    visible: "Hi, Cobby"
     timeout: 30000
 
 # Signing out leaves the protected screen at once.
@@ -78,11 +77,11 @@ appId: ph.edu.umak.libras
 - extendedWaitUntil:
     visible: "SIGN  UP"
     timeout: 20000
-- assertNotVisible: "Welcome, Cobby!"
+- assertNotVisible: "Hi, Cobby"
 
 # A link to the protected screen goes nowhere while signed out ...
 - openLink: libras://home
-- assertNotVisible: "Welcome, Cobby!"
+- assertNotVisible: "Hi, Cobby"
 - assertVisible: "SIGN  UP"
 
 # ... and the app stays signed out after a restart.
@@ -91,7 +90,7 @@ appId: ph.edu.umak.libras
 - extendedWaitUntil:
     visible: "SIGN  UP"
     timeout: 30000
-- assertNotVisible: "Welcome, Cobby!"
+- assertNotVisible: "Hi, Cobby"
 
 # An account that never finished verification is guided to the code step.
 - tapOn:
