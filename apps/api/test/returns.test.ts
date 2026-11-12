@@ -58,6 +58,7 @@ describe("Recording a return at the desk", () => {
       dueAt: "2026-11-19T15:59:59.999Z",
       returnedAt: "2026-11-15T07:30:00.000Z",
       late: false,
+      heldFor: null,
     });
     assert.equal(await statusOf(copy.id), "available");
     const { loans } = await h.myLoans(ana);

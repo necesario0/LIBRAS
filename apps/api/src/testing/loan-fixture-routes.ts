@@ -14,7 +14,7 @@ const FIXTURE_LIBRARIAN = { email: "e2e-loan-desk@libras.test", fullName: "Lita 
  * A route that lets an end-to-end test on another process have a Librarian
  * confirm a Loan for a Member, the way the desk page does: it reads the code on
  * the Member's phone and runs the real confirmation with it and a Copy of the
- * Book. `daysAgo` runs the same confirmation with the clock set that many days
+ * Book (the Copy set aside for the Member's ready Hold when there is one). `daysAgo` runs the same confirmation with the clock set that many days
  * back, which is how a test gets a Loan that is overdue today. It exists only
  * on the end-to-end server (`e2e-server.ts`): the real server never imports this module.
  *
@@ -49,14 +49,21 @@ export function loanFixtureRoutes(router: Router, deps: AppDeps): void {
       `select m.user_id from public.members m join auth.users u on u.id = m.user_id where lower(u.email) = lower($1)`,
       [email],
     );
-    const copy = await deps.db.query<{ barcode: string }>(
-      "select barcode from public.copies where book_id = $1 and status = 'available' order by accession_number limit 1",
-      [bookId],
-    );
     const memberId = member.rows[0]?.user_id;
+    // A Copy that is set aside for the Member's ready Hold first, then any available one.
+    const copy = await deps.db.query<{ barcode: string }>(
+      `select c.barcode
+         from public.copies c
+        where c.book_id = $1
+          and (c.status = 'available'
+               or exists (select 1 from public.holds h where h.copy_id = c.id and h.status = 'ready' and h.member_id = $2))
+        order by (c.status = 'set_aside') desc, c.accession_number
+        limit 1`,
+      [bookId, memberId ?? null],
+    );
     const barcode = copy.rows[0]?.barcode;
     if (memberId === undefined || barcode === undefined) {
-      res.status(404).json({ error: { code: "not_found", message: "No such Member, or the Book has no available Copy." } });
+      res.status(404).json({ error: { code: "not_found", message: "No such Member, or the Book has no Copy the Member can borrow." } });
       return;
     }
 

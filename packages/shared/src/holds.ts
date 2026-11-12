@@ -34,6 +34,7 @@ export const HOLD_MESSAGES = {
   alreadyHeld: "You already have a Hold on this Book. You can see it in your Holds.",
   holdNotFound: "This Hold could not be found. Open your Holds and try again.",
   notCancellable: "This Hold can no longer be cancelled.",
+  changed: "This Hold changed while it was being cancelled, so nothing was cancelled. Open your Holds and try again.",
 } as const;
 
 /** One of the Member's Holds. */
@@ -46,6 +47,11 @@ export interface Hold {
   status: HoldStatus;
   /** When the Hold was placed, ISO 8601, by the API's clock. */
   placedAt: string;
+  /**
+   * The end of the Pickup Window, ISO 8601: until then a Copy is set aside for the
+   * Member. Null while the Hold is waiting, and for a Hold that was never chosen.
+   */
+  pickupEndsAt: string | null;
 }
 
 /** The body of `POST /holds`. */

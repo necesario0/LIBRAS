@@ -53,6 +53,26 @@ export const AUDIT_EVENTS = {
       late: z.boolean(),
     }),
   },
+  /**
+   * A Hold was chosen by the dispatcher: it became ready and a Copy was set aside
+   * for its Member. `actorId` is whoever freed the Copy: the Librarian who
+   * recorded its return, or the Member who cancelled the ready Hold it was set aside for.
+   */
+  hold_dispatched: {
+    /** The Hold's id. */
+    subject: z.uuid(),
+    data: z.strictObject({
+      /** The Member the Copy is set aside for. */
+      memberId: z.uuid(),
+      copyId: z.uuid(),
+      bookId: z.uuid(),
+      accessionNumber: z.string().max(64),
+      /** The end of the Pickup Window, ISO 8601. */
+      pickupEndsAt: z.iso.datetime(),
+      /** Why the Copy was free to be set aside. */
+      cause: z.enum(["copy_returned", "hold_cancelled"]),
+    }),
+  },
 } as const;
 
 export type AuditEventType = keyof typeof AUDIT_EVENTS;

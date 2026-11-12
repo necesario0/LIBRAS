@@ -49,6 +49,10 @@ _Avoid_: Reservation, request, booking
 **Pickup Window**:
 The time a Copy stays set aside for the Member whose Hold was chosen. If it passes, the Hold expires and the next Hold is chosen.
 
+**Hold dispatch**:
+Choosing the next waiting Hold of a Book when one of its Copies is free again, by arrival time minus the weight of the Member's Account Type. The Hold becomes ready and the Copy is set aside for its Member.
+_Avoid_: Assignment, allocation, notification (the email is only part of it)
+
 **Loan**:
 A record that a Member has a specific book copy out. A Loan exists only once a Librarian confirms it; a Member can never create one alone.
 _Avoid_: Borrow (as a noun), checkout, transaction
