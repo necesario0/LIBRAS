@@ -38,6 +38,21 @@ export const AUDIT_EVENTS = {
       dueAt: z.iso.datetime(),
     }),
   },
+  /** A Librarian recorded the return of a Copy at the desk. `actorId` is the Librarian. */
+  copy_returned: {
+    /** The id of the Loan that was closed. */
+    subject: z.uuid(),
+    data: z.strictObject({
+      memberId: z.uuid(),
+      copyId: z.uuid(),
+      bookId: z.uuid(),
+      accessionNumber: z.string().max(64),
+      /** When the return was recorded, ISO 8601. */
+      returnedAt: z.iso.datetime(),
+      /** The Copy came back after the end of its due day. */
+      late: z.boolean(),
+    }),
+  },
 } as const;
 
 export type AuditEventType = keyof typeof AUDIT_EVENTS;

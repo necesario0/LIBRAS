@@ -1,122 +1,20 @@
 import assert from "node:assert/strict";
-import { randomInt, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { after, before, beforeEach, describe, it } from "node:test";
 import { LOAN_MESSAGES } from "@libras/shared";
 import type {
   BookDetailResponse,
   CatalogSearchResponse,
   ConfirmLoanResponse,
-  DigitalIdResponse,
   IdentifyMemberResponse,
-  MyLoansResponse,
 } from "@libras/shared";
 import { createAuditLog } from "../src/audit/index.ts";
 import { withIdentity } from "../src/auth/index.ts";
-import { createTestAccount, createTestMember, createTestMemberOfType, startTestApi } from "../src/testing/index.ts";
-import type { TestApi, TestMember } from "../src/testing/index.ts";
+import { createTestMember, createTestMemberOfType } from "../src/testing/index.ts";
+import type { TestMember } from "../src/testing/index.ts";
 import { eventually } from "./eventually.ts";
-
-type CopyStatus = "available" | "on_loan" | "set_aside";
-
-interface TestCopy {
-  id: string;
-  barcode: string;
-  accessionNumber: string;
-}
-
-interface TestBook {
-  id: string;
-  title: string;
-  copies: TestCopy[];
-}
-
-interface TestLibrarian {
-  userId: string;
-  accessToken: string;
-}
-
-/** What every group of Loan tests does: add Books with Copies, sign Librarians in, call the API, clean up. */
-function loansHarness() {
-  const bookIds: string[] = [];
-  const state: { api?: TestApi } = {};
-  const api = () => {
-    if (!state.api) throw new Error("The API is not started");
-    return state.api;
-  };
-  const send = (method: string, path: string, token: string | null, body?: unknown) =>
-    fetch(`${api().baseUrl}${path}`, {
-      method,
-      headers: {
-        ...(token ? { authorization: `Bearer ${token}` } : {}),
-        ...(body === undefined ? {} : { "content-type": "application/json" }),
-      },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
-
-  return {
-    api,
-    send,
-    start: async (options: Parameters<typeof startTestApi>[0] = {}) => {
-      state.api = await startTestApi(options);
-    },
-    stop: async () => {
-      try {
-        await api().db.query(
-          "delete from public.loans where copy_id in (select id from public.copies where book_id = any($1))",
-          [bookIds],
-        );
-        await api().db.query("delete from public.copies where book_id = any($1)", [bookIds]);
-        await api().db.query("delete from public.books where id = any($1)", [bookIds]);
-      } finally {
-        await api().close();
-      }
-    },
-    /** A Book whose Copies have these statuses, with a ten-digit barcode and an accession number each. */
-    addBook: async (title: string, copyStatuses: CopyStatus[] = ["available"]): Promise<TestBook> => {
-      const { rows } = await api().db.query("insert into public.books (title, authors) values ($1, $2) returning id", [title, ["Reyes, Ana"]]);
-      const id: string = rows[0].id;
-      bookIds.push(id);
-      const copies: TestCopy[] = [];
-      for (const status of copyStatuses) {
-        const barcode = `39${String(randomInt(0, 100_000_000)).padStart(8, "0")}`;
-        const accessionNumber = `LT-${randomUUID().slice(0, 13).toUpperCase()}`;
-        const inserted = await api().db.query(
-          "insert into public.copies (book_id, accession_number, barcode, status) values ($1, $2, $3, $4) returning id",
-          [id, accessionNumber, barcode, status],
-        );
-        copies.push({ id: inserted.rows[0].id, barcode, accessionNumber });
-      }
-      return { id, title, copies };
-    },
-    librarian: async (fullName = "Lita Reyes"): Promise<TestLibrarian> => {
-      const account = await createTestAccount(api(), { staff: { role: "librarian", fullName } });
-      const signedIn = await send("POST", "/staff/sign-in", null, { email: account.email, password: account.password });
-      const { session } = (await signedIn.json()) as { session: { accessToken: string } };
-      return { userId: account.userId, accessToken: session.accessToken };
-    },
-    /** The code on the Member's phone right now, from the real endpoint. */
-    digitalIdOf: async (member: TestMember): Promise<string> => {
-      const response = await send("GET", "/members/me/digital-id", member.accessToken);
-      assert.equal(response.status, 200);
-      return ((await response.json()) as DigitalIdResponse).code;
-    },
-    myLoans: async (member: TestMember) => {
-      const response = await send("GET", "/members/me/loans", member.accessToken);
-      assert.equal(response.status, 200);
-      return (await response.json()) as MyLoansResponse;
-    },
-    loansOf: async (member: TestMember) => {
-      const response = await send("GET", "/members/me/loans", member.accessToken);
-      assert.equal(response.status, 200);
-      return ((await response.json()) as MyLoansResponse).loans;
-    },
-  };
-}
-
-async function refusal(response: Response): Promise<{ status: number; code: string; message: string }> {
-  const { error } = (await response.json()) as { error: { code: string; message: string } };
-  return { status: response.status, code: error.code, message: error.message };
-}
+import { loansHarness, refusal } from "./loans-harness.ts";
+import type { CopyStatus, TestCopy, TestLibrarian } from "./loans-harness.ts";
 
 describe("Confirming a Loan at the desk", () => {
   const h = loansHarness();

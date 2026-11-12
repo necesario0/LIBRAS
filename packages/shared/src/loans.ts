@@ -123,3 +123,37 @@ export const LOAN_MESSAGES = {
   copyOnLoan: "This Copy is already on Loan, so no Loan was recorded. Record its return first if it has come back.",
   copySetAside: "This Copy is set aside for another Member's Hold, so no Loan was recorded. Put it back on the hold shelf.",
 } as const;
+
+/** The body of `POST /desk/returns`: the Copy's barcode or accession number, as scanned or typed. */
+export const recordReturnRequestSchema = z.object({ copy: copyCodeSchema }).strict();
+export type RecordReturnRequest = z.infer<typeof recordReturnRequestSchema>;
+
+/** What the desk page shows about a return it has just recorded. */
+export interface ReturnedLoan {
+  /** The id of the Loan that was closed. */
+  id: string;
+  bookTitle: string;
+  accessionNumber: string;
+  /** Who had the Copy out. */
+  memberName: string;
+  checkedOutAt: string;
+  dueAt: string;
+  /** When the return was recorded, ISO 8601, by the API's clock. */
+  returnedAt: string;
+  /** The Copy came back after the end of its due day. Tier 1 charges nothing for it. */
+  late: boolean;
+}
+
+/** The body of `POST /desk/returns`. */
+export interface RecordReturnResponse {
+  loan: ReturnedLoan;
+}
+
+/** The words the API returns and the desk page shows when a return cannot be recorded. */
+export const RETURN_MESSAGES = {
+  invalidRequest: "Scan the Copy's barcode to record its return. If a barcode cannot be read, type the accession number.",
+  copyNotFound: "No Copy has this barcode or accession number. Scan it again, or type the accession number printed on the Copy.",
+  copyNotOnLoan:
+    "This Copy is not on Loan, so no return was recorded. It may already have been returned. Check that you scanned the right Copy.",
+  changedHands: "This Copy changed hands while its return was being recorded, so nothing was recorded. Scan it again.",
+} as const;
