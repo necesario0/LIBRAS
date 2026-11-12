@@ -23,16 +23,17 @@ export interface LockedCopy extends DispatchableCopy {
 }
 
 /**
- * Why a Copy is being placed: it came back from a Loan, or the Member it was
- * set aside for cancelled their ready Hold. Recorded in the audit entry.
+ * Why a Copy is being placed: it came back from a Loan, the Member it was set
+ * aside for cancelled their ready Hold, or their Pickup Window passed. Recorded
+ * in the audit entry.
  */
-export type DispatchCause = "copy_returned" | "hold_cancelled";
+export type DispatchCause = "copy_returned" | "hold_cancelled" | "pickup_window_expired";
 
 export interface DispatchContext {
   /** The time of the dispatch, from `deps.clock.now()`: the start of the Pickup Window. */
   at: Date;
   cause: DispatchCause;
-  /** The signed-in person whose action freed the Copy: the Librarian of a return, the Member of a cancel. */
+  /** The signed-in person whose action freed the Copy: the Librarian of a return, the Member of a cancel, nobody for an expiry. */
   actorId: string | null;
 }
 
@@ -91,7 +92,7 @@ const DISPATCH_SQL = `
  * Places a Copy that nobody has any more: the Book's next waiting Hold becomes
  * ready and the Copy is set aside for its Member for the Pickup Window, or,
  * with no Hold waiting, the Copy becomes available. This is the one place a
- * Copy leaves a Loan, a cancelled ready Hold or (#19) an expired one.
+ * Copy leaves a Loan, a cancelled ready Hold or an expired one.
  *
  * The caller's rules:
  * - Call it inside a transaction in which the Copy's row is already locked

@@ -6,6 +6,7 @@ import { SupabaseAuthAdmin } from "../auth/supabase-auth-admin.ts";
 import { SupabaseAuth } from "../auth/supabase-auth.ts";
 import { LOCAL_DATABASE_URL, loadConfig } from "../config.ts";
 import { createDatabase } from "../db.ts";
+import { expireDueHolds } from "../holds/expiry.ts";
 import type { Database } from "../db.ts";
 import type { Logger } from "../logger.ts";
 import { CapturingEmailSender } from "./capturing-email-sender.ts";
@@ -20,6 +21,11 @@ export interface TestApi {
   emails: CapturingEmailSender;
   /** The API's connection to the real local PostgreSQL, for arranging the data a test needs. */
   db: Database;
+  /**
+   * Runs the Pickup Window expiry sweep now, on the test clock, and returns how many
+   * Holds it expired. The product runs the same sweep on its own timer and on the database's schedule.
+   */
+  sweepPickupWindows(): Promise<number>;
   /** Stops the server and closes the database connections. Call it in `after`. */
   close(): Promise<void>;
 }
@@ -46,7 +52,8 @@ export async function startTestApi(options: TestApiOptions = {}): Promise<TestAp
   const config = loadConfig();
   const auth = new SupabaseAuth({ url: config.supabaseUrl, publishableKey: config.supabasePublishableKey });
   const accounts = new SupabaseAuthAdmin({ url: config.supabaseUrl, secretKey: config.supabaseSecretKey });
-  const app = createApp({ db, auth, accounts, clock, email: emails, logger }, options);
+  const deps = { db, auth, accounts, clock, email: emails, logger };
+  const app = createApp(deps, options);
 
   const server = await new Promise<Server>((resolve, reject) => {
     const listening = app.listen(0, "127.0.0.1", () => resolve(listening));
@@ -59,6 +66,7 @@ export async function startTestApi(options: TestApiOptions = {}): Promise<TestAp
     clock,
     emails,
     db,
+    sweepPickupWindows: () => expireDueHolds(deps),
     async close() {
       await new Promise<void>((resolve, reject) => {
         server.close((error) => (error ? reject(error) : resolve()));

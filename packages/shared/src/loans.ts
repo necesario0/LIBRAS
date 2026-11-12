@@ -131,6 +131,7 @@ export const LOAN_MESSAGES = {
   copyOnLoan:
     "This Copy is already on Loan, so no Loan was recorded. If it has come back, choose Done with this Member and scan it again to record its return.",
   copySetAside: "This Copy is set aside for another Member's Hold, so no Loan was recorded. Put it back on the hold shelf.",
+  changed: "This Copy's Hold changed while the Loan was being recorded, so no Loan was recorded. Scan the Member's Digital ID and the Copy again.",
 } as const;
 
 /** The body of `POST /desk/returns`: the Copy's barcode or accession number, as scanned or typed. */

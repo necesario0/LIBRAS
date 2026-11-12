@@ -7,6 +7,7 @@ import { withTransaction } from "../db.ts";
 import { AppError } from "../errors.ts";
 import { announceDispatch, dispatchCopy, lockCopyById } from "./dispatch.ts";
 import type { HoldDispatch } from "./dispatch.ts";
+import { expireDueHolds, expireHold } from "./expiry.ts";
 import { HOLD_WEIGHT_HOURS, holdScore } from "./priority.ts";
 
 interface HoldRow {
@@ -82,9 +83,12 @@ export async function placeHold(deps: AppDeps, member: MemberProfile, bookId: st
 
 /**
  * The Member's own Holds, active ones first and each group newest first. Read as the
- * Member, so row-level security shows nobody else's.
+ * Member, so row-level security shows nobody else's. A Hold whose Pickup Window
+ * has ended is expired first (and the Copy passed on), so what the Member reads
+ * never depends on when the expiry sweep last ran.
  */
 export async function listHolds(deps: AppDeps, identity: Identity): Promise<Hold[]> {
+  await expireDueHolds(deps, { memberId: identity.userId });
   const rows = await withIdentity(deps.db, identity, async (scope) => {
     const result = await scope.query<HoldRow>(
       `select h.id, h.book_id, b.title, b.authors, h.status, h.placed_at, h.pickup_ends_at
@@ -98,6 +102,9 @@ export async function listHolds(deps: AppDeps, identity: Identity): Promise<Hold
 
 /** Thrown inside the cancel's transaction to roll it back and read the Hold again. */
 class HoldChanged extends Error {}
+
+/** Thrown inside the cancel's transaction when the Hold's Pickup Window has ended: it is expired, not cancelled. */
+class WindowEnded extends Error {}
 
 /** How many times a cancel reads the Hold again when it changed while the transaction waited for its locks. */
 const CANCEL_ATTEMPTS = 3;
@@ -115,7 +122,9 @@ const CANCEL_SQL = `
  * Hold gives up the Copy that is set aside for it: in the same transaction the
  * Copy goes to the Book's next waiting Hold, with a Pickup Window of its own
  * starting now, or becomes available when nobody waits. A Hold that is
- * fulfilled, expired or already cancelled is refused. A Hold that is not the
+ * fulfilled, expired or already cancelled is refused, and so is a ready Hold
+ * whose Pickup Window has ended but which the sweep has not expired yet: it is
+ * expired here and then refused, as if the sweep had run first. A Hold that is not the
  * Member's is reported as not found, the same as one that does not exist.
  *
  * Locks: a waiting Hold needs only its own row. A ready Hold needs the Copy's
@@ -138,8 +147,8 @@ export async function cancelHold(deps: AppDeps, member: MemberProfile, holdId: s
         const setAside = seen.rows[0].status === "ready" ? seen.rows[0].copy_id : null;
 
         const copy = setAside === null ? undefined : await lockCopyById(tx, setAside);
-        const locked = await tx.query<{ status: HoldStatus; copy_id: string | null }>(
-          "select status, copy_id from public.holds where id = $1 and member_id = $2 for update",
+        const locked = await tx.query<{ status: HoldStatus; copy_id: string | null; pickup_ends_at: Date | null }>(
+          "select status, copy_id, pickup_ends_at from public.holds where id = $1 and member_id = $2 for update",
           [holdId, member.id],
         );
         const hold = locked.rows[0];
@@ -149,6 +158,7 @@ export async function cancelHold(deps: AppDeps, member: MemberProfile, holdId: s
         }
         // Dispatched while this waited: its Copy must be locked first, so start again.
         if (hold.status === "ready" && (!copy || copy.id !== hold.copy_id)) throw new HoldChanged();
+        if (hold.status === "ready" && hold.pickup_ends_at !== null && hold.pickup_ends_at.getTime() <= cancelledAt.getTime()) throw new WindowEnded();
 
         const updated = await tx.query<HoldRow>(CANCEL_SQL, [holdId, cancelledAt]);
         // Last in the transaction: the Copy this Hold gave up goes to the next Hold, or back on the shelf.
@@ -160,6 +170,10 @@ export async function cancelHold(deps: AppDeps, member: MemberProfile, holdId: s
       await announceDispatch(deps, dispatch);
       return cancelled;
     } catch (error) {
+      if (error instanceof WindowEnded) {
+        await expireHold(deps, holdId);
+        throw new AppError(409, "hold_not_cancellable", HOLD_MESSAGES.notCancellable);
+      }
       if (!(error instanceof HoldChanged)) throw error;
       if (attempt >= CANCEL_ATTEMPTS) throw new AppError(409, "hold_conflict", HOLD_MESSAGES.changed);
     }

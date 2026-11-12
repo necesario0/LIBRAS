@@ -70,7 +70,28 @@ export const AUDIT_EVENTS = {
       /** The end of the Pickup Window, ISO 8601. */
       pickupEndsAt: z.iso.datetime(),
       /** Why the Copy was free to be set aside. */
-      cause: z.enum(["copy_returned", "hold_cancelled"]),
+      cause: z.enum(["copy_returned", "hold_cancelled", "pickup_window_expired"]),
+    }),
+  },
+  /**
+   * A Hold's Pickup Window passed without the Member borrowing the Copy set aside
+   * for it, and the API expired the Hold. There is no actor: the API did it, on
+   * its own schedule or when something touched the Hold. When a Hold was waiting,
+   * a `hold_dispatched` entry (cause `pickup_window_expired`) follows.
+   */
+  hold_expired: {
+    /** The Hold's id. */
+    subject: z.uuid(),
+    data: z.strictObject({
+      /** The Member who did not borrow the Copy. */
+      memberId: z.uuid(),
+      copyId: z.uuid(),
+      bookId: z.uuid(),
+      accessionNumber: z.string().max(64),
+      /** The end of the Pickup Window that passed, ISO 8601. */
+      pickupEndsAt: z.iso.datetime(),
+      /** When the API recorded the expiry, ISO 8601. */
+      expiredAt: z.iso.datetime(),
     }),
   },
 } as const;

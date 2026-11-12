@@ -11,6 +11,7 @@ import type { VerifiedDigitalId } from "../digital-id/index.ts";
 import { AppError } from "../errors.ts";
 import { announceDispatch, dispatchCopy } from "../holds/dispatch.ts";
 import type { HoldDispatch } from "../holds/dispatch.ts";
+import { expireHold } from "../holds/expiry.ts";
 import { MEMBER_NAME_SQL } from "../members/profile.ts";
 
 /** The client of the confirmation's transaction, running as the API itself. */
@@ -101,11 +102,31 @@ async function useDigitalId(tx: Tx, verified: VerifiedDigitalId, librarianId: st
 }
 
 /**
+ * Thrown by `takeCopy` when the Copy is set aside for a Hold whose Pickup Window
+ * has ended but which nobody has expired yet. The Loan's transaction rolls
+ * back, the Hold is expired (`expireHold`), and the confirmation runs again.
+ */
+class PickupWindowPassed extends Error {
+  readonly holdId: string;
+  constructor(holdId: string) {
+    super(`The Pickup Window of Hold ${holdId} has ended`);
+    this.holdId = holdId;
+  }
+}
+
+/** How many times a confirmation runs again after expiring the Hold whose window had ended. */
+const CONFIRM_ATTEMPTS = 3;
+
+/**
  * Takes the Copy for this Member, or throws the reason it cannot go out to
  * them. This is the one place that decides it. A Copy that is on Loan goes to
  * nobody. A Copy that is set aside goes only to the Member whose ready Hold it
- * is set aside for, and that Hold becomes fulfilled here, in the transaction
- * of the Loan; every other Member is refused with `copy_set_aside`.
+ * is set aside for, and only until the end of the Hold's Pickup Window
+ * (`pickup_ends_at` itself is already too late). That Hold becomes fulfilled
+ * here, in the transaction of the Loan; every other Member is refused with
+ * `copy_set_aside`. When the window has ended, this is not decided by whether
+ * the expiry sweep has run yet: `PickupWindowPassed` makes the caller expire the
+ * Hold and ask again, so the outcome is the same as if the sweep had run first.
  *
  * The Copy's row is locked by the caller, so its status cannot change under
  * this. The Hold's row is locked by the update, after the Copy's: the order
@@ -116,10 +137,17 @@ async function takeCopy(tx: Tx, copy: CopyRow, borrower: BorrowerRow, at: Date):
   if (copy.status === "set_aside") {
     const fulfilled = await tx.query(
       `update public.holds set status = 'fulfilled', fulfilled_at = $3
-        where copy_id = $1 and member_id = $2 and status = 'ready'`,
+        where copy_id = $1 and member_id = $2 and status = 'ready' and pickup_ends_at > $3`,
       [copy.id, borrower.user_id, at],
     );
-    if (fulfilled.rowCount !== 1) throw new AppError(409, "copy_set_aside", LOAN_MESSAGES.copySetAside);
+    if (fulfilled.rowCount !== 1) {
+      const over = await tx.query<{ id: string }>(
+        "select id from public.holds where copy_id = $1 and status = 'ready' and pickup_ends_at <= $2",
+        [copy.id, at],
+      );
+      if (over.rows[0]) throw new PickupWindowPassed(over.rows[0].id);
+      throw new AppError(409, "copy_set_aside", LOAN_MESSAGES.copySetAside);
+    }
   }
 }
 
@@ -143,6 +171,24 @@ export interface ConfirmedLoan {
  * Copy, or for the same Member's last allowed Loan, yield exactly one Loan.
  */
 export async function confirmLoan(
+  deps: AppDeps,
+  librarian: Identity,
+  request: { digitalId: string; copy: string },
+): Promise<ConfirmedLoan> {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return await confirmOnce(deps, librarian, request);
+    } catch (error) {
+      if (!(error instanceof PickupWindowPassed)) throw error;
+      if (attempt >= CONFIRM_ATTEMPTS) throw new AppError(409, "loan_conflict", LOAN_MESSAGES.changed);
+      // Nothing of the failed attempt was kept, not even the use of the Digital ID code.
+      await expireHold(deps, error.holdId);
+    }
+  }
+}
+
+/** One attempt at `confirmLoan`: one transaction. */
+async function confirmOnce(
   deps: AppDeps,
   librarian: Identity,
   request: { digitalId: string; copy: string },
