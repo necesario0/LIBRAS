@@ -2,7 +2,7 @@
 
 The Member mobile app: React Native with TypeScript, built with Expo SDK 58 (React Native 0.88, new architecture) and Expo Router, targeting an Android APK (ADR 0002). It talks only to the API (`apps/api`) and takes shared types from `@libras/shared`.
 
-Today it has the welcome screen and the UMAK Student sign-up flow (account type, name, student details, username and password, email, emailed code, welcome). `libras://status` opens the developer screen that calls `GET /health`.
+Today it has the welcome screen and the sign-up flow for all five Account Types (account type, name, the details that Account Type gives, username and password, email, emailed code, welcome). The details step is `student.tsx`, `faculty.tsx`, `ntp-employee.tsx`, `visitor.tsx` or `alumni.tsx` in `app/sign-up/`; `src/sign-up/request.ts` maps the Account Type to its step and builds its request. Faculty, NTP / Employee and UMAK Student share `src/sign-up/CollegeIdStep.tsx`. Faculty and NTP / Employee need an `@umak.edu.ph` email; Visitor and Alumni accept any. `libras://status` opens the developer screen that calls `GET /health`.
 
 ## Layout
 
@@ -57,7 +57,7 @@ To build against the hosted API on Render, run `npm run build:apk:hosted -w @lib
 
 ## End-to-end test
 
-Four flows run (the fourth, `search.yaml`, signs a Member in and searches Books that `scripts/create-books.js` adds through the end-to-end API): the smoke test (the `libras://status` screen shows the health result), `sign-up-umak-student.yaml`, which signs a student up through the real screens and reads the verification code from the emails the end-to-end API captured (see `apps/api/README.md`), and `sign-in.yaml` (sign in, stay signed in across a restart, sign out, protected screen unreachable, wrong credentials, unverified account). The sign-in flow makes its Members through the API with `scripts/create-member.js`. The end-to-end API raises the sign-in limit so repeated runs from one address are not blocked.
+Several flows run (`search.yaml` signs a Member in and searches Books that `scripts/create-books.js` adds through the end-to-end API): the smoke test (the `libras://status` screen shows the health result), `sign-up-umak-student.yaml`, which signs a student up through the real screens and reads the verification code from the emails the end-to-end API captured (see `apps/api/README.md`), `sign-up-faculty.yaml`, `sign-up-ntp-employee.yaml`, `sign-up-visitor.yaml` and `sign-up-alumni.yaml` (the same for the other Account Types, sharing the steps in `.maestro/subflows/`), and `sign-in.yaml` (sign in, stay signed in across a restart, sign out, protected screen unreachable, wrong credentials, unverified account). The sign-in flow makes its Members through the API with `scripts/create-member.js`. The end-to-end API raises the sign-in limit so repeated runs from one address are not blocked.
 
 ```bash
 npm run db:start
