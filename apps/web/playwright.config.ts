@@ -23,7 +23,14 @@ export default defineConfig({
     {
       name: "desktop-chrome",
       // The machine's installed Chrome (also on GitHub's runners): no browser download.
-      use: { ...devices["Desktop Chrome"], channel: "chrome", viewport: { width: 1440, height: 900 } },
+      use: {
+        ...devices["Desktop Chrome"],
+        channel: "chrome",
+        viewport: { width: 1440, height: 900 },
+        // A fake camera that needs no permission prompt, for the scanner page. It shows a test pattern, no barcode.
+        launchOptions: { args: ["--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream"] },
+        permissions: ["camera"],
+      },
     },
   ],
   webServer: [

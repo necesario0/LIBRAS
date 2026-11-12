@@ -37,6 +37,8 @@ export const colors = {
   listBorder: "#111C4E",
   /** Border of a panel that holds a message. */
   panelBorder: "rgba(0,0,0,0.32)",
+  /** The highlighted word of a heading ("Show this to the librarian", Figma 617:3265). */
+  highlight: "#FFA800",
   /** The greeting's second line on Home ("Whats on your mind"). */
   textFaint: "#AFAFAF",
   /** Shadow of the Home search bar (Figma: black at 25%). */
@@ -46,13 +48,31 @@ export const colors = {
   successSurface: "#E5F6EC",
   /** A neutral status pill, for example no Copy available (Figma "74% match" pill). */
   pill: "#F1F1F3",
+  /** Book page: the call number pill (Figma 1187:1479). */
+  callNumber: "#9DCCFF",
+  /** Book page: the "Available" pill and its text (Figma 614:1170, 614:1171). */
+  availableSurface: "#C7FFD5",
+  availableText: "#188132",
+  /** Book page: body copy under a heading (Figma 617:1184). */
+  textBody: "#6E6E6E",
+  /** Fill of the "Overdue" pill; its text is `danger`. */
+  dangerSurface: "#FDECEC",
+  /** The sheet that holds a Book page (Figma 609:1159 grabber). */
+  grabber: "#D9D9D9",
 } as const;
+
+/** Raised cards (Figma 617:3265: x 0, y 7, blur 17.9, black 25%). */
+export const cardShadow = "0px 7px 17.9px rgba(0, 0, 0, 0.25)";
 
 /** Montserrat is the only family. Keys are the names registered with `useFonts`. */
 export const fontFamily = {
   regular: "Montserrat_400Regular",
   medium: "Montserrat_500Medium",
   semiBold: "Montserrat_600SemiBold",
+  extraLight: "Montserrat_200ExtraLight",
+  /** The Book page's call number and its label (Figma: IBM Plex Mono and Roboto Mono). */
+  monoLabel: "IBMPlexMono_400Regular",
+  mono: "RobotoMono_400Regular",
 } as const;
 
 /** Sizes seen in the frames, largest first. */
@@ -60,6 +80,8 @@ export const fontSize = {
   display: 40,
   heading: 36,
   hero: 35,
+  /** "Show this to the librarian". */
+  headline: 32,
   title: 26,
   /** The greeting on Home. */
   large: 24,
@@ -115,12 +137,29 @@ export const radii = {
   panel: 12,
   /** The college list. */
   list: 10,
+  /** The dashed frame around the Digital ID (Figma 617:3265). */
+  ticket: 15,
+  /** The outlined "Cancel request" button of the Digital ID screen. */
+  outlineButton: 46,
   /** The Home search bar. */
   search: 65,
+  /** The sheet that holds a Book page. */
+  sheet: 38,
+  /** The yellow call to action of the borrow flow ("Borrow", "View My Books", Figma 617:3570). */
+  callToAction: 34,
 } as const;
 
 /** Height of text fields and buttons. */
 export const controlHeight = 44;
+
+/** Height of the outlined button of the borrow flow (Figma 617:3265). */
+export const outlineButtonHeight = 61;
+
+/** Height of the yellow call to action of the borrow flow (Figma 617:3570). */
+export const callToActionHeight = 57;
+
+/** Height of the outlined "Home" button beside it (Figma 617:3547). */
+export const outlineActionHeight = 54;
 
 /** Height of the Home search bar. */
 export const searchBarHeight = 46;

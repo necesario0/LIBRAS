@@ -1,0 +1,204 @@
+# A UMAK Student taps Borrow on a Book with an available Copy: the Digital ID
+# opens and nothing is recorded. When the Librarian confirms the Loan at the desk
+# (the end-to-end API does it, with the code on the Member's phone), the app shows
+# "Successfully Borrowed", My Loans lists the Loan with its dates, and Home counts
+# it. An overdue Loan is marked on Home and in My Loans.
+# Needs the end-to-end API on port 3000 (npm run e2e starts it).
+appId: ph.edu.umak.libras
+---
+- launchApp:
+    clearState: true
+- runScript: scripts/create-loans.js
+
+# The UMAK Student signs in. The emulator sometimes doubles the first character
+# typed after a tap: check and retype.
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 30000
+- tapOn:
+    id: welcome-sign-in
+- tapOn:
+    id: sign-in-email
+- retry:
+    maxRetries: 3
+    commands:
+      - eraseText: 80
+      - inputText: ${output.email}
+      - assertVisible: ${output.email}
+- tapOn:
+    id: sign-in-password
+- inputText: ${output.password}
+- hideKeyboard
+- tapOn:
+    id: sign-in-continue
+
+# With no Loans, Home says so.
+- extendedWaitUntil:
+    visible:
+      id: home-loans
+    timeout: 20000
+- assertVisible: "My Loans"
+- assertVisible: "No current Loans"
+- takeScreenshot: loans-home-empty
+
+# My Loans is empty too.
+- tapOn:
+    id: home-loans
+- extendedWaitUntil:
+    visible:
+      id: loans-empty
+    timeout: 15000
+- assertVisible: "No Loans yet"
+- takeScreenshot: loans-list-empty
+- tapOn:
+    id: loans-back
+
+# A Book with an available Copy has the Borrow action.
+- tapOn:
+    id: search-input
+- inputText: ${output.borrowWord}
+- extendedWaitUntil:
+    visible: ${output.borrowTitle}
+    timeout: 15000
+- tapOn: ${output.borrowTitle}
+- extendedWaitUntil:
+    visible:
+      id: book-sheet
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: book-borrow
+    direction: DOWN
+    timeout: 15000
+- assertVisible: "Loan period: 7 days. After you tap Borrow, show the code to the librarian."
+- assertNotVisible:
+    id: hold-action
+- takeScreenshot: loans-book-borrow
+
+# Borrow opens the Digital ID.
+- tapOn:
+    id: book-borrow
+- assertVisible: "Show this to the librarian"
+- extendedWaitUntil:
+    visible:
+      id: digital-id-code
+    timeout: 15000
+- takeScreenshot: loans-digital-id
+
+# Borrow recorded nothing: after waiting longer than the app takes to ask the API
+# again, the Digital ID is still showing, and Home still has no Loans.
+- extendedWaitUntil:
+    visible: "Successfully.*"
+    timeout: 6000
+    optional: true
+- assertVisible:
+    id: digital-id-code
+- tapOn:
+    id: digital-id-done
+- tapOn:
+    id: book-close
+- extendedWaitUntil:
+    visible:
+      id: search-results
+    timeout: 10000
+- tapOn:
+    id: search-input
+- eraseText: 40
+- hideKeyboard
+- extendedWaitUntil:
+    visible:
+      id: home-loans-summary
+    timeout: 15000
+- assertVisible: "No current Loans"
+
+# The Member shows the Digital ID at the desk, and the Librarian confirms the Loan.
+- tapOn:
+    id: home-digital-id
+- extendedWaitUntil:
+    visible:
+      id: digital-id-code
+    timeout: 15000
+- runScript: scripts/confirm-loan.js
+
+# The app learns of the Loan from the API and says so.
+- extendedWaitUntil:
+    visible:
+      id: borrowed-card
+    timeout: 20000
+- assertVisible: "Successfully.*Borrowed"
+- assertVisible: "The librarian scanned your code. Enjoy your book !"
+- assertVisible: ${output.borrowTitle}
+- assertVisible: "Zxqy, Bea"
+- assertVisible: "Borrowed on"
+- assertVisible: "Return by"
+- assertVisible:
+    id: borrowed-time-left
+    text: "7 days"
+- assertVisible:
+    id: borrowed-count
+    text: "1 of 3"
+- assertVisible: "Please return it by .*"
+- takeScreenshot: loans-successfully-borrowed
+
+# My Loans lists it with its checkout and due dates.
+- tapOn:
+    id: borrowed-my-loans
+- extendedWaitUntil:
+    visible:
+      id: loans-current
+    timeout: 15000
+- assertVisible: "My Loans"
+- assertVisible: "Current - 1 of 3"
+- assertVisible: ${output.borrowTitle}
+- assertVisible: "Borrowed on [A-Z][a-z]{2} [0-9]{1,2}, 20[0-9]{2}"
+- assertVisible: "Return by [A-Z][a-z]{2} [0-9]{1,2}, 20[0-9]{2}"
+- assertVisible: "On loan"
+- assertNotVisible: "Overdue"
+- takeScreenshot: loans-list
+
+# Back leads Home, which now counts the Loan.
+- tapOn:
+    id: loans-back
+- extendedWaitUntil:
+    visible:
+      id: home-loans-summary
+    timeout: 15000
+- assertVisible: "1 current Loan"
+- takeScreenshot: loans-home-one
+
+# A Loan that is past its due date is marked on Home and in My Loans.
+- runScript: scripts/overdue-loan.js
+- tapOn:
+    id: home-loans
+- extendedWaitUntil:
+    visible:
+      id: loans-overdue-notice
+    timeout: 15000
+- assertVisible: "1 Loan is overdue"
+- assertVisible: "Current - 2 of 3"
+- assertVisible: ${output.lateTitle}
+- assertVisible: "Overdue"
+- assertVisible: "Was due [A-Z][a-z]{2} [0-9]{1,2}, 20[0-9]{2}"
+- assertVisible: "On loan"
+- takeScreenshot: loans-list-overdue
+- tapOn:
+    id: loans-back
+- extendedWaitUntil:
+    visible: "2 current Loans, 1 overdue"
+    timeout: 15000
+- takeScreenshot: loans-home-overdue
+
+# The Book now has one Copy fewer on the shelf, and Borrow still leads to the Digital ID.
+- tapOn:
+    id: search-input
+- inputText: ${output.borrowWord}
+- extendedWaitUntil:
+    visible: ${output.borrowTitle}
+    timeout: 15000
+- tapOn: ${output.borrowTitle}
+- extendedWaitUntil:
+    visible:
+      id: book-sheet
+    timeout: 15000
+- assertVisible: "1"
+- takeScreenshot: loans-book-after

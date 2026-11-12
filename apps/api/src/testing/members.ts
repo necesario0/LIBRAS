@@ -1,9 +1,11 @@
 import { randomInt, randomUUID } from "node:crypto";
-import type { MemberProfile, SignUpRequest } from "@libras/shared";
+import type { AccountType, MemberProfile, SignUpRequest } from "@libras/shared";
 import { loadConfig } from "../config.ts";
 import type { EmailMessage } from "../email.ts";
 import type { TestApi } from "./test-api.ts";
 
+/** The profile of a UMAK Student, which carries the student details. */
+type StudentProfile = Extract<MemberProfile, { accountType: "umak_student" }>;
 type StudentSignUp = Extract<SignUpRequest, { accountType: "umak_student" }>;
 
 /**
@@ -105,19 +107,21 @@ export async function signInDirect(email: string, password: string): Promise<str
   return ((await response.json()) as { access_token: string }).access_token;
 }
 
-export interface TestMember {
-  member: Extract<MemberProfile, { accountType: "umak_student" }>;
+export interface TestMember<Profile extends MemberProfile = MemberProfile> {
+  member: Profile;
   email: string;
   password: string;
   accessToken: string;
 }
 
 /**
- * Signs a UMAK Student up through the API, reads the code from the captured
- * email, verifies it and signs in: a real Member with a session.
+ * Signs a Member up through the API with the given body, reads the code from the captured email,
+ * verifies it and signs in: a real Member with a session. Any Account Type.
  */
-export async function createTestMember(api: TestApi, overrides: Partial<StudentSignUp> = {}): Promise<TestMember> {
-  const body = studentSignUpBody(overrides);
+export async function createTestMemberFromSignUp<Profile extends MemberProfile>(
+  api: TestApi,
+  body: SignUpRequest & { email: string; password: string },
+): Promise<TestMember<Profile>> {
   const post = (path: string, payload: unknown) =>
     fetch(`${api.baseUrl}${path}`, {
       method: "POST",
@@ -130,9 +134,26 @@ export async function createTestMember(api: TestApi, overrides: Partial<StudentS
   const code = codeFromEmail(api.emails.lastTo(body.email));
   const verify = await post("/members/sign-up/verify", { email: body.email, code });
   if (verify.status !== 200) throw new Error(`Test verification failed: ${verify.status} ${await verify.text()}`);
-  const { member } = (await verify.json()) as { member: TestMember["member"] };
+  const { member } = (await verify.json()) as { member: Profile };
 
   const accessToken = await signInDirect(body.email, body.password);
   if (accessToken === undefined) throw new Error("The verified test Member could not sign in");
   return { member, email: body.email, password: body.password, accessToken };
+}
+
+/** A UMAK Student, signed up through the API. */
+export function createTestMember(api: TestApi, overrides: Partial<StudentSignUp> = {}): Promise<TestMember<StudentProfile>> {
+  return createTestMemberFromSignUp(api, studentSignUpBody(overrides));
+}
+
+/** A Member of any Account Type, signed up through the API with valid details for that type. */
+export function createTestMemberOfType(api: TestApi, accountType: AccountType): Promise<TestMember> {
+  const bodies: Record<AccountType, () => SignUpRequest & { email: string; password: string }> = {
+    umak_student: studentSignUpBody,
+    faculty: facultySignUpBody,
+    ntp_employee: ntpEmployeeSignUpBody,
+    visitor: visitorSignUpBody,
+    alumni: alumniSignUpBody,
+  };
+  return createTestMemberFromSignUp(api, bodies[accountType]());
 }

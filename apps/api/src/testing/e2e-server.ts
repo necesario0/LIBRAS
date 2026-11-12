@@ -1,7 +1,9 @@
 // The API as the end-to-end tests run it: the real app with the real database
 // and Supabase Auth, but emails are captured instead of sent, and a test can read
 // them at GET /e2e/emails (see mailbox-routes.ts), and it can add Books to the
-// catalog at POST /e2e/books (see catalog-fixture-routes.ts).
+// catalog at POST /e2e/books (see catalog-fixture-routes.ts), and Visitor and Alumni Members
+// at POST /e2e/members (see member-fixture-routes.ts), and it can have a Librarian confirm a
+// Loan for a Member at POST /e2e/loans (see loan-fixture-routes.ts).
 //
 //   node scripts/with-local-supabase.ts node src/testing/e2e-server.ts
 //
@@ -20,6 +22,8 @@ import { createDatabase } from "../db.ts";
 import { consoleLogger } from "../logger.ts";
 import { CapturingEmailSender } from "./capturing-email-sender.ts";
 import { catalogFixtureRoutes } from "./catalog-fixture-routes.ts";
+import { loanFixtureRoutes } from "./loan-fixture-routes.ts";
+import { memberFixtureRoutes } from "./member-fixture-routes.ts";
 import { mailboxRoutes } from "./mailbox-routes.ts";
 
 // Read the repository's .env first, so a NODE_ENV set there is seen by the check below.
@@ -48,6 +52,8 @@ const app = createApp(
     extraRoutes: (router, deps, { catalog }) => {
       mailboxRoutes(emails)(router);
       catalogFixtureRoutes(router, deps, catalog);
+      memberFixtureRoutes(router, deps);
+      loanFixtureRoutes(router, deps);
     },
     warmCatalog: true,
     // Every request reaches this server from the same address, so the real

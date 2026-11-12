@@ -18,10 +18,13 @@ export interface MemberRow {
 export const MEMBER_COLUMNS =
   "user_id, account_type, first_name, middle_name, last_name, username, contact_number, details";
 
+/** The Member's name as the desk writes it: first, middle and last. `m` is `public.members`. */
+export const MEMBER_NAME_SQL = "concat_ws(' ', nullif(m.first_name, ''), nullif(m.middle_name, ''), nullif(m.last_name, ''))";
+
 /** Turns a `public.members` row into what the app sees. */
 export function memberFromRow(row: MemberRow, email: string): MemberProfile {
   const accountType = accountTypeSchema.parse(row.account_type);
-  // `details` was validated for this Account Type when the sign-up was accepted, and a check constraint keeps its keys.
+  // `details` was validated for this Account Type when the sign-up was accepted, The database checks the UMAK Student keys only.
   return {
     id: row.user_id,
     email,

@@ -30,3 +30,14 @@ export function isUmakEmail(email: string): boolean {
   const at = email.lastIndexOf("@");
   return at > 0 && email.slice(at + 1).trim().toLowerCase() === UMAK_EMAIL_DOMAIN;
 }
+
+/**
+ * Whether an Account Type may borrow. Visitor and Alumni may not (their Loan Policy limit is zero).
+ *
+ * SEAM: the Loan Policy rows (limit per Account Type) are the real source of this answer. Until the
+ * app reads them, the app and the API derive "cannot borrow" from the Account Type here; when the
+ * Loan Policy is exposed, replace the body with `loanLimit > 0` and keep the callers.
+ */
+export function canBorrow(accountType: AccountType): boolean {
+  return accountType !== "visitor" && accountType !== "alumni";
+}

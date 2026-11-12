@@ -1,0 +1,195 @@
+# A UMAK Student places a Hold on a Book that has no available Copy, sees it on
+# Home and on the Holds screen, and cancels it. A Book with a Copy available has
+# no Hold action, and a Visitor is not offered one.
+# Needs the end-to-end API on port 3000 (npm run e2e starts it).
+appId: ph.edu.umak.libras
+---
+- launchApp:
+    clearState: true
+- runScript: scripts/create-holds.js
+
+# The UMAK Student signs in. The emulator sometimes doubles the first character
+# typed after a tap: check and retype.
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 30000
+- tapOn:
+    id: welcome-sign-in
+- tapOn:
+    id: sign-in-email
+- retry:
+    maxRetries: 3
+    commands:
+      - eraseText: 80
+      - inputText: ${output.email}
+      - assertVisible: ${output.email}
+- tapOn:
+    id: sign-in-password
+- inputText: ${output.password}
+- hideKeyboard
+- tapOn:
+    id: sign-in-continue
+
+# With no Holds, Home says so.
+- extendedWaitUntil:
+    visible:
+      id: home-holds
+    timeout: 20000
+- assertVisible: "My Holds"
+- assertVisible: "No active Holds"
+- takeScreenshot: holds-home-empty
+
+# A Book with a Copy available has no Hold action.
+- tapOn:
+    id: search-input
+- inputText: ${output.openWord}
+- extendedWaitUntil:
+    visible: ${output.openTitle}
+    timeout: 15000
+- tapOn: ${output.openTitle}
+- extendedWaitUntil:
+    visible:
+      id: book-sheet
+    timeout: 15000
+- assertVisible: "Available"
+- assertNotVisible:
+    id: hold-action
+- assertNotVisible:
+    id: hold-place
+- takeScreenshot: holds-book-available
+- tapOn:
+    id: book-close
+
+# A Book with no Copy available offers a Hold.
+- extendedWaitUntil:
+    visible:
+      id: search-results
+    timeout: 10000
+- tapOn:
+    id: search-input
+- eraseText: 40
+- inputText: ${output.heldWord}
+- extendedWaitUntil:
+    visible: ${output.heldTitle}
+    timeout: 15000
+- tapOn: ${output.heldTitle}
+- extendedWaitUntil:
+    visible:
+      id: book-sheet
+    timeout: 15000
+- assertVisible: "None available"
+- extendedWaitUntil:
+    visible:
+      id: hold-place
+    timeout: 15000
+- assertVisible: "No Copy is available right now"
+- takeScreenshot: holds-book-none-available
+- tapOn:
+    id: hold-place
+
+# Placing it replaces the button with where the Member stands.
+- extendedWaitUntil:
+    visible:
+      id: hold-placed
+    timeout: 15000
+- assertVisible: "You have a Hold on this Book: waiting"
+- assertNotVisible:
+    id: hold-place
+- takeScreenshot: holds-book-placed
+- tapOn:
+    id: book-close
+- extendedWaitUntil:
+    visible:
+      id: search-results
+    timeout: 10000
+
+# Back on Home, with the search cleared, the summary counts the Hold.
+- tapOn:
+    id: search-input
+- eraseText: 40
+- extendedWaitUntil:
+    visible:
+      id: home-holds-summary
+    timeout: 15000
+- assertVisible: "1 waiting"
+- takeScreenshot: holds-home-summary
+
+# The Holds screen lists it with its status.
+- tapOn:
+    id: home-holds
+- extendedWaitUntil:
+    visible:
+      id: holds-active
+    timeout: 15000
+- assertVisible: "My Holds"
+- assertVisible: ${output.heldTitle}
+- assertVisible: "Waiting"
+- assertVisible: "Zxqy, Hana"
+- takeScreenshot: holds-list
+
+# Cancelling asks once more, then moves the Hold out of the queue.
+- tapOn:
+    id: hold-cancel
+- assertVisible: "Leave the queue for this Book?"
+- takeScreenshot: holds-cancel-confirm
+- tapOn:
+    id: hold-cancel-confirm
+- extendedWaitUntil:
+    visible:
+      id: holds-past
+    timeout: 15000
+- assertVisible: "Cancelled"
+- assertNotVisible:
+    id: holds-active
+- takeScreenshot: holds-cancelled
+- tapOn:
+    id: holds-back
+- extendedWaitUntil:
+    visible: "No active Holds"
+    timeout: 15000
+- tapOn:
+    id: home-sign-out
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 20000
+
+# A Visitor sees the Book but is not offered a Hold.
+- tapOn:
+    id: welcome-sign-in
+- tapOn:
+    id: sign-in-email
+- retry:
+    maxRetries: 3
+    commands:
+      - eraseText: 80
+      - inputText: ${output.visitorEmail}
+      - assertVisible: ${output.visitorEmail}
+- tapOn:
+    id: sign-in-password
+- inputText: ${output.visitorPassword}
+- hideKeyboard
+- tapOn:
+    id: sign-in-continue
+- extendedWaitUntil:
+    visible:
+      id: search-input
+    timeout: 20000
+- tapOn:
+    id: search-input
+- inputText: ${output.heldWord}
+- extendedWaitUntil:
+    visible: ${output.heldTitle}
+    timeout: 15000
+- tapOn: ${output.heldTitle}
+- extendedWaitUntil:
+    visible:
+      id: book-sheet
+    timeout: 15000
+- assertVisible: "None available"
+- assertVisible:
+    id: cannot-borrow-note
+- assertNotVisible:
+    id: hold-action
+- assertNotVisible:
+    id: hold-place
+- takeScreenshot: holds-book-visitor

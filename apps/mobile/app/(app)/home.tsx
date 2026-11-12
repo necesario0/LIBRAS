@@ -1,8 +1,12 @@
+import { useRouter } from "expo-router";
 import { ActivityIndicator, Keyboard, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CATALOG_SEARCH_MAX_QUERY_LENGTH } from "@libras/shared";
 import { useAuth, useMember } from "../../src/auth/AuthContext";
 import { useCatalogSearch } from "../../src/catalog/useCatalogSearch";
+import { DigitalIdEntry } from "../../src/digital-id/DigitalIdEntry";
+import { HoldsSummary } from "../../src/holds/HoldsSummary";
+import { LoansSummary } from "../../src/loans/LoansSummary";
 import { useScreenTop } from "../../src/hooks/useScreenTop";
 import { BookResultRow } from "../../src/home/BookResultRow";
 import { HomeHeader } from "../../src/home/HomeHeader";
@@ -13,14 +17,15 @@ import { colors, fontFamily, fontSize, radii, spacing } from "../../src/theme/to
 /**
  * Home for a signed-in Member: the Figma "Home dashboard" layout (node
  * 1032:1994), trimmed to what Tier 1 builds. The greeting and the search bar
- * are there; the recommendation sections, the Loans and Holds summary and the
- * Digital ID entry arrive with the tickets that build them. The results replace
- * those sections under the search bar.
+ * are there, and under them the entry to the Digital ID and the summaries of the
+ * Member's Loans and Holds; the recommendation sections are left out of Tier 1.
+ * The results replace those sections under the search bar.
  *
  * Signing out stays reachable from here (a small button where the design has
  * the notification and menu buttons, which lead nowhere yet).
  */
 export default function HomeScreen() {
+  const router = useRouter();
   const member = useMember();
   const { request, signOut } = useAuth();
   const insets = useSafeAreaInsets();
@@ -63,9 +68,14 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         {state.status === "idle" ? (
-          <Text style={styles.hint} testID="search-hint">
-            Search by title, author, ISBN, accession number or call number. Small typos are fine.
-          </Text>
+          <>
+            <Text style={styles.hint} testID="search-hint">
+              Search by title, author, ISBN, accession number or call number. Small typos are fine.
+            </Text>
+            <DigitalIdEntry />
+            <LoansSummary />
+            <HoldsSummary />
+          </>
         ) : null}
 
         {state.status === "loading" && shown === undefined ? (
@@ -78,7 +88,15 @@ export default function HomeScreen() {
               {shown.total === 1 ? "1 book" : shown.total > shown.results.length ? `Top ${shown.results.length} of ${shown.total} books` : `${shown.total} books`}
             </Text>
             {shown.results.map((book) => (
-              <BookResultRow key={book.id} book={book} />
+              <BookResultRow
+                key={book.id}
+                book={book}
+                onPress={() => {
+                  // The Book page is a sheet over Home: put the keyboard away so it does not cover the page's actions.
+                  Keyboard.dismiss();
+                  router.push({ pathname: "/book/[id]", params: { id: book.id } });
+                }}
+              />
             ))}
           </View>
         ) : null}

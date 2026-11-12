@@ -10,7 +10,7 @@ One repository, npm workspaces.
 | --- | --- | --- |
 | `apps/api` | `@libras/api` | The API: Node.js, Express and TypeScript, backed by Supabase PostgreSQL |
 | `apps/mobile` | `@libras/mobile` | The Member mobile app (React Native with Expo). Placeholder for now |
-| `apps/web` | `@libras/web` | The Librarian desk page (and, later, the phone scanner page). Vite and React |
+| `apps/web` | `@libras/web` | The Librarian desk page and the phone scanner page. Vite and React |
 | `packages/shared` | `@libras/shared` | Types, validation schemas and the search module shared by the API and the clients |
 | `benchmarks` | `libras-algorithm-benchmarks` | The algorithm benchmark prototypes behind ADR 0001 |
 | `supabase` | | Local Supabase configuration and database migrations |
@@ -90,7 +90,7 @@ The hosted system is three services, all on free tiers (ADR 0003):
 
 | Command | What it does |
 | --- | --- |
-| `npm run setup:hosted` | The guided setup wizard (`scripts/setup-hosted.sh`). Opens each dashboard, asks for each value, writes `.env.hosted` and the GitHub secrets, applies the migrations, creates the Librarian, checks the API and sends a test email |
+| `npm run setup:hosted` | The guided setup wizard (`scripts/setup-hosted.sh`, launched by `scripts/run-setup-hosted.mjs` so Windows uses Git Bash, not WSL). Opens each dashboard, asks for each value, writes `.env.hosted` and the GitHub secrets, applies the migrations, creates the Librarian, checks the API and sends a test email |
 | `npm run db:migrate:hosted` | Applies `supabase/migrations` to the hosted database. It first lists the pending migrations and asks you to type `apply`. `-- --dry-run` only lists them. `-- --yes` skips the question. Safe to run again |
 | `npm run seed:hosted` | Creates (or resets) the Librarian from `SEED_LIBRARIAN_EMAIL` and `SEED_LIBRARIAN_PASSWORD` in `.env.hosted`. Later seed steps (catalog, Loan Policy) run here too |
 | `npm run check:hosted` | Asks the hosted API for `/health` until it answers (up to five minutes, to cover Render waking up) |
@@ -113,7 +113,21 @@ Hosted settings live in `.env.hosted` at the repository root. It is gitignored a
 
 ### Web pages and CORS
 
-The mobile app is not a browser, so it needs no CORS. A hosted Librarian web page would be a different origin from the API, so the API has an allowlist: `CORS_ALLOWED_ORIGINS` is a comma separated list of exact origins (for example `https://libras-desk.onrender.com`). A listed origin gets the CORS headers, including for the preflight request; any other origin gets none. There is no wildcard and no cookie support: the clients send a bearer token. The default is an empty list, which is right until `apps/web` is hosted. To host it later, make a Render static site that runs `npm ci && npm run build -w @libras/web` with `VITE_API_URL` set to the API address, then add the site's origin to `CORS_ALLOWED_ORIGINS` in the Render dashboard.
+The mobile app is not a browser, so it needs no CORS. The Librarian web pages are a different origin from the API, so the API has an allowlist: `CORS_ALLOWED_ORIGINS` is a comma separated list of exact origins (for example `https://libras-desk.onrender.com`). A listed origin gets the CORS headers, including for the preflight request; any other origin gets none. There is no wildcard and no cookie support: the clients send a bearer token. The default is an empty list, which is right until `apps/web` is hosted (next section).
+
+### Hosting the desk page and the phone scanner page (HTTPS)
+
+`apps/web` builds to two pages: the desk page at `/` and the phone scanner page at `/scan.html` (two HTML files, so no rewrite rule is needed on a static host). The phone camera works only on a secure page (HTTPS, or the phone's own `localhost`), and a Render static site is served over HTTPS with a certificate Render manages, so the scanner page is reachable that way with no extra work. The scanner page also needs the API over HTTPS, which the Render web service already is. Do this once, after the API is deployed (it is not part of `render.yaml`, so `npm run setup:hosted` is unchanged):
+
+1. Render dashboard > **New** > **Static Site**. Repository `necesario0/LIBRAS`, branch `main`, name `libras-desk` (any name), region Singapore.
+2. Build command `npm ci && npm run build -w @libras/web`. Publish directory `apps/web/dist`.
+3. Environment variable `VITE_API_URL` = the API address (`https://libras-api-....onrender.com`, no trailing slash). It is read at build time, so changing it needs a new deploy of the site.
+4. Deploy, copy the site address (`https://libras-desk.onrender.com`), and in the `libras-api` service environment set `CORS_ALLOWED_ORIGINS` to that origin (exact, no path). Redeploy the API.
+5. The Librarian opens `https://libras-desk.onrender.com` on the library computer and signs in; the desk page shows the pairing code and the exact address to open on the phone (`https://libras-desk.onrender.com/scan.html`).
+
+Checked locally: the built pages served from one origin with the API on another (CORS list set, `VITE_API_URL` set) pair, stream and deliver scans. Not checked on a live Render service: that its proxy passes the event stream through unbuffered (the API sends `X-Accel-Buffering: no`, `Cache-Control: no-transform` and a keep-alive comment every 15 seconds for this), and that the free instance keeps the stream open for a whole demo. The scanner page's status check every 5 seconds is inbound traffic, so a paired phone also keeps the instance from sleeping.
+
+To try the phone against a local machine, the camera needs HTTPS or the phone's own localhost: with an Android phone on USB, run `adb reverse tcp:5173 tcp:5173` and `adb reverse tcp:3000 tcp:3000` (Vite proxies `/api` to port 3000) and open `http://localhost:5173/scan.html` on the phone; or use an HTTPS tunnel to port 5173 (Vite then needs the tunnel host allowed in `server.allowedHosts`). The desk page shows `window.location.origin` as the address for the phone, so open the desk page through the same address.
 
 ### Client address and the sign-in limit
 
@@ -123,13 +137,13 @@ Not verified on a live service: if Render puts another proxy (a CDN) in front of
 
 ### What a free Render service does
 
-It goes to sleep after 15 minutes without traffic and takes about a minute to wake on the next request, and the mobile app gives up after 10 seconds. Before a demo run `npm run check:hosted` a few minutes ahead (and once more just before), which wakes it and confirms it is healthy.
+It goes to sleep after 15 minutes without traffic and takes about a minute to wake on the next request, and the mobile app gives up after 10 seconds. A sleeping or restarting API forgets every phone pairing (they live in its memory): the scanner page says the pairing was lost and the Librarian types the new code. Before a demo run `npm run check:hosted` a few minutes ahead (and once more just before), which wakes it and confirms it is healthy.
 
 ### Human checklist
 
 Do these in order, from the repository root, in Git Bash.
 
-1. **Get this work onto GitHub `main`.** Render builds from GitHub, and `render.yaml` must be on the `main` branch there. Merge the deployment work (branch `spec-2/6-setup-deploy`, or `spec-2-tier1` once it contains it) into `main` and push. Until then the wizard warns at the Render stage and you can stop and resume.
+1. **Get this work onto GitHub `main`.** Render builds from GitHub, and `render.yaml` must be on the `main` branch there. Merge the deployment work (branch `spec-2/6-setup`, or `spec-2-tier1` once it contains it) into `main` and push. Until then the wizard warns at the Render stage and you can stop and resume.
 2. **Prepare the computer.** `npm ci`. Then `gh auth login` if `gh auth status` says you are signed out (the wizard needs it to store GitHub secrets). Docker is not needed for this.
 3. **Run the wizard:** `npm run setup:hosted`. It has eight stages and can be stopped with Ctrl-C and run again: it remembers what it saved in `.env.hosted`. What you will do in each stage:
    1. *Check this computer.* Nothing to do. It stops if `.env.hosted` is not gitignored.

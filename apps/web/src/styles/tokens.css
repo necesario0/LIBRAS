@@ -21,6 +21,8 @@
   --color-border: #e4e4e4;
   --color-danger: #d92d2d;
   --color-danger-soft: #fdecec;
+  --color-success: #1d7a46; /* a Member identified: not in the Figma frames */
+  --color-success-soft: #e7f5ec;
 
   --radius-pill: 999px; /* inputs and buttons are fully rounded in the designs */
   --radius-card: 24px;
@@ -35,9 +37,11 @@
   --space-7: 48px;
 
   --control-height: 44px;
+  --scan-field-height: 56px;
   --text-xs: 12px;
   --text-sm: 13px;
   --text-md: 16px;
+  --text-name: 22px;
   --text-lg: 26px;
   --text-xl: 35px;
 }

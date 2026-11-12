@@ -28,7 +28,7 @@ export default tseslint.config(
   },
   {
     // Node scripts and Expo build-time config run in Node, which declares these globals.
-    files: ["apps/mobile/scripts/**", "apps/mobile/*.config.ts", "apps/mobile/src/config.ts"],
+    files: ["scripts/**", "apps/mobile/scripts/**", "apps/mobile/*.config.ts", "apps/mobile/src/config.ts"],
     languageOptions: {
       globals: { process: "readonly", console: "readonly", fetch: "readonly", setTimeout: "readonly", AbortSignal: "readonly" },
     },

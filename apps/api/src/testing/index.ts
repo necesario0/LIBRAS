@@ -9,6 +9,8 @@ export {
   alumniSignUpBody,
   codeFromEmail,
   createTestMember,
+  createTestMemberFromSignUp,
+  createTestMemberOfType,
   facultySignUpBody,
   ntpEmployeeSignUpBody,
   signInDirect,

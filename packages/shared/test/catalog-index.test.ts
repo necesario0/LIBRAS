@@ -156,3 +156,32 @@ describe("building the index in steps", () => {
     }
   });
 });
+
+describe("exact identifiers are never fuzzy", () => {
+  // Books whose titles look like the identifiers of the Books above, one character away.
+  const lookalikes: IndexedBook[] = [
+    ...books,
+    { id: "n1", title: "AC 0000002 Field Notes", authors: ["Lookalike, One"] },
+    { id: "n2", title: "9780132143982 Revisited", authors: ["Lookalike, Two"] },
+    { id: "n3", title: "QA76 6 C663 Companion", authors: ["Lookalike, Three"] },
+  ];
+  const withLookalikes = buildCatalogIndex(lookalikes);
+  const idsOf = (query: string) => withLookalikes.search(query).hits.map((hit) => hit.bookId);
+
+  it("returns only the Book that has the identifier, not Books whose words are close to it", () => {
+    assert.deepEqual(idsOf("AC-0000001"), ["b1"]);
+    assert.deepEqual(idsOf("9780132143981"), ["b2"]);
+    assert.deepEqual(idsOf("QA76.6 .C662 2022"), ["b1"]);
+  });
+
+  it("finds nothing for an identifier that is only one character off, even when a Book's words are that close", () => {
+    assert.deepEqual(idsOf("AC-0000003 x"), []);
+    assert.deepEqual(idsOf("9780132143983"), []);
+    assert.deepEqual(idsOf("QA76.6 .C661 2022"), []);
+  });
+
+  it("matches a word that contains a digit exactly", () => {
+    assert.deepEqual(idsOf("c663"), ["n3"]);
+    assert.deepEqual(idsOf("c664"), []);
+  });
+});

@@ -252,6 +252,14 @@ input {
   padding: var(--space-6);
   background: var(--color-primary-soft);
 }
+.desk__layout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: center;
+  gap: var(--space-5);
+  width: 100%;
+}
 .desk__ready {
   display: flex;
   flex-direction: column;
@@ -291,4 +299,580 @@ input {
   max-width: 440px;
   color: var(--color-text-muted);
   line-height: 1.6;
+}
+.desk__status--refused {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+.desk__status--refused::before {
+  background: var(--color-danger);
+}
+.desk__status--member,
+.desk__status--confirmed,
+.desk__status--returned {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+.desk__status--member::before,
+.desk__status--confirmed::before,
+.desk__status--returned::before {
+  background: var(--color-success);
+}
+.desk__done {
+  margin-top: var(--space-2);
+}
+.desk__alert {
+  align-self: stretch;
+  text-align: left;
+}
+
+/* The scan field: the keyboard source of the scan input point */
+.scan-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-self: stretch;
+  margin-top: var(--space-4);
+  text-align: left;
+}
+.scan-field__label {
+  padding-left: 19px;
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+.scan-field__box {
+  height: var(--scan-field-height);
+  padding-left: 19px;
+}
+.scan-field__icon {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  fill: var(--color-text-muted);
+}
+.scan-field__input {
+  padding-left: var(--space-3);
+  font-size: var(--text-md);
+  letter-spacing: 0.08em;
+}
+.scan-field__input::placeholder {
+  letter-spacing: normal;
+}
+.scan-field__enter {
+  flex: none;
+  margin-right: var(--space-3);
+  padding: 2px var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-family: inherit;
+  font-size: var(--text-xs);
+}
+
+/* The Loan the desk has just confirmed */
+.loan-notice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  align-self: stretch;
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-notice);
+  background: var(--color-success-soft);
+  text-align: left;
+}
+.loan-notice__icon {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  fill: var(--color-success);
+}
+.loan-notice__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.loan-notice__title {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: 500;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.loan-notice__copy {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+.loan-notice__member {
+  color: var(--color-text);
+  font-weight: 500;
+}
+.loan-notice__late {
+  color: var(--color-danger);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+.loan-notice__due {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  text-align: right;
+}
+.loan-notice__due-label {
+  color: var(--color-success);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.loan-notice__due-date {
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
+/* A return: the notice, and under it where the Copy goes when it is set aside for a Hold */
+.return-notice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-self: stretch;
+}
+.hold-shelf {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-notice);
+  background: var(--color-primary-soft);
+  text-align: left;
+}
+.hold-shelf__icon {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  fill: var(--color-primary);
+}
+.hold-shelf__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.hold-shelf__title {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: 400;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.hold-shelf__member {
+  font-weight: 600;
+}
+.hold-shelf__body {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+.hold-shelf__until {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  text-align: right;
+}
+.hold-shelf__until-label {
+  color: var(--color-primary);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.hold-shelf__until-date {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+/* The Member a scanned Digital ID belongs to */
+.member-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+  align-self: stretch;
+  padding: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-notice);
+  text-align: left;
+}
+.member-card__who {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+}
+.member-card__avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-pill);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+.member-card__names {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.member-card__name {
+  margin: 0;
+  font-size: var(--text-name);
+  font-weight: 500;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+.member-card__type {
+  padding: 2px var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--color-field);
+  font-size: var(--text-xs);
+  font-weight: 500;
+}
+.member-card__loans {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  text-align: right;
+}
+.member-card__loans-label {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.member-card__loans-count {
+  color: var(--color-primary);
+  font-size: var(--text-name);
+  font-weight: 600;
+}
+.member-card__loans--blocked .member-card__loans-count {
+  color: var(--color-danger);
+}
+.member-card__loans-note {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+/* Pairing the phone scanner (desk page) */
+.pairing {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: min(100%, 340px);
+  padding: var(--space-5);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+}
+.pairing__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.pairing__title {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+.pairing__chip {
+  padding: 2px var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--color-field);
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.pairing__chip--paired {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+.pairing__chip--unavailable {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+.pairing__label {
+  margin: var(--space-2) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-align: center;
+}
+.pairing__code {
+  margin: 0;
+  padding: var(--space-4) 0;
+  border-radius: var(--radius-notice);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-size: var(--text-xl);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.16em;
+  text-align: center;
+  user-select: all;
+}
+.pairing__timer {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  text-align: center;
+}
+.pairing__steps {
+  margin: var(--space-2) 0 0;
+  padding-left: var(--space-5);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}
+.pairing__url {
+  color: var(--color-text);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.pairing__note,
+.pairing__last {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}
+.pairing__last {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-notice);
+  background: var(--color-field);
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+}
+.pairing__unpair {
+  align-self: flex-start;
+}
+
+/* The phone scanner page (scan.html): built for a phone held in one hand */
+.scanner {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  background: var(--color-primary-soft);
+}
+.scanner__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+.scanner__chip {
+  padding: 2px var(--space-3);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.scanner__chip--ok {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+.scanner__chip--warn {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+.scanner__main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: min(100%, 480px);
+  margin: 0 auto;
+  padding: var(--space-4);
+}
+.scanner__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+}
+.scanner__title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 500;
+  line-height: 1.2;
+}
+.scanner__lede {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}
+.scanner__label {
+  padding-left: 19px;
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+.scanner__code-box {
+  height: var(--scan-field-height);
+}
+.scanner__code-input {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.2em;
+}
+.scanner__code-input::placeholder {
+  font-weight: 400;
+}
+.scanner__button {
+  width: 100%;
+  height: var(--scan-field-height);
+}
+
+/* The camera and its viewfinder */
+.camera {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: var(--radius-card);
+  background: #101820;
+}
+.camera__video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.camera--ready .camera__video {
+  opacity: 1;
+}
+.camera__frame {
+  position: absolute;
+  inset: 18% 8%;
+  border: 3px solid rgb(255 255 255 / 0.85);
+  border-radius: var(--radius-notice);
+  box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.28);
+}
+.camera__line {
+  position: absolute;
+  top: 50%;
+  right: 8%;
+  left: 8%;
+  height: 2px;
+  background: var(--color-danger);
+  opacity: 0.8;
+}
+.camera__starting {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  color: #fff;
+  font-size: var(--text-sm);
+}
+.camera--ready .camera__starting {
+  display: none;
+}
+
+.scanner__feedback {
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+}
+.scanner__feedback > * {
+  flex: 1;
+}
+.scanner__sent {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-notice);
+  background: var(--color-success-soft);
+  color: var(--color-success);
+  font-size: var(--text-sm);
+  animation: scanner-flash 0.5s ease-out;
+  overflow-wrap: anywhere;
+}
+.scanner__sent svg {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  fill: currentColor;
+}
+.scanner__sent strong {
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+@keyframes scanner-flash {
+  from {
+    transform: scale(0.96);
+    background: var(--color-success);
+    color: #fff;
+  }
+}
+.scanner__refused {
+  text-align: left;
+}
+.scanner__hint {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  text-align: center;
+}
+.scanner__typed {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.scanner__send {
+  flex: none;
+  height: 34px;
+  margin-right: var(--space-1);
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-primary);
+  color: #fff;
+  cursor: pointer;
+}
+.scanner__send:disabled {
+  background: var(--color-border);
+  color: var(--color-text-muted);
+  cursor: default;
+}
+@media (prefers-reduced-motion: reduce) {
+  .scanner__sent {
+    animation: none;
+  }
 }
