@@ -1,0 +1,20 @@
+# The last step of every sign-up: a wrong code is refused, then the code from the
+# email is accepted and the account is active. Needs EMAIL and FIRST_NAME.
+appId: ph.edu.umak.libras
+---
+- assertVisible: "Check your email to finish signing in"
+- assertVisible: ${EMAIL}
+- tapOn:
+    id: verify-code
+- inputText: "000000"
+- assertVisible: "That code is not right.*"
+- eraseText: 6
+- runScript:
+    file: ../scripts/read-code.js
+    env:
+      EMAIL: ${EMAIL}
+- inputText: ${output.code}
+- extendedWaitUntil:
+    visible: "Welcome, ${FIRST_NAME}!"
+    timeout: 20000
+- assertVisible: "Your email is verified and your account is active.*"

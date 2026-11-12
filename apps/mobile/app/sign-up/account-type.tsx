@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
-import { ACCOUNT_TYPES, ACCOUNT_TYPE_LABELS, hasSignUpForm } from "@libras/shared";
+import { ACCOUNT_TYPES, ACCOUNT_TYPE_LABELS } from "@libras/shared";
 import { Button } from "../../src/components/Button";
 import { OnboardingScreen } from "../../src/components/OnboardingScreen";
 import { OptionRow } from "../../src/components/OptionRow";
@@ -24,7 +24,6 @@ export default function AccountTypeScreen() {
               selected={draft.accountType === type}
               onPress={() => update({ accountType: type })}
               testID={`account-type-${type}`}
-              {...(hasSignUpForm(type) ? {} : { unavailableNote: "Coming soon" })}
             />
           ))}
         </View>

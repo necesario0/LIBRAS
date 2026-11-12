@@ -1,0 +1,55 @@
+# A Faculty member signs up end to end: the form, the UMAK email rule, the terms, the emailed code and the active account.
+# Needs the end-to-end API on port 3000 (npm run e2e starts it): the code is read
+# from the emails that API captured.
+appId: ph.edu.umak.libras
+---
+- runScript:
+    file: scripts/new-member.js
+    env:
+      EMAIL_DOMAIN: umak.edu.ph
+- runFlow:
+    file: subflows/start.yaml
+    env:
+      ACCOUNT_TYPE: faculty
+
+# Step 2: faculty number and college. The college comes from a list.
+- tapOn:
+    id: faculty-number
+- inputText: F${output.idNumber}
+- hideKeyboard
+- tapOn:
+    id: faculty-college
+- tapOn:
+    id: faculty-college-option-CCIS
+- tapOn:
+    id: faculty-continue
+
+# Step 3
+- runFlow:
+    file: subflows/account.yaml
+    env:
+      USERNAME: ${output.username}
+      PASSWORD: ${output.password}
+
+# Step 4: an email that is not @umak.edu.ph is refused with a message that says how to fix it.
+- tapOn:
+    id: email-input
+- inputText: someone@gmail.com
+- hideKeyboard
+- tapOn:
+    id: email-accept-terms
+- tapOn:
+    id: email-continue
+- assertVisible: "This account type needs your @umak.edu.ph email address.*"
+- tapOn:
+    id: email-input
+- eraseText: 40
+- inputText: ${output.email}
+- hideKeyboard
+- tapOn:
+    id: email-continue
+- runFlow:
+    file: subflows/verify.yaml
+    env:
+      EMAIL: ${output.email}
+      FIRST_NAME: Cobby

@@ -1,0 +1,28 @@
+# Step 1 of every sign-up: welcome, the Account Type chosen by ACCOUNT_TYPE (for
+# example faculty), then the name. Leaves the app on the step that comes next.
+appId: ph.edu.umak.libras
+---
+- launchApp:
+    clearState: true
+- tapOn:
+    id: welcome-sign-up
+- assertVisible: "Select your account type"
+- tapOn:
+    id: account-type-${ACCOUNT_TYPE}
+- tapOn:
+    id: account-type-continue
+# The emulator sometimes doubles the first character of text typed right after a tap: check it and retype.
+- tapOn:
+    id: name-first
+- retry:
+    maxRetries: 3
+    commands:
+      - eraseText: 20
+      - inputText: Cobby
+      - assertVisible: Cobby
+- tapOn:
+    id: name-last
+- inputText: Baldonado
+- hideKeyboard
+- tapOn:
+    id: name-continue

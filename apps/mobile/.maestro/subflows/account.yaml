@@ -1,0 +1,24 @@
+# Step 3 of every sign-up: username and password. Needs USERNAME and PASSWORD.
+# A password that does not match is refused first.
+appId: ph.edu.umak.libras
+---
+- tapOn:
+    id: account-username
+- inputText: ${USERNAME}
+- tapOn:
+    id: account-password
+- inputText: ${PASSWORD}
+- tapOn:
+    id: account-confirm-password
+- inputText: not-the-same-password
+- hideKeyboard
+- tapOn:
+    id: account-continue
+- assertVisible: "The passwords do not match. Please try again."
+- tapOn:
+    id: account-confirm-password
+- eraseText: 60
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: account-continue
