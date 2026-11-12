@@ -15,6 +15,7 @@ import { catalogRouter } from "./routes/catalog.ts";
 import { digitalIdRouter } from "./routes/digital-id.ts";
 import { healthRouter } from "./routes/health.ts";
 import { holdsRouter } from "./routes/holds.ts";
+import { loansRouter } from "./routes/loans.ts";
 import { membersRouter } from "./routes/members.ts";
 import { staffRouter } from "./routes/staff.ts";
 
@@ -68,6 +69,7 @@ export function createApp(deps: AppDeps, options: AppOptions = {}): Express {
   app.use(membersRouter(deps, signInLimiter));
   app.use(digitalIdRouter(deps));
   app.use(holdsRouter(deps));
+  app.use(loansRouter(deps));
   const catalog = new CatalogSearch(deps.db, deps.logger);
   app.use(catalogRouter(deps, catalog));
   if (options.warmCatalog) void catalog.warm();

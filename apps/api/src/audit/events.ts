@@ -25,6 +25,19 @@ export const AUDIT_EVENTS = {
       clientAddress: z.string().max(64).nullable(),
     }),
   },
+  /** A Librarian confirmed a Loan at the desk. `actorId` is the Librarian. */
+  loan_confirmed: {
+    /** The Loan's id. */
+    subject: z.uuid(),
+    data: z.strictObject({
+      memberId: z.uuid(),
+      copyId: z.uuid(),
+      bookId: z.uuid(),
+      accessionNumber: z.string().max(64),
+      /** The end of the day the Copy is due, ISO 8601. */
+      dueAt: z.iso.datetime(),
+    }),
+  },
 } as const;
 
 export type AuditEventType = keyof typeof AUDIT_EVENTS;

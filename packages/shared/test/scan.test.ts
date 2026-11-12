@@ -26,13 +26,14 @@ describe("reading a scan", () => {
     assert.equal(readScan("1".repeat(65)).kind, "rejected");
   });
 
+  it("reads anything else inside the whitelist as a Copy: its barcode or its accession number", () => {
+    assert.deepEqual(readScan("3100000042\r\n"), { kind: "copy", code: "3100000042" });
+    assert.deepEqual(readScan(" AC-0000042 "), { kind: "copy", code: "AC-0000042" });
+  });
+
   it("does not take a code of the wrong length or grouping for a Digital ID", () => {
     for (const raw of ["48210937551", "4821093755123", "48 2109 375512", "4821  0937 5512", "ABCD09375512"]) {
-      assert.deepEqual(
-        readScan(raw),
-        { kind: "rejected", reason: "unrecognised", message: SCAN_MESSAGES.unrecognised },
-        raw,
-      );
+      assert.deepEqual(readScan(raw), { kind: "copy", code: raw }, raw);
     }
   });
 });

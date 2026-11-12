@@ -14,13 +14,13 @@ interface DeskMemberRow {
   loan_period_days: number | null;
 }
 
-/**
- * How many Loans the Member has out now. There are no Loans yet: the Loan
- * ticket replaces this with a count of the Member's open Loans, in the same
- * transaction as the Librarian.
- */
-async function currentLoanCount(_scope: Scope, _memberId: string): Promise<number> {
-  return 0;
+/** How many Loans the Member has out now, read as the Librarian (row-level security lets staff read Loans). */
+async function currentLoanCount(scope: Scope, memberId: string): Promise<number> {
+  const { rows } = await scope.query<{ count: number }>(
+    "select count(*)::int as count from public.loans where member_id = $1 and returned_at is null",
+    [memberId],
+  );
+  return rows[0]?.count ?? 0;
 }
 
 /**

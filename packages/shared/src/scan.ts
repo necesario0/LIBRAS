@@ -3,8 +3,9 @@
  * scanner or a person typing and pressing Enter, the paired phone) hands its raw
  * text to `readScan`, which checks it against a whitelist before anything uses it.
  *
- * Only Digital IDs are recognised so far. The Loan ticket adds Copy barcodes and
- * accession numbers as further `kind`s.
+ * A scan is a Member's Digital ID (12 digits) or it names a Copy: the Copy's
+ * barcode or, when the barcode cannot be read, its accession number typed by hand.
+ * Digital IDs are 12 digits and Copy barcodes are 10, so the two never collide (ADR 0004).
  */
 
 /** Longest input the scan input point looks at. */
@@ -19,13 +20,16 @@ const DIGITAL_ID_INPUT_PATTERN = /^[0-9]{4} ?[0-9]{4} ?[0-9]{4}$/;
 export const SCAN_MESSAGES = {
   empty: "Nothing was scanned. Scan the barcode again or type the code and press Enter.",
   notAllowed: "That scan has characters a LIBRAS barcode never has. Scan it again or type the code.",
-  unrecognised: "That is not a Digital ID. Scan the barcode on the Member's phone, or type the 12-digit code beneath it.",
+  /** A Copy was scanned (or a Digital ID mistyped) when the desk was waiting for a Member's Digital ID. */
+  notDigitalId: "That is not a Digital ID. Scan the barcode on the Member's phone, or type the 12-digit code beneath it.",
 } as const;
 
-export type ScanRejection = "empty" | "not_allowed" | "unrecognised";
+export type ScanRejection = "empty" | "not_allowed";
 
 export type ScanReading =
   | { kind: "digital_id"; code: string }
+  /** A Copy's barcode or accession number, exactly as scanned or typed. The API looks the Copy up. */
+  | { kind: "copy"; code: string }
   | { kind: "rejected"; reason: ScanRejection; message: string };
 
 /**
@@ -40,5 +44,5 @@ export function readScan(raw: string): ScanReading {
     return { kind: "rejected", reason: "not_allowed", message: SCAN_MESSAGES.notAllowed };
   }
   if (DIGITAL_ID_INPUT_PATTERN.test(text)) return { kind: "digital_id", code: text.replaceAll(" ", "") };
-  return { kind: "rejected", reason: "unrecognised", message: SCAN_MESSAGES.unrecognised };
+  return { kind: "copy", code: text };
 }
