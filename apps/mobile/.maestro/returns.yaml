@@ -1,0 +1,122 @@
+# A UMAK Student has a Copy out. The Librarian records its return at the desk (the
+# end-to-end API does it, as the desk page would): the Loan moves from Current to
+# Past Loans in My Loans with its return date, Home no longer counts it, and the
+# Book is available again in search and on its page.
+# Needs the end-to-end API on port 3000 (npm run e2e starts it).
+appId: ph.edu.umak.libras
+---
+- launchApp:
+    clearState: true
+- runScript: scripts/create-loans.js
+# The Book's only Copy goes out before the Member opens the app.
+- runScript: scripts/confirm-return-loan.js
+
+# The UMAK Student signs in. The emulator sometimes doubles the first character
+# typed after a tap: check and retype.
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 30000
+- tapOn:
+    id: welcome-sign-in
+- tapOn:
+    id: sign-in-email
+- retry:
+    maxRetries: 3
+    commands:
+      - eraseText: 80
+      - inputText: ${output.email}
+      - assertVisible: ${output.email}
+- tapOn:
+    id: sign-in-password
+- inputText: ${output.password}
+- hideKeyboard
+- tapOn:
+    id: sign-in-continue
+
+# The Copy is out: Home counts the Loan and search says none is available.
+- extendedWaitUntil:
+    visible:
+      id: home-loans-summary
+    timeout: 20000
+- assertVisible: "1 current Loan"
+- tapOn:
+    id: search-input
+- inputText: ${output.returnWord}
+- extendedWaitUntil:
+    visible: ${output.returnTitle}
+    timeout: 15000
+- assertVisible: "None available"
+- takeScreenshot: returns-search-out
+- eraseText: 40
+- hideKeyboard
+
+# My Loans lists it as current, with no past Loans yet.
+- tapOn:
+    id: home-loans
+- extendedWaitUntil:
+    visible:
+      id: loans-current
+    timeout: 15000
+- assertVisible: "Current - 1 of 3"
+- assertVisible: ${output.returnTitle}
+- assertVisible: "On loan"
+- assertNotVisible: "Past Loans.*"
+- takeScreenshot: returns-loans-current
+
+# The Librarian records the return. Back on Home, the Loan is no longer counted.
+- runScript: scripts/return-loan.js
+- tapOn:
+    id: loans-back
+- extendedWaitUntil:
+    visible: "No current Loans"
+    timeout: 15000
+- takeScreenshot: returns-home
+
+# My Loans now shows it under Past Loans, with the day it came back.
+- tapOn:
+    id: home-loans
+- extendedWaitUntil:
+    visible:
+      id: loans-past
+    timeout: 15000
+- assertVisible: "No current Loans"
+- assertVisible: "Past Loans - 1"
+- assertVisible: ${output.returnTitle}
+- assertVisible: "Borrowed on [A-Z][a-z]{2} [0-9]{1,2}, 20[0-9]{2}"
+- assertVisible: "Returned on [A-Z][a-z]{2} [0-9]{1,2}, 20[0-9]{2}"
+- assertVisible:
+    id: loan-status
+    text: "Returned"
+- assertNotVisible: "On loan"
+- assertNotVisible: "Overdue"
+- assertNotVisible:
+    id: loans-current
+- takeScreenshot: returns-loans-past
+- tapOn:
+    id: loans-back
+
+# The Book is available again in search and on its page, and Borrow is back.
+- extendedWaitUntil:
+    visible:
+      id: home-loans-summary
+    timeout: 15000
+- tapOn:
+    id: search-input
+- inputText: ${output.returnWord}
+- extendedWaitUntil:
+    visible: "1 of 1 available"
+    timeout: 15000
+- takeScreenshot: returns-search-back
+- tapOn: ${output.returnTitle}
+- extendedWaitUntil:
+    visible:
+      id: book-sheet
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: book-borrow
+    direction: DOWN
+    timeout: 15000
+- assertNotVisible:
+    id: hold-action
+- takeScreenshot: returns-book-available

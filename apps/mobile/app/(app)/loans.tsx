@@ -12,8 +12,8 @@ import { colors, fontFamily, fontSize, radii, spacing } from "../../src/theme/to
 
 /**
  * My Loans: the Copies the Member has out, each with the day it was checked out
- * and the day it is due, overdue ones marked, and under them the Loans that
- * have been returned. There is no Figma frame for it: it uses the style of
+ * and the day it is due, overdue ones marked, and under them their past Loans:
+ * the ones that have been returned, each with the day it came back. There is no Figma frame for it: it uses the style of
  * Home, the Book page and the Holds screen.
  */
 export default function LoansScreen() {
@@ -91,9 +91,18 @@ export default function LoansScreen() {
           </View>
         ) : null}
 
+        {current.length === 0 && past.length > 0 ? (
+          <View style={styles.panel} testID="loans-none-current">
+            <Text style={styles.panelTitle} accessibilityRole="header">
+              No current Loans
+            </Text>
+            <Text style={styles.notice}>Nothing is out on your account right now. The Copies you have returned are listed below.</Text>
+          </View>
+        ) : null}
+
         {past.length > 0 ? (
           <View testID="loans-past">
-            <Text style={styles.section}>Past</Text>
+            <Text style={styles.section} testID="loans-past-count">{`Past Loans - ${past.length}`}</Text>
             {past.map((loan) => (
               <LoanRow key={loan.id} loan={loan} />
             ))}

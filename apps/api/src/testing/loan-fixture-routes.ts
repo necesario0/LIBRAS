@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { Router } from "express";
 import type { AppDeps } from "../app.ts";
 import { currentDigitalId } from "../digital-id/index.ts";
-import { confirmLoan } from "../loans/index.ts";
+import { confirmLoan, recordReturn } from "../loans/index.ts";
 import { seedLibrarians } from "../seed/librarians.ts";
 
 const DAY_MS = 24 * 3_600_000;
@@ -19,6 +19,11 @@ const FIXTURE_LIBRARIAN = { email: "e2e-loan-desk@libras.test", fullName: "Lita 
  * on the end-to-end server (`e2e-server.ts`): the real server never imports this module.
  *
  *   POST /e2e/loans { email, bookId, daysAgo? } -> 201 { loan }
+ *
+ * A second route has the Librarian record the return of the Copy the Member has
+ * out of a Book, the way the desk page does: the real return, by the Copy's barcode.
+ *
+ *   POST /e2e/returns { email, bookId } -> 200 { loan }
  */
 export function loanFixtureRoutes(router: Router, deps: AppDeps): void {
   let librarian: Promise<string> | undefined;
@@ -59,5 +64,30 @@ export function loanFixtureRoutes(router: Router, deps: AppDeps): void {
     const { code } = await currentDigitalId(then, memberId);
     const { loan } = await confirmLoan(then, { userId: await librarianId(), email: FIXTURE_LIBRARIAN.email }, { digitalId: code, copy: barcode });
     res.status(201).json({ loan });
+  });
+
+  router.post("/e2e/returns", async (req, res) => {
+    const { email, bookId } = (req.body ?? {}) as { email?: unknown; bookId?: unknown };
+    if (typeof email !== "string" || typeof bookId !== "string") {
+      res.status(400).json({ error: { code: "invalid_request", message: "Not a return fixture." } });
+      return;
+    }
+    const copy = await deps.db.query<{ barcode: string }>(
+      `select c.barcode
+         from public.loans l
+         join public.copies c on c.id = l.copy_id
+         join auth.users u on u.id = l.member_id
+        where lower(u.email) = lower($1) and c.book_id = $2 and l.returned_at is null
+        order by l.checked_out_at
+        limit 1`,
+      [email, bookId],
+    );
+    const barcode = copy.rows[0]?.barcode;
+    if (barcode === undefined) {
+      res.status(404).json({ error: { code: "not_found", message: "The Member has no open Loan of a Copy of that Book." } });
+      return;
+    }
+    const loan = await recordReturn(deps, { userId: await librarianId(), email: FIXTURE_LIBRARIAN.email }, { copy: barcode });
+    res.json({ loan });
   });
 }
