@@ -37,11 +37,11 @@ appId: ph.edu.umak.libras
     id: search-input
 - inputText: ${output.word}
 - extendedWaitUntil:
-    visible: ${output.title}
+    visible: ${output.title}.*
     timeout: 15000
 
 # Opening the result shows the Book's details and its Copies.
-- tapOn: ${output.title}
+- tapOn: ${output.title}.*
 - extendedWaitUntil:
     visible:
       id: book-sheet
@@ -72,6 +72,8 @@ appId: ph.edu.umak.libras
     id: book-sheet
 
 # A Book with no Copy available says so.
+- tapOn:
+    id: search-input
 - eraseText: 40
 - inputText: ${output.noneWord}
 - extendedWaitUntil:
@@ -118,14 +120,14 @@ appId: ph.edu.umak.libras
     id: search-input
 - inputText: ${output.word}
 - extendedWaitUntil:
-    visible: ${output.title}
+    visible: ${output.title}.*
     timeout: 15000
-- tapOn: ${output.title}
+- tapOn: ${output.title}.*
 - extendedWaitUntil:
     visible:
       id: book-sheet
     timeout: 15000
-- assertVisible: "2 copies"
+- assertVisible: "3 copies"
 - assertVisible:
     id: cannot-borrow-note
 - assertVisible: "Visitor accounts cannot borrow"

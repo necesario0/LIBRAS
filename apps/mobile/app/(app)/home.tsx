@@ -86,7 +86,15 @@ export default function HomeScreen() {
               {shown.total === 1 ? "1 book" : shown.total > shown.results.length ? `Top ${shown.results.length} of ${shown.total} books` : `${shown.total} books`}
             </Text>
             {shown.results.map((book) => (
-              <BookResultRow key={book.id} book={book} onPress={() => router.push({ pathname: "/book/[id]", params: { id: book.id } })} />
+              <BookResultRow
+                key={book.id}
+                book={book}
+                onPress={() => {
+                  // The Book page is a sheet over Home: put the keyboard away so it does not cover the page's actions.
+                  Keyboard.dismiss();
+                  router.push({ pathname: "/book/[id]", params: { id: book.id } });
+                }}
+              />
             ))}
           </View>
         ) : null}

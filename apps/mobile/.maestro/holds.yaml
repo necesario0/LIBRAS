@@ -65,6 +65,8 @@ appId: ph.edu.umak.libras
     visible:
       id: search-results
     timeout: 10000
+- tapOn:
+    id: search-input
 - eraseText: 40
 - inputText: ${output.heldWord}
 - extendedWaitUntil:
@@ -102,6 +104,8 @@ appId: ph.edu.umak.libras
     timeout: 10000
 
 # Back on Home, with the search cleared, the summary counts the Hold.
+- tapOn:
+    id: search-input
 - eraseText: 40
 - extendedWaitUntil:
     visible:

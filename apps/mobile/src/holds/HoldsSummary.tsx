@@ -58,7 +58,8 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
-    borderWidth: 1,
+    // The same 2 pt frame as the Digital ID entry above it, so the two cards line up.
+    borderWidth: 2,
     borderColor: colors.border,
     borderRadius: radii.ticket,
     backgroundColor: colors.white,
