@@ -37,6 +37,15 @@ export const colors = {
   listBorder: "#111C4E",
   /** Border of a panel that holds a message. */
   panelBorder: "rgba(0,0,0,0.32)",
+  /** The greeting's second line on Home ("Whats on your mind"). */
+  textFaint: "#AFAFAF",
+  /** Shadow of the Home search bar (Figma: black at 25%). */
+  shadow: "#000000",
+  /** A Copy is available: text and fill of the status pill (Figma "92% match" pill). */
+  success: "#12B76A",
+  successSurface: "#E5F6EC",
+  /** A neutral status pill, for example no Copy available (Figma "74% match" pill). */
+  pill: "#F1F1F3",
 } as const;
 
 /** Montserrat is the only family. Keys are the names registered with `useFonts`. */
@@ -52,12 +61,16 @@ export const fontSize = {
   heading: 36,
   hero: 35,
   title: 26,
+  /** The greeting on Home. */
+  large: 24,
   subheading: 20,
   body: 16,
   note: 15,
   label: 14,
   small: 13,
   caption: 12,
+  /** The line under the greeting on Home. */
+  micro: 10,
 } as const;
 
 export const typography = {
@@ -83,6 +96,8 @@ export const spacing = {
   xl: 24,
   xxl: 32,
   screen: 25,
+  /** The side gutter of the Home frame, whose content is 366 pt wide on a 402 pt screen. */
+  home: 18,
 } as const;
 
 export const radii = {
@@ -100,10 +115,18 @@ export const radii = {
   panel: 12,
   /** The college list. */
   list: 10,
+  /** The Home search bar. */
+  search: 65,
 } as const;
 
 /** Height of text fields and buttons. */
 export const controlHeight = 44;
 
+/** Height of the Home search bar. */
+export const searchBarHeight = 46;
+
 /** The status bar area of a Figma phone frame. Screens position their content from below it. */
 export const statusBarHeight = 62;
+
+/** The cover colours of the design's book placeholders (Figma Search C). A Book without a cover picture takes one by its id. */
+export const bookCovers = ["#801A1A", "#3366B2", "#738C4D", "#E5C773", "#2B2B33", "#33998C"] as const;
