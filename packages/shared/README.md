@@ -13,4 +13,4 @@ Pure-function tests go in `test/*.test.ts` and use Node's built-in test runner, 
 - `barcode/code128.ts`: `encodeCode128C(digits)`, the bar and space widths of a Code 128 subset C barcode (the app draws them). Tested against bwip-js output.
 - `digital-id.ts`: Digital ID constants, types and wording, `formatDigitalId`, `msUntilRefresh`.
 - `scan.ts`: `readScan(raw)`, the whitelist and classification every desk scan goes through: a Digital ID (12 digits), or a Copy (its barcode or accession number).
-- `loans.ts`: Loan types and wording, `loanDueAt` (the end of the library day, UTC+8), `isLoanOverdue`, `formatLibraryDate`, `formatLibraryDay`, `libraryDaysBetween`.
+- `loans.ts`: Loan and return types and wording (`LOAN_MESSAGES`, `RETURN_MESSAGES`), `loanDueAt` (the end of the library day, UTC+8), `isLoanOverdue`, `formatLibraryDate`, `formatLibraryDay`, `libraryDaysBetween`.
