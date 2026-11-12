@@ -16,6 +16,7 @@ How to run it and its tests is in the [root README](../../README.md).
 | `src/members/` | Member profiles, the sign-up flow (pending sign-up, emailed code, activation) |
 | `src/auth/` | Sign-in sessions, guards (`requireLibrarian`, `requireMember`), identity pass-through to PostgreSQL |
 | `src/audit/` | The append-only, hash-chained audit log: `record`, `verify`, the event whitelist |
+| `src/holds/` | Holds: `placeHold`, `listHolds`, `cancelHold`, and the priority weights (`priority.ts`) |
 | `src/catalog/` | `CatalogSearch`: the in-memory search index, its rebuild-and-swap, and live availability |
 | `src/seed/` | `npm run seed`: the Librarian and the sample catalog (`catalog-generator.ts` is pure and reproducible, `catalog.ts` writes it) |
 | `src/testing/` | The HTTP test harness, also exported as `@libras/api/testing`, and the end-to-end server `e2e-server.ts` |
@@ -99,6 +100,19 @@ Tests: `test/digital-id.test.ts` (HTTP, fake clock), `test/digital-id-code.test.
 ## Catalog search
 
 `GET /catalog/search?q=<text>&limit=<n>` (`routes/catalog.ts`, behind the one `requireMember` guard) answers `{ query, total, results }`: Books best match first, each with `availableCopies` and `totalCopies`. No match is `200` with an empty `results`; a search that cannot run is a `400 invalid_request` or a 5xx error body. `CatalogSearch` (`catalog/catalog-search.ts`) holds one immutable index built with the shared search module (`@libras/shared`: `buildCatalogIndex`, the flat trie of ADR 0001). Every change to Books or to what identifies a Copy bumps `catalog_revision` (statement triggers); a search that sees a newer revision starts one rebuild in the background and keeps answering from the current index until the new one is swapped in with a single assignment, so a search in flight is never disturbed. A catalog change therefore shows in results a moment later, not on the very next request: a test that changes the catalog waits with `eventually` (`test/eventually.ts`). Availability is read from the Copies for the matched Books on every search. `npm run measure:search -w @libras/api` measures latency over HTTP on the seeded catalog (`npm run seed` first).
+
+## Holds
+
+`src/holds/`, `routes/holds.ts` and the migration `supabase/migrations/20261112200000_holds.sql`. A Hold is a Member's place in the queue for a Book that has no available Copy.
+
+- `POST /holds` `{ bookId }` (Member) -> `201 { hold }`, status `waiting`. Refused with `403 cannot_borrow` (Visitor and Alumni, by `canBorrow`), `404 book_not_found`, `409 copy_available` (a Copy is `available` now: borrow it instead; this is the same live count the Book page shows) and `409 hold_exists` (the Member already has a `waiting` or `ready` Hold on the Book). A Book with no Copies at all can be held.
+- `GET /members/me/holds` (Member) -> `{ holds }`: every Hold of the Member, active ones (`waiting`, `ready`) first, each group newest first. Read through `withIdentity`, so row-level security is the second layer.
+- `POST /holds/:id/cancel` (Member) -> `{ hold }`, status `cancelled`. Only a `waiting` Hold can be cancelled (`409 hold_not_cancellable` otherwise: cancelling a `ready` Hold must also pass its set-aside Copy on, which belongs to the dispatch ticket). A Hold that is not the Member's is `404 hold_not_found`, the same as one that does not exist.
+- The table keeps what the dispatcher of ADR 0001 needs: `placed_at` (arrival, from `deps.clock`), `weight_hours` (Faculty 24, NTP / Employee 12, UMAK Student 0: `HOLD_WEIGHT_HOURS`), `score` (`placed_at` minus the weight, a check constraint keeps them in step) and `seq` (arrival order). The queue of a Book is its `waiting` Holds ordered by `(score, seq)`, served by the partial index `holds_queue_idx`. There is no in-memory queue. The states are `waiting`, `ready`, `fulfilled`, `expired`, `cancelled`; the dispatch ticket adds the Copy and Pickup Window columns.
+- At most one active Hold per Member per Book is enforced by the partial unique index `holds_one_active_per_member_and_book`, so two requests at once cannot both succeed (the second is `409 hold_exists`). After a cancel the Member may place a new Hold.
+- Clients have `select` only, on their own rows (`holds_read_own`). The API writes Holds as itself.
+
+Tests: `test/holds.test.ts` (HTTP: placing, every refusal, cancelling, privacy, the row-level security check through a route that queries as the signed-in Member, the dispatcher's columns) and the pure weights.
 
 ## The end-to-end API
 

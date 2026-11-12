@@ -1,11 +1,14 @@
 import type {
   ApiErrorBody,
   BookDetailResponse,
+  CancelHoldResponse,
   CatalogSearchResponse,
   DigitalIdResponse,
   HealthResponse,
   MemberMeResponse,
   MemberSignInResponse,
+  MyHoldsResponse,
+  PlaceHoldResponse,
   RefreshSessionResponse,
   ResendSignUpCodeRequest,
   SignInRequest,
@@ -77,9 +80,13 @@ export function createApiClient({ baseUrl, fetch: fetchImpl = fetch, timeoutMs =
     return body as T;
   }
 
-  const post = <T>(path: string, body: unknown) =>
-    request<T>(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   const bearer = (accessToken: string) => ({ Authorization: `Bearer ${accessToken}` });
+  const post = <T>(path: string, body: unknown, accessToken?: string) =>
+    request<T>(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(accessToken === undefined ? {} : bearer(accessToken)) },
+      body: JSON.stringify(body),
+    });
 
   return {
     getHealth: () => request<HealthResponse>("/health"),
@@ -96,6 +103,16 @@ export function createApiClient({ baseUrl, fetch: fetchImpl = fetch, timeoutMs =
     /** One Book with its details and how many Copies exist and are available. `book_not_found` (404) when there is no such Book. */
     getBook: (accessToken: string, id: string) =>
       request<BookDetailResponse>(`/catalog/books/${encodeURIComponent(id)}`, { headers: bearer(accessToken) }),
+    /**
+     * Puts the Member in the queue of a Book that has no available Copy. Failures: `cannot_borrow` (403),
+     * `book_not_found` (404), `copy_available` and `hold_exists` (409).
+     */
+    placeHold: (accessToken: string, bookId: string) => post<PlaceHoldResponse>("/holds", { bookId }, accessToken),
+    /** The Member's own Holds, active ones first. */
+    getHolds: (accessToken: string) => request<MyHoldsResponse>("/members/me/holds", { headers: bearer(accessToken) }),
+    /** Takes the Member out of a Book's queue. Failures: `hold_not_found` (404), `hold_not_cancellable` (409). */
+    cancelHold: (accessToken: string, holdId: string) =>
+      request<CancelHoldResponse>(`/holds/${encodeURIComponent(holdId)}/cancel`, { method: "POST", headers: bearer(accessToken) }),
     /** Starts a sign-up: the API emails a verification code. */
     signUp: (body: SignUpRequest) => post<SignUpCodeSentResponse>("/members/sign-up", body),
     /** Accepts the emailed code: the account is active from here on. */

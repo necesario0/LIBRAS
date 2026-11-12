@@ -6,6 +6,7 @@ import { BookInfo } from "../../../src/book/BookInfo";
 import { useBook } from "../../../src/catalog/useBook";
 import { Button } from "../../../src/components/Button";
 import { CloseIcon } from "../../../src/components/icons";
+import { HoldAction } from "../../../src/holds/HoldAction";
 import { colors, fontFamily, fontSize, radii, spacing } from "../../../src/theme/tokens";
 
 /** The sheet starts this far down the screen: 200 pt of the 874 pt Figma frame. */
@@ -14,8 +15,8 @@ const SHEET_TOP = 200 / 874;
 /**
  * A Book, opened from a search result: the Figma "Book detail" sheet (node
  * 609:1066) over the screen that opened it. Its details and how many Copies
- * exist and are available come from the API. The Borrow and Hold actions
- * arrive with the tickets that build them.
+ * exist and are available come from the API. The Hold action shows when no Copy
+ * is available; Borrow arrives with the ticket that builds it.
  */
 export default function BookScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -42,7 +43,12 @@ export default function BookScreen() {
           showsVerticalScrollIndicator={false}
         >
           {state.status === "loading" ? <ActivityIndicator color={colors.primary} style={styles.spinner} testID="book-loading" /> : null}
-          {state.status === "loaded" ? <BookInfo book={state.book} accountType={member.accountType} /> : null}
+          {state.status === "loaded" ? (
+            <>
+              <BookInfo book={state.book} accountType={member.accountType} />
+              <HoldAction book={state.book} accountType={member.accountType} />
+            </>
+          ) : null}
           {state.status === "missing" ? (
             <View style={styles.message} testID="book-missing">
               <Text style={styles.messageTitle} accessibilityRole="header">
