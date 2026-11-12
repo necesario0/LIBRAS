@@ -90,7 +90,7 @@ The hosted system is three services, all on free tiers (ADR 0003):
 
 | Command | What it does |
 | --- | --- |
-| `npm run setup:hosted` | The guided setup wizard (`scripts/setup-hosted.sh`). Opens each dashboard, asks for each value, writes `.env.hosted` and the GitHub secrets, applies the migrations, creates the Librarian, checks the API and sends a test email |
+| `npm run setup:hosted` | The guided setup wizard (`scripts/setup-hosted.sh`, launched by `scripts/run-setup-hosted.mjs` so Windows uses Git Bash, not WSL). Opens each dashboard, asks for each value, writes `.env.hosted` and the GitHub secrets, applies the migrations, creates the Librarian, checks the API and sends a test email |
 | `npm run db:migrate:hosted` | Applies `supabase/migrations` to the hosted database. It first lists the pending migrations and asks you to type `apply`. `-- --dry-run` only lists them. `-- --yes` skips the question. Safe to run again |
 | `npm run seed:hosted` | Creates (or resets) the Librarian from `SEED_LIBRARIAN_EMAIL` and `SEED_LIBRARIAN_PASSWORD` in `.env.hosted`. Later seed steps (catalog, Loan Policy) run here too |
 | `npm run check:hosted` | Asks the hosted API for `/health` until it answers (up to five minutes, to cover Render waking up) |
@@ -129,7 +129,7 @@ It goes to sleep after 15 minutes without traffic and takes about a minute to wa
 
 Do these in order, from the repository root, in Git Bash.
 
-1. **Get this work onto GitHub `main`.** Render builds from GitHub, and `render.yaml` must be on the `main` branch there. Merge the deployment work (branch `spec-2/6-setup-deploy`, or `spec-2-tier1` once it contains it) into `main` and push. Until then the wizard warns at the Render stage and you can stop and resume.
+1. **Get this work onto GitHub `main`.** Render builds from GitHub, and `render.yaml` must be on the `main` branch there. Merge the deployment work (branch `spec-2/6-setup`, or `spec-2-tier1` once it contains it) into `main` and push. Until then the wizard warns at the Render stage and you can stop and resume.
 2. **Prepare the computer.** `npm ci`. Then `gh auth login` if `gh auth status` says you are signed out (the wizard needs it to store GitHub secrets). Docker is not needed for this.
 3. **Run the wizard:** `npm run setup:hosted`. It has eight stages and can be stopped with Ctrl-C and run again: it remembers what it saved in `.env.hosted`. What you will do in each stage:
    1. *Check this computer.* Nothing to do. It stops if `.env.hosted` is not gitignored.

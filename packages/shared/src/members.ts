@@ -16,7 +16,10 @@ interface MemberBase {
  * A Member as the app sees them. `details` holds what only that Account Type
  * gives at sign-up. Each ticket that builds another sign-up form adds a case.
  */
-export type MemberProfile = MemberBase & { accountType: "umak_student"; details: UmakStudentDetails };
+export type MemberProfile =
+  | (MemberBase & { accountType: "umak_student"; details: UmakStudentDetails })
+  // Visitor and Alumni: no extra details yet. Their sign-up ticket (#8) gives them their own cases.
+  | (MemberBase & { accountType: "visitor" | "alumni"; details: Record<string, never> });
 
 /** The body of `POST /members/sign-up` and `POST /members/sign-up/resend`: a code is on its way. */
 export interface SignUpCodeSentResponse {

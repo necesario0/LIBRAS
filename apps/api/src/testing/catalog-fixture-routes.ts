@@ -7,6 +7,10 @@ interface BookFixture {
   authors: string[];
   availableCopies: number;
   onLoanCopies: number;
+  edition?: string;
+  publicationYear?: number;
+  isbn?: string;
+  lcCallNumber?: string;
 }
 
 function isBookFixture(value: unknown): value is BookFixture {
@@ -17,7 +21,11 @@ function isBookFixture(value: unknown): value is BookFixture {
     Array.isArray(body.authors) &&
     body.authors.every((author) => typeof author === "string") &&
     Number.isInteger(body.availableCopies) &&
-    Number.isInteger(body.onLoanCopies)
+    Number.isInteger(body.onLoanCopies) &&
+    (body.edition === undefined || typeof body.edition === "string") &&
+    (body.publicationYear === undefined || Number.isInteger(body.publicationYear)) &&
+    (body.isbn === undefined || typeof body.isbn === "string") &&
+    (body.lcCallNumber === undefined || typeof body.lcCallNumber === "string")
   );
 }
 
@@ -26,7 +34,7 @@ function isBookFixture(value: unknown): value is BookFixture {
  * catalog, since the product has no way to do it yet. It exists only on the
  * end-to-end server (`e2e-server.ts`): the real server never imports this module.
  *
- *   POST /e2e/books { title, authors, availableCopies, onLoanCopies } -> 201 { id }
+ *   POST /e2e/books { title, authors, availableCopies, onLoanCopies, edition?, publicationYear?, isbn?, lcCallNumber? } -> 201 { id }
  *   (answers once search can find the Book)
  */
 export function catalogFixtureRoutes(router: Router, deps: AppDeps, catalog: CatalogSearch): void {
@@ -35,8 +43,11 @@ export function catalogFixtureRoutes(router: Router, deps: AppDeps, catalog: Cat
       res.status(400).json({ error: { code: "invalid_request", message: "Not a Book fixture." } });
       return;
     }
-    const { title, authors, availableCopies, onLoanCopies } = req.body;
-    const { rows } = await deps.db.query<{ id: string }>("insert into public.books (title, authors) values ($1, $2) returning id", [title, authors]);
+    const { title, authors, availableCopies, onLoanCopies, edition, publicationYear, isbn, lcCallNumber } = req.body;
+    const { rows } = await deps.db.query<{ id: string }>(
+      "insert into public.books (title, authors, edition, publication_year, isbn, lc_call_number) values ($1, $2, $3, $4, $5, $6) returning id",
+      [title, authors, edition ?? null, publicationYear ?? null, isbn ?? null, lcCallNumber ?? null],
+    );
     const id = rows[0]?.id;
     const statuses = [...Array<string>(availableCopies).fill("available"), ...Array<string>(onLoanCopies).fill("on_loan")];
     for (const [i, status] of statuses.entries()) {

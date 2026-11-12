@@ -1,5 +1,6 @@
 import type {
   ApiErrorBody,
+  BookDetailResponse,
   CatalogSearchResponse,
   DigitalIdResponse,
   HealthResponse,
@@ -92,6 +93,9 @@ export function createApiClient({ baseUrl, fetch: fetchImpl = fetch, timeoutMs =
         `/catalog/search?q=${encodeURIComponent(query)}${limit === undefined ? "" : `&limit=${limit}`}`,
         { headers: { Authorization: `Bearer ${accessToken}` } },
       ),
+    /** One Book with its details and how many Copies exist and are available. `book_not_found` (404) when there is no such Book. */
+    getBook: (accessToken: string, id: string) =>
+      request<BookDetailResponse>(`/catalog/books/${encodeURIComponent(id)}`, { headers: bearer(accessToken) }),
     /** Starts a sign-up: the API emails a verification code. */
     signUp: (body: SignUpRequest) => post<SignUpCodeSentResponse>("/members/sign-up", body),
     /** Accepts the emailed code: the account is active from here on. */
