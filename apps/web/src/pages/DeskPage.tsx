@@ -35,7 +35,7 @@ type DeskState =
   | { kind: "confirming"; identified: Identified }
   | { kind: "returning" };
 
-type Status = "ready" | "identifying" | "member" | "confirming" | "confirmed" | "returning" | "returned" | "refused";
+type Status = "ready" | "identifying" | "member" | "confirming" | "confirmed" | "returning" | "returned" | "set_aside" | "refused";
 
 const STATUS: Record<Status, string> = {
   ready: "Waiting for a scan",
@@ -45,6 +45,7 @@ const STATUS: Record<Status, string> = {
   confirmed: "Loan confirmed",
   returning: "Recording the return...",
   returned: "Return recorded",
+  set_aside: "Return recorded - set aside for a Hold",
   refused: "Scan not accepted",
 };
 
@@ -53,6 +54,8 @@ const DIGITAL_ID_REFUSALS = new Set(["digital_id_expired", "digital_id_invalid",
 
 function statusOf(state: DeskState): Status {
   if (state.kind === "identifying" || state.kind === "confirming" || state.kind === "returning") return state.kind;
+  // A returned Copy that is now set aside is not a routine return: the chip says so, in the accent color.
+  if (state.outcome.kind === "returned" && state.outcome.loan.heldFor) return "set_aside";
   if (state.outcome.kind !== "none") return state.outcome.kind;
   return state.kind;
 }
