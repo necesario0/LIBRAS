@@ -18,6 +18,7 @@ How to run it and its tests is in the [root README](../../README.md).
 | `src/audit/` | The append-only, hash-chained audit log: `record`, `verify`, the event whitelist |
 | `src/holds/` | Holds: `placeHold`, `listHolds`, `cancelHold`, and the priority weights (`priority.ts`) |
 | `src/loans/` | Loans: `confirmLoan` (the desk) and `listLoans` (My Loans) |
+| `src/scanner/` | The phone as the scanner: `ScannerHub` (pairing codes, scanner tokens, the desk streams), see "The phone scanner" |
 | `src/catalog/` | `CatalogSearch`: the in-memory search index, its rebuild-and-swap, and live availability |
 | `src/seed/` | `npm run seed`: the Librarian and the sample catalog (`catalog-generator.ts` is pure and reproducible, `catalog.ts` writes it) |
 | `src/testing/` | The HTTP test harness, also exported as `@libras/api/testing`, and the end-to-end server `e2e-server.ts` |
@@ -136,6 +137,21 @@ Tests: `test/loans.test.ts` (HTTP: confirmation and due date, availability falli
 ## The end-to-end API
 
 `src/testing/e2e-server.ts` is the API for end-to-end tests: the real app, but emails are captured and readable at `GET /e2e/emails?to=<address>`, a Book can be added at `POST /e2e/books` (`testing/catalog-fixture-routes.ts`; it answers once search can find the Book), and a Librarian confirms a Loan for a Member at `POST /e2e/loans` `{ email, bookId, daysAgo? }` (`testing/loan-fixture-routes.ts`: the real confirmation with the code on the Member's phone; `daysAgo` sets the clock back to make an overdue Loan) and records the return of the Copy the Member has out of a Book at `POST /e2e/returns` `{ email, bookId }` (the real return). It is a separate entry point that `server.ts` never imports, listens on loopback only, and exits at once when `NODE_ENV=production`, so production cannot expose it (tests in `test/e2e-mailbox.test.ts`). `npm run e2e -w @libras/mobile` starts it.
+
+## The phone scanner
+
+ADR 0005 has the transport decision. `src/scanner/hub.ts` (`ScannerHub`, in memory, one per app) and `src/routes/scanner.ts` are the whole feature; nothing touches the database.
+
+| Endpoint | Who | What |
+| --- | --- | --- |
+| `GET /desk/scanner/events[?desk=<id>]` | Librarian | A `text/event-stream`. Events (`DeskScannerEvents` in `@libras/shared`): `desk` (the desk id), `pairing` (a six-digit code valid 120 s, re-sent when it changes), `paired`, `unpaired`, `scan` (`{text}`), `end` (the stream's 30 minutes are up: reconnect with `?desk=`). A comment line every 15 s. `?desk=` takes the earlier pairing back for the same Librarian within 60 s of the stream dropping |
+| `POST /desk/scanner/unpair {deskId}` | Librarian | Ends the pairing of one of their desk pages (204, also for an id that is not theirs) |
+| `POST /scanner/pair {code}` | nobody | The phone's code (spaces allowed) -> `{token}`. 403 `pairing_code_invalid` for a wrong, used or expired code (one message for all three); 429 `too_many_attempts` after 5 wrong codes in 5 minutes per client address |
+| `POST /scanner/scans {text}` | scanner token | 202. 400 `scan_rejected` unless `readScan` accepts it (the same whitelist the desk page applies), 401 `pairing_lost`, 409 `desk_offline` (the desk page's stream is away), 429 `too_many_scans` (30 in 10 s) |
+| `GET /scanner/status` | scanner token | `{deskOnline}`, or 401 `pairing_lost` |
+| `DELETE /scanner/pairing` | scanner token | The phone leaves (204); the desk page gets `unpaired` and a new code |
+
+The scanner token (32 random bytes, kept only as a SHA-256 hash in memory) is not a Supabase session: every Librarian and Member endpoint refuses it (tested against each desk endpoint). A pairing code names one desk page, belongs to the Librarian whose stream showed it, and is cleared when used. Time (code life, grace, scan window) comes from `deps.clock`, so tests move it; `AppOptions.scanner` and `AppOptions.pairingLimit` change the numbers in tests. `test/scanner.test.ts` reads the stream the way the browser does (`readEventStream` from `@libras/shared`).
 
 ## Audit log
 

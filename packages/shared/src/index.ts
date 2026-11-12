@@ -131,3 +131,14 @@ export type {
   RecordReturnResponse,
   ReturnedLoan,
 } from "./loans.ts";
+export { readEventStream } from "./event-stream.ts";
+export type { StreamEvent } from "./event-stream.ts";
+export {
+  PAIRING_CODE_LENGTH,
+  PAIRING_CODE_SECONDS,
+  SCANNER_MESSAGES,
+  pairScannerRequestSchema,
+  pairingCodeSchema,
+  sendScanRequestSchema,
+} from "./scanner.ts";
+export type { DeskScannerEventName, DeskScannerEvents, PairScannerResponse, ScannerStatusResponse } from "./scanner.ts";
