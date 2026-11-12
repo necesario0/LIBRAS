@@ -1,10 +1,10 @@
 import { useRef, useState } from "react";
-import { SCAN_MESSAGES } from "@libras/shared";
-import type { DeskLoan, DeskMember, ScanReading, StaffProfile } from "@libras/shared";
-import { ApiError, confirmLoan, identifyMember } from "../api.ts";
+import type { DeskLoan, DeskMember, ReturnedLoan, ScanReading, StaffProfile } from "@libras/shared";
+import { ApiError, confirmLoan, identifyMember, recordReturn } from "../api.ts";
 import { Brand } from "../components/Brand.tsx";
 import { LoanNotice } from "../components/LoanNotice.tsx";
 import { MemberCard } from "../components/MemberCard.tsx";
+import { ReturnNotice } from "../components/ReturnNotice.tsx";
 import { ScanField } from "../scan/ScanField.tsx";
 import { useScanInput } from "../scan/scan-input.ts";
 
@@ -20,15 +20,20 @@ interface Identified {
 }
 
 /** What the last scan did, shown under the scan field. */
-type Outcome = { kind: "none" } | { kind: "confirmed"; loan: DeskLoan } | { kind: "refused"; message: string };
+type Outcome =
+  | { kind: "none" }
+  | { kind: "confirmed"; loan: DeskLoan }
+  | { kind: "returned"; loan: ReturnedLoan }
+  | { kind: "refused"; message: string };
 
 type DeskState =
   | { kind: "ready"; outcome: Outcome }
   | { kind: "identifying" }
   | { kind: "member"; identified: Identified; outcome: Outcome }
-  | { kind: "confirming"; identified: Identified };
+  | { kind: "confirming"; identified: Identified }
+  | { kind: "returning" };
 
-type Status = "ready" | "identifying" | "member" | "confirming" | "confirmed" | "refused";
+type Status = "ready" | "identifying" | "member" | "confirming" | "confirmed" | "returning" | "returned" | "refused";
 
 const STATUS: Record<Status, string> = {
   ready: "Waiting for a scan",
@@ -36,6 +41,8 @@ const STATUS: Record<Status, string> = {
   member: "Member identified",
   confirming: "Recording the Loan...",
   confirmed: "Loan confirmed",
+  returning: "Recording the return...",
+  returned: "Return recorded",
   refused: "Scan not accepted",
 };
 
@@ -43,7 +50,7 @@ const STATUS: Record<Status, string> = {
 const DIGITAL_ID_REFUSALS = new Set(["digital_id_expired", "digital_id_invalid", "digital_id_used"]);
 
 function statusOf(state: DeskState): Status {
-  if (state.kind === "identifying" || state.kind === "confirming") return state.kind;
+  if (state.kind === "identifying" || state.kind === "confirming" || state.kind === "returning") return state.kind;
   if (state.outcome.kind !== "none") return state.outcome.kind;
   return state.kind;
 }
@@ -55,7 +62,8 @@ function messageOf(error: unknown): string {
 /**
  * The desk screen: every scan arrives through the one scan input point and is
  * shown here. A Digital ID identifies a Member; a Copy scanned after it
- * confirms a Loan for that Member.
+ * confirms a Loan for that Member. A Copy scanned with no Member at the desk
+ * records its return, and "Done with this Member" puts the desk back to that.
  */
 export function DeskPage({ staff, onSignOut }: Props) {
   const [state, setState] = useState<DeskState>({ kind: "ready", outcome: { kind: "none" } });
@@ -98,13 +106,29 @@ export function DeskPage({ staff, onSignOut }: Props) {
     }
   }
 
+  async function giveBack(copy: string) {
+    setState({ kind: "returning" });
+    try {
+      const returned = await recordReturn(copy);
+      if (returned === undefined) onSignOut();
+      else show(undefined, { kind: "returned", loan: returned });
+    } catch (error) {
+      show(undefined, { kind: "refused", message: messageOf(error) });
+    }
+  }
+
   async function handle(reading: ScanReading) {
     const member = atDesk.current;
     if (reading.kind === "rejected") show(member, { kind: "refused", message: reading.message });
     else if (reading.kind === "digital_id") await identify(reading.code);
-    // A Copy with no Member at the desk: a later ticket records its return here.
-    else if (!member) show(undefined, { kind: "refused", message: SCAN_MESSAGES.notDigitalId });
+    // A Copy with no Member at the desk is a Copy coming back.
+    else if (!member) await giveBack(reading.code);
     else await lend(member, reading.code);
+  }
+
+  /** The Member has what they came for: forget them, so the next Copy scanned is a return. */
+  function finishWithMember() {
+    queue.current = queue.current.then(() => show(undefined, { kind: "none" }));
   }
 
   const scanInput = useScanInput((reading: ScanReading) => {
@@ -112,7 +136,7 @@ export function DeskPage({ staff, onSignOut }: Props) {
   });
 
   const status = statusOf(state);
-  const busy = state.kind === "identifying" || state.kind === "confirming";
+  const busy = state.kind === "identifying" || state.kind === "confirming" || state.kind === "returning";
 
   return (
     <div className="desk">
@@ -144,7 +168,8 @@ export function DeskPage({ staff, onSignOut }: Props) {
           <ScanField
             input={scanInput}
             busy={busy}
-            placeholder={identified ? "Copy barcode or accession number, then Enter" : "Digital ID, then Enter"}
+            focusKey={identified?.digitalId}
+            placeholder={identified ? "Copy barcode or accession number, then Enter" : "Digital ID or Copy, then Enter"}
           />
           {outcome.kind === "refused" && (
             <p className="alert desk__alert" role="alert">
@@ -152,7 +177,13 @@ export function DeskPage({ staff, onSignOut }: Props) {
             </p>
           )}
           {outcome.kind === "confirmed" && <LoanNotice loan={outcome.loan} />}
+          {outcome.kind === "returned" && <ReturnNotice loan={outcome.loan} />}
           {identified && <MemberCard member={identified.member} />}
+          {identified && (
+            <button className="button button--quiet desk__done" type="button" onClick={finishWithMember}>
+              Done with this Member
+            </button>
+          )}
         </section>
       </main>
     </div>

@@ -300,13 +300,18 @@ input {
   background: var(--color-danger);
 }
 .desk__status--member,
-.desk__status--confirmed {
+.desk__status--confirmed,
+.desk__status--returned {
   background: var(--color-success-soft);
   color: var(--color-success);
 }
 .desk__status--member::before,
-.desk__status--confirmed::before {
+.desk__status--confirmed::before,
+.desk__status--returned::before {
   background: var(--color-success);
+}
+.desk__done {
+  margin-top: var(--space-2);
 }
 .desk__alert {
   align-self: stretch;
@@ -391,6 +396,15 @@ input {
 .loan-notice__copy {
   color: var(--color-text-muted);
   font-size: var(--text-sm);
+}
+.loan-notice__member {
+  color: var(--color-text);
+  font-weight: 500;
+}
+.loan-notice__late {
+  color: var(--color-danger);
+  font-size: var(--text-sm);
+  font-weight: 500;
 }
 .loan-notice__due {
   display: flex;

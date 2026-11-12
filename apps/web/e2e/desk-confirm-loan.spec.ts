@@ -1,103 +1,14 @@
-import { randomInt, randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
-import type { Page } from "@playwright/test";
-import { LOAN_MESSAGES, SCAN_MESSAGES } from "@libras/shared";
-import type { AccountType, MyLoansResponse } from "@libras/shared";
-import { createTestAccount, signInDirect } from "@libras/api/testing";
-import { loadConfig } from "../../api/src/config.ts";
-import { createDatabase } from "../../api/src/db.ts";
+import { LOAN_MESSAGES, RETURN_MESSAGES, SCAN_MESSAGES } from "@libras/shared";
 import { currentDigitalId } from "../../api/src/digital-id/index.ts";
-import { seedLibrarians } from "../../api/src/seed/librarians.ts";
+import { createDeskFixtures, scan, signInAtTheDesk } from "./desk-fixtures.ts";
+import type { DeskTestCopy } from "./desk-fixtures.ts";
 
-// The same database the API under test uses: `loadConfig` gives the local Supabase one.
-const db = createDatabase(loadConfig().databaseUrl, console);
-// The API Playwright starts (playwright.config.ts).
-const API_URL = "http://127.0.0.1:3101";
+const desk = createDeskFixtures();
+const { addBook, codeOnThePhoneOf, createMember, db, loansOf } = desk;
 
-const librarian = { email: "e2e-librarian@libras.test", password: "e2e-librarian-pw-1", fullName: "Lita Reyes" };
-const bookIds: string[] = [];
-
-interface DeskTestMember {
-  userId: string;
-  fullName: string;
-  accessToken: string;
-}
-
-interface DeskTestCopy {
-  barcode: string;
-  accessionNumber: string;
-}
-
-/** A Member as sign-up leaves one, signed in so the test can read what their app would show. */
-async function createMember(accountType: AccountType, firstName: string, lastName: string): Promise<DeskTestMember> {
-  const account = await createTestAccount({ db });
-  const unique = randomUUID().replaceAll("-", "").slice(0, 10);
-  const details = accountType === "umak_student" ? { studentNumber: `K${randomInt(10_000_000, 99_999_999)}`, college: "CCIS" } : {};
-  await db.query(
-    `insert into public.members (user_id, account_type, first_name, last_name, username, details, terms_accepted_at)
-     values ($1, $2, $3, $4, $5, $6, now())`,
-    [account.userId, accountType, firstName, lastName, `${firstName.toLowerCase()}_${unique}`, JSON.stringify(details)],
-  );
-  const accessToken = await signInDirect(account.email, account.password);
-  if (accessToken === undefined) throw new Error("The test Member could not sign in");
-  return { userId: account.userId, fullName: `${firstName} ${lastName}`, accessToken };
-}
-
-/** A Book with this many Copies on the shelf, each with a ten-digit barcode and an accession number. */
-async function addBook(title: string, copies: number): Promise<DeskTestCopy[]> {
-  const { rows } = await db.query<{ id: string }>("insert into public.books (title, authors) values ($1, $2) returning id", [
-    title,
-    ["Reyes, Ana"],
-  ]);
-  const id = (rows[0] as { id: string }).id;
-  bookIds.push(id);
-  const added: DeskTestCopy[] = [];
-  for (let i = 0; i < copies; i += 1) {
-    const copy = {
-      barcode: `38${String(randomInt(0, 100_000_000)).padStart(8, "0")}`,
-      accessionNumber: `DK-${randomUUID().slice(0, 8).toUpperCase()}`,
-    };
-    await db.query("insert into public.copies (book_id, accession_number, barcode) values ($1, $2, $3)", [id, copy.accessionNumber, copy.barcode]);
-    added.push(copy);
-  }
-  return added;
-}
-
-test.beforeAll(async () => {
-  await seedLibrarians(db, [librarian]);
-});
-test.afterAll(async () => {
-  await db.query("delete from public.loans where copy_id in (select id from public.copies where book_id = any($1))", [bookIds]);
-  await db.query("delete from public.copies where book_id = any($1)", [bookIds]);
-  await db.query("delete from public.books where id = any($1)", [bookIds]);
-  await db.end();
-});
-
-/** The code the Member's app shows right now. */
-async function codeOnThePhoneOf(member: DeskTestMember): Promise<string> {
-  return (await currentDigitalId({ db, clock: { now: () => new Date() } }, member.userId)).code;
-}
-
-/** What the Member's app reads: their own Loans, from the real endpoint. */
-async function loansOf(member: DeskTestMember) {
-  const response = await fetch(`${API_URL}/members/me/loans`, { headers: { authorization: `Bearer ${member.accessToken}` } });
-  expect(response.status).toBe(200);
-  return ((await response.json()) as MyLoansResponse).loans;
-}
-
-async function signInAtTheDesk(page: Page) {
-  await page.goto("/");
-  await page.getByLabel("Email").fill(librarian.email);
-  await page.getByLabel("Password", { exact: true }).fill(librarian.password);
-  await page.getByRole("button", { name: "Continue" }).click();
-  await expect(page.getByRole("heading", { name: "Ready for scanning" })).toBeVisible();
-}
-
-/** What a USB barcode scanner does: types the characters into the focused page and presses Enter. */
-async function scan(page: Page, text: string) {
-  await page.keyboard.type(text);
-  await page.keyboard.press("Enter");
-}
+test.beforeAll(desk.setUp);
+test.afterAll(desk.cleanUp);
 
 /** The day a Loan confirmed now is due: seven days on, as the library's calendar (Manila) writes it. */
 function dueDateOfALoanConfirmedNow(): string {
@@ -204,7 +115,7 @@ test("a refused Loan shows its reason and keeps the Member at the desk", async (
   await page.screenshot({ path: test.info().outputPath("desk-loan-cannot-borrow.png") });
 });
 
-test("a Copy scanned before any Digital ID confirms nothing", async ({ page }) => {
+test("a Copy scanned before any Digital ID is a return, never a Loan", async ({ page }) => {
   const [copy] = (await addBook("Nobody At The Desk", 1)) as [DeskTestCopy];
   await signInAtTheDesk(page);
   const calls: string[] = [];
@@ -214,8 +125,10 @@ test("a Copy scanned before any Digital ID confirms nothing", async ({ page }) =
 
   await scan(page, copy.barcode);
 
-  await expect(page.getByRole("alert")).toHaveText(SCAN_MESSAGES.notDigitalId);
-  expect(calls).toEqual([]);
+  // The Copy is on the shelf, so there is nothing to return, and nothing is lent.
+  await expect(page.getByRole("alert")).toHaveText(RETURN_MESSAGES.copyNotOnLoan);
+  expect(calls).toHaveLength(1);
+  expect(calls[0]).toContain("/desk/returns");
   const { rows } = await db.query("select status from public.copies where barcode = $1", [copy.barcode]);
   expect(rows[0].status).toBe("available");
 });

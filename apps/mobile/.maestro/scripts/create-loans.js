@@ -4,6 +4,8 @@
 //   borrowWord, borrowTitle         the Book the Student borrows in the flow
 //   borrowBookId                    its id, for confirm-loan.js
 //   lateBookId, lateTitle           the Book of the Loan that overdue-loan.js makes overdue
+//   returnWord, returnTitle         a Book with one Copy, for the returns flow
+//   returnBookId                    its id, for confirm-return-loan.js and return-loan.js
 //
 // Needs the end-to-end API on port 3000 (npm run e2e starts it).
 const base = "http://127.0.0.1:3000";
@@ -46,6 +48,9 @@ const borrowTitle = "The " + capitalize(borrowWord) + " Reader";
 const lateTitle = "The " + capitalize(randomWord("zl")) + " Almanac";
 const borrowBook = post("/e2e/books", { title: borrowTitle, authors: ["Zxqy, Bea"], availableCopies: 2, onLoanCopies: 0 });
 const lateBook = post("/e2e/books", { title: lateTitle, authors: ["Zxqy, Lena"], availableCopies: 1, onLoanCopies: 0 });
+const returnWord = randomWord("zr");
+const returnTitle = "The " + capitalize(returnWord) + " Chronicle";
+const returnBook = post("/e2e/books", { title: returnTitle, authors: ["Zxqy, Rae"], availableCopies: 1, onLoanCopies: 0 });
 
 output.email = student.email;
 output.password = student.password;
@@ -54,3 +59,6 @@ output.borrowTitle = borrowTitle;
 output.borrowBookId = borrowBook.id;
 output.lateBookId = lateBook.id;
 output.lateTitle = lateTitle;
+output.returnWord = returnWord;
+output.returnTitle = returnTitle;
+output.returnBookId = returnBook.id;

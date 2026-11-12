@@ -20,8 +20,6 @@ const DIGITAL_ID_INPUT_PATTERN = /^[0-9]{4} ?[0-9]{4} ?[0-9]{4}$/;
 export const SCAN_MESSAGES = {
   empty: "Nothing was scanned. Scan the barcode again or type the code and press Enter.",
   notAllowed: "That scan has characters a LIBRAS barcode never has. Scan it again or type the code.",
-  /** A Copy was scanned (or a Digital ID mistyped) when the desk was waiting for a Member's Digital ID. */
-  notDigitalId: "That is not a Digital ID. Scan the barcode on the Member's phone, or type the 12-digit code beneath it.",
 } as const;
 
 export type ScanRejection = "empty" | "not_allowed";

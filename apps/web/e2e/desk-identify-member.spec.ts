@@ -92,7 +92,7 @@ test("an expired Digital ID is rejected with a clear message", async ({ page }) 
   await page.screenshot({ path: test.info().outputPath("desk-expired.png") });
 });
 
-test("scan input outside the whitelist or not a Digital ID is refused on the desk", async ({ page }) => {
+test("scan input outside the whitelist is refused on the desk, and what is not a Digital ID is looked up as a Copy", async ({ page }) => {
   await signInAtTheDesk(page);
   const calls: string[] = [];
   page.on("request", (request) => {
@@ -104,11 +104,13 @@ test("scan input outside the whitelist or not a Digital ID is refused on the des
     "That scan has characters a LIBRAS barcode never has. Scan it again or type the code.",
   );
 
+  // Five digits are not a Digital ID, so the desk takes them for a Copy coming back, and no Copy has them.
   await scan(page, "12345");
   await expect(page.getByRole("alert")).toHaveText(
-    "That is not a Digital ID. Scan the barcode on the Member's phone, or type the 12-digit code beneath it.",
+    "No Copy has this barcode or accession number. Scan it again, or type the accession number printed on the Copy.",
   );
-  expect(calls).toEqual([]);
+  expect(calls).toHaveLength(1);
+  expect(calls[0]).toContain("/desk/returns");
 
   // A good scan after a bad one works straight away.
   await scan(page, await codeOnTheMembersPhone());

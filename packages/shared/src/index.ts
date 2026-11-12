@@ -110,6 +110,7 @@ export type { CancelHoldResponse, Hold, HoldStatus, MyHoldsResponse, PlaceHoldRe
 export {
   LIBRARY_UTC_OFFSET_HOURS,
   LOAN_MESSAGES,
+  RETURN_MESSAGES,
   confirmLoanRequestSchema,
   copyCodeSchema,
   formatLibraryDate,
@@ -118,5 +119,15 @@ export {
   isCurrentLoan,
   isLoanOverdue,
   loanDueAt,
+  recordReturnRequestSchema,
 } from "./loans.ts";
-export type { ConfirmLoanRequest, ConfirmLoanResponse, DeskLoan, Loan, MyLoansResponse } from "./loans.ts";
+export type {
+  ConfirmLoanRequest,
+  ConfirmLoanResponse,
+  DeskLoan,
+  Loan,
+  MyLoansResponse,
+  RecordReturnRequest,
+  RecordReturnResponse,
+  ReturnedLoan,
+} from "./loans.ts";

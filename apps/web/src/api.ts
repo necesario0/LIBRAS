@@ -2,7 +2,9 @@ import type {
   ConfirmLoanResponse,
   DeskMember,
   IdentifyMemberResponse,
+  RecordReturnResponse,
   RefreshSessionResponse,
+  ReturnedLoan,
   Session,
   StaffMeResponse,
   StaffProfile,
@@ -144,4 +146,18 @@ export async function currentStaff(): Promise<StaffProfile | undefined> {
   }
   if (!response.ok) throw await failure(response);
   return ((await response.json()) as StaffMeResponse).staff;
+}
+
+/**
+ * Records the return of a Copy: `copy` is its barcode or accession number from
+ * the scan input point, with no Member involved. Resolves with the closed Loan,
+ * or undefined when the Librarian's session is gone. Throws ApiError with the
+ * reason to show: `copy_not_on_loan`, `copy_not_found`, `return_conflict`,
+ * `invalid_request` or `unreachable`.
+ */
+export async function recordReturn(copy: string): Promise<ReturnedLoan | undefined> {
+  const response = await authorized("/desk/returns", { method: "POST", body: JSON.stringify({ copy }) });
+  if (!response) return undefined;
+  if (!response.ok) throw await failure(response);
+  return ((await response.json()) as RecordReturnResponse).loan;
 }

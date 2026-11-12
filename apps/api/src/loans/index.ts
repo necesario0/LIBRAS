@@ -1,6 +1,6 @@
 import type pg from "pg";
-import { LOAN_MESSAGES, isLoanOverdue, loanDueAt } from "@libras/shared";
-import type { AccountType, DeskLoan, Loan, MyLoansResponse } from "@libras/shared";
+import { LOAN_MESSAGES, RETURN_MESSAGES, isLoanOverdue, loanDueAt } from "@libras/shared";
+import type { AccountType, DeskLoan, Loan, MyLoansResponse, ReturnedLoan } from "@libras/shared";
 import type { AppDeps } from "../app.ts";
 import { createAuditLog } from "../audit/index.ts";
 import type { Identity } from "../auth/auth-provider.ts";
@@ -51,6 +51,11 @@ async function lockBorrower(tx: Tx, memberId: string): Promise<BorrowerRow> {
   return rows[0];
 }
 
+/** Which Copy a scan names: the barcode, or the accession number typed by hand in either case. `$1` is the scan. */
+const COPY_MATCH = "(c.barcode = $1 or c.accession_number = $1 or c.accession_number = upper($1))";
+/** A barcode match wins over an accession number match, and an exact one over an upper-cased one. */
+const COPY_ORDER = "(c.barcode = $1) desc, (c.accession_number = $1) desc";
+
 /**
  * The Copy a scan names, by its barcode or (typed by hand, in either case) its
  * accession number, with its row locked until the transaction ends: two
@@ -62,8 +67,8 @@ async function lockCopy(tx: Tx, code: string): Promise<CopyRow | undefined> {
     `select c.id, c.book_id, c.accession_number, c.status, b.title
        from public.copies c
        join public.books b on b.id = c.book_id
-      where c.barcode = $1 or c.accession_number = $1 or c.accession_number = upper($1)
-      order by (c.barcode = $1) desc, (c.accession_number = $1) desc
+      where ${COPY_MATCH}
+      order by ${COPY_ORDER}
       limit 1
         for no key update of c`,
     [code],
@@ -199,6 +204,126 @@ export async function confirmLoan(
       throw new AppError(409, "copy_on_loan", LOAN_MESSAGES.copyOnLoan);
     }
     throw error;
+  }
+}
+
+/** The Member's name as the desk writes it: first, middle and last. */
+const MEMBER_NAME_SQL = "concat_ws(' ', nullif(m.first_name, ''), nullif(m.middle_name, ''), nullif(m.last_name, ''))";
+
+/** Thrown inside the return's transaction to roll it back and look the Copy up again. */
+class CopyChangedHands extends Error {}
+
+/** How many times a return looks again when the Copy changed hands while the transaction waited for its locks. */
+const RETURN_ATTEMPTS = 3;
+
+interface OpenLoanRow {
+  id: string;
+  member_id: string;
+  member_name: string;
+  checked_out_at: Date;
+  due_at: Date;
+}
+
+/**
+ * SEAM for Hold dispatch (#18). A Copy has just come back and its Loan is
+ * closed. This runs inside the return's transaction, with the Member's row and
+ * the Copy's row locked (in that order). Today the Copy simply becomes
+ * available. Dispatch looks for the Book's next Hold here and either sets the
+ * Copy aside for that Hold's Member (status `set_aside`, the Pickup Window, its
+ * own audit entry, the email) or, with none waiting, frees it as below. It runs
+ * before the return's own audit entry, which is recorded last in the transaction.
+ */
+async function placeReturnedCopy(tx: Tx, copy: CopyRow): Promise<void> {
+  await tx.query("update public.copies set status = 'available' where id = $1", [copy.id]);
+}
+
+/**
+ * A Librarian records the return of a Copy: its barcode or accession number as
+ * scanned or typed, with no Member involved. The Copy's open Loan is closed,
+ * the Copy goes back on the shelf (`placeReturnedCopy`) and the audit log gets
+ * a `copy_returned` entry, all in one transaction. It is refused, with a reason
+ * the desk page shows, when no Copy has that code and when the Copy is not on
+ * Loan (including a Copy that was returned a moment ago).
+ *
+ * The locks are taken in the order every writer uses, the Member's row and then
+ * the Copy's row, although the scan names only the Copy: an unlocked read finds
+ * who has it out, then both rows are locked and the Loan is read again. Two
+ * returns of one Copy at the same moment run one after another, and the second
+ * finds no open Loan: exactly one return and one audit entry.
+ */
+export async function recordReturn(deps: AppDeps, librarian: Identity, request: { copy: string }): Promise<ReturnedLoan> {
+  const audit = createAuditLog(deps);
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return await withTransaction(deps.db, async (tx) => {
+        const returnedAt = deps.clock.now();
+        const holder = await tx.query<{ member_id: string | null }>(
+          `select l.member_id
+             from public.copies c
+             left join public.loans l on l.copy_id = c.id and l.returned_at is null
+            where ${COPY_MATCH}
+            order by ${COPY_ORDER}
+            limit 1`,
+          [request.copy],
+        );
+        if (!holder.rows[0]) throw new AppError(404, "copy_not_found", RETURN_MESSAGES.copyNotFound);
+        const holderId = holder.rows[0].member_id;
+        if (holderId === null) throw new AppError(409, "copy_not_on_loan", RETURN_MESSAGES.copyNotOnLoan);
+
+        await lockBorrower(tx, holderId);
+        const copy = await lockCopy(tx, request.copy);
+        if (!copy) throw new AppError(404, "copy_not_found", RETURN_MESSAGES.copyNotFound);
+        const open = await tx.query<OpenLoanRow>(
+          `select l.id, l.member_id, ${MEMBER_NAME_SQL} as member_name, l.checked_out_at, l.due_at
+             from public.loans l
+             join public.members m on m.user_id = l.member_id
+            where l.copy_id = $1 and l.returned_at is null`,
+          [copy.id],
+        );
+        const loan = open.rows[0];
+        // Someone else's return got here first.
+        if (!loan) throw new AppError(409, "copy_not_on_loan", RETURN_MESSAGES.copyNotOnLoan);
+        // Returned and lent to another Member while this waited: the Member locked is not the holder.
+        if (loan.member_id !== holderId) throw new CopyChangedHands();
+
+        const closed = await tx.query("update public.loans set returned_at = $2 where id = $1 and returned_at is null", [loan.id, returnedAt]);
+        if (closed.rowCount !== 1) throw new AppError(409, "copy_not_on_loan", RETURN_MESSAGES.copyNotOnLoan);
+        await placeReturnedCopy(tx, copy);
+
+        const late = isLoanOverdue(loan.due_at, returnedAt);
+        // Last in the transaction: other writers of the audit log wait until it ends.
+        await audit.record(
+          {
+            type: "copy_returned",
+            actorId: librarian.userId,
+            subject: loan.id,
+            data: {
+              memberId: loan.member_id,
+              copyId: copy.id,
+              bookId: copy.book_id,
+              accessionNumber: copy.accession_number,
+              returnedAt: returnedAt.toISOString(),
+              late,
+            },
+          },
+          tx,
+        );
+
+        return {
+          id: loan.id,
+          bookTitle: copy.title,
+          accessionNumber: copy.accession_number,
+          memberName: loan.member_name,
+          checkedOutAt: loan.checked_out_at.toISOString(),
+          dueAt: loan.due_at.toISOString(),
+          returnedAt: returnedAt.toISOString(),
+          late,
+        };
+      });
+    } catch (error) {
+      if (!(error instanceof CopyChangedHands)) throw error;
+      if (attempt >= RETURN_ATTEMPTS) throw new AppError(409, "return_conflict", RETURN_MESSAGES.changedHands);
+    }
   }
 }
 
