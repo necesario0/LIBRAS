@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
 import { after, afterEach, before, beforeEach, describe, it } from "node:test";
 import { createAuditLog } from "../src/audit/index.ts";
-import { createTestMember } from "../src/testing/index.ts";
+import type { AppDeps } from "../src/app.ts";
+import { startPickupSweeper } from "../src/holds/sweeper.ts";
+import { createTestMember, startTestApi } from "../src/testing/index.ts";
 import type { TestMember } from "../src/testing/index.ts";
 import { dispatchHarness, pause, started } from "./dispatch-harness.ts";
+import { eventually } from "./eventually.ts";
 import { refusal } from "./loans-harness.ts";
 import type { TestCopy } from "./loans-harness.ts";
 
@@ -405,4 +408,154 @@ describe("Pickup Window expiry at the same moment", () => {
       await assertConsistent(book.id);
     });
   }
+});
+
+describe("Pickup Window expiry on a timer", () => {
+  const h = dispatchHarness();
+  let lender: TestMember;
+  let holder: TestMember;
+
+  before(async () => {
+    await h.start({ sweepIntervalMs: 50 });
+    lender = await createTestMember(h.api(), { firstName: "Lender", lastName: "Lopez" });
+    holder = await createTestMember(h.api(), { firstName: "Holder", lastName: "Hernandez" });
+  });
+  after(() => h.stop());
+
+  it("expires the Hold by itself, with nobody opening the app or the desk page", async () => {
+    h.api().clock.set("2026-11-12T02:00:00.000Z");
+    const book = await h.lentBook("Expired By The Timer", lender);
+    await h.placeHold(holder, book.id);
+    await h.giveBack((book.copies[0] as TestCopy).barcode);
+    h.api().clock.advance({ hours: 24 });
+
+    // Read from the database: reading the Hold through the API would expire it, and this is about nobody reading it.
+    const status = await eventually(
+      async () => (await h.api().db.query<{ status: string }>("select status from public.holds where book_id = $1", [book.id])).rows[0]?.status,
+      (value) => value === "expired",
+      5_000,
+    );
+
+    assert.equal(status, "expired");
+    assert.equal(await h.availableCopies(holder, book.id), 1);
+  });
+
+  it("keeps sweeping after a sweep failed", async () => {
+    const logged: unknown[] = [];
+    let queries = 0;
+    const deps = {
+      db: {
+        query: () => {
+          queries += 1;
+          return queries === 1 ? Promise.reject(new Error("the database is restarting")) : Promise.resolve({ rows: [] });
+        },
+      },
+      clock: h.api().clock,
+      logger: { info: () => {}, error: (_message: string, error?: unknown) => logged.push(error) },
+    };
+
+    const sweeper = startPickupSweeper(deps as unknown as AppDeps, 20);
+    try {
+      await eventually(
+        async () => queries,
+        (count) => count >= 3,
+        2_000,
+      );
+    } finally {
+      sweeper.stop();
+    }
+
+    assert.ok(queries >= 3, "the sweep ran again after the first one failed");
+    assert.equal(logged.length, 1);
+  });
+
+  it("does not start a sweep while the last one is still running, and stops when asked", async () => {
+    let running = 0;
+    let overlapped = false;
+    let queries = 0;
+    const deps = {
+      db: {
+        query: async () => {
+          queries += 1;
+          running += 1;
+          overlapped ||= running > 1;
+          await pause(80);
+          running -= 1;
+          return { rows: [] };
+        },
+      },
+      clock: h.api().clock,
+      logger: { info: () => {}, error: () => {} },
+    };
+
+    const sweeper = startPickupSweeper(deps as unknown as AppDeps, 10);
+    await pause(400);
+    sweeper.stop();
+    await pause(200);
+    const afterStop = queries;
+    await pause(200);
+
+    assert.equal(overlapped, false);
+    assert.ok(afterStop >= 2);
+    assert.equal(queries, afterStop, "no sweep starts after stop");
+  });
+});
+
+describe("Pickup Window expiry on the database's schedule", () => {
+  const SECRET = "test-sweep-secret-0123456789abcdef0123456789";
+  const h = dispatchHarness();
+  let lender: TestMember;
+  let holder: TestMember;
+
+  const endedWindow = async (title: string) => {
+    h.api().clock.set("2026-11-12T02:00:00.000Z");
+    const book = await h.lentBook(title, lender);
+    await h.placeHold(holder, book.id);
+    await h.giveBack((book.copies[0] as TestCopy).barcode);
+    h.api().clock.advance({ hours: 24 });
+    // Read from the database: reading the Hold through the API would expire it.
+    return async () => (await h.api().db.query<{ status: string }>("select status from public.holds where book_id = $1", [book.id])).rows[0]?.status;
+  };
+  const sweepRequest = (secret: string | null) => h.send("POST", "/internal/sweeps/pickup-expiry", secret);
+
+  before(async () => {
+    await h.start({ sweepSecret: SECRET });
+    lender = await createTestMember(h.api(), { firstName: "Lender", lastName: "Lopez" });
+    holder = await createTestMember(h.api(), { firstName: "Holder", lastName: "Hernandez" });
+  });
+  after(() => h.stop());
+
+  it("expires every Hold whose window has ended when it is called with the shared secret, and says how many", async () => {
+    const statusOf = await endedWindow("Expired By The Schedule");
+
+    const response = await sweepRequest(SECRET);
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { expired: 1 });
+    assert.equal(await statusOf(), "expired");
+    assert.deepEqual(await (await sweepRequest(SECRET)).json(), { expired: 0 });
+  });
+
+  it("answers 401 to a request without the secret or with a wrong one, and expires nothing", async () => {
+    const statusOf = await endedWindow("Not Expired By Strangers");
+
+    for (const secret of [null, "", "wrong", `${SECRET}x`, SECRET.slice(0, -1)]) {
+      const response = await sweepRequest(secret);
+      assert.equal(response.status, 401, String(secret));
+      assert.equal((await response.json()).error.code, "invalid_sweep_secret");
+    }
+
+    assert.equal(await statusOf(), "ready");
+    assert.equal((await sweepRequest(SECRET)).status, 200);
+  });
+
+  it("does not exist when no secret is configured", async () => {
+    const api = await startTestApi();
+    try {
+      const response = await fetch(`${api.baseUrl}/internal/sweeps/pickup-expiry`, { method: "POST", headers: { authorization: `Bearer ${SECRET}` } });
+      assert.equal(response.status, 404);
+    } finally {
+      await api.close();
+    }
+  });
 });

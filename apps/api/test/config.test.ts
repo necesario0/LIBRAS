@@ -78,3 +78,20 @@ describe("loadConfig: email service", () => {
     assert.throws(() => loadConfig({ ...local, EMAIL_FROM_ADDRESS: "library@example.com" }), /BREVO_API_KEY/);
   });
 });
+
+describe("loadConfig: sweep secret", () => {
+  it("is optional: without it only the API's own timer sweeps", () => {
+    assert.equal(loadConfig(local).sweepSecret, undefined);
+    assert.equal(loadConfig(production).sweepSecret, undefined);
+  });
+
+  it("reads SWEEP_SECRET", () => {
+    const secret = "a".repeat(32);
+
+    assert.equal(loadConfig({ ...local, SWEEP_SECRET: secret }).sweepSecret, secret);
+  });
+
+  it("refuses a short secret, because it is the only thing between the internet and the sweep", () => {
+    assert.throws(() => loadConfig({ ...local, SWEEP_SECRET: "a".repeat(31) }), /SWEEP_SECRET must be at least 32 characters/);
+  });
+});

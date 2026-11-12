@@ -97,8 +97,8 @@ export function dispatchHarness() {
     lita,
     assertConsistent,
     whileAuditLogIsHeld,
-    start: async () => {
-      await h.start();
+    start: async (options: Parameters<typeof h.start>[0] = {}) => {
+      await h.start(options);
       state.librarian = await h.librarian();
     },
     lendRequest,
