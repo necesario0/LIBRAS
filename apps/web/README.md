@@ -29,3 +29,6 @@ Playwright starts the real API and Vite on ports 3101 and 5174, seeds a Libraria
 - `src/styles/app.css`: shared styles (brand, buttons, fields) and the page styles.
 - `src/api.ts`, `src/session.ts`: API calls, the stored session and its renewal.
 - `src/pages/`, `src/components/`: pages and shared pieces.
+- `src/scan/scan-input.ts`: the desk page's one scan input point. Every scan source calls `submit(raw, source)`; it runs the shared whitelist (`readScan` in `@libras/shared`) before anything uses the text. `ScanField` is the keyboard source (a USB scanner, or typing then Enter); the paired phone becomes a second source by calling the same `submit`.
+
+`e2e/desk-identify-member.spec.ts` identifies a Member by a Digital ID typed and ended with Enter, shows an expired code being refused (made with the API's own derivation and a clock set three minutes back), and checks that input outside the whitelist never reaches the API.

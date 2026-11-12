@@ -37,6 +37,8 @@ export const colors = {
   listBorder: "#111C4E",
   /** Border of a panel that holds a message. */
   panelBorder: "rgba(0,0,0,0.32)",
+  /** The highlighted word of a heading ("Show this to the librarian", Figma 617:3265). */
+  highlight: "#FFA800",
   /** The greeting's second line on Home ("Whats on your mind"). */
   textFaint: "#AFAFAF",
   /** Shadow of the Home search bar (Figma: black at 25%). */
@@ -57,6 +59,9 @@ export const colors = {
   grabber: "#D9D9D9",
 } as const;
 
+/** Raised cards (Figma 617:3265: x 0, y 7, blur 17.9, black 25%). */
+export const cardShadow = "0px 7px 17.9px rgba(0, 0, 0, 0.25)";
+
 /** Montserrat is the only family. Keys are the names registered with `useFonts`. */
 export const fontFamily = {
   regular: "Montserrat_400Regular",
@@ -73,6 +78,8 @@ export const fontSize = {
   display: 40,
   heading: 36,
   hero: 35,
+  /** "Show this to the librarian". */
+  headline: 32,
   title: 26,
   /** The greeting on Home. */
   large: 24,
@@ -128,6 +135,10 @@ export const radii = {
   panel: 12,
   /** The college list. */
   list: 10,
+  /** The dashed frame around the Digital ID (Figma 617:3265). */
+  ticket: 15,
+  /** The outlined "Cancel request" button of the Digital ID screen. */
+  outlineButton: 46,
   /** The Home search bar. */
   search: 65,
   /** The sheet that holds a Book page. */
@@ -136,6 +147,9 @@ export const radii = {
 
 /** Height of text fields and buttons. */
 export const controlHeight = 44;
+
+/** Height of the outlined button of the borrow flow (Figma 617:3265). */
+export const outlineButtonHeight = 61;
 
 /** Height of the Home search bar. */
 export const searchBarHeight = 46;

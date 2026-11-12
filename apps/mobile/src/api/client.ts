@@ -2,6 +2,7 @@ import type {
   ApiErrorBody,
   BookDetailResponse,
   CatalogSearchResponse,
+  DigitalIdResponse,
   HealthResponse,
   MemberMeResponse,
   MemberSignInResponse,
@@ -110,6 +111,9 @@ export function createApiClient({ baseUrl, fetch: fetchImpl = fetch, timeoutMs =
       request<null>("/auth/sign-out", { method: "POST", headers: bearer(accessToken) }),
     /** The signed-in Member's profile. `not_signed_in` (401) when the access token no longer works. */
     getMe: (accessToken: string) => request<MemberMeResponse>("/members/me", { headers: bearer(accessToken) }),
+    /** The Member's Digital ID for the current 60-second window. */
+    getDigitalId: (accessToken: string) =>
+      request<DigitalIdResponse>("/members/me/digital-id", { headers: bearer(accessToken) }),
   };
 }
 
