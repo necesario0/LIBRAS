@@ -47,7 +47,14 @@ A Member's place in the queue for a Book that has no available Copy.
 _Avoid_: Reservation, request, booking
 
 **Pickup Window**:
-The time a Copy stays set aside for the Member whose Hold was chosen. If it passes, the Hold expires and the next Hold is chosen.
+The time a Copy stays set aside for the Member whose Hold was chosen. If it passes, the Hold expires and the next Hold is chosen. It ends at its stored end time exactly: from then the Member can no longer borrow the Copy as their Hold, however late the expiry runs.
+
+**Pickup Window expiry**:
+Ending a Pickup Window that has passed: the Hold becomes expired and its Copy goes to the Book's next waiting Hold, with a Pickup Window of its own starting at the expiry, or is available again. It runs on its own (the sweep), and also when a Member borrows, cancels or lists Holds, so no outcome depends on when the sweep last ran.
+_Avoid_: Timeout, release (the Copy is passed on, not just released)
+
+**Sweep**:
+The job that runs Pickup Window expiry for every Hold whose window has passed: a timer in the API while it runs, and a schedule in the database that wakes it while it sleeps.
 
 **Hold dispatch**:
 Choosing the next waiting Hold of a Book when one of its Copies is free again, by arrival time minus the weight of the Member's Account Type. The Hold becomes ready and the Copy is set aside for its Member.

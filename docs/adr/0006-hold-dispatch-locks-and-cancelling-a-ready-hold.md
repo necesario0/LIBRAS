@@ -13,7 +13,7 @@ ADR 0001 chose the Role-Weighted Priority Queue Dispatcher as one PostgreSQL que
 
 **The email is sent after the transaction commits** (`announceDispatch`), and a failure to send is logged, not returned: an email cannot be rolled back, and the return must not fail because the email service is down. The app shows the ready Hold either way.
 
-**The end of the Pickup Window is stored on the Hold** (`pickup_ends_at` = the API clock's time of the dispatch plus `library_settings.pickup_window_hours`), so a later change of the setting does not move a window that is already running. A set-aside Copy is loanable only to the Member of its ready Hold for as long as the Hold is `ready`; nothing compares `pickup_ends_at` with the clock yet. Ending the window is Pickup Window expiry's job.
+**The end of the Pickup Window is stored on the Hold** (`pickup_ends_at` = the API clock's time of the dispatch plus `library_settings.pickup_window_hours`), so a later change of the setting does not move a window that is already running. A set-aside Copy is loanable only to the Member of its ready Hold for as long as the Hold is `ready`; ADR 0006 itself did not compare `pickup_ends_at` with the clock; ending the window, and refusing a Loan after it, is Pickup Window expiry (ADR 0007).
 
 ## Consequences
 
