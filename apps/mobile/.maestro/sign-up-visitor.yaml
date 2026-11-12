@@ -1,0 +1,61 @@
+# A Visitor signs up end to end with an email that is not UMAK: the form, the terms, the emailed code and the active account.
+# Needs the end-to-end API on port 3000 (npm run e2e starts it): the code is read
+# from the emails that API captured.
+appId: ph.edu.umak.libras
+---
+- runScript:
+    file: scripts/new-member.js
+    env:
+      EMAIL_DOMAIN: example.org
+- runFlow:
+    file: subflows/start.yaml
+    env:
+      ACCOUNT_TYPE: visitor
+
+# Step 2: the contact number is required for a Visitor, so the form refuses to go on without it.
+- tapOn:
+    id: visitor-id-number
+- inputText: ${output.idNumber}
+- hideKeyboard
+- tapOn:
+    id: visitor-id-type
+- tapOn:
+    id: visitor-id-type-option-Passport
+- tapOn:
+    id: visitor-institution
+- inputText: Far Eastern University
+- hideKeyboard
+- tapOn:
+    id: visitor-continue
+- assertVisible: "Enter your contact number."
+- tapOn:
+    id: visitor-contact
+- inputText: "09034984958"
+- hideKeyboard
+- tapOn:
+    id: visitor-continue
+
+# Step 3
+- runFlow:
+    file: subflows/account.yaml
+    env:
+      USERNAME: ${output.username}
+      PASSWORD: ${output.password}
+
+# Step 4: any email is accepted. The terms must be accepted before the account is created.
+- tapOn:
+    id: email-input
+- inputText: ${output.email}
+- hideKeyboard
+- tapOn:
+    id: email-continue
+- assertVisible: "Accept the terms to create your account."
+- tapOn:
+    id: email-accept-terms
+- tapOn:
+    id: email-continue
+- runFlow:
+    file: subflows/verify.yaml
+    env:
+      EMAIL: ${output.email}
+      FIRST_NAME: Cobby

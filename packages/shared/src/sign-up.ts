@@ -20,6 +20,14 @@ export const SIGN_UP_MESSAGES = {
   contactNumberInvalid: "Enter a valid contact number, or leave it empty.",
   studentNumberInvalid: "Enter your student number, for example K12256165.",
   collegeRequired: "Select your college.",
+  facultyNumberInvalid: "Enter your faculty number.",
+  employeeNumberInvalid: "Enter your employee number.",
+  validIdNumberInvalid: "Enter the number on your valid ID.",
+  idTypeInvalid: "Choose one of the listed ID types, or leave it empty.",
+  institutionRequired: "Enter your school or institution name.",
+  contactNumberRequired: "Enter your contact number.",
+  yearGraduatedRequired: "Select the year you graduated.",
+  alumniIdNumberInvalid: "Enter your alumni ID number.",
   termsRequired: "Accept the terms to create your account.",
   codeInvalid: "Enter the 6-digit code from your email.",
 } as const;
@@ -49,9 +57,11 @@ export const optionalNameSchema = trimmed
 
 export const usernameSchema = trimmed.regex(/^[A-Za-z0-9_.]{3,30}$/, { error: SIGN_UP_MESSAGES.usernameInvalid });
 
+const CONTACT_NUMBER_PATTERN = /^\+?[0-9][0-9 -]{5,18}[0-9]$/;
+
 /** Digits with an optional leading plus, and spaces or dashes between them. Empty means "none". */
 export const contactNumberSchema = trimmed
-  .refine((value) => value === "" || /^\+?[0-9][0-9 -]{5,18}[0-9]$/.test(value), {
+  .refine((value) => value === "" || CONTACT_NUMBER_PATTERN.test(value), {
     error: SIGN_UP_MESSAGES.contactNumberInvalid,
   })
   .transform((value) => (value === "" ? undefined : value))
@@ -81,6 +91,83 @@ export const umakStudentDetailsSchema = z.object({
   college: umakCollegeSchema,
 });
 export type UmakStudentDetails = z.infer<typeof umakStudentDetailsSchema>;
+
+/**
+ * An ID number as printed: letters, digits, spaces, dots and dashes, 3 to 30
+ * characters. The real formats are not published, so this only rules out
+ * empty or obviously wrong values; it is not a check that the number exists.
+ */
+function idNumberSchema(message: string) {
+  return trimmed.regex(/^[A-Za-z0-9][A-Za-z0-9 .-]{1,28}[A-Za-z0-9]$/, { error: message });
+}
+
+/** What only a Faculty member gives at sign-up (Figma "Faculty number" and college). */
+export const facultyDetailsSchema = z.object({
+  facultyNumber: idNumberSchema(SIGN_UP_MESSAGES.facultyNumberInvalid),
+  college: umakCollegeSchema,
+});
+export type FacultyDetails = z.infer<typeof facultyDetailsSchema>;
+
+/** What only an NTP / Employee gives at sign-up. The design reuses the Faculty form: a number and a college. */
+export const ntpEmployeeDetailsSchema = z.object({
+  employeeNumber: idNumberSchema(SIGN_UP_MESSAGES.employeeNumberInvalid),
+  college: umakCollegeSchema,
+});
+export type NtpEmployeeDetails = z.infer<typeof ntpEmployeeDetailsSchema>;
+
+/** The ID types in the Figma list for a Visitor. */
+export const VISITOR_ID_TYPES = [
+  "PhilID (National ID)",
+  "Passport",
+  "Driver’s License",
+  "UMID",
+  "Postal ID",
+  "Voter’s ID",
+  "PRC ID",
+  "School ID (current)",
+  "Other",
+] as const;
+export const visitorIdTypeSchema = z.enum(VISITOR_ID_TYPES, { error: SIGN_UP_MESSAGES.idTypeInvalid });
+export type VisitorIdType = z.infer<typeof visitorIdTypeSchema>;
+
+/** What only a Visitor gives at sign-up. The design does not mark the ID type as required. */
+export const visitorDetailsSchema = z.object({
+  validIdNumber: idNumberSchema(SIGN_UP_MESSAGES.validIdNumberInvalid),
+  idType: visitorIdTypeSchema.optional(),
+  institution: trimmed
+    .min(1, { error: SIGN_UP_MESSAGES.institutionRequired })
+    .max(120, { error: SIGN_UP_MESSAGES.institutionRequired }),
+});
+export type VisitorDetails = z.infer<typeof visitorDetailsSchema>;
+
+/** The graduation years in the Figma list for Alumni. A data change, not a code change, when a year is added. */
+export const ALUMNI_GRADUATION_YEARS = [
+  "2018-2019",
+  "2019-2020",
+  "2020-2021",
+  "2021-2022",
+  "2022-2023",
+  "2023-2024",
+  "2024-2025",
+  "2025-2026",
+  "Other",
+] as const;
+export const yearGraduatedSchema = z.enum(ALUMNI_GRADUATION_YEARS, { error: SIGN_UP_MESSAGES.yearGraduatedRequired });
+export type YearGraduated = z.infer<typeof yearGraduatedSchema>;
+
+/** What only an Alumni gives at sign-up. */
+export const alumniDetailsSchema = z.object({
+  yearGraduated: yearGraduatedSchema,
+  alumniIdNumber: idNumberSchema(SIGN_UP_MESSAGES.alumniIdNumberInvalid),
+});
+export type AlumniDetails = z.infer<typeof alumniDetailsSchema>;
+
+/** A contact number that cannot be left empty: a Visitor's form marks it required. */
+export const requiredContactNumberSchema = z
+  .string({ error: SIGN_UP_MESSAGES.contactNumberRequired })
+  .trim()
+  .min(1, { error: SIGN_UP_MESSAGES.contactNumberRequired })
+  .regex(CONTACT_NUMBER_PATTERN, { error: SIGN_UP_MESSAGES.contactNumberInvalid });
 
 /** The fields every Account Type gives at sign-up. */
 const commonSignUpFields = {
@@ -116,12 +203,48 @@ export const umakStudentSignUpSchema = z
   })
   .check(umakEmailRule);
 
+export const facultySignUpSchema = z
+  .object({
+    accountType: z.literal("faculty"),
+    ...commonSignUpFields,
+    details: facultyDetailsSchema,
+  })
+  .check(umakEmailRule);
+
+export const ntpEmployeeSignUpSchema = z
+  .object({
+    accountType: z.literal("ntp_employee"),
+    ...commonSignUpFields,
+    details: ntpEmployeeDetailsSchema,
+  })
+  .check(umakEmailRule);
+
+/** Any email is accepted, so there is no UMAK rule. A Visitor must give a contact number. */
+export const visitorSignUpSchema = z.object({
+  accountType: z.literal("visitor"),
+  ...commonSignUpFields,
+  contactNumber: requiredContactNumberSchema,
+  details: visitorDetailsSchema,
+});
+
+/** Any email is accepted, so there is no UMAK rule. */
+export const alumniSignUpSchema = z.object({
+  accountType: z.literal("alumni"),
+  ...commonSignUpFields,
+  details: alumniDetailsSchema,
+});
+
 /**
- * What the app sends to `POST /members/sign-up`. One member per Account Type
- * that has a form; the other types are added by the tickets that build their
- * forms (see `SIGN_UP_ACCOUNT_TYPES`).
+ * What the app sends to `POST /members/sign-up`: one member per Account Type,
+ * told apart by `accountType`, each with the details its Figma form collects.
  */
-export const signUpRequestSchema = z.discriminatedUnion("accountType", [umakStudentSignUpSchema]);
+export const signUpRequestSchema = z.discriminatedUnion("accountType", [
+  umakStudentSignUpSchema,
+  facultySignUpSchema,
+  ntpEmployeeSignUpSchema,
+  visitorSignUpSchema,
+  alumniSignUpSchema,
+]);
 export type SignUpRequest = z.input<typeof signUpRequestSchema>;
 export type ParsedSignUpRequest = z.output<typeof signUpRequestSchema>;
 

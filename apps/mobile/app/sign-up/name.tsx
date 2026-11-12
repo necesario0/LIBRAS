@@ -6,6 +6,7 @@ import { Button } from "../../src/components/Button";
 import { OnboardingScreen } from "../../src/components/OnboardingScreen";
 import { TextField } from "../../src/components/TextField";
 import { useSignUp } from "../../src/sign-up/SignUpContext";
+import { DETAILS_ROUTE } from "../../src/sign-up/request";
 import { check } from "../../src/sign-up/validate";
 import { radii, spacing } from "../../src/theme/tokens";
 
@@ -22,7 +23,7 @@ export default function NameScreen() {
       lastName: check(nameSchema, draft.lastName),
     };
     setErrors(found);
-    if (Object.values(found).every((message) => message === undefined)) router.push("/sign-up/student");
+    if (Object.values(found).every((message) => message === undefined)) router.push(DETAILS_ROUTE[draft.accountType]);
   }
 
   return (

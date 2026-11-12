@@ -32,17 +32,6 @@ export function isUmakEmail(email: string): boolean {
 }
 
 /**
- * Account Types that have a sign-up form today. Each ticket that builds
- * another form adds its type here, its schema to `signUpRequestSchema`, and
- * its `details` to `MemberDetails`.
- */
-export const SIGN_UP_ACCOUNT_TYPES: readonly AccountType[] = ["umak_student"];
-
-export function hasSignUpForm(accountType: AccountType): boolean {
-  return SIGN_UP_ACCOUNT_TYPES.includes(accountType);
-}
-
-/**
  * Whether an Account Type may borrow. Visitor and Alumni may not (their Loan Policy limit is zero).
  *
  * SEAM: the Loan Policy rows (limit per Account Type) are the real source of this answer. Until the

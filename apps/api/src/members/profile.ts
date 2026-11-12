@@ -1,4 +1,5 @@
-import type { MemberProfile, UmakStudentDetails } from "@libras/shared";
+import { accountTypeSchema } from "@libras/shared";
+import type { MemberProfile } from "@libras/shared";
 import type { Identity } from "../auth/auth-provider.ts";
 import { withIdentity } from "../auth/identity.ts";
 import type { Database } from "../db.ts";
@@ -22,19 +23,19 @@ export const MEMBER_NAME_SQL = "concat_ws(' ', nullif(m.first_name, ''), nullif(
 
 /** Turns a `public.members` row into what the app sees. */
 export function memberFromRow(row: MemberRow, email: string): MemberProfile {
-  const base = {
+  const accountType = accountTypeSchema.parse(row.account_type);
+  // `details` was validated for this Account Type when the sign-up was accepted, The database checks the UMAK Student keys only.
+  return {
     id: row.user_id,
     email,
+    accountType,
     firstName: row.first_name,
     ...(row.middle_name === null ? {} : { middleName: row.middle_name }),
     lastName: row.last_name,
     username: row.username,
     ...(row.contact_number === null ? {} : { contactNumber: row.contact_number }),
-  };
-  if (row.account_type === "umak_student") return { ...base, accountType: row.account_type, details: row.details as UmakStudentDetails };
-  if (row.account_type === "visitor" || row.account_type === "alumni") return { ...base, accountType: row.account_type, details: {} };
-  // Another Account Type has a row only once its sign-up form exists; its ticket adds the case here.
-  throw new Error(`Account Type ${row.account_type} has no profile mapping yet`);
+    details: row.details,
+  } as MemberProfile;
 }
 
 /**

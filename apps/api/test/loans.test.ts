@@ -145,6 +145,21 @@ describe("Confirming a Loan at the desk", () => {
     assert.equal(rows[0].status, "available");
   });
 
+  for (const accountType of ["faculty", "ntp_employee"] as const) {
+    it(`lends to a Member whose Account Type is ${accountType} under the same Loan Policy as a UMAK Student`, async () => {
+      const member = await createTestMemberOfType(h.api(), accountType);
+      const book = await h.addBook(`For ${accountType}`);
+
+      const response = await confirm(member, (book.copies[0] as TestCopy).barcode);
+
+      assert.equal(response.status, 201);
+      const body = (await response.json()) as ConfirmLoanResponse;
+      assert.equal(body.loan.dueAt, "2026-11-19T15:59:59.999Z");
+      assert.equal(body.member.accountType, accountType);
+      assert.deepEqual(await h.myLoans(member).then((mine) => [mine.loans.length, mine.loanLimit, mine.loanPeriodDays]), [1, 3, 7]);
+    });
+  }
+
   for (const accountType of ["visitor", "alumni"] as const) {
     it(`refuses a Loan to a Member whose Account Type is ${accountType}: it cannot borrow`, async () => {
       const member = await createTestMemberOfType(h.api(), accountType);

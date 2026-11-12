@@ -82,7 +82,7 @@ ana.member;      // MemberProfile
 ana.accessToken; // Authorization: Bearer <accessToken>
 ```
 
-`studentSignUpBody()` is a valid UMAK Student sign-up with a unique email, username and student number. `codeFromEmail(api.emails.lastTo(email))` reads the verification code. `createTestAccount(api)` makes a bare Supabase account (no Member profile) and, with `{ staff }`, a Librarian.
+`studentSignUpBody()` is a valid UMAK Student sign-up with a unique email, username and student number; `facultySignUpBody()`, `ntpEmployeeSignUpBody()`, `visitorSignUpBody()` and `alumniSignUpBody()` do the same for the other Account Types. `codeFromEmail(api.emails.lastTo(email))` reads the verification code. `createTestAccount(api)` makes a bare Supabase account (no Member profile) and, with `{ staff }`, a Librarian.
 
 ## Member sign-in and who may call a route
 

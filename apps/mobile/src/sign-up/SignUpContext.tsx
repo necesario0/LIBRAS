@@ -1,6 +1,13 @@
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import type { AccountType, MemberProfile, SignUpCodeSentResponse, UmakCollege } from "@libras/shared";
+import type {
+  AccountType,
+  MemberProfile,
+  SignUpCodeSentResponse,
+  UmakCollege,
+  VisitorIdType,
+  YearGraduated,
+} from "@libras/shared";
 
 /** Everything the person has typed so far. It lives only while they are signing up. */
 export interface SignUpDraft {
@@ -9,7 +16,15 @@ export interface SignUpDraft {
   middleName: string;
   lastName: string;
   studentNumber: string;
+  facultyNumber: string;
+  employeeNumber: string;
+  /** Shared by UMAK Student, Faculty and NTP / Employee: all three pick from the same college list. */
   college: UmakCollege | undefined;
+  validIdNumber: string;
+  idType: VisitorIdType | undefined;
+  institution: string;
+  yearGraduated: YearGraduated | undefined;
+  alumniIdNumber: string;
   contactNumber: string;
   username: string;
   password: string;
@@ -24,7 +39,14 @@ const EMPTY_DRAFT: SignUpDraft = {
   middleName: "",
   lastName: "",
   studentNumber: "",
+  facultyNumber: "",
+  employeeNumber: "",
   college: undefined,
+  validIdNumber: "",
+  idType: undefined,
+  institution: "",
+  yearGraduated: undefined,
+  alumniIdNumber: "",
   contactNumber: "",
   username: "",
   password: "",

@@ -1,11 +1,9 @@
 import assert from "node:assert/strict";
 import { after, before, beforeEach, describe, it } from "node:test";
 import { LOAN_MESSAGES } from "@libras/shared";
-import type { AccountType, BookDetailResponse, Hold, MemberProfile, MyHoldsResponse, PlaceHoldResponse, RecordReturnResponse } from "@libras/shared";
-import type { AppDeps } from "../src/app.ts";
+import type { AccountType, BookDetailResponse, Hold, MyHoldsResponse, PlaceHoldResponse, RecordReturnResponse } from "@libras/shared";
 import { createAuditLog } from "../src/audit/index.ts";
-import { placeHold } from "../src/holds/index.ts";
-import { createTestAccount, createTestMember } from "../src/testing/index.ts";
+import { createTestMember, createTestMemberFromSignUp, facultySignUpBody, ntpEmployeeSignUpBody } from "../src/testing/index.ts";
 import type { TestMember } from "../src/testing/index.ts";
 import { loansHarness, refusal } from "./loans-harness.ts";
 import type { CopyStatus, TestBook, TestCopy, TestLibrarian } from "./loans-harness.ts";
@@ -31,6 +29,12 @@ function dispatchHarness() {
     return ((await response.json()) as RecordReturnResponse).loan;
   };
 
+  const placeHold = async (member: TestMember, bookId: string): Promise<Hold> => {
+    const response = await h.send("POST", "/holds", member.accessToken, { bookId });
+    assert.equal(response.status, 201, await response.clone().text());
+    return ((await response.json()) as PlaceHoldResponse).hold;
+  };
+
   return {
     ...h,
     lita,
@@ -49,11 +53,7 @@ function dispatchHarness() {
       return book;
     },
     placeHoldRequest: (member: TestMember, bookId: string) => h.send("POST", "/holds", member.accessToken, { bookId }),
-    placeHold: async (member: TestMember, bookId: string): Promise<Hold> => {
-      const response = await h.send("POST", "/holds", member.accessToken, { bookId });
-      assert.equal(response.status, 201, await response.clone().text());
-      return ((await response.json()) as PlaceHoldResponse).hold;
-    },
+    placeHold,
     cancelHold: (member: TestMember, holdId: string) => h.send("POST", `/holds/${holdId}/cancel`, member.accessToken),
     holdsOf: async (member: TestMember): Promise<Hold[]> => {
       const response = await h.send("GET", "/members/me/holds", member.accessToken);
@@ -71,21 +71,15 @@ function dispatchHarness() {
       assert.equal(response.status, 200);
       return ((await response.json()) as BookDetailResponse).book.availableCopies;
     },
-    /**
-     * A Member of an Account Type whose sign-up form is not built yet (#8), with a
-     * Hold placed by the same code the endpoint runs. The Member row is written
-     * straight to the database; when #8 lands, sign-up and `POST /holds` replace this.
-     */
+    /** A Faculty or NTP / Employee Member, signed up through the API, with a Hold placed through `POST /holds`. */
     memberWithHold: async (accountType: Extract<AccountType, "faculty" | "ntp_employee">, firstName: string, bookId: string) => {
-      const account = await createTestAccount(h.api());
-      await h.api().db.query(
-        `insert into public.members (user_id, account_type, first_name, last_name, username, terms_accepted_at)
-         values ($1, $2, $3, 'Garcia', $4, now())`,
-        [account.userId, accountType, firstName, `${accountType}_${account.userId.slice(0, 8)}`],
+      const body = { firstName, lastName: "Garcia" };
+      const member = await createTestMemberFromSignUp(
+        h.api(),
+        accountType === "faculty" ? facultySignUpBody(body) : ntpEmployeeSignUpBody(body),
       );
-      const profile = { id: account.userId, accountType } as unknown as MemberProfile;
-      await placeHold(h.api() as unknown as AppDeps, profile, bookId);
-      return { email: account.email, name: `${firstName} Garcia` };
+      await placeHold(member, bookId);
+      return { email: member.email, name: `${firstName} Garcia` };
     },
   };
 }
@@ -192,6 +186,7 @@ describe("Hold dispatch when a Copy is returned", () => {
     h.api().clock.advance({ hours: 10 });
     const flor = await h.memberWithHold("faculty", "Flor", book.id);
 
+    h.api().emails.clear();
     const served: (string | undefined)[] = [];
     for (const copy of book.copies) served.push((await h.giveBack(copy.barcode)).heldFor?.memberName);
 
