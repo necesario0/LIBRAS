@@ -1,5 +1,5 @@
 import { StyleSheet, View } from "react-native";
-import { bookCovers } from "../theme/tokens";
+import { bookCovers, colors } from "../theme/tokens";
 
 function coverColor(id: string): string {
   let hash = 0;
@@ -21,5 +21,5 @@ export function BookCover({ id, width, height, radius }: { id: string; width: nu
 }
 
 const styles = StyleSheet.create({
-  spine: { position: "absolute", left: 5, top: 0, bottom: 0, width: 2, backgroundColor: "rgba(255,255,255,0.35)" },
+  spine: { position: "absolute", left: 5, top: 0, bottom: 0, width: 2, backgroundColor: colors.coverSpine },
 });

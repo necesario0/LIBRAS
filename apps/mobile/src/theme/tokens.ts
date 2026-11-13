@@ -59,6 +59,8 @@ export const colors = {
   dangerSurface: "#FDECEC",
   /** The sheet that holds a Book page (Figma 609:1159 grabber). */
   grabber: "#D9D9D9",
+  /** The lighter spine drawn over a placeholder Book cover. */
+  coverSpine: "rgba(255,255,255,0.35)",
 } as const;
 
 /** Raised cards (Figma 617:3265: x 0, y 7, blur 17.9, black 25%). */
