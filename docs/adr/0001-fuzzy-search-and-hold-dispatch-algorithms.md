@@ -37,3 +37,7 @@ Constraints: search within 1.0 s at 50 concurrent patrons and about 250 queries/
 - Results use synthetic data on one laptop, and PostgreSQL ran in a local Docker container with port-forwarding overhead. Re-run on the real catalog and the Render database.
 - Single-thread, in-process search was not driven through Express with 50 concurrent users.
 - Search matches whole tokens only; IDF and popularity ranking, multi-token titles and Unicode normalisation are not benchmarked.
+
+## Hosted results (2026-11-13)
+
+Two of the open items above were closed on the hosted system; the numbers are in [docs/hosted-verification.md](../hosted-verification.md). Search through Express on a free Render instance answers in about 100 ms one at a time and within one second for 99.4% of searches from 50 concurrent users who pause between searches, but 50 users with no pause at all exceed it (p50 about 1.4 s, a ceiling of about 35 searches a second on the free instance's 0.1 CPU). The dispatch query on the hosted PostgreSQL takes under 2 ms with a queue of 5,000 Holds and uses `holds_queue_idx`; the decision stands.

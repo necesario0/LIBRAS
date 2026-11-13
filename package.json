@@ -25,6 +25,7 @@
     "seed:hosted": "node --env-file-if-exists=.env.hosted apps/api/src/seed/index.ts",
     "labels": "npm run labels -w @libras/api",
     "labels:hosted": "node --env-file-if-exists=.env.hosted apps/api/scripts/copy-labels.ts",
+    "verify:hosted": "node --env-file-if-exists=.env.hosted apps/api/scripts/verify-hosted.ts",
     "email:test": "node --env-file-if-exists=.env.hosted apps/api/scripts/send-test-email.ts",
     "check:hosted": "node --env-file-if-exists=.env.hosted apps/api/scripts/check-hosted.ts",
     "typecheck": "npm run typecheck --workspaces --if-present",

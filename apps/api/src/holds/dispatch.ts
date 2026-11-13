@@ -66,7 +66,7 @@ interface ChosenRow {
  * `for update skip locked` means two dispatches at once never choose the same
  * Hold, and a Hold that is being cancelled at this moment is passed over.
  */
-const DISPATCH_SQL = `
+export const DISPATCH_SQL = `
   with chosen as (
     update public.holds h
        set status = 'ready',
