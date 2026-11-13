@@ -222,7 +222,7 @@ async function searchCommand(): Promise<void> {
     summarize(`run ${run}`, concurrent, performance.now() - started, 1000);
   }
 
-  // The same 50 users the way patrons search: a pause of 2 to 5 seconds (typing, reading the results) between searches.
+  // The same 50 users the way Members search: a pause of 2 to 5 seconds (typing, reading the results) between searches.
   const patient: number[] = [];
   const patientStarted = performance.now();
   await Promise.all(
@@ -234,7 +234,7 @@ async function searchCommand(): Promise<void> {
     }),
   );
   console.log("\n50 users at once with 2 to 5 seconds between their searches (10 each):");
-  summarize("patrons", patient, performance.now() - patientStarted, 1000);
+  summarize("paced", patient, performance.now() - patientStarted, 1000);
 }
 
 /** The queue as the dispatch query sees it: `size` waiting Holds on one Book, all inside the caller's transaction. */
@@ -309,7 +309,7 @@ async function dispatchCommand(db: Database): Promise<void> {
   const password = randomBytes(12).toString("base64url");
   const stamp = randomUUID().slice(0, 6);
   const specs = [
-    { key: "borrower", body: studentSignUpBody },
+    { key: "returning", body: studentSignUpBody },
     { key: "student", body: studentSignUpBody },
     { key: "ntp", body: ntpEmployeeSignUpBody },
     { key: "faculty", body: facultySignUpBody },
@@ -331,7 +331,7 @@ async function dispatchCommand(db: Database): Promise<void> {
   for (const [key, member] of Object.entries(members)) {
     await db.query("update auth.users set email = $2 where id = $1", [member.userId, developerAlias(`${TEST_EMAIL_PREFIX}${key}`)]);
   }
-  console.log("made 4 test Members (borrower, student, NTP / Employee, Faculty); Hold-ready mail goes to the developer's +alias");
+  console.log("made 4 test Members (returning, student, NTP / Employee, Faculty); Hold-ready mail goes to the developer's +alias");
 
   const book = await db.query<{ id: string }>("insert into public.books (title, authors) values ($1, '{}') returning id", [TEST_BOOK_TITLE]);
   const bookId = book.rows[0]?.id as string;
@@ -372,7 +372,7 @@ async function dispatchCommand(db: Database): Promise<void> {
   const expectedOrder = ["faculty", "ntp", "student"];
   const cycles = 3;
   for (let cycle = 1; cycle <= cycles; cycle++) {
-    lends.push(await lend("borrower"));
+    lends.push(await lend("returning"));
     for (const key of ["student", "ntp", "faculty"]) {
       const placed = await call<{ error?: { code: string } }>("POST", "/holds", members[key]?.token, { bookId });
       if (placed.status !== 201) throw new Error(`Hold of ${key} failed: ${placed.status} ${placed.body.error?.code}`);

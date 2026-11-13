@@ -1,0 +1,39 @@
+#!/bin/sh
+# Runs the fast CI checks before a push so failures show up here, not on the PR:
+# typecheck, lint (ESLint, Stylelint, glossary terms) and a gitleaks scan of the
+# commits being pushed. Installed by `npm install` (the `prepare` script sets
+# core.hooksPath). The tests and CodeQL still run only in CI.
+set -e
+
+cd "$(git rev-parse --show-toplevel)"
+
+echo "pre-push: typecheck"
+npm run --silent typecheck
+
+echo "pre-push: lint"
+npm run --silent lint
+
+# Commits in this push that no remote branch has yet.
+zero=0000000000000000000000000000000000000000
+revs=""
+while read -r _local_ref local_sha _remote_ref _remote_sha; do
+  [ "$local_sha" = "$zero" ] && continue # a branch deletion pushes no commits
+  revs="$revs $local_sha"
+done
+if [ -z "$revs" ]; then
+  exit 0
+fi
+log_opts="$revs --not --remotes"
+
+echo "pre-push: secret scan (gitleaks)"
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks git . --log-opts="$log_opts" --redact --no-banner
+elif command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+  # Git Bash on Windows rewrites /repo into a Windows path unless told not to.
+  repo=$(pwd -W 2>/dev/null || pwd)
+  MSYS_NO_PATHCONV=1 docker run --rm -v "$repo:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1 \
+    git /repo --log-opts="$log_opts" --redact --no-banner
+else
+  echo "pre-push: no secret scanner. Install gitleaks (https://github.com/gitleaks/gitleaks) or start Docker, then push again." >&2
+  exit 1
+fi
