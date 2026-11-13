@@ -12,7 +12,7 @@
 // a +alias of SEED_LIBRARIAN_EMAIL (the developer's own address): the only mail is the Hold-ready notices in that inbox.
 import { randomBytes, randomUUID } from "node:crypto";
 import type { Server } from "node:http";
-import { appendFileSync, existsSync, readFileSync } from "node:fs";
+import { closeSync, fstatSync, openSync, readSync, writeSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { PoolClient } from "pg";
 import { tokenize } from "@libras/shared";
@@ -129,8 +129,16 @@ async function startSignUpApp(db: Database) {
 }
 
 function appendEnv(lines: Record<string, string>): void {
-  const existing = existsSync(envFile) ? readFileSync(envFile, "utf8") : "";
-  appendFileSync(envFile, `${existing === "" || existing.endsWith("\n") ? "" : "\n"}${Object.entries(lines).map(([k, v]) => `${k}=${v}`).join("\n")}\n`);
+  // One open handle for the read and the append, so nothing can swap the file between them.
+  const fd = openSync(envFile, "a+");
+  try {
+    const { size } = fstatSync(fd);
+    const last = Buffer.alloc(1);
+    const needsNewline = size > 0 && readSync(fd, last, 0, 1, size - 1) === 1 && last.toString() !== "\n";
+    writeSync(fd, `${needsNewline ? "\n" : ""}${Object.entries(lines).map(([k, v]) => `${k}=${v}`).join("\n")}\n`);
+  } finally {
+    closeSync(fd);
+  }
 }
 
 async function memberCommand(db: Database): Promise<void> {
