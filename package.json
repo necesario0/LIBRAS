@@ -29,17 +29,19 @@
     "email:test": "node --env-file-if-exists=.env.hosted apps/api/scripts/send-test-email.ts",
     "check:hosted": "node --env-file-if-exists=.env.hosted apps/api/scripts/check-hosted.ts",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "lint": "eslint . --max-warnings 0",
+    "lint": "eslint . --max-warnings 0 && stylelint \"apps/web/src/**/*.css\" && node scripts/check-glossary.mjs",
     "test": "npm run test --workspaces --if-present",
     "test:api": "npm run test -w @libras/api",
     "test:benchmarks": "npm run test -w libras-algorithm-benchmarks",
     "test:e2e": "npm run test:e2e -w @libras/web",
-    "check": "npm run typecheck && npm run lint && npm run test"
+    "check": "npm run typecheck && npm run lint && npm run test",
+    "prepare": "node scripts/install-hooks.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^24.19.2",
     "eslint": "^10.14.0",
+    "stylelint": "^16.26.1",
     "supabase": "^3.1.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.72.2"

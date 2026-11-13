@@ -168,7 +168,7 @@ describe("Sign-up for the other Account Types", () => {
 
     it("needs the valid ID number and the school or institution, and accepts any listed ID type or none", async () => {
       const base = visitorSignUpBody();
-      for (const change of [{ validIdNumber: "" }, { institution: "  " }, { idType: "Library card" }]) {
+      for (const change of [{ validIdNumber: "" }, { institution: "  " }, { idType: "Library card" }]) { // glossary-ok: an ID type that is not on the list
         const response = await signUp({ ...base, details: { ...base.details, ...change } });
         assert.equal(response.status, 400, JSON.stringify(change));
       }

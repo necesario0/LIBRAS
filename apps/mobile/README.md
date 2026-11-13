@@ -45,7 +45,7 @@ A Member who can borrow sees Borrow at the foot of the Book page when the Book h
 
 ## One-time setup (Windows, user space)
 
-- Node 24, Android Studio (for its JDK and the emulator) and an AVD (`Medium_Phone` by default; override with `LIBRAS_AVD`).
+- Node 24, Android Studio (for its JDK and the emulator) and an AVD (`Medium_Phone` by default; override with `LIBRAS_AVD`). `npm run e2e` stops at once, listing the AVDs it found, when `LIBRAS_AVD` names none of them. `Medium_Phone` is the AVD the flows are known to pass on.
 - Android SDK packages: `platforms;android-37.0`, `build-tools;37.0.0`, `ndk;27.1.12297006` and the command-line tools (`cmdline-tools;latest`). Install them with `sdkmanager`.
 - Maestro, the end-to-end runner, unzipped to `~/tools/maestro` (or point `MAESTRO_HOME` at it): https://github.com/mobile-dev-inc/maestro/releases/latest/download/maestro.zip
 
@@ -69,7 +69,7 @@ After one full build, a change to JavaScript only needs Gradle again, without `e
 
 To build against the hosted API on Render, run `npm run build:apk:hosted -w @libras/mobile`. It takes `EXPO_PUBLIC_API_URL` from its first argument, the environment or `.env.hosted` (written by `npm run setup:hosted`), refuses anything that is not `https://`, and asks the API for `/health` before the long build starts (a sleeping free Render service takes about a minute to answer). It reads only that one value from `.env.hosted`. The build is about 25 minutes, so it is not run casually. See the Deployment section of the root README.
 
-`LIBRAS_ABIS` (default `arm64-v8a,x86,x86_64`) sets the CPU architectures in the APK. Use `x86_64` alone for a faster emulator-only build.
+`LIBRAS_ABIS` (default `arm64-v8a,x86,x86_64`) sets the CPU architectures in the APK. Use `x86_64` alone for a faster emulator-only build. `npm run e2e` stops before installing an APK that has none of the device's architectures.
 
 ## End-to-end test
 
