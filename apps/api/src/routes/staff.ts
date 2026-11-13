@@ -3,14 +3,14 @@ import { signInRequestSchema } from "@libras/shared";
 import type { StaffMeResponse, StaffSignInResponse } from "@libras/shared";
 import type { AppDeps } from "../app.ts";
 import { createAuditLog, recordingSignInFailures } from "../audit/index.ts";
-import type { SignInLimiter } from "../auth/sign-in-limit.ts";
+import type { AttemptLimiter } from "../auth/attempt-limit.ts";
 import { librarianOf, notStaff, requireLibrarian } from "../auth/guards.ts";
 import { findStaffProfile } from "../auth/staff.ts";
 import { AppError } from "../errors.ts";
 import { parseBody } from "../validation.ts";
 
 /** Sign-in for the Librarian pages. A Member never gets a session here. */
-export function staffRouter(deps: AppDeps, limiter: SignInLimiter): Router {
+export function staffRouter(deps: AppDeps, limiter: AttemptLimiter): Router {
   const { auth, db } = deps;
   const router = Router();
   const audit = createAuditLog(deps);

@@ -1,6 +1,5 @@
 import { expect, test } from "@playwright/test";
 import { LOAN_MESSAGES, RETURN_MESSAGES, SCAN_MESSAGES } from "@libras/shared";
-import { currentDigitalId } from "../../api/src/digital-id/index.ts";
 import { createDeskFixtures, scan, signInAtTheDesk } from "./desk-fixtures.ts";
 import type { DeskTestCopy } from "./desk-fixtures.ts";
 
@@ -133,25 +132,62 @@ test("a Copy scanned before any Digital ID is a return, never a Loan", async ({ 
   expect(rows[0].status).toBe("available");
 });
 
-test("a Digital ID that expires while the Member is at the desk must be shown again", async ({ page }) => {
+test("a Copy scanned minutes after the Digital ID is still lent: the desk session outlives the code", async ({ page }) => {
+  // The code on the Member's phone is accepted for at most two minutes. The desk session lasts ten.
+  test.setTimeout(240_000);
   const dan = await createMember("umak_student", "Dan", "Ong");
   const [copy] = (await addBook("Slow At The Desk", 1)) as [DeskTestCopy];
   await signInAtTheDesk(page);
   await scan(page, await codeOnThePhoneOf(dan));
   await expect(page.getByRole("region", { name: "Dan Ong" })).toBeVisible();
 
-  // The desk still holds the code it scanned. Three minutes later the API no longer accepts it.
-  await page.route("**/desk/loans", async (route) => {
-    const threeMinutesAgo = { now: () => new Date(Date.now() - 3 * 60_000) };
-    const { code } = await currentDigitalId({ db, clock: threeMinutesAgo }, dan.userId);
-    await route.continue({ postData: JSON.stringify({ ...(route.request().postDataJSON() as object), digitalId: code }) });
-  });
+  // The Member looks for the Book on the shelves while the Librarian waits: the code they showed has expired.
+  await page.waitForTimeout(125_000);
   await scan(page, copy.barcode);
 
-  await expect(page.getByRole("alert")).toHaveText("This Digital ID has expired. Ask the Member to show the code on their screen now.");
-  await expect(page.getByRole("region", { name: "Dan Ong" })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Loan confirmed" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Dan Ong" }).getByTestId("desk-member-loans")).toHaveText("1 of 3");
+  expect(await loansOf(dan)).toHaveLength(1);
+});
+
+test("a desk session that has timed out asks for the Digital ID again, and the next scan of it works", async ({ page }) => {
+  const fay = await createMember("umak_student", "Fay", "Go");
+  const [copy] = (await addBook("Timed Out At The Desk", 1)) as [DeskTestCopy];
+  await signInAtTheDesk(page);
+  await scan(page, await codeOnThePhoneOf(fay));
+  await expect(page.getByRole("region", { name: "Fay Go" })).toBeVisible();
+
+  // Ten minutes pass with nothing scanned for Fay.
+  await db.query("update public.desk_sessions set expires_at = now() - interval '1 second' where member_id = $1", [fay.userId]);
+  await scan(page, copy.barcode);
+
+  await expect(page.getByRole("alert")).toHaveText(LOAN_MESSAGES.deskSessionEnded);
+  await expect(page.getByRole("region", { name: "Fay Go" })).toHaveCount(0);
   await expect(page.getByTestId("desk-hint")).toContainText("Scan a Member's Digital ID");
-  expect(await loansOf(dan)).toEqual([]);
+  await page.screenshot({ path: test.info().outputPath("desk-session-ended.png") });
+  expect(await loansOf(fay)).toEqual([]);
+
+  await scan(page, await codeOnThePhoneOf(fay));
+  await scan(page, copy.barcode);
+  await expect(page.getByRole("region", { name: "Loan confirmed" })).toBeVisible();
+  expect(await loansOf(fay)).toHaveLength(1);
+});
+
+test("Done with this Member ends the desk session at once", async ({ page }) => {
+  const gil = await createMember("umak_student", "Gil", "Uy");
+  await signInAtTheDesk(page);
+  await scan(page, await codeOnThePhoneOf(gil));
+  await expect(page.getByRole("region", { name: "Gil Uy" })).toBeVisible();
+  const live = async () =>
+    ((await db.query("select count(*)::int as count from public.desk_sessions where member_id = $1 and ended_at is null", [gil.userId])).rows[0] as {
+      count: number;
+    }).count;
+  expect(await live()).toBe(1);
+
+  await page.getByRole("button", { name: "Done with this Member" }).click();
+
+  await expect(page.getByRole("region", { name: "Gil Uy" })).toHaveCount(0);
+  await expect.poll(live).toBe(0);
 });
 
 test("a Copy scanned before the Digital ID has been checked still confirms the Loan", async ({ page }) => {

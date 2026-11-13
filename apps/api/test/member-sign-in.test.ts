@@ -157,6 +157,31 @@ describe("Member sign-in", () => {
       assert.equal((await signIn(api, member.email, member.password, address)).status, 200);
     });
 
+    it("lets no more guesses through than the limit when they arrive at the same moment", async () => {
+      const address = newAddress();
+      const guesses = await Promise.all(
+        Array.from({ length: SIGN_IN_FAILURE_LIMIT * 3 }, () => signIn(api, member.email, "not-the-password", address)),
+      );
+      const statuses = guesses.map((response) => response.status);
+      assert.equal(statuses.filter((status) => status === 401).length, SIGN_IN_FAILURE_LIMIT, `statuses: ${statuses.join(", ")}`);
+      assert.equal(statuses.filter((status) => status === 429).length, SIGN_IN_FAILURE_LIMIT * 2);
+      assert.equal((await signIn(api, member.email, member.password, address)).status, 429);
+    });
+
+    it("does not count a sign-in that succeeds, even while it is in flight with others", async () => {
+      const address = newAddress();
+      const attempts = await Promise.all([
+        signIn(api, member.email, member.password, address),
+        ...Array.from({ length: SIGN_IN_FAILURE_LIMIT - 1 }, () => signIn(api, member.email, "not-the-password", address)),
+      ]);
+      assert.deepEqual(
+        attempts.map((response) => response.status).sort(),
+        [200, ...Array.from({ length: SIGN_IN_FAILURE_LIMIT - 1 }, () => 401)].sort(),
+      );
+      // Only the refusals count: one more guess is still allowed.
+      assert.equal((await signIn(api, member.email, member.password, address)).status, 200);
+    });
+
     it("leaves other client addresses alone", async () => {
       const noisy = newAddress();
       await failTimes(SIGN_IN_FAILURE_LIMIT, noisy);

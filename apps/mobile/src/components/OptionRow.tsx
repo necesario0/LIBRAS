@@ -46,7 +46,7 @@ const styles = StyleSheet.create({
   radio: {
     width: 24,
     height: 24,
-    borderRadius: 12,
+    borderRadius: radii.radio,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.white,

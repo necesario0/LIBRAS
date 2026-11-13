@@ -67,9 +67,25 @@ export interface DeskMember {
   loans: LoanStanding;
 }
 
-/** The body of `POST /desk/members/identify`. */
+/**
+ * A desk session (ADR 0008): scanning a Member's Digital ID starts one for the
+ * Librarian who scanned it, and every Copy scanned for that Member during the
+ * visit is lent through it, however long ago the Digital ID itself was shown.
+ */
+export interface DeskSession {
+  /** An unguessable token that names the session. The desk page keeps it in memory and sends it with each Copy. */
+  token: string;
+  /** When it ends unless it is used again, ISO 8601, by the API's clock. Each use moves it on. */
+  expiresAt: string;
+}
+
+/** How long a desk session lasts after it starts or is last used. */
+export const DESK_SESSION_MINUTES = 10;
+
+/** The body of `POST /desk/members/identify`: who the Member is, and the desk session that lends to them. */
 export interface IdentifyMemberResponse {
   member: DeskMember;
+  deskSession: DeskSession;
 }
 
 /** The wording both the API and the desk page use for a refused Digital ID. */

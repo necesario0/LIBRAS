@@ -1,18 +1,13 @@
-import { useFocusEffect } from "expo-router";
-import { useCallback, useRef, useState } from "react";
 import { isActiveHold } from "@libras/shared";
-import type { Hold } from "@libras/shared";
+import type { Hold, MyHoldsResponse } from "@libras/shared";
 import { api } from "../api";
 import { ApiError } from "../api/client";
-import type { AuthorizedRequest } from "../catalog/useCatalogSearch";
+import type { AuthorizedRequest } from "../auth/authorized-request";
+import { useFocusedFetch } from "../hooks/useFocusedFetch";
+import type { FetchState } from "../hooks/useFocusedFetch";
 
-/**
- * What a screen shows of the Member's Holds:
- * - `loading`: first fetch;
- * - `loaded`: the Holds, active ones first (the API's order);
- * - `error`: they could not be fetched. `message` is safe to show.
- */
-export type HoldsState = { status: "loading" } | { status: "loaded"; holds: Hold[] } | { status: "error"; message: string };
+/** What a screen shows of the Member's Holds: when loaded, the Holds, active ones first (the API's order). */
+export type HoldsState = FetchState<MyHoldsResponse>;
 
 /** The Holds that still hold a place in a queue: waiting or ready. */
 export function activeHolds(holds: readonly Hold[]): Hold[] {
@@ -30,30 +25,7 @@ export function holdFailureMessage(error: unknown, fallback: string): string {
  * on `reload`. A failed refresh keeps the Holds already shown.
  */
 export function useHolds(request: AuthorizedRequest) {
-  const [state, setState] = useState<HoldsState>({ status: "loading" });
-  const requestRef = useRef(request);
-  requestRef.current = request;
-  const latest = useRef(0);
-
-  const reload = useCallback(async () => {
-    const id = ++latest.current;
-    try {
-      const { holds } = await requestRef.current((token) => api.getHolds(token));
-      if (id === latest.current) setState({ status: "loaded", holds });
-    } catch (error) {
-      if (id !== latest.current) return;
-      const message = holdFailureMessage(error, "Your Holds could not be loaded. Please try again.");
-      setState((current) => (current.status === "loaded" ? current : { status: "error", message }));
-    }
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      void reload();
-    }, [reload]),
-  );
-
-  return { state, reload };
+  return useFocusedFetch(request, api.getHolds, "Your Holds could not be loaded. Please try again.");
 }
 
 /** Places a Hold on a Book. Resolves with the Hold; rejects with an `ApiError` carrying the refusal. */

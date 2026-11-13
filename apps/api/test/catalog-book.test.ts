@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { after, before, describe, it } from "node:test";
-import type { BookDetailResponse, MemberMeResponse } from "@libras/shared";
+import type { BookDetailResponse, CopyStatus, MemberMeResponse } from "@libras/shared";
 import { createTestAccount, createTestMember, createTestMemberOfType, signInDirect, startTestApi } from "../src/testing/index.ts";
 import type { TestApi, TestMember } from "../src/testing/index.ts";
 
@@ -12,7 +12,7 @@ describe("GET /catalog/books/:id", () => {
 
   async function addBook(
     fields: { title: string; authors?: string[]; edition?: string; year?: number; isbn?: string; callNumber?: string },
-    copyStatuses: Array<"available" | "on_loan" | "set_aside">,
+    copyStatuses: CopyStatus[],
   ): Promise<string> {
     const { rows } = await api.db.query(
       `insert into public.books (title, authors, edition, publication_year, isbn, lc_call_number)

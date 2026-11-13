@@ -80,7 +80,7 @@ export const fontSize = {
   display: 40,
   heading: 36,
   hero: 35,
-  /** "Show this to the librarian". */
+  /** "Show this to the librarian", and the title on the Book page. */
   headline: 32,
   title: 26,
   /** The greeting on Home. */
@@ -147,6 +147,24 @@ export const radii = {
   sheet: 38,
   /** The yellow call to action of the borrow flow ("Borrow", "View My Books", Figma 617:3570). */
   callToAction: 34,
+  /** A Book cover on the Book page and on Successfully Borrowed. */
+  cover: 10,
+  /** A small Book cover in a list row (search results, Loans, Holds). */
+  coverSmall: 6,
+  /** The call number pill of the Book page (Figma 1187:1479). */
+  callNumber: 43,
+  /** The edition and availability tags of the Book page. */
+  tag: 39,
+  /** The grabber at the top of the Book page's sheet (Figma 609:1159). */
+  grabber: 58,
+  /** The round logo of the wordmark (31 pt). */
+  logo: 16,
+  /** The terms checkbox of sign-up. */
+  checkbox: 6,
+  /** A radio button (24 pt). */
+  radio: 12,
+  /** The bars of the sign-up step progress. */
+  progress: 1,
 } as const;
 
 /** Height of text fields and buttons. */

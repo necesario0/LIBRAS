@@ -31,7 +31,7 @@ const deps = {
   logger,
 };
 
-const app = createApp(deps, {
+const { app, stop } = createApp(deps, {
   corsAllowedOrigins: config.corsAllowedOrigins,
   trustProxy: config.trustProxy,
   warmCatalog: true,
@@ -50,6 +50,7 @@ const server = app.listen(config.port, () => {
 
 function shutdown(): void {
   sweeper.stop();
+  stop();
   server.close(() => {
     void db.end().finally(() => process.exit(0));
   });

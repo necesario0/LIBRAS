@@ -1,9 +1,10 @@
 import { Router } from "express";
-import { LOAN_MESSAGES, RETURN_MESSAGES, confirmLoanRequestSchema, recordReturnRequestSchema } from "@libras/shared";
+import { LOAN_MESSAGES, RETURN_MESSAGES, confirmLoanRequestSchema, endDeskSessionRequestSchema, recordReturnRequestSchema } from "@libras/shared";
 import type { ConfirmLoanResponse, MyLoansResponse, RecordReturnResponse } from "@libras/shared";
 import type { AppDeps } from "../app.ts";
 import { identityOf, requireLibrarian, requireMember } from "../auth/guards.ts";
 import { deskMember } from "../desk/members.ts";
+import { endDeskSession } from "../desk/sessions.ts";
 import { confirmLoan, listLoans, recordReturn } from "../loans/index.ts";
 import { parseBody } from "../validation.ts";
 
@@ -16,6 +17,12 @@ export function loansRouter(deps: AppDeps): Router {
     const { loan, memberId } = await confirmLoan(deps, identityOf(res), request);
     const body: ConfirmLoanResponse = { loan, member: await deskMember(deps.db, identityOf(res), memberId) };
     res.status(201).json(body);
+  });
+
+  router.post("/desk/sessions/end", ...requireLibrarian(deps), async (req, res) => {
+    const { deskSession } = parseBody(endDeskSessionRequestSchema, req.body, LOAN_MESSAGES.invalidRequest);
+    await endDeskSession(deps, identityOf(res).userId, deskSession);
+    res.status(204).end();
   });
 
   router.post("/desk/returns", ...requireLibrarian(deps), async (req, res) => {

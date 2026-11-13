@@ -30,10 +30,11 @@ export function memberFixtureRoutes(router: Router, deps: AppDeps): void {
       accountType === "visitor"
         ? { validIdNumber: "39458-3940-380", idType: "Passport", institution: "FEU (Far Eastern University)" }
         : { yearGraduated: "2025-2026", alumniIdNumber: "1234567" };
+    const now = deps.clock.now();
     await deps.db.query(
-      `insert into public.members (user_id, account_type, first_name, last_name, username, contact_number, details, terms_accepted_at)
-       values ($1, $2, 'Cobby', $3, $4, '09034984958', $5, now())`,
-      [userId, accountType, accountType === "visitor" ? "Visitor" : "Alumni", `e2e_${unique.slice(0, 8)}`, details],
+      `insert into public.members (user_id, account_type, first_name, last_name, username, contact_number, details, terms_accepted_at, created_at)
+       values ($1, $2, 'Cobby', $3, $4, '09034984958', $5, $6, $6)`,
+      [userId, accountType, accountType === "visitor" ? "Visitor" : "Alumni", `e2e_${unique.slice(0, 8)}`, details, now],
     );
     res.status(201).json({ email, password, firstName: "Cobby" });
   });

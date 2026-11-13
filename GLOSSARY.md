@@ -68,6 +68,10 @@ _Avoid_: Borrow (as a noun), checkout, transaction
 The code a Member shows on their phone so a Librarian can identify them by scanning it at the desk. It is a 1D barcode, like the ones on the books, and it changes every 60 seconds so a copy of it cannot be reused.
 _Avoid_: Barcode, QR, library card
 
+**Desk session**:
+The short time after a Librarian scans a Member's Digital ID in which every Copy they scan is lent to that Member. It ends 10 minutes after the last scan, or when the Librarian is done with the Member; then the Digital ID must be scanned again.
+_Avoid_: Checkout session, visit (as a technical term)
+
 **Loan Policy**:
 The loan limit and loan period that apply to an Account Type. Visitor and Alumni have a limit of zero.
 _Avoid_: Borrowing rules, limits

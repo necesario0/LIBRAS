@@ -1,29 +1,17 @@
-import { useFocusEffect } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { isCurrentLoan } from "@libras/shared";
 import type { Loan, MyLoansResponse } from "@libras/shared";
 import { api } from "../api";
-import { ApiError } from "../api/client";
-import type { AuthorizedRequest } from "../catalog/useCatalogSearch";
+import type { AuthorizedRequest } from "../auth/authorized-request";
+import { useFocusedFetch } from "../hooks/useFocusedFetch";
+import type { FetchState } from "../hooks/useFocusedFetch";
 
-/**
- * What a screen shows of the Member's Loans:
- * - `loading`: first fetch;
- * - `loaded`: the Loans, current ones first (the API's order), and the Member's Loan Policy;
- * - `error`: they could not be fetched. `message` is safe to show.
- */
-export type LoansState =
-  | { status: "loading" }
-  | { status: "loaded"; loans: Loan[]; loanLimit: number; loanPeriodDays: number | null }
-  | { status: "error"; message: string };
+/** What a screen shows of the Member's Loans: when loaded, the Loans, current ones first (the API's order), and the Member's Loan Policy. */
+export type LoansState = FetchState<MyLoansResponse>;
 
 /** The Loans whose Copy is still out. */
 export function currentLoans(loans: readonly Loan[]): Loan[] {
   return loans.filter(isCurrentLoan);
-}
-
-function failureMessage(error: unknown): string {
-  return error instanceof ApiError ? error.message : "Your Loans could not be loaded. Please try again.";
 }
 
 /**
@@ -32,30 +20,7 @@ function failureMessage(error: unknown): string {
  * `reload`. A failed refresh keeps the Loans already shown.
  */
 export function useLoans(request: AuthorizedRequest) {
-  const [state, setState] = useState<LoansState>({ status: "loading" });
-  const requestRef = useRef(request);
-  requestRef.current = request;
-  const latest = useRef(0);
-
-  const reload = useCallback(async () => {
-    const id = ++latest.current;
-    try {
-      const body = await requestRef.current((token) => api.getLoans(token));
-      if (id === latest.current) setState({ status: "loaded", ...body });
-    } catch (error) {
-      if (id !== latest.current) return;
-      const message = failureMessage(error);
-      setState((current) => (current.status === "loaded" ? current : { status: "error", message }));
-    }
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      void reload();
-    }, [reload]),
-  );
-
-  return { state, reload };
+  return useFocusedFetch(request, api.getLoans, "Your Loans could not be loaded. Please try again.");
 }
 
 /** How often the Digital ID screen asks whether the Librarian has confirmed a Loan. */

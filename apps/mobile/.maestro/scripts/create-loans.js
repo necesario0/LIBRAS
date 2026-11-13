@@ -45,7 +45,8 @@ post("/members/sign-up/verify", { email: student.email, code: match[1] });
 
 const borrowWord = randomWord("zb");
 const borrowTitle = "The " + capitalize(borrowWord) + " Reader";
-const lateTitle = "The " + capitalize(randomWord("zl")) + " Almanac";
+const lateWord = randomWord("zl");
+const lateTitle = "The " + capitalize(lateWord) + " Almanac";
 const borrowBook = post("/e2e/books", { title: borrowTitle, authors: ["Zxqy, Bea"], availableCopies: 2, onLoanCopies: 0 });
 const lateBook = post("/e2e/books", { title: lateTitle, authors: ["Zxqy, Lena"], availableCopies: 1, onLoanCopies: 0 });
 const returnWord = randomWord("zr");
@@ -58,6 +59,7 @@ output.borrowWord = borrowWord;
 output.borrowTitle = borrowTitle;
 output.borrowBookId = borrowBook.id;
 output.lateBookId = lateBook.id;
+output.lateWord = lateWord;
 output.lateTitle = lateTitle;
 output.returnWord = returnWord;
 output.returnTitle = returnTitle;

@@ -50,3 +50,19 @@ services:
       # Optional, add in the dashboard when needed (see README, Deployment):
       #   CORS_ALLOWED_ORIGINS  comma separated origins of hosted web pages that call the API
       #   DATABASE_CA_CERT      PEM CA certificate of the Supabase database, to verify its TLS certificate
+
+  # The Librarian's desk page (/) and phone scanner page (/scan.html): a static site, HTTPS with a
+  # certificate Render manages, which the phone camera needs (README, "Hosting the desk page and the
+  # phone scanner page"). VITE_API_URL is read at build time, so changing it needs a new deploy of the
+  # site. The site's address must also be listed in CORS_ALLOWED_ORIGINS on libras-api.
+  - type: web
+    name: libras-desk
+    runtime: static
+    region: singapore
+    branch: main
+    autoDeployTrigger: commit
+    buildCommand: npm ci && npm run build -w @libras/web
+    staticPublishPath: apps/web/dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://libras-api-g8sj.onrender.com

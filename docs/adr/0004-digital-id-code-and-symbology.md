@@ -19,4 +19,5 @@ A Digital ID is 12 digits, drawn as Code 128 subset C with the same digits print
 - The secret never leaves the API: no client role has any privilege on `digital_id_secrets`, and the app asks the API for the current code, so the phone cannot show a Digital ID offline.
 - The Digital ID number is not secret. A screenshot reveals it, but it is useless without a current token.
 - Copy barcodes (10 digits) and Digital IDs (12 digits) are told apart by length at the scan input point.
+- A Digital ID is checked once, when it is scanned at the desk: the Copies of that visit are lent through the desk session it starts (ADR 0008), so a slow second scan does not meet an expired code.
 - Guesses at the desk are not rate limited yet. If that becomes a concern, count refused Digital IDs per Librarian.

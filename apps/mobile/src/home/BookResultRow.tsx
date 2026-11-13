@@ -25,7 +25,7 @@ export function BookResultRow({ book, onPress }: { book: BookSearchResult; onPre
   const edition = book.edition === null ? "" : `, ${book.edition}`;
   return (
     <Pressable accessibilityRole="button" onPress={onPress} style={styles.row} testID={`book-${book.id}`}>
-      <BookCover id={book.id} width={36} height={52} radius={6} />
+      <BookCover id={book.id} width={36} height={52} radius={radii.coverSmall} />
       <View style={styles.text}>
         <Text style={styles.title} numberOfLines={2} testID="book-title">
           {`${book.title}${edition}`}
