@@ -82,7 +82,9 @@ ana.member;      // MemberProfile
 ana.accessToken; // Authorization: Bearer <accessToken>
 ```
 
-`studentSignUpBody()` is a valid UMAK Student sign-up with a unique email, username and student number; `facultySignUpBody()`, `ntpEmployeeSignUpBody()`, `visitorSignUpBody()` and `alumniSignUpBody()` do the same for the other Account Types. `codeFromEmail(api.emails.lastTo(email))` reads the verification code. `createTestAccount(api)` makes a bare Supabase account (no Member profile) and, with `{ staff }`, a Librarian.
+`studentSignUpBody()` is a valid UMAK Student sign-up with a unique email, username and student number; `facultySignUpBody()`, `ntpEmployeeSignUpBody()`, `visitorSignUpBody()` and `alumniSignUpBody()` do the same for the other Account Types. `codeFromEmail(api.emails.lastTo(email))` reads the verification code. `startTestApi({ wrapAccounts })` wraps the real Supabase account administration, for a test that makes one of its calls fail.
+
+Finishing a sign-up (`verifySignUp`) calls nothing outside the database inside a transaction: one transaction checks the code and creates the Member (keeping the pending sign-up), then Supabase Auth confirms the email, then the pending sign-up is deleted. A failure after the first step leaves a Member who cannot sign in yet; the answer is `503 sign_up_unfinished` and entering the same code again finishes it. A confirmed email therefore always has its Member. `createTestAccount(api)` makes a bare Supabase account (no Member profile) and, with `{ staff }`, a Librarian.
 
 ## Member sign-in and who may call a route
 

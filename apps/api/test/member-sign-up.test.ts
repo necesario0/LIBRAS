@@ -268,3 +268,73 @@ describe("UMAK Student sign-up", () => {
     });
   });
 });
+
+describe("Finishing a sign-up when Supabase Auth or the database fails half way", () => {
+  /** What the wrapped `confirmEmail` does on its next call, before or instead of confirming. */
+  const next: { confirm: "normally" | "fail" | "after the database connection drops" } = { confirm: "normally" };
+  let api: TestApi;
+  const verifyUrl = () => `${api.baseUrl}/members/sign-up/verify`;
+
+  /** Starts a sign-up and returns its request body and emailed code. */
+  async function pendingSignUp() {
+    const body = studentSignUpBody();
+    assert.equal((await postJson(`${api.baseUrl}/members/sign-up`, body)).status, 201);
+    return { body, code: codeFromEmail(api.emails.lastTo(body.email)) };
+  }
+
+  before(async () => {
+    api = await startTestApi({
+      wrapAccounts: (real) => ({
+        createUnverifiedAccount: (email, password) => real.createUnverifiedAccount(email, password),
+        setPassword: (userId, password) => real.setPassword(userId, password),
+        async confirmEmail(userId) {
+          const mode = next.confirm;
+          next.confirm = "normally";
+          if (mode === "fail") throw new Error("Supabase Auth is down");
+          await real.confirmEmail(userId);
+          if (mode === "after the database connection drops") {
+            // Every other connection that has a Member or a pending sign-up locked loses its session, as
+            // when the network to the database drops: an open transaction there can never commit.
+            await api.db.query(
+              `select pg_terminate_backend(pid) from pg_locks
+                where relation in ('public.signup_requests'::regclass, 'public.members'::regclass)
+                  and granted and pid <> pg_backend_pid()`,
+            );
+          }
+        },
+      }),
+    });
+  });
+  after(() => api.close());
+
+  it("never leaves a confirmed email without a Member when the database fails after the email is confirmed", async () => {
+    const { body, code } = await pendingSignUp();
+    next.confirm = "after the database connection drops";
+
+    const verify = await postJson(verifyUrl(), { email: body.email, code });
+
+    assert.equal(verify.status, 200, await verify.clone().text());
+    assert.equal((await verify.json()).member.email, body.email);
+    assert.ok(await signInDirect(body.email, body.password));
+  });
+
+  it("lets the person enter the code again when the email cannot be confirmed, and then they can sign in", async () => {
+    const { body, code } = await pendingSignUp();
+    next.confirm = "fail";
+
+    const failed = await postJson(verifyUrl(), { email: body.email, code });
+
+    assert.equal(failed.status, 503);
+    const { error } = await failed.json();
+    assert.equal(error.code, "sign_up_unfinished");
+    assert.match(error.message, /enter the code again/i);
+    assert.equal(await signInDirect(body.email, body.password), undefined, "not active until the email is confirmed");
+
+    const again = await postJson(verifyUrl(), { email: body.email, code });
+    assert.equal(again.status, 200, await again.clone().text());
+    assert.equal((await again.json()).member.email, body.email);
+    assert.ok(await signInDirect(body.email, body.password));
+    // Finished: the code is spent and the email has an account.
+    assert.equal((await postJson(verifyUrl(), { email: body.email, code })).status, 404);
+  });
+});

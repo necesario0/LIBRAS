@@ -2,6 +2,7 @@ import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { createApp } from "../app.ts";
 import type { AppOptions } from "../app.ts";
+import type { AccountAdmin } from "../auth/auth-provider.ts";
 import { SupabaseAuthAdmin } from "../auth/supabase-auth-admin.ts";
 import { SupabaseAuth } from "../auth/supabase-auth.ts";
 import { LOCAL_DATABASE_URL, loadConfig } from "../config.ts";
@@ -39,6 +40,11 @@ export interface TestApiOptions extends AppOptions {
    * (every minute). Default: no timer, so a test decides when the sweep runs (`sweepPickupWindows`).
    */
   sweepIntervalMs?: number;
+  /**
+   * Wraps the real account administration (Supabase Auth), for a test that makes one of its calls
+   * fail or do something more. Default: the real one, untouched.
+   */
+  wrapAccounts?: (accounts: AccountAdmin) => AccountAdmin;
 }
 
 const silentLogger: Logger = {
@@ -57,7 +63,8 @@ export async function startTestApi(options: TestApiOptions = {}): Promise<TestAp
   const emails = new CapturingEmailSender();
   const config = loadConfig();
   const auth = new SupabaseAuth({ url: config.supabaseUrl, publishableKey: config.supabasePublishableKey });
-  const accounts = new SupabaseAuthAdmin({ url: config.supabaseUrl, secretKey: config.supabaseSecretKey });
+  const realAccounts = new SupabaseAuthAdmin({ url: config.supabaseUrl, secretKey: config.supabaseSecretKey });
+  const accounts = options.wrapAccounts ? options.wrapAccounts(realAccounts) : realAccounts;
   const deps = { db, auth, accounts, clock, email: emails, logger };
   const app = createApp(deps, options);
 
