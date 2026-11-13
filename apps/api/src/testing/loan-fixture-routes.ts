@@ -33,6 +33,11 @@ const FIXTURE_LIBRARIAN = { email: "e2e-loan-desk@libras.test", fullName: "Lita 
  * and its Copy passed on without anyone opening the app.
  *
  *   POST /e2e/holds/lapse { email, bookId } -> 200 { expired }
+ *
+ * A fourth route moves the time the Member's waiting Holds were placed (and their queue score with
+ * it), so a test can show a date that is one day in the library's time zone and another in the phone's.
+ *
+ *   POST /e2e/holds/placed { email, placedAt } -> 200 { moved }
  */
 export function loanFixtureRoutes(router: Router, deps: AppDeps): void {
   let librarian: Promise<string> | undefined;
@@ -107,6 +112,22 @@ export function loanFixtureRoutes(router: Router, deps: AppDeps): void {
       return;
     }
     res.json({ expired: await expireDueHolds(deps) });
+  });
+
+  router.post("/e2e/holds/placed", async (req, res) => {
+    const { email, placedAt } = (req.body ?? {}) as { email?: unknown; placedAt?: unknown };
+    if (typeof email !== "string" || typeof placedAt !== "string" || Number.isNaN(Date.parse(placedAt))) {
+      res.status(400).json({ error: { code: "invalid_request", message: "Not a Hold fixture." } });
+      return;
+    }
+    const moved = await deps.db.query(
+      `update public.holds h
+          set placed_at = $2, score = $2::timestamptz - make_interval(hours => h.weight_hours)
+         from auth.users u
+        where u.id = h.member_id and lower(u.email) = lower($1) and h.status = 'waiting'`,
+      [email, new Date(placedAt)],
+    );
+    res.json({ moved: moved.rowCount });
   });
 
   router.post("/e2e/returns", async (req, res) => {

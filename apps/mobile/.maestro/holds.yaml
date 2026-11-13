@@ -114,7 +114,9 @@ appId: ph.edu.umak.libras
 - assertVisible: "1 waiting"
 - takeScreenshot: holds-home-summary
 
-# The Holds screen lists it with its status.
+# The Holds screen lists it with its status, and the day it was placed in the
+# library's time zone: placed at 04:00 on Nov 11 in Manila, still Nov 10 in UTC.
+- runScript: scripts/hold-placed-at-night.js
 - tapOn:
     id: home-holds
 - extendedWaitUntil:
@@ -125,6 +127,7 @@ appId: ph.edu.umak.libras
 - assertVisible: ${output.heldTitle}
 - assertVisible: "Waiting"
 - assertVisible: "Zxqy, Hana"
+- assertVisible: "Placed Nov 11, 2026"
 - takeScreenshot: holds-list
 
 # Cancelling asks once more, then moves the Hold out of the queue.
