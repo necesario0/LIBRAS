@@ -14,9 +14,9 @@ Words follow the glossary: Member, Account Type, Librarian, Book, Copy, Loan, Ho
 | Member phone A | The hosted APK installed. A UMAK Student (or Faculty) Member |
 | Member phone B | The hosted APK installed (or the same phone after signing out). A second borrowing Member, for the Hold. Faculty or NTP / Employee shows the role-weighted order best |
 | Mailboxes | Two `@umak.edu.ph` inboxes the presenter can open (the borrowing Account Types need one), plus any inbox for a Visitor |
-| Printed Copy labels | At least two Copies of one Book, as Code 128 labels of the Copy's 10-digit barcode (`31` then 8 digits) |
+| Printed Copy labels | At least two Copies of one Book, as Code 128 labels of the Copy's 10-digit barcode (`31` then 8 digits). `npm run labels:hosted -- --title "introduction to algorithms" --copies 3` writes `copy-labels.html`: open it in Chrome and print at 100% scale on white matte paper |
 
-Open the printed label list before the demo: pick one Book and note its title, so that the demo does not depend on searching blind.
+Pick one Book before the demo and note its title (the labels command prints the title and the barcodes it used), so that the demo does not depend on searching blind.
 
 ## Before the audience arrives (10 minutes ahead)
 
@@ -112,7 +112,7 @@ The window is 24 hours (`library_settings.pickup_window_hours`), so this is show
 ## Part 8: proof afterwards
 
 1. `npm run audit:verify:hosted -w @libras/api`: prints that the audit chain is intact. It covers the sign-in failures, Loans, the return, the Hold dispatch and the pickup of the run.
-2. Note the recorded measurements (search under 50 concurrent users, Hold dispatch on the hosted database) from `docs/hosted-verification.md` once they exist.
+2. The recorded measurements (search under 50 concurrent users, Hold dispatch on the hosted database) are in `docs/hosted-verification.md`; quote them if asked.
 
 Checks:
 
