@@ -31,13 +31,31 @@ export function createDatabase(databaseUrl: string, logger: Logger, caCertificat
   return pool;
 }
 
+/** The client of a transaction run as the API itself (`withTransaction`). */
+export type Tx = pg.PoolClient;
+
+/** PostgreSQL's code for a unique index or constraint refusing a row. */
+const UNIQUE_VIOLATION = "23505";
+
+/** The unique index or constraint that refused a row, when `error` is that refusal; otherwise undefined. */
+export function violatedUniqueConstraint(error: unknown): string | undefined {
+  const refusal = error as { code?: unknown; constraint?: unknown } | null;
+  if (typeof refusal !== "object" || refusal === null || refusal.code !== UNIQUE_VIOLATION) return undefined;
+  return typeof refusal.constraint === "string" ? refusal.constraint : "";
+}
+
+/** Whether `error` is the unique index or constraint `constraint` refusing a row, and not any other one. */
+export function isUniqueViolation(error: unknown, constraint: string): boolean {
+  return violatedUniqueConstraint(error) === constraint;
+}
+
 /**
  * Runs `work` in one transaction on one connection: it commits when `work`
  * resolves and rolls back when it throws. Runs as the API itself, so
  * row-level security does not apply: use `withIdentity` for a person's own
  * data.
  */
-export async function withTransaction<T>(db: Database, work: (client: pg.PoolClient) => Promise<T>): Promise<T> {
+export async function withTransaction<T>(db: Database, work: (client: Tx) => Promise<T>): Promise<T> {
   const client = await db.connect();
   try {
     await client.query("begin");

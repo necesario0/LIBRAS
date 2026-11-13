@@ -106,7 +106,7 @@ export function createApiClient({ baseUrl, fetch: fetchImpl = fetch, timeoutMs =
       request<BookDetailResponse>(`/catalog/books/${encodeURIComponent(id)}`, { headers: bearer(accessToken) }),
     /**
      * Puts the Member in the queue of a Book that has no available Copy. Failures: `cannot_borrow` (403),
-     * `book_not_found` (404), `copy_available` and `hold_exists` (409).
+     * `book_not_found` (404), `copy_available`, `book_on_loan` and `hold_exists` (409).
      */
     placeHold: (accessToken: string, bookId: string) => post<PlaceHoldResponse>("/holds", { bookId }, accessToken),
     /** The Member's own Holds, active ones first. */

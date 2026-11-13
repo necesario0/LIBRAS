@@ -3,7 +3,7 @@ import type { Hold, HoldStatus, MemberProfile } from "@libras/shared";
 import type { AppDeps } from "../app.ts";
 import type { Identity } from "../auth/auth-provider.ts";
 import { withIdentity } from "../auth/identity.ts";
-import { withTransaction } from "../db.ts";
+import { isUniqueViolation, withTransaction } from "../db.ts";
 import { AppError } from "../errors.ts";
 import { announceDispatch, dispatchCopy, lockCopyById } from "./dispatch.ts";
 import type { HoldDispatch } from "./dispatch.ts";
@@ -32,13 +32,11 @@ function toHold(row: HoldRow): Hold {
   };
 }
 
-/** PostgreSQL's code for a unique index refusing a row. */
-const UNIQUE_VIOLATION = "23505";
-
 /**
  * Puts the Member in the queue of a Book that has no available Copy. Refused when the
  * Member's Account Type cannot borrow, when the Book does not exist, when a Copy is
- * available (borrow it instead) and when the Member already has an active Hold on the
+ * available (borrow it instead), when the Member has a Copy of the Book on Loan, and
+ * when the Member already has an active Hold on the
  * Book (the database's unique index decides that, so two requests at once cannot both pass).
  *
  * The Book's Copies are read with a shared row lock (`for share`, in id order),
@@ -62,6 +60,15 @@ export async function placeHold(deps: AppDeps, member: MemberProfile, bookId: st
         [bookId],
       );
       if (copies.rows.some((copy) => copy.status === "available")) throw new AppError(409, "copy_available", HOLD_MESSAGES.copyAvailable);
+      // Read after the Copies' locks, so a Loan to this Member confirmed at this moment is seen. Their own
+      // return would otherwise set the Copy aside for them again.
+      const onLoan = await tx.query(
+        `select 1 from public.loans l join public.copies c on c.id = l.copy_id
+          where c.book_id = $1 and l.member_id = $2 and l.returned_at is null
+          limit 1`,
+        [bookId, member.id],
+      );
+      if (onLoan.rows[0]) throw new AppError(409, "book_on_loan", HOLD_MESSAGES.bookOnLoan);
 
       const inserted = await tx.query<HoldRow>(
         `with inserted as (
@@ -76,7 +83,7 @@ export async function placeHold(deps: AppDeps, member: MemberProfile, bookId: st
       return toHold(inserted.rows[0] as HoldRow);
     });
   } catch (error) {
-    if ((error as { code?: string }).code === UNIQUE_VIOLATION) throw new AppError(409, "hold_exists", HOLD_MESSAGES.alreadyHeld);
+    if (isUniqueViolation(error, "holds_one_active_per_member_and_book")) throw new AppError(409, "hold_exists", HOLD_MESSAGES.alreadyHeld);
     throw error;
   }
 }
