@@ -58,12 +58,12 @@
   <div class="cards">
     <div class="card stat"><p class="big cy">&lt;30 s</p><p>Checkout (was 4 min 10 s by manual ledger)</p></div>
     <div class="card stat"><p class="big pu">&lt;15 s</p><p>Routine book return</p></div>
-    <div class="card stat"><p class="big am">&lt;1.0 s</p><p>Catalog search under 50 concurrent patrons</p></div>
+    <div class="card stat"><p class="big am">&lt;1.0 s</p><p>Catalog search under 50 concurrent users</p></div>
   </div>
   <div class="card">
     <h3 class="am">Two computational bottlenecks</h3>
     <p><b>Typo-tolerant search:</b> SQL <code>ILIKE '%term%'</code> is a substring match with no typo tolerance. It found only 3.7% of the words within two edits, and it still scans every row.</p>
-    <p><b>Hold dispatch:</b> one returned copy needs its top-priority patron resolved instantly, with no race conditions or starvation.</p>
+    <p><b>Hold dispatch:</b> one returned Copy needs its top-priority waiting Member resolved instantly, with no race conditions or starvation.</p>
   </div>
   <div class="footer">Project LIBRAS · PBL Milestone 1 · Group 1 &nbsp;|&nbsp; <span>2 / 12</span></div>
 </section>
@@ -74,13 +74,13 @@
   <h2>Two coupled optimization problems</h2>
   <div class="cards">
     <div class="card"><h3 class="cy">1 · Approximate string match</h3>
-      <p>Minimize d<sub>Lev</sub>(Q, w) subject to d ≤ k<sub>max</sub> = 2</p>
-      <p>Rank by (1 − d / max(|Q|,|w|)) · IDF · Popularity</p></div>
+      <p>Per word q: minimize d<sub>Lev</sub>(q, w), d ≤ k(q) ≤ 2</p>
+      <p>A Book must match every word; rank by total edit distance</p></div>
     <div class="card"><h3 class="pu">2 · Priority scheduling</h3>
-      <p>Select r* = argmin PriorityScore(r<sub>i</sub>)</p>
+      <p>Select r* = argmin (PriorityScore(r<sub>i</sub>), seq<sub>i</sub>)</p>
       <p>where PriorityScore = t<sub>i</sub> − W(ρ<sub>i</sub>); smaller means higher priority</p></div>
   </div>
-  <p>Inputs: lexicon D with N ≥ 50,000 tokens · query Q with 1 ≤ |Q| ≤ 64 · hold pool R with K ≤ 5,000 requests</p>
+  <p>Inputs: lexicon D with N ≥ 50,000 tokens · query Q with 1 ≤ |Q| ≤ 100 · waiting Holds R with K ≤ 5,000 per Book</p>
   <div class="footer">Project LIBRAS · PBL Milestone 1 · Group 1 &nbsp;|&nbsp; <span>3 / 12</span></div>
 </section>
 
@@ -90,11 +90,11 @@
   <h2>Boundaries and role-tier weights</h2>
   <div class="cards">
     <div class="card"><h3 class="cy">Hard boundaries</h3>
-      <ul><li>Query truncated at 64 characters on ingress</li><li>Search radius capped at k<sub>max</sub> = 2</li><li>Arrival timestamps strictly increasing (NTP-synced)</li><li>Claim window of 48 h, then automatic expiry</li></ul></div>
+      <ul><li>Query over 100 characters rejected on ingress</li><li>Radius by word length: 0, 1 or 2 edits; identifiers match exactly</li><li>Arrival time from the server clock; ties broken by sequence</li><li>Pickup Window of 24 h (a stored setting), then automatic expiry</li></ul></div>
     <div class="card"><h3 class="pu">Role priority shift</h3>
-      <table><tr><th>Role</th><th>Shift</th></tr>
-      <tr><td>Faculty</td><td>+24 h advance</td></tr><tr><td>NTP</td><td>+12 h advance</td></tr>
-      <tr><td>Student</td><td>0 (pure FIFO)</td></tr><tr><td>Visitor</td><td>−24 h deprioritized</td></tr></table></div>
+      <table><tr><th>Account Type</th><th>Shift</th></tr>
+      <tr><td>Faculty</td><td>+24 h advance</td></tr><tr><td>NTP / Employee</td><td>+12 h advance</td></tr>
+      <tr><td>UMAK Student</td><td>0 (pure FIFO)</td></tr><tr><td>Visitor, Alumni</td><td>Cannot place Holds</td></tr></table></div>
   </div>
   <div class="footer">Project LIBRAS · PBL Milestone 1 · Group 1 &nbsp;|&nbsp; <span>4 / 12</span></div>
 </section>
@@ -107,7 +107,7 @@
     <div class="card"><h3 class="cy">Engine 1 · Bounded Levenshtein Trie Search</h3>
       <p>Dynamic programming over a prefix tree. Shared prefixes are evaluated once, and branch-and-bound pruning skips dead subtrees. Stored as flat typed arrays.</p></div>
     <div class="card"><h3 class="pu">Engine 2 · Role-Weighted Priority Queue Dispatcher</h3>
-      <p>Greedy choice on an ordered index: the first entry is always the winning patron. Implemented as an indexed PostgreSQL query.</p></div>
+      <p>Greedy choice on an ordered index: the first entry is always the winning Member. Implemented as an indexed PostgreSQL query.</p></div>
   </div>
   <div class="card"><h3 class="am">Alternatives tested and not chosen</h3>
     <p><b>Search:</b> SymSpell (318 MB), per-node-object trie (55 MB), BK-tree, bigram index, <code>pg_trgm</code> (17% recall), <code>ILIKE</code> (3.7% recall), linear scan.</p>
@@ -137,10 +137,10 @@
   <div class="cards">
     <div class="card"><h3 class="cy">Enqueue</h3><p><code>INSERT</code> into <code>holds</code></p><p>O(log K)</p></div>
     <div class="card"><h3 class="pu">Peek</h3><p><code>SELECT ... ORDER BY score, seq LIMIT 1</code></p><p>O(log K)</p></div>
-    <div class="card"><h3 class="am">Dispatch</h3><p><code>DELETE ... FOR UPDATE SKIP LOCKED</code>, one transaction with the copy status update</p><p>O(log K)</p></div>
+    <div class="card"><h3 class="am">Dispatch</h3><p><code>UPDATE ... FOR UPDATE SKIP LOCKED</code> marks the Hold ready, in the same transaction as the return</p><p>O(log K)</p></div>
   </div>
   <div class="card"><h3 class="gr">Worked example</h3>
-    <p>Faculty arriving at t scores t − 24 h and beats a Student who arrived at t − 12 h, so the returned copy goes to Faculty. With 50 concurrent clients, each of 2,000 holds was served exactly once.</p></div>
+    <p>Faculty arriving at t scores t − 24 h and beats a UMAK Student who arrived at t − 12 h, so the returned Copy is set aside for Faculty. With 50 concurrent clients, each of 2,000 holds was served exactly once.</p></div>
   <div class="footer">Project LIBRAS · PBL Milestone 1 · Group 1 &nbsp;|&nbsp; <span>7 / 12</span></div>
 </section>
 
@@ -179,13 +179,13 @@
 <section class="slide">
   <p class="eyebrow">Decoupled service-layer architecture</p>
   <h2 style="font-size:26px; margin-bottom:12px">Algorithms are modules behind narrow interfaces</h2>
-  <div class="tier"><b>Presentation</b> · React Native borrower app · React.js librarian portal</div>
+  <div class="tier"><b>Presentation</b> · React Native Member app (Android) · React Librarian desk and phone scanner pages</div>
   <div class="arrow">↓ HTTPS</div>
-  <div class="tier"><b>Hosting and ingress (Render)</b> · HTTPS, JWT, CORS, rate limit 100 req/min in Express middleware</div>
+  <div class="tier"><b>Hosting and ingress (Render)</b> · HTTPS, Supabase Auth bearer tokens, CORS allowlist, sign-in rate limit in Express middleware</div>
   <div class="arrow">↓ Internal call</div>
-  <div class="tier"><b>Node.js / Express / TypeScript</b> · business rules, mailer · <b>SearchEngine</b> (flat trie, atomic swap) · <b>HoldQueue</b> (SQL repository)</div>
+  <div class="tier"><b>Node.js / Express / TypeScript</b> · business rules, mailer, audit log · <b>Catalog search</b> (flat trie, atomic swap) · <b>Hold queue</b> (SQL in the return transaction)</div>
   <div class="arrow">↓ SQL, row locking</div>
-  <div class="tier"><b>PostgreSQL 16</b> · catalog, accounts, loans, fines · hold queue with index on (title, score, seq)</div>
+  <div class="tier"><b>PostgreSQL (Supabase)</b> · Members, Books, Copies, Loans, audit log · Hold queue with index on (book, score, seq) · row-level security</div>
   <div class="footer">Project LIBRAS · PBL Milestone 1 · Group 1 &nbsp;|&nbsp; <span>10 / 12</span></div>
 </section>
 

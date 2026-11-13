@@ -73,7 +73,7 @@ Consequence: the search returns exactly the words within distance `k`, with no f
 
 **Observation (no pruning at shallow depth).** At depth `d`, `R[0] = d`, so `min(R) <= d`. Pruning therefore cannot occur at depth `d <= k`. For `k = 2`, every trie node at depth 1 or 2 is always expanded.
 
-**Queue-order invariant.** Each hold `r` has a score `PriorityScore(r) = t_r - W(role_r)`, where the role weights `W` are as defined in Section 1.2.2 (Faculty 86,400,000 ms; NTP 43,200,000 ms; Student 0; Visitor -86,400,000 ms). Ties are broken by arrival sequence `seq`. The queue is ordered by the key `(score, seq)`, and dispatch always removes the entry with the smallest key. Because `seq` is unique, the order is total and the winner is unique.
+**Queue-order invariant.** Each hold `r` has a score `PriorityScore(r) = t_r - W(role_r)`, where the role weights `W` are as defined in Section 1.2.2 (Faculty 86,400,000 ms; NTP / Employee 43,200,000 ms; UMAK Student 0). Ties are broken by arrival sequence `seq`. The queue of a Book is its waiting Holds ordered by the key `(score, seq)`, and dispatch always serves the waiting entry with the smallest key. Because `seq` is unique, the order is total and the winner is unique.
 
 ### 2.3 Structured Algorithmic Pseudocode
 
@@ -113,68 +113,119 @@ function Search(trie, query, k) -> List<Match>:
         // BRANCH AND BOUND: expand u only if some cell is within k
         if min(rows[d]) <= k and u has children:
             push(stack, (node = u, next_edge = child_start[u]))
-    sort results by (distance ascending, relevance score descending)
-    return results
+    return results          // in no particular order; Algorithm 1b ranks
 ```
 
 The recursive version in the first submission is equivalent. The flat version replaces one object per node with three typed arrays, one preallocated block of DP rows, and an explicit stack in place of recursion.
 
+#### Algorithm 1b: Catalog Query over the Trie
+
+A Member's query is a phrase, not one word. The catalog index wraps Algorithm 1: it holds the flat trie of the lexicon, a posting list for each word (the Books that contain it), and a table of identifiers. Each query word is searched with a radius that depends on its length, and a Book must match every word.
+
+```
+function SearchCatalog(index, query, limit) -> (total, List<Book>):
+    key = letters and digits of Normalize(query)
+    if key in index.identifiers:          // ISBN, accession or call number
+        books = index.identifiers[key]    // exact answer, nothing fuzzy
+        return (size(books), first `limit` of books)
+
+    words = distinct(Tokenize(Normalize(query)))  // lowercase, no accents,
+    if words is empty: return (0, [])             // split on non-alphanumerics
+    for each q in words:
+        k = 0 if q contains a digit or length(q) <= 3
+            1 if length(q) <= 6
+            2 otherwise
+        best[q] = {}                      // Book -> smallest distance for q
+        for each (w, d) in Search(index.trie, q, k):       // Algorithm 1
+            for each Book B in index.postings[w]:
+                best[q][B] = min(best[q][B], d)
+        if best[q] is empty: return (0, [])    // every word must match
+
+    matched = Books present in best[q] for every q   // smallest set first
+    for each B in matched: Dist[B] = sum over q of best[q][B]
+    sort matched by (Dist ascending, title order)
+    return (size(matched), first `limit` of matched)
+```
+
+Short words get a smaller radius because a two-edit ball around a three-letter word covers most short words in the lexicon. A word that contains a digit (a year, part of a call number) must match exactly. The number of available Copies of each returned Book is then read from PostgreSQL, so availability is always current and never part of the index.
+
 #### Algorithm 2: Role-Weighted Priority Queue Dispatcher (PostgreSQL)
 
-The queue is a table with an ordered index. The index is a B-tree, so finding and removing the minimum are logarithmic, as in a heap.
+The queue is a table with an ordered index. The index is a B-tree, so finding and removing the minimum are logarithmic, as in a heap. The index is partial: it contains only waiting Holds, so a Hold leaves the queue when its status changes.
 
 ```
 CREATE TABLE holds (
-    id     BIGINT  PRIMARY KEY,   -- plus patron, copy, status columns
-    title  INTEGER NOT NULL,      -- one queue per title
-    score  BIGINT  NOT NULL,      -- arrival_ms minus role weight (ms)
-    seq    BIGINT  NOT NULL       -- arrival order, breaks ties
+    id             UUID PRIMARY KEY,
+    book_id        UUID NOT NULL,        -- one queue per Book
+    member_id      UUID NOT NULL,
+    status         hold_status NOT NULL DEFAULT 'waiting',
+                   -- waiting, ready, fulfilled, expired, cancelled
+    placed_at      TIMESTAMPTZ NOT NULL, -- arrival time, server clock
+    weight_hours   INTEGER NOT NULL,     -- Faculty 24, NTP 12, Student 0
+    score          TIMESTAMPTZ NOT NULL, -- placed_at minus the weight
+    seq            BIGINT GENERATED ALWAYS AS IDENTITY,  -- breaks ties
+    copy_id        UUID,                 -- the Copy set aside, once chosen
+    ready_at       TIMESTAMPTZ,          -- start of the Pickup Window
+    pickup_ends_at TIMESTAMPTZ,          -- end of the Pickup Window
+    CHECK (score = placed_at - make_interval(hours => weight_hours))
 );
-CREATE INDEX holds_queue ON holds (title, score, seq);
+-- The queue of a Book: its waiting Holds in priority order.
+CREATE INDEX holds_queue_idx ON holds (book_id, score, seq)
+    WHERE status = 'waiting';
+-- At most one active Hold per Member per Book.
+CREATE UNIQUE INDEX holds_one_active ON holds (member_id, book_id)
+    WHERE status IN ('waiting', 'ready');
 
--- Enqueue                                                      O(log K)
-INSERT INTO holds (id, title, score, seq) VALUES ($1, $2, $3, $4);
+-- Enqueue (place a Hold)                                       O(log K)
+INSERT INTO holds (book_id, member_id, placed_at, weight_hours, score)
+VALUES ($1, $2, $3, $4, $5);
 
 -- Dispatch (extract minimum)                                   O(log K)
-DELETE FROM holds
-WHERE id = (SELECT id FROM holds
-            WHERE title = $1
-            ORDER BY score, seq
-            LIMIT 1
-            FOR UPDATE SKIP LOCKED)
-RETURNING id;
+UPDATE holds
+   SET status = 'ready', copy_id = $2, ready_at = $3,
+       pickup_ends_at = $3 + pickup_window
+ WHERE id = (SELECT id FROM holds
+             WHERE book_id = $1 AND status = 'waiting'
+             ORDER BY score, seq
+             LIMIT 1
+             FOR UPDATE SKIP LOCKED)
+RETURNING id, member_id, pickup_ends_at;
 
--- Cancel or expire a hold                                      O(log K)
-DELETE FROM holds WHERE id = $1;
+-- Cancel a waiting Hold                                        O(log K)
+UPDATE holds SET status = 'cancelled', cancelled_at = $2
+ WHERE id = $1 AND status = 'waiting';
 ```
 
-```
-function CalculateScore(arrival_ms, role) -> Int64:
-    weights = { Faculty: 86400000, NTP: 43200000,
-                Student: 0, Visitor: -86400000 }
-    return arrival_ms - weights.get(role, weights.Visitor)
+A chosen Hold is not deleted. Its status changes from waiting to ready, which removes its entry from the partial index, so for the queue this is an extract-minimum, while the row stays as the Hold's history (ready, then fulfilled, expired or cancelled).
 
-function DispatchReturnedCopy(title, copy_id):       // one transaction
-    BEGIN
-    winner = Dispatch(title)                         // statement above
-    if winner is null:
-        COMMIT; return NO_ACTIVE_HOLDS
-    UPDATE book_copies SET status = 'READY_FOR_PICKUP' WHERE id = copy_id
-    COMMIT
-    return winner
+```
+function HoldScore(placed_at, account_type) -> Timestamp:
+    weight_hours = { Faculty: 24, NTP_Employee: 12, UMAK_Student: 0 }
+    return placed_at - weight_hours[account_type] hours
+    // Visitor and Alumni are refused before this point: they cannot borrow.
+
+function PlaceReturnedCopy(copy, now):     // inside the return's transaction,
+                                           // with the Copy's row locked
+    chosen = Dispatch(copy.book_id, copy.id, now)     // statement above
+    if chosen is null:
+        UPDATE copies SET status = 'available' WHERE id = copy.id
+        return NO_WAITING_HOLDS
+    UPDATE copies SET status = 'set_aside' WHERE id = copy.id
+    append 'hold_dispatched' to the audit log
+    return chosen                          // after COMMIT: email the Member
 ```
 
-`FOR UPDATE SKIP LOCKED` locks the chosen row for the duration of the transaction. A concurrent dispatch that finds the top row locked takes the next row instead of waiting, so two desks never receive the same hold. The in-memory equivalent of this queue is the array-backed binary min-heap of the first submission (`SiftUp`, `SiftDown`, `ExtractMin`), which remains a correct reference implementation and was used to verify the order of the PostgreSQL queue.
+`FOR UPDATE SKIP LOCKED` locks the chosen row for the duration of the transaction. A concurrent dispatch that finds the top row locked takes the next row instead of waiting, so two desks never receive the same Hold. The same procedure runs when a Pickup Window passes unused: the Hold becomes expired and the Copy is dispatched again. The in-memory equivalent of this queue is the array-backed binary min-heap of the first submission (`SiftUp`, `SiftDown`, `ExtractMin`), which remains a correct reference implementation and was used to verify the order of the PostgreSQL queue.
 
 ---
 
 ## Task 3: Theoretical Asymptotic Analysis and Scalability Profiling (Revised)
 
-Notation: `m` = query length; `k` = edit radius (2); `|Σ|` = alphabet size; `T` = number of trie nodes; `N` = number of lexicon words; `L_avg` = average word length; `K` = number of holds in a queue.
+Notation: `m` = length of a query word; `k` = edit radius (at most 2; the benchmarks use 2); `|Σ|` = alphabet size; `T` = number of trie nodes; `N` = number of lexicon words; `L_avg` = average word length; `K` = number of holds in a queue.
 
 ### 3.1 Worst-Case Time Complexity (O)
 
-**Algorithm 1.** Computing one DP row costs `O(m)`. The search visits a node only if the row minimum of its parent is at most `k` (Lemma 2 and the pseudocode). Because `R_u[c]` is the edit distance from `u` to the prefix `q_1 ... q_c`, a parent has row minimum at most `k` exactly when its string is within `k` edits of some prefix `q_1 ... q_j` of the query.
+**Algorithm 1.** The analysis is for one query word of length `m` searched with radius `k`. Computing one DP row costs `O(m)`. The search visits a node only if the row minimum of its parent is at most `k` (Lemma 2 and the pseudocode). Because `R_u[c]` is the edit distance from `u` to the prefix `q_1 ... q_c`, a parent has row minimum at most `k` exactly when its string is within `k` edits of some prefix `q_1 ... q_j` of the query.
 
 - There are `m + 1` prefixes.
 - The Levenshtein ball of radius `k` around a string of length at most `m + k` contains `O((m |Σ|)^k)` strings, because each of at most `k` edits chooses a position (`O(m)` choices) and an operation with a letter (`O(|Σ|)` choices).
@@ -201,12 +252,14 @@ Note: a DP row only needs the cells within `k` of the diagonal (Ukkonen, 1985), 
 
 **Dependence on catalog size.** Both `V` and the running time are bounded independently of `N`. However, the visited nodes can never exceed the trie size `T`, and for realistic parameters (`m = 12`, `|Σ| = 26`) the ceiling `m^3 |Σ|^3` far exceeds `T`, so the ceiling does not limit the cost in practice. The actual cost depends on how many trie nodes fall inside the edit region, which grows with `N` (Section 3.2).
 
+**Algorithm 1b.** A query of `p` words runs Algorithm 1 `p` times, then reads the posting lists of the matched words and intersects the per-word results. With `P_q` the total length of the posting lists read for word `q`, the added cost is `O(sum of P_q)` expected time with hash maps, plus `O(B log B)` to sort the `B` matching Books. An identifier query is one hash lookup, `O(|Q|)`.
+
 **Algorithm 2.**
 
 | Operation | Time | Note |
 | --- | --- | --- |
 | Enqueue (`INSERT`) | `O(log K)` | B-tree insertion |
-| Dispatch (`DELETE ... LIMIT 1`) | `O(log K)` | Descend to the first index entry, delete it |
+| Dispatch (`UPDATE ... LIMIT 1`) | `O(log K)` | Descend to the first index entry, remove it from the partial index |
 | Peek (`SELECT ... LIMIT 1`) | `O(log K)` | An in-memory heap is `O(1)` |
 | Cancel or expire | `O(log K)` | Primary-key lookup, then index maintenance |
 
@@ -231,7 +284,7 @@ The number of visited nodes grows sublinearly with catalog size. With `m = 12` a
 
 Between 5,000 and 200,000 tokens (a factor of 40), visited nodes grew by a factor of 5.6, roughly proportional to `N^0.47` on this data. This is an empirical observation on synthetic data, not a proved bound. It replaces the first submission's statement that cost is independent of `N`.
 
-**Algorithm 2.** For the in-memory reference heap, a random insertion sifts up 0.58 levels on average under a realistic role mix (70% Student, 15% Faculty, 10% NTP, 5% Visitor) and 0 levels when all patrons have the same role, because arrival times increase. This replaces the first submission's estimate of 1.6 levels. For the PostgreSQL queue, insertion and dispatch are `O(log K)` index operations regardless of the arrival pattern.
+**Algorithm 2.** For the in-memory reference heap, a random insertion sifts up 0.58 levels on average under a realistic role mix (70% Student, 15% Faculty, 10% NTP, 5% Visitor) and 0 levels when all Members have the same role, because arrival times increase. This replaces the first submission's estimate of 1.6 levels. For the PostgreSQL queue, insertion and dispatch are `O(log K)` index operations regardless of the arrival pattern.
 
 ### 3.3 Auxiliary Space Complexity (O)
 
@@ -248,6 +301,8 @@ Measured memory: about 17 bytes per trie node
 
 The working memory of one query is the DP row block, `(L_max + 2)(m + 1)` 32-bit integers, which is about 17 KB for `L_max = m = 64`. The same lexicon stored as one JavaScript object per node (the literal pseudocode) needed 55 MB at 50,000 tokens, about 12 times more.
 
+In the application the index also stores the posting lists as two typed arrays (`O(P)` 32-bit integers for `P` word occurrences across all Books) and the identifier table as a hash map with one entry per ISBN, accession number and call number.
+
 **Algorithm 2.** The queue is stored in PostgreSQL as `O(K)` rows plus an `O(K)` index. It uses no memory in the Node.js process.
 
 ### 3.4 Big Data Dimensions (Volume, Velocity, Variety)
@@ -256,7 +311,7 @@ The working memory of one query is the DP row block, `(L_max + 2)(m + 1)` 32-bit
 | --- | --- | --- |
 | Volume | 50,000+ tokens; 5,000 holds per queue | The flat trie occupies 4.4 MB at 50,000 tokens and 16.9 MB at 200,000 tokens, so memory is not a constraint. The hold queue lives in PostgreSQL, not in application memory. |
 | Velocity | 250 searches/s peak; 50 concurrent return events | One Node.js thread answered 937 searches/s (k = 2, 50,000 tokens, in-process), about 3.7 times the peak load. Fifty concurrent clients drained 2,000 holds in 0.42 s through PostgreSQL. |
-| Variety | ISBN-10, ISBN-13, Dewey call numbers, MARC21 titles | Titles, authors, and call numbers and ISBNs each get their own trie so the alphabet stays small. On a 20,000-token call-number lexicon the flat trie answered k = 2 queries with p95 latency 1.25 ms in 1.0 MB. Text is normalized (NFKC, lowercase) at ingestion. |
+| Variety | Titles, author names, ISBN-10, ISBN-13, accession numbers, LC call numbers | One trie holds the words of titles and author names. ISBNs, accession numbers and call numbers are matched exactly through a hash map on their letters and digits, because a look-alike identifier is a wrong answer, not a near miss. A trie over a 20,000-token call-number lexicon was also measured (p95 1.25 ms at k = 2 in 1.0 MB), but exact lookup was chosen. Text is normalized (lowercase, accents removed) when the index is built and when a query arrives. |
 
 ### 3.5 Empirical Algorithm Selection (New)
 
@@ -315,7 +370,9 @@ The flat trie is faster from 50,000 tokens upward and smaller at every size. Its
 
 Every in-memory option is about 50,000 times faster than the 10 ms limit, so speed does not separate them. The PostgreSQL query is slower (p99 2.58 ms) but still four times inside the limit. It was chosen because the queue must be correct and durable. It served holds in exactly the same order as the in-memory heap for 500 consecutive dispatches. With 50 concurrent clients draining 2,000 holds, every hold was served exactly once. It survives a server restart, commits atomically with the loan record, and uses no memory in the application process. Under concurrency `SKIP LOCKED` does not guarantee strict global order, because a client skips a row that another client holds locked, but no hold is lost or served twice.
 
-**Limitations.** The catalog is synthetic, so branching and pruning figures must be re-checked on real holdings. All numbers come from one laptop, and PostgreSQL ran in a Docker container, so round trips include port-forwarding overhead. In-process search was measured on a single thread and was not driven through the Express server with 50 simulated users. Search matches whole tokens only; the relevance score, multi-token titles and Unicode normalization were not benchmarked.
+The benchmarked statement removed the chosen row with `DELETE`, on an index over `(title, score, seq)` with integer scores. The application statement (Algorithm 2) performs the same index descent and row lock but changes the row's status with `UPDATE` and keeps the row as history. The role mix of the benchmark also included a Visitor tier, which the application does not allow to place Holds.
+
+**Limitations.** The catalog is synthetic, so branching and pruning figures must be re-checked on real holdings. All numbers come from one laptop, and PostgreSQL ran in a Docker container, so round trips include port-forwarding overhead. In-process search was measured on a single thread and was not driven through the Express server with 50 simulated users. The search benchmark matched single tokens at k = 2; the length-dependent radius, the multi-word intersection of Algorithm 1b, the availability query that follows it and accent removal were not benchmarked. The application runs on a hosted PostgreSQL 17 database, where the queue has not yet been re-measured. At the time of writing, catalog search and the placing and cancelling of Holds are built and tested in the application; dispatch on return and Pickup Window expiry are being built to this specification.
 
 ---
 
@@ -346,22 +403,22 @@ The REST endpoints and JSON schemas in Section 4.2 of the first submission are u
 
 | Field | Specification |
 | --- | --- |
-| Module | `src/search/flatTrie.ts` (Node.js API) |
-| Algorithm | Bounded Levenshtein Trie Search (flat representation) |
-| Defenses | Reject empty queries with 400 Bad Request. Truncate or reject queries longer than 64 characters. Strip control and non-printable characters. Normalize to NFKC and lowercase before searching. Use parameterized SQL for any lexicon read. |
-| Implementation steps | 1. Read lexicon tokens from PostgreSQL in batches.<br>2. Build the three typed arrays and the word table in breadth-first order.<br>3. Implement `search` with the explicit stack and preallocated DP rows.<br>4. Add the pruning check `min(row) > k`.<br>5. Add composite ranking, `Score = (1 - d / max(m, len)) * Popularity * Recency`.<br>6. Add atomic rebuild and swap when the catalog changes.<br>7. Expose `POST /api/v1/algorithm/search/fuzzy` through the Express router. |
-| Automated tests | Results equal a brute-force Levenshtein reference on a seeded catalog for k = 0, 1 and 2. `search("algoritm", 2)` returns "algorithm". The benchmark script reports p95 latency below 35 ms at 50,000 tokens. |
-| Definition of done | Unit tests pass with coverage above 95%. Zero mismatches against the reference. p95 below 35 ms at 50,000 tokens. Documentation updated. |
+| Module | `packages/shared/src/search/flat-trie.ts` and `catalog-index.ts` (pure functions, shared package); `apps/api/src/catalog/catalog-search.ts` (holds the index in the Node.js API) |
+| Algorithm | Bounded Levenshtein Trie Search (flat representation) with the catalog query of Algorithm 1b |
+| Defenses | Reject an empty or whitespace-only query, and a query longer than 100 characters, with 400 Bad Request and a safe message. Normalize to lowercase without accents and split on every character that is not a letter or a digit, so control characters and punctuation never reach the trie. A query word that contains a digit must match exactly. The result limit is between 1 and 50. Use parameterized SQL for every catalog read. |
+| Implementation steps | 1. Read the Books and the accession numbers of their Copies from PostgreSQL in one consistent snapshot.<br>2. Tokenize titles and author names; build the three typed arrays and the word table in breadth-first order.<br>3. Implement `searchTrie` with the explicit stack and preallocated DP rows.<br>4. Add the pruning check `min(row) > k`.<br>5. Add the posting lists, the length-dependent radius, the intersection across query words and the ranking by summed distance.<br>6. Add the exact identifier table for ISBN, accession number and LC call number.<br>7. Rebuild the index in short steps and swap it atomically when the catalog's change counter moves.<br>8. Expose `GET /catalog/search` to signed-in Members through the Express router, with the live count of available Copies for each Book. |
+| Automated tests | Results equal a brute-force Levenshtein reference on a seeded catalog for k = 0, 1 and 2. A search for "algoritm" returns the Book whose title contains "algorithm". API tests cover exact matches, typo matches, no results, each identifier field, and a rebuild that does not fail searches in flight. The benchmark script reports p95 latency below 35 ms at 50,000 tokens. |
+| Definition of done | Unit and API tests pass. Zero mismatches against the reference. p95 below 35 ms at 50,000 tokens. Documentation updated. |
 
 **Ticket 2: DEV-ALGO-102**
 
 | Field | Specification |
 | --- | --- |
-| Module | `src/holds/holdQueue.ts` and a database migration (Node.js API, PostgreSQL) |
+| Module | `apps/api/src/holds/` (`priority.ts` for the score, `index.ts` for placing and cancelling, `dispatch.ts` for the dispatcher) and database migrations in `supabase/migrations/` (Node.js API, PostgreSQL) |
 | Algorithm | Role-Weighted Priority Queue Dispatcher (indexed priority query) |
-| Defenses | Empty queue returns a `NO_ACTIVE_HOLDS` result in under 1 ms without error. Reject arrival timestamps more than 5,000 ms in the future. An unrecognized role gets the Visitor weight (lowest priority). Use parameterized statements only. |
-| Implementation steps | 1. Migration: create `holds` and the index on `(title, score, seq)`.<br>2. Implement `enqueue`, `dispatch` and `cancel` with the statements of Algorithm 2.<br>3. Implement `CalculateScore` with the role weights.<br>4. Run `dispatch` and the copy status update in one transaction.<br>5. Expose `POST /api/v1/algorithm/holds/dispatch` with RFC 7807 error responses.<br>6. Add a scheduled job that cancels holds unclaimed after the 48-hour window. |
-| Automated tests | Dispatch order equals an in-memory binary heap over the same holds, including cancellations. A Faculty member arriving up to 24 hours after a Student is served first. Equal roles are served first come, first served. With 50 concurrent clients draining 2,000 holds, no hold is served twice. Dispatch takes under 10 ms at 1,000 and 5,000 holds. |
+| Defenses | A Book with no waiting Hold makes the returned Copy available, without error. The arrival time comes from the server clock, never from the client. A Member whose Account Type cannot borrow (Visitor, Alumni) is refused. A Hold is refused while a Copy is available, and a second active Hold on the same Book is refused by a unique index. Row-level security lets a Member read only their own Holds. Use parameterized statements only. |
+| Implementation steps | 1. Migration: create `holds`, the partial index on `(book_id, score, seq)` and the unique index on active Holds.<br>2. Implement placing and cancelling a Hold with the statements of Algorithm 2.<br>3. Implement `holdScore` with the role weights.<br>4. Run the dispatch, the Copy status update and the audit log entry inside the transaction that records the return.<br>5. Expose `POST /holds`, `POST /holds/:id/cancel` and `GET /members/me/holds`. Dispatch has no endpoint of its own: `POST /desk/returns` triggers it. Errors are returned as a code and a safe message.<br>6. Add a scheduled check that expires a ready Hold when its Pickup Window (a stored setting, initially 24 hours) has passed and dispatches the Copy again. |
+| Automated tests | Dispatch order equals an in-memory binary heap over the same holds, including cancellations. A Faculty member arriving up to 24 hours after a UMAK Student is served first. Equal Account Types are served first come, first served. With 50 concurrent clients draining 2,000 holds, no hold is served twice. Dispatch takes under 10 ms at 1,000 and 5,000 holds. A Loan of a set-aside Copy to any other Member is refused. |
 | Definition of done | All tests above pass. Zero duplicate serves and zero deadlocks under 50 concurrent clients. Dispatch latency under 10 ms. Documentation updated. |
 
 ---

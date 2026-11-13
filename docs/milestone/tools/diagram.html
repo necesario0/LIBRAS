@@ -16,10 +16,10 @@
   <div class="tier" style="left:14px; top:14px; width:912px; height:176px; background:#eef0f4; border-color:#8a93a6;">
     <h3>CLIENT PRESENTATION TIER</h3>
     <div style="display:flex; gap:24px;">
-      <div class="box" style="flex:1; border-color:#4a6fa5; background:#f3f7fd;"><b>React Native (TypeScript) Borrower App</b>
-        <ul><li>OPAC fuzzy catalog search, reservations, loan records</li><li>Dynamic rolling barcode ID (TOTP)</li></ul></div>
-      <div class="box" style="flex:1; border-color:#8a63b8; background:#f8f3fd;"><b>React.js (TypeScript) Librarian Portal</b>
-        <ul><li>Inventory cataloging, desk circulation, clearance</li><li>Dashboard metrics and report generation</li></ul></div>
+      <div class="box" style="flex:1; border-color:#4a6fa5; background:#f3f7fd;"><b>React Native (TypeScript) Member App</b>
+        <ul><li>Typo-tolerant catalog search, Holds, Loans</li><li>Digital ID: rotating 1D barcode (TOTP)</li></ul></div>
+      <div class="box" style="flex:1; border-color:#8a63b8; background:#f8f3fd;"><b>React (TypeScript) Librarian Desk Page</b>
+        <ul><li>Confirm a Loan and record a return by scanning</li><li>Phone scanner page paired with the desk page</li></ul></div>
     </div>
   </div>
 
@@ -31,7 +31,7 @@
   <!-- Hosting -->
   <div class="tier" style="left:14px; top:226px; width:912px; height:112px; background:#fdf1e6; border-color:#d9904a;">
     <h3>HOSTING AND INGRESS (RENDER)</h3>
-    <div class="box" style="border-color:#d9904a; text-align:center;">HTTPS termination, continuous deployment from GitHub, JWT validation, CORS, rate limiting (100 req/min/IP) in Express middleware</div>
+    <div class="box" style="border-color:#d9904a; text-align:center;">HTTPS termination, continuous deployment from GitHub; Supabase Auth bearer tokens, CORS allowlist and sign-in rate limiting in Express middleware</div>
   </div>
 
   <div class="line" style="left:470px; top:338px; width:2px; height:30px;"></div>
@@ -40,26 +40,26 @@
   <!-- Application -->
   <div class="tier" style="left:14px; top:368px; width:912px; height:290px; background:#edf7ee; border-color:#5b9d62;">
     <h3>APPLICATION TIER: NODE.JS / EXPRESS / TYPESCRIPT</h3>
-    <div class="box" style="border-color:#5b9d62; margin-bottom:10px;"><b>Core Service</b>Business logic, policy verification, circulation transactions, mailer, REST controllers</div>
+    <div class="box" style="border-color:#5b9d62; margin-bottom:10px;"><b>Core Service</b>Business logic, Loan Policy checks, circulation transactions, audit log, mailer, REST controllers</div>
     <div style="display:flex; gap:24px;">
-      <div class="box" style="flex:1; border-color:#2f7f8f; background:#effafb;"><b>Algorithmic module: SearchEngine</b>
+      <div class="box" style="flex:1; border-color:#2f7f8f; background:#effafb;"><b>Algorithmic module: Catalog search</b>
         <ul><li>Bounded Levenshtein Trie Search</li><li>Flat typed-array trie (about 4.4 MB at 50,000 tokens)</li><li>Atomic rebuild and swap when the catalog changes</li></ul></div>
-      <div class="box" style="flex:1; border-color:#2f7f8f; background:#effafb;"><b>Algorithmic module: HoldQueue</b>
-        <ul><li>Role-Weighted Priority Queue Dispatcher</li><li>enqueue, dispatch, cancel as SQL statements</li><li>Row locking (SKIP LOCKED), no Redis mutex</li></ul></div>
+      <div class="box" style="flex:1; border-color:#2f7f8f; background:#effafb;"><b>Algorithmic module: Hold queue</b>
+        <ul><li>Role-Weighted Priority Queue Dispatcher</li><li>Place, dispatch on return, cancel as SQL statements</li><li>Row locking (SKIP LOCKED), no Redis mutex</li></ul></div>
     </div>
   </div>
 
   <div class="line" style="left:230px; top:658px; width:2px; height:50px;"></div>
   <div class="line" style="left:700px; top:658px; width:2px; height:50px;"></div>
-  <div class="arrow" style="left:242px; top:670px;">Lexicon snapshot (SQL read)</div>
+  <div class="arrow" style="left:242px; top:670px;">Catalog snapshot (SQL read)</div>
   <div class="arrow" style="left:712px; top:670px;">SQL: ordered index, row lock</div>
 
   <!-- Persistence -->
   <div class="tier" style="left:14px; top:708px; width:912px; height:166px; background:#eaf1fb; border-color:#4a6fa5;">
-    <h3>PERSISTENCE DATA TIER: POSTGRESQL 16</h3>
+    <h3>PERSISTENCE DATA TIER: POSTGRESQL (SUPABASE), ROW-LEVEL SECURITY</h3>
     <div style="display:flex; gap:24px;">
-      <div class="box" style="flex:1; border-color:#4a6fa5;"><b>Catalog and accounts</b>Bibliographic books, physical accession copies, patron accounts and roles, loan history, fines</div>
-      <div class="box" style="flex:1; border-color:#4a6fa5;"><b>Hold queue</b>Table <code>holds</code> with index on (title, score, seq): O(log K) enqueue, dispatch and cancel</div>
+      <div class="box" style="flex:1; border-color:#4a6fa5;"><b>Catalog and accounts</b>Books, Copies with accession numbers, Members and Account Types, Loans, Loan Policy, audit log</div>
+      <div class="box" style="flex:1; border-color:#4a6fa5;"><b>Hold queue</b>Table <code>holds</code> with index on (book, score, seq) over waiting Holds: O(log K) place, dispatch and cancel</div>
     </div>
   </div>
 </body></html>
