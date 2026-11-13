@@ -21,3 +21,7 @@ UI designs live in Figma: file `LIBRAS-STICKER-SHEET`, key `EOIAoD0EVDSadk1fPbJl
 - Only a few Figma variables exist (Montserrat type styles, `#000000`). Colors, spacing and radii come back as raw values, so reuse tokens already in the code rather than copying raw values per screen.
 - Do not use frames `iPhone 17 - 392` to `396` (non-phone sizes, excluded by the project owner). The inventory lists their IDs.
 - Account types used across the design: UMAK Student, Faculty, NTP / Employee, Visitor, Alumni.
+
+## Writing
+
+Before finishing docs, ADRs, `GLOSSARY.md`, READMEs, PR bodies and commit messages, run the `unslop` skill on the prose. Do not run it on code, tables or algorithm names. Where `unslop` bans a hyphen used as a dash, still use a plain "-": the global rule against em dashes wins.
