@@ -93,6 +93,8 @@ The hosted system is three services, all on free tiers (ADR 0003):
 | `npm run setup:hosted` | The guided setup wizard (`scripts/setup-hosted.sh`, launched by `scripts/run-setup-hosted.mjs` so Windows uses Git Bash, not WSL). Opens each dashboard, asks for each value, writes `.env.hosted` and the GitHub secrets, applies the migrations, creates the Librarian, checks the API and sends a test email |
 | `npm run db:migrate:hosted` | Applies `supabase/migrations` to the hosted database. It first lists the pending migrations and asks you to type `apply`. `-- --dry-run` only lists them. `-- --yes` skips the question. Safe to run again |
 | `npm run seed:hosted` | Creates (or resets) the Librarian from `SEED_LIBRARIAN_EMAIL` and `SEED_LIBRARIAN_PASSWORD` in `.env.hosted`. Later seed steps (catalog, Loan Policy) run here too |
+| `npm run labels:hosted -- --title "text" [--books 1] [--copies 3]` | Writes `copy-labels.html`: printable Code 128 labels (85 x 36 mm, two per row on A4) for available Copies of a Book whose title contains the text, or for given barcodes (`npm run labels:hosted -- 3100078314 3100078315`). Open in Chrome, print at 100% scale. Reads the database only. `npm run labels` does the same on the local database |
+| `npm run verify:hosted -- member | search | dispatch | cleanup` | The Tier 1 measurements on the hosted system (`docs/hosted-verification.md`): search at 50 users, Hold dispatch on the hosted database. `member` makes the measurement Visitor and saves its login in `.env.hosted`; `dispatch` makes and then deletes test Members and sends Hold-ready mail only to a +alias of `SEED_LIBRARIAN_EMAIL` |
 | `npm run check:hosted` | Asks the hosted API for `/health` until it answers (up to five minutes, to cover Render waking up) |
 | `npm run email:test -- you@example.com` | Sends one real email through Brevo |
 | `npm run build:apk:hosted -w @libras/mobile` | Builds the release APK against the hosted API (about 25 minutes) |
@@ -118,7 +120,7 @@ The mobile app is not a browser, so it needs no CORS. The Librarian web pages ar
 
 ### Hosting the desk page and the phone scanner page (HTTPS)
 
-`apps/web` builds to two pages: the desk page at `/` and the phone scanner page at `/scan.html` (two HTML files, so no rewrite rule is needed on a static host). The phone camera works only on a secure page (HTTPS, or the phone's own `localhost`), and a Render static site is served over HTTPS with a certificate Render manages, so the scanner page is reachable that way with no extra work. The scanner page also needs the API over HTTPS, which the Render web service already is. Do this once, after the API is deployed (it is not part of `render.yaml`, so `npm run setup:hosted` is unchanged):
+`apps/web` builds to two pages: the desk page at `/` and the phone scanner page at `/scan.html` (two HTML files, so no rewrite rule is needed on a static host). The phone camera works only on a secure page (HTTPS, or the phone's own `localhost`), and a Render static site is served over HTTPS with a certificate Render manages, so the scanner page is reachable that way with no extra work. The scanner page also needs the API over HTTPS, which the Render web service already is. The site is declared in `render.yaml` (service `libras-desk`), so a Blueprint sync creates it; `npm run setup:hosted` does not. To make it by hand instead (or to match what the Blueprint declares), do this once, after the API is deployed:
 
 1. Render dashboard > **New** > **Static Site**. Repository `necesario0/LIBRAS`, branch `main`, name `libras-desk` (any name), region Singapore.
 2. Build command `npm ci && npm run build -w @libras/web`. Publish directory `apps/web/dist`.
@@ -135,6 +137,15 @@ To try the phone against a local machine, the camera needs HTTPS or the phone's 
 Failed sign-ins are limited per client address (5 failures in 15 minutes, then a block with a `Retry-After` header, for both Members and Librarians). On Render the API sits behind Render's load balancer, so the connection's address is the proxy's and the real client is in the `X-Forwarded-For` header. `TRUST_PROXY` is the number of proxies Express trusts: it takes the client address that many entries from the end of the header, so anything a client prepends is ignored. `render.yaml` sets `1`. Never set it higher than the real number of proxies, because then a client can pick its own address and the limit means nothing. Locally it is unset (0) and the header is ignored.
 
 Not verified on a live service: if Render puts another proxy (a CDN) in front of its load balancer, `1` yields that proxy's address for everyone, so one Member's failures would block all of them. After the first deploy, check the address the API sees (for example log `req.ip` for a request from your phone and from another network) and adjust `TRUST_PROXY`. The limit is kept in the API's memory, which is right for the one free instance; a restart forgets it. Supabase Auth also has its own limit per address (30 sign-ins per 5 minutes by default) and the API is the only address it sees, so that limit is shared by every Member of the hosted app; raise it in the Supabase dashboard (Authentication, Rate Limits) if a demo needs many sign-ins in a short time.
+
+### Auto-deploy: check that a merge reaches Render
+
+`render.yaml` says `autoDeployTrigger: commit` for both services, so a push to `main` should build and deploy them. That did not happen after the first merges (only manual deploys existed), so after every merge to `main` check, rather than assume:
+
+1. Render dashboard > the service > **Events**: a deploy for the new commit should appear within a minute and say Live. `GET <api>/health` does not show the version, so test a route that the new code added (for example an authenticated route answers `401` where old code answers `404`).
+2. If nothing appears: service > **Settings** > **Build & Deploy** > **Auto-Deploy** must be **On Commit**, and the **Branch** must be `main`. A service created outside the Blueprint, or edited in the dashboard, can differ from `render.yaml`.
+3. If the setting is right: GitHub > repository **Settings** > **Integrations** > Applications > **Render** > Configure, and check that the app has access to `necesario0/LIBRAS` (a repository removed from its access list stops all webhooks). Account Settings > **GitHub** in Render shows the same connection.
+4. Until it is fixed, use **Manual Deploy** > Deploy latest commit on each service.
 
 ### What a free Render service does
 

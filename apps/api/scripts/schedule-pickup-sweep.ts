@@ -19,7 +19,7 @@ import { fileURLToPath } from "node:url";
 import { createDatabase } from "../src/db.ts";
 import { consoleLogger } from "../src/logger.ts";
 import { describeTarget, parseHostedDatabaseUrl } from "./hosted-database.ts";
-import { PICKUP_SWEEP_JOB, PICKUP_SWEEP_PATH, PICKUP_SWEEP_SCHEDULE, schedulePickupSweep, unschedulePickupSweep } from "./pickup-sweep-schedule.ts";
+import { PICKUP_SWEEP_JOB, PICKUP_SWEEP_PATH, PICKUP_SWEEP_SCHEDULE, checkSweepSecret, schedulePickupSweep, unschedulePickupSweep } from "./pickup-sweep-schedule.ts";
 
 const args = process.argv.slice(2);
 const remove = args.includes("--remove");
@@ -68,29 +68,10 @@ async function main(): Promise<number> {
 
     await schedulePickupSweep(db, { apiUrl, secret });
     console.log(`\nScheduled ${PICKUP_SWEEP_JOB} (${PICKUP_SWEEP_SCHEDULE}) to call ${apiUrl}${PICKUP_SWEEP_PATH}.`);
-    console.log("\nOne more thing, in the Render dashboard: open the libras-api service, Environment tab, and add");
-    console.log("SWEEP_SECRET with the value saved in .env.hosted. Render restarts the service when you save.");
-
     console.log("\nAsking the API whether it accepts the secret (a sleeping service takes about a minute to wake)...");
-    const response = await fetch(`${apiUrl}${PICKUP_SWEEP_PATH}`, {
-      method: "POST",
-      headers: { authorization: `Bearer ${secret}` },
-      signal: AbortSignal.timeout(120_000),
-    }).catch(() => undefined);
-    if (response?.ok) {
-      console.log(`The API answered ${response.status}: the schedule works. ${JSON.stringify(await response.json().catch(() => ({})))}`);
-      return 0;
-    }
-    const hint =
-      response === undefined
-        ? "The API did not answer. Check the service in the Render dashboard, then run this command again."
-        : response.status === 404
-          ? "The API has no sweep endpoint yet: SWEEP_SECRET is not set on the Render service, or the service runs an older version."
-          : response.status === 401
-            ? "The API refused the secret: the SWEEP_SECRET on the Render service differs from the one in .env.hosted."
-            : `The API answered ${response.status}.`;
-    console.error(`${hint} The schedule is installed; run \`npm run check:hosted\` once the service is up, and this command again to check.`);
-    return 1;
+    const check = await checkSweepSecret({ apiUrl, secret });
+    (check.accepted ? console.log : console.error)(check.message);
+    return check.accepted ? 0 : 1;
   } finally {
     await db.end();
   }
