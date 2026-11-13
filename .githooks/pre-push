@@ -18,11 +18,12 @@ zero=0000000000000000000000000000000000000000
 revs=""
 while read -r _local_ref local_sha _remote_ref _remote_sha; do
   [ "$local_sha" = "$zero" ] && continue # a branch deletion pushes no commits
-  revs="$revs $local_sha"
+  revs="${revs:+$revs }$local_sha"
 done
 if [ -z "$revs" ]; then
   exit 0
 fi
+# gitleaks splits this on single spaces, so it must have no leading or doubled space.
 log_opts="$revs --not --remotes"
 
 echo "pre-push: secret scan (gitleaks)"
