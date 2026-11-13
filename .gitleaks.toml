@@ -3,3 +3,13 @@
 # value that is public by design, and say why.
 [extend]
 useDefault = true
+
+# Fixed test-only sweep secrets used against the local database in
+# apps/api/test/pickup-sweep-schedule.test.ts and pickup-expiry.test.ts.
+# They are public by design and never configured on a hosted service.
+[allowlist]
+description = "Test-only Pickup Window sweep secrets"
+regexes = [
+  '''^schedule-test-secret-0123456789abcdef01234567$''',
+  '''^test-sweep-secret-0123456789abcdef0123456789$''',
+]

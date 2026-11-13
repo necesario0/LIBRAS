@@ -35,7 +35,7 @@ describe("The database schedule of the Pickup Window sweep", () => {
     assert.equal(job?.schedule, "*/5 * * * *");
     assert.match(job?.command ?? "", /net\.http_post/);
     assert.ok(!(job?.command ?? "").includes(SECRET), "the secret is not in the job's text");
-    assert.ok(!(job?.command ?? "").includes("libras-api.example.com"), "the address is not in the job's text");
+    assert.doesNotMatch(job?.command ?? "", /libras-api/, "the address is not in the job's text");
     assert.deepEqual((await secrets()).sort(), [`${JOB}_secret`, `${JOB}_url`]);
     const stored = await db.query<{ name: string; decrypted_secret: string }>(
       "select name, decrypted_secret from vault.decrypted_secrets where name like $1 order by name",
