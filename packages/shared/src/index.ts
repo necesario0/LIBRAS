@@ -2,6 +2,7 @@ export type { ApiErrorBody, HealthResponse } from "./api.ts";
 export { CODE128_QUIET_ZONE_MODULES, encodeCode128C } from "./barcode/code128.ts";
 export type { Code128Symbol } from "./barcode/code128.ts";
 export {
+  DESK_SESSION_MINUTES,
   DIGITAL_ID_LENGTH,
   DIGITAL_ID_MESSAGES,
   DIGITAL_ID_NUMBER_DIGITS,
@@ -14,6 +15,7 @@ export {
 } from "./digital-id.ts";
 export type {
   DeskMember,
+  DeskSession,
   DigitalIdResponse,
   IdentifyMemberRequest,
   IdentifyMemberResponse,
@@ -130,6 +132,8 @@ export {
   RETURN_MESSAGES,
   confirmLoanRequestSchema,
   copyCodeSchema,
+  deskSessionTokenSchema,
+  endDeskSessionRequestSchema,
   formatLibraryDate,
   formatLibraryDateTime,
   formatLibraryDay,
@@ -143,6 +147,7 @@ export type {
   ConfirmLoanRequest,
   ConfirmLoanResponse,
   DeskLoan,
+  EndDeskSessionRequest,
   Loan,
   MyLoansResponse,
   RecordReturnRequest,

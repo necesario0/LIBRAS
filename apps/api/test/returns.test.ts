@@ -17,7 +17,7 @@ describe("Recording a return at the desk", () => {
 
   /** The Librarian scans the Member's Digital ID, then the Copy: the Loan the return will close. */
   const lend = async (member: TestMember, copy: string): Promise<ConfirmLoanResponse> => {
-    const response = await h.send("POST", "/desk/loans", lita.accessToken, { digitalId: await h.digitalIdOf(member), copy });
+    const response = await h.lendAtDesk(lita, member, copy);
     assert.equal(response.status, 201);
     return (await response.json()) as ConfirmLoanResponse;
   };
@@ -105,7 +105,7 @@ describe("Recording a return at the desk", () => {
     const book = await h.addBook("Limit Reset", ["available", "available", "available", "available"]);
     const [one, two, three, four] = book.copies as [TestCopy, TestCopy, TestCopy, TestCopy];
     for (const copy of [one, two, three]) await lend(member, copy.barcode);
-    const refused = await h.send("POST", "/desk/loans", lita.accessToken, { digitalId: await h.digitalIdOf(member), copy: four.barcode });
+    const refused = await h.lendAtDesk(lita, member, four.barcode);
     assert.equal((await refusal(refused)).code, "loan_limit_reached");
 
     assert.equal((await giveBack(two.barcode)).status, 200);
@@ -227,7 +227,7 @@ describe("Recording returns at the same moment", () => {
   let omar: TestLibrarian;
 
   const lend = async (member: TestMember, copy: string): Promise<number> =>
-    (await h.send("POST", "/desk/loans", lita.accessToken, { digitalId: await h.digitalIdOf(member), copy })).status;
+    (await h.lendAtDesk(lita, member, copy)).status;
   const giveBack = (librarian: TestLibrarian, copy: string) => h.send("POST", "/desk/returns", librarian.accessToken, { copy });
   const loanCounts = async (copyId: string) =>
     (
@@ -292,17 +292,19 @@ describe("Recording returns at the same moment", () => {
     const members = await Promise.all([createTestMember(h.api()), createTestMember(h.api())]);
     const book = await h.addBook("Churn", Array<CopyStatus>(6).fill("available"));
     const copies = book.copies;
-    const codes = await Promise.all(members.map((member) => h.digitalIdOf(member)));
     // Each Member has two Copies out; the other two are on the shelf.
     for (const [i, member] of members.entries()) {
       for (const copy of copies.slice(i * 2, i * 2 + 2)) assert.equal(await lend(member, copy.barcode), 201);
     }
+    // The Members are at the other desk now, with the next code on their phones.
+    h.api().clock.advance({ minutes: 1 });
+    const sessions = await Promise.all(members.map((member) => h.deskSessionFor(member, omar)));
     const before = (await audit.newest())?.seq ?? 0;
 
     // Returns of the four Copies that are out, and Loans of every Copy for either Member, all at once.
     const requests = [
       ...copies.slice(0, 4).map((copy) => giveBack(lita, copy.barcode)),
-      ...copies.map((copy, i) => h.send("POST", "/desk/loans", omar.accessToken, { digitalId: codes[i % 2], copy: copy.accessionNumber })),
+      ...copies.map((copy, i) => h.lendWith(omar, sessions[i % 2] as string, copy.accessionNumber)),
       ...copies.slice(0, 4).map((copy) => giveBack(omar, copy.accessionNumber)),
     ];
     const responses = await Promise.all(requests);

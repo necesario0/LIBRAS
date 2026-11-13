@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { Router } from "express";
 import type { AppDeps } from "../app.ts";
+import { endDeskSession, startDeskSession } from "../desk/sessions.ts";
 import { currentDigitalId } from "../digital-id/index.ts";
 import { expireDueHolds } from "../holds/expiry.ts";
 import { confirmLoan, recordReturn } from "../loans/index.ts";
@@ -14,7 +15,7 @@ const FIXTURE_LIBRARIAN = { email: "e2e-loan-desk@libras.test", fullName: "Lita 
 /**
  * A route that lets an end-to-end test on another process have a Librarian
  * confirm a Loan for a Member, the way the desk page does: it reads the code on
- * the Member's phone and runs the real confirmation with it and a Copy of the
+ * the Member's phone and runs the real confirmation (a desk session, then the Copy) with it and a Copy of the
  * Book (the Copy set aside for the Member's ready Hold when there is one). `daysAgo` runs the same confirmation with the clock set that many days
  * back, which is how a test gets a Loan that is overdue today. It exists only
  * on the end-to-end server (`e2e-server.ts`): the real server never imports this module.
@@ -76,9 +77,16 @@ export function loanFixtureRoutes(router: Router, deps: AppDeps): void {
     }
 
     const then = { ...deps, clock: { now: () => new Date(deps.clock.now().getTime() - daysAgo * DAY_MS) } };
+    // As at the desk: the Digital ID is scanned (a desk session starts), then the Copy, then the Librarian is done.
+    const librarian = { userId: await librarianId(), email: FIXTURE_LIBRARIAN.email };
     const { code } = await currentDigitalId(then, memberId);
-    const { loan } = await confirmLoan(then, { userId: await librarianId(), email: FIXTURE_LIBRARIAN.email }, { digitalId: code, copy: barcode });
-    res.status(201).json({ loan });
+    const { deskSession } = await startDeskSession(then, librarian.userId, code);
+    try {
+      const { loan } = await confirmLoan(then, librarian, { deskSession: deskSession.token, copy: barcode });
+      res.status(201).json({ loan });
+    } finally {
+      await endDeskSession(then, librarian.userId, deskSession.token);
+    }
   });
 
   router.post("/e2e/holds/lapse", async (req, res) => {

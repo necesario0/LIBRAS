@@ -6,8 +6,7 @@ import { createAuditLog } from "../audit/index.ts";
 import type { Identity } from "../auth/auth-provider.ts";
 import { withIdentity } from "../auth/identity.ts";
 import { withTransaction } from "../db.ts";
-import { verifyDigitalId } from "../digital-id/index.ts";
-import type { VerifiedDigitalId } from "../digital-id/index.ts";
+import { useDeskSession } from "../desk/sessions.ts";
 import { AppError } from "../errors.ts";
 import { announceDispatch, dispatchCopy } from "../holds/dispatch.ts";
 import type { HoldDispatch } from "../holds/dispatch.ts";
@@ -50,7 +49,7 @@ async function lockBorrower(tx: Tx, memberId: string): Promise<BorrowerRow> {
         for no key update of m`,
     [memberId],
   );
-  // A verified Digital ID always names an existing Member, and every Account Type has a policy.
+  // A desk session always names an existing Member, and every Account Type has a policy.
   if (!rows[0]) throw new Error(`No Member or Loan Policy for ${memberId}`);
   return rows[0];
 }
@@ -78,27 +77,6 @@ async function lockCopy(tx: Tx, code: string): Promise<CopyRow | undefined> {
     [code],
   );
   return rows[0];
-}
-
-/**
- * Marks the shown Digital ID code as used at this Librarian's desk (ADR 0004:
- * a Member and a window name one shown code). The Librarian who first confirms
- * a Loan with a code may confirm more with it while it is still accepted; the
- * same code at any other desk is refused. Nothing is kept when the Loan is
- * refused, because the transaction rolls back.
- */
-async function useDigitalId(tx: Tx, verified: VerifiedDigitalId, librarianId: string, usedAt: Date): Promise<void> {
-  await tx.query(
-    `insert into public.digital_id_uses (member_id, code_window, librarian_id, first_used_at)
-     values ($1, $2, $3, $4)
-     on conflict (member_id, code_window) do nothing`,
-    [verified.memberId, verified.window, librarianId, usedAt],
-  );
-  const { rows } = await tx.query<{ librarian_id: string }>(
-    "select librarian_id from public.digital_id_uses where member_id = $1 and code_window = $2",
-    [verified.memberId, verified.window],
-  );
-  if (rows[0]?.librarian_id !== librarianId) throw new AppError(409, "digital_id_used", LOAN_MESSAGES.digitalIdUsed);
 }
 
 /**
@@ -157,9 +135,11 @@ export interface ConfirmedLoan {
 }
 
 /**
- * A Librarian confirms a Loan: the Member's Digital ID as scanned, then the
- * Copy. This is the only way a Loan comes to exist. It is refused, with a
- * reason the desk page shows, when the Digital ID is not accepted, when no Copy
+ * A Librarian confirms a Loan: the Copy scanned for the Member of their desk
+ * session (ADR 0008: the session the scan of the Member's Digital ID started).
+ * This is the only way a Loan comes to exist. It is refused, with a reason the
+ * desk page shows, when the desk session has ended (`desk_session_ended`: scan
+ * the Digital ID again), when no Copy
  * has that barcode or accession number, when the Member's Account Type cannot
  * borrow, when the Member is at their loan limit, and when the Copy is already
  * on Loan or set aside for another Member's Hold. A Copy set aside for this
@@ -173,36 +153,32 @@ export interface ConfirmedLoan {
 export async function confirmLoan(
   deps: AppDeps,
   librarian: Identity,
-  request: { digitalId: string; copy: string },
+  request: { deskSession: string; copy: string },
 ): Promise<ConfirmedLoan> {
+  // Every scan for the Member renews the session, whether or not it lends.
+  const memberId = await useDeskSession(deps, librarian.userId, request.deskSession);
   for (let attempt = 1; ; attempt += 1) {
     try {
-      return await confirmOnce(deps, librarian, request);
+      return await confirmOnce(deps, librarian, memberId, request.copy);
     } catch (error) {
       if (!(error instanceof PickupWindowPassed)) throw error;
       if (attempt >= CONFIRM_ATTEMPTS) throw new AppError(409, "loan_conflict", LOAN_MESSAGES.changed);
-      // Nothing of the failed attempt was kept, not even the use of the Digital ID code.
+      // Nothing of the failed attempt was kept.
       await expireHold(deps, error.holdId);
     }
   }
 }
 
 /** One attempt at `confirmLoan`: one transaction. */
-async function confirmOnce(
-  deps: AppDeps,
-  librarian: Identity,
-  request: { digitalId: string; copy: string },
-): Promise<ConfirmedLoan> {
-  const verified = await verifyDigitalId(deps, request.digitalId);
+async function confirmOnce(deps: AppDeps, librarian: Identity, memberId: string, code: string): Promise<ConfirmedLoan> {
   const checkedOutAt = deps.clock.now();
   const audit = createAuditLog(deps);
 
   try {
     return await withTransaction(deps.db, async (tx) => {
-      const borrower = await lockBorrower(tx, verified.memberId);
-      await useDigitalId(tx, verified, librarian.userId, checkedOutAt);
+      const borrower = await lockBorrower(tx, memberId);
 
-      const copy = await lockCopy(tx, request.copy);
+      const copy = await lockCopy(tx, code);
       if (!copy) throw new AppError(404, "copy_not_found", LOAN_MESSAGES.copyNotFound);
       if (borrower.loan_limit === 0 || borrower.loan_period_days === null) {
         throw new AppError(403, "cannot_borrow", LOAN_MESSAGES.cannotBorrow);

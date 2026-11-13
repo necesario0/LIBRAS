@@ -341,8 +341,13 @@ async function dispatchCommand(db: Database): Promise<void> {
     if (result.status !== 200) throw new Error(`Digital ID of ${key}: ${result.status}`);
     return result.body.code;
   };
+  /** The Librarian scans the Member's Digital ID (a desk session starts), then the Copy, and is done. Only the Copy's scan is timed. */
   const lend = async (key: string) => {
-    const result = await call<{ error?: { code: string } }>("POST", "/desk/loans", librarianToken, { digitalId: await digitalId(key), copy: TEST_BARCODE });
+    const identified = await call<{ deskSession: { token: string } }>("POST", "/desk/members/identify", librarianToken, { code: await digitalId(key) });
+    if (identified.status !== 200) throw new Error(`Identifying ${key} failed: ${identified.status}`);
+    const deskSession = identified.body.deskSession.token;
+    const result = await call<{ error?: { code: string } }>("POST", "/desk/loans", librarianToken, { deskSession, copy: TEST_BARCODE });
+    await call("POST", "/desk/sessions/end", librarianToken, { deskSession });
     if (result.status !== 201) throw new Error(`Lending to ${key} failed: ${result.status} ${result.body.error?.code}`);
     return result.ms;
   };

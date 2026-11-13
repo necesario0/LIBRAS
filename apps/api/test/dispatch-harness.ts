@@ -30,8 +30,7 @@ export function dispatchHarness() {
     if (!state.librarian) throw new Error("No Librarian is signed in");
     return state.librarian;
   };
-  const lendRequest = async (member: TestMember, copy: string, librarian = lita()) =>
-    h.send("POST", "/desk/loans", librarian.accessToken, { digitalId: await h.digitalIdOf(member), copy });
+  const lendRequest = (member: TestMember, copy: string, librarian = lita()) => h.lendAtDesk(librarian, member, copy);
   const lend = async (member: TestMember, copy: string) => {
     const response = await lendRequest(member, copy);
     assert.equal(response.status, 201, await response.clone().text());

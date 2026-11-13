@@ -370,6 +370,7 @@ describe("The phone as the scanner", () => {
         ["GET", "/staff/me"],
         ["POST", "/desk/members/identify"],
         ["POST", "/desk/loans"],
+        ["POST", "/desk/sessions/end"],
         ["POST", "/desk/returns"],
         ["GET", "/desk/scanner/events"],
         ["POST", "/desk/scanner/unpair"],

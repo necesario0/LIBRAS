@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { digitalIdCodeSchema } from "./digital-id.ts";
 import type { DeskMember } from "./digital-id.ts";
 import { SCAN_INPUT_PATTERN } from "./scan.ts";
 
@@ -101,9 +100,16 @@ export interface MyLoansResponse {
 /** A Copy as the desk names it: its barcode or its accession number, already through the scan whitelist. */
 export const copyCodeSchema = z.string().regex(SCAN_INPUT_PATTERN);
 
-/** The body of `POST /desk/loans`: the Member's Digital ID as scanned, and the Copy's barcode or accession number. */
-export const confirmLoanRequestSchema = z.object({ digitalId: digitalIdCodeSchema, copy: copyCodeSchema }).strict();
+/** A desk session's token, as `POST /desk/members/identify` gave it: 32 random bytes, base64url. */
+export const deskSessionTokenSchema = z.string().regex(/^[A-Za-z0-9_-]{43}$/);
+
+/** The body of `POST /desk/loans`: the desk session of the Member at the desk, and the Copy's barcode or accession number. */
+export const confirmLoanRequestSchema = z.object({ deskSession: deskSessionTokenSchema, copy: copyCodeSchema }).strict();
 export type ConfirmLoanRequest = z.infer<typeof confirmLoanRequestSchema>;
+
+/** The body of `POST /desk/sessions/end`: "Done with this Member". */
+export const endDeskSessionRequestSchema = z.object({ deskSession: deskSessionTokenSchema }).strict();
+export type EndDeskSessionRequest = z.infer<typeof endDeskSessionRequestSchema>;
 
 /** What the desk page shows about a Loan it has just confirmed. */
 export interface DeskLoan {
@@ -124,14 +130,16 @@ export interface ConfirmLoanResponse {
 export const LOAN_MESSAGES = {
   invalidRequest: "Scan the Member's Digital ID, then the Copy's barcode. If a barcode cannot be read, type the accession number.",
   digitalIdUsed:
-    "This Digital ID was already used at another desk. Ask the Member to wait for the next code on their screen and scan that one.",
+    "This Digital ID was already scanned at another desk. Ask the Member to wait for the next code on their screen and scan that one.",
+  deskSessionEnded:
+    "This Member's visit to the desk has timed out or ended, so no Loan was recorded. Ask the Member to show their Digital ID again and scan it, then scan the Copy.",
   copyNotFound: "No Copy has this barcode or accession number. Scan it again, or type the accession number printed on the Copy.",
   cannotBorrow: "This Member's Account Type cannot borrow, so no Loan was recorded. They may use the Copy inside the library.",
   limitReached: "This Member is at their loan limit, so no Loan was recorded. A Copy must be returned before they borrow another.",
   copyOnLoan:
     "This Copy is already on Loan, so no Loan was recorded. If it has come back, choose Done with this Member and scan it again to record its return.",
   copySetAside: "This Copy is set aside for another Member's Hold, so no Loan was recorded. Put it back on the hold shelf.",
-  changed: "This Copy's Hold changed while the Loan was being recorded, so no Loan was recorded. Scan the Member's Digital ID and the Copy again.",
+  changed: "This Copy's Hold changed while the Loan was being recorded, so no Loan was recorded. Scan the Copy again.",
 } as const;
 
 /** The body of `POST /desk/returns`: the Copy's barcode or accession number, as scanned or typed. */
