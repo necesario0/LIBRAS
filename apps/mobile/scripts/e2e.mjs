@@ -10,6 +10,7 @@ import { spawn, spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { apkAbis } from "./apk-abis.mjs";
 import { androidEnv } from "./env.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -38,6 +39,28 @@ function findDevice() {
   return null;
 }
 
+/** The AVDs the Android emulator knows about. */
+function listAvds() {
+  return (sh("emulator", ["-list-avds"]).stdout ?? "")
+    .split(NEWLINE)
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith("INFO") && !line.includes(" "));
+}
+
+/** Fails when the APK has no native code the device can run, which would only show up as a crash on launch. */
+function checkAbis() {
+  const apkList = apkAbis(apk);
+  if (apkList === null || apkList.length === 0) return;
+  const deviceList = (adb("shell", "getprop", "ro.product.cpu.abilist").stdout ?? "").trim().split(",").filter(Boolean);
+  if (deviceList.length === 0) return;
+  if (!deviceList.some((abi) => apkList.includes(abi))) {
+    throw new Error(
+      `${apk} has native code for ${apkList.join(", ")}, but device ${serial} runs ${deviceList.join(", ")}. ` +
+        `Rebuild with LIBRAS_ABIS=${deviceList[0]} npm run build:apk -w @libras/mobile, or use another device.`,
+    );
+  }
+}
+
 async function waitFor(label, check, timeoutMs) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
@@ -64,15 +87,28 @@ async function apiState() {
 const children = [];
 let startedEmulator = false;
 function cleanup() {
+  // Shut a booted emulator down cleanly first. One that never came online has
+  // no serial, so the process kill below is what stops it from lingering.
+  if (startedEmulator && serial) adb("emu", "kill");
   for (const child of children) {
     if (isWindows) spawnSync("taskkill", ["/F", "/T", "/PID", String(child.pid)]);
     else child.kill();
   }
-  if (startedEmulator && serial) adb("emu", "kill");
 }
 
 async function main() {
   if (!existsSync(apk)) throw new Error(`${apk} not found. Run npm run build:apk -w @libras/mobile first.`);
+
+  serial ??= findDevice();
+  if (!serial) {
+    const avds = listAvds();
+    if (!avds.includes(avd)) {
+      throw new Error(
+        `No AVD named ${avd}. The AVDs on this machine are: ${avds.join(", ") || "none"}. ` +
+          "Set LIBRAS_AVD to one of them, or leave it unset for Medium_Phone.",
+      );
+    }
+  }
 
   const state = await apiState();
   if (state === "other") {
@@ -103,10 +139,12 @@ async function main() {
       stdio: "ignore",
     });
     emulator.on("error", (error) => console.error(error));
+    children.push(emulator);
     await waitFor("the emulator to connect", () => (serial = findDevice()) !== null, 420_000);
   }
   console.log(`Using device ${serial}`);
   await waitFor("Android to finish booting", () => adb("shell", "getprop", "sys.boot_completed").stdout?.trim() === "1", 420_000);
+  checkAbis();
 
   // A sleeping screen hides the app from Maestro: keep it awake and unlocked.
   adb("shell", "svc", "power", "stayon", "true");

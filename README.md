@@ -58,9 +58,15 @@ npm run test:api      # only the API tests
 npm run test:benchmarks
 npm run test:e2e      # the desk page in Chrome against the real API (needs Chrome installed)
 npm run typecheck
-npm run lint
+npm run lint          # ESLint, Stylelint and scripts/check-glossary.mjs
 npm run check         # typecheck, lint and tests together, the same as CI
 ```
+
+Lint also enforces three project rules:
+
+- Screens take colours, font sizes and radii from the theme tokens (`apps/mobile/src/theme/tokens.ts`, `apps/web/src/styles/tokens.css`), never raw values.
+- API code takes the time from the injected clock (`deps.clock.now()`), never `new Date()`, `Date.now()` or SQL `now()`.
+- Code uses the `GLOSSARY.md` terms, not the ones it lists under _Avoid_.
 
 Tests use Node's built-in test runner. In an API test, `startTestApi()` from `apps/api/src/testing` starts the API on a free port with a clock the test controls and an email sender that captures messages instead of sending them. See [`apps/api/README.md`](apps/api/README.md).
 
@@ -68,7 +74,9 @@ Tests use Node's built-in test runner. In an API test, `startTestApi()` from `ap
 
 `.github/workflows/ci.yml` runs on every pull request and on pushes to `main` and `spec-*` branches: typecheck, lint, tests against a local Supabase PostgreSQL, secret scanning with gitleaks over the full history, and static code scanning with CodeQL.
 
-To run the secret scan locally:
+`npm install` also sets `core.hooksPath` to `.githooks`. Its pre-push hook runs the typecheck, the lint and a gitleaks scan of the commits being pushed, so most CI failures show up before the push. It runs gitleaks itself if it is installed, otherwise through Docker. Without either, the push is refused. The tests and CodeQL run only in CI.
+
+To run the full secret scan locally:
 
 ```bash
 docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1 git /repo --redact --no-banner
