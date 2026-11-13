@@ -11,7 +11,7 @@ import type { z } from "zod";
 import type { AppDeps } from "../app.ts";
 import { createAuditLog, recordingSignInFailures } from "../audit/index.ts";
 import { memberOf, requireMember } from "../auth/guards.ts";
-import type { SignInLimiter } from "../auth/sign-in-limit.ts";
+import type { AttemptLimiter } from "../auth/attempt-limit.ts";
 import { AppError } from "../errors.ts";
 import { signInMember } from "../members/sign-in.ts";
 import { resendSignUpCode, startSignUp, verifySignUp } from "../members/sign-up.ts";
@@ -33,7 +33,7 @@ function signUpRefusal(error: z.ZodError): AppError {
 }
 
 /** Sign-up, sign-in and the Member's own profile. */
-export function membersRouter(deps: AppDeps, limiter: SignInLimiter): Router {
+export function membersRouter(deps: AppDeps, limiter: AttemptLimiter): Router {
   const router = Router();
   const audit = createAuditLog(deps);
 

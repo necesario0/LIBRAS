@@ -1,8 +1,8 @@
 import express from "express";
 import type { Express, Router } from "express";
 import type { AccountAdmin, AuthProvider } from "./auth/auth-provider.ts";
-import { SignInLimiter } from "./auth/sign-in-limit.ts";
-import type { SignInLimitOptions } from "./auth/sign-in-limit.ts";
+import { AttemptLimiter } from "./auth/attempt-limit.ts";
+import type { AttemptLimitOptions } from "./auth/attempt-limit.ts";
 import type { Clock } from "./clock.ts";
 import { cors } from "./cors.ts";
 import type { Database } from "./db.ts";
@@ -55,9 +55,9 @@ export interface AppOptions {
    */
   sweepSecret?: string;
   /** Sign-in rate limit. Default: 5 failures per 15 minutes per client address. */
-  signInLimit?: SignInLimitOptions;
+  signInLimit?: AttemptLimitOptions;
   /** Pairing-code rate limit. Default: 5 wrong codes per 5 minutes per client address. */
-  pairingLimit?: SignInLimitOptions;
+  pairingLimit?: AttemptLimitOptions;
   /** The phone scanner: code life, grace time, stream life, scan rate. The defaults are the product. */
   scanner?: ScannerOptions;
   /**
@@ -68,14 +68,14 @@ export interface AppOptions {
 }
 
 /** A wrong pairing code five times in five minutes blocks the address for the rest of the window. */
-const DEFAULT_PAIRING_LIMIT: SignInLimitOptions = { maxFailures: 5, windowMinutes: 5 };
+const DEFAULT_PAIRING_LIMIT: AttemptLimitOptions = { maxFailures: 5, windowMinutes: 5 };
 
 export function createApp(deps: AppDeps, options: AppOptions = {}): Express {
   const app = express();
   app.disable("x-powered-by");
   app.set("trust proxy", options.trustProxy ?? 0);
-  const signInLimiter = new SignInLimiter(deps.clock, options.signInLimit);
-  const pairingLimiter = new SignInLimiter(deps.clock, options.pairingLimit ?? DEFAULT_PAIRING_LIMIT, "wrong pairing codes");
+  const signInLimiter = new AttemptLimiter(deps.clock, options.signInLimit);
+  const pairingLimiter = new AttemptLimiter(deps.clock, options.pairingLimit ?? DEFAULT_PAIRING_LIMIT, "wrong pairing codes");
   const scannerHub = new ScannerHub(deps.clock, options.scanner);
   app.use(cors(options.corsAllowedOrigins ?? []));
   app.use(express.json({ limit: "100kb" }));

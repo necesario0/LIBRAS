@@ -86,7 +86,7 @@ ana.accessToken; // Authorization: Bearer <accessToken>
 
 ## Member sign-in and who may call a route
 
-`POST /members/sign-in` (`members/sign-in.ts`, `signInMember`) is the one place a Member session starts. A route that needs a Member is `router.get(path, ...requireMember(deps), (_req, res) => { memberOf(res) })`; any signed-in person is `requireIdentity(deps)`; a Librarian is `...requireLibrarian(deps)`. Sessions are renewed at `POST /auth/refresh` and ended at `POST /auth/sign-out`. `SignInLimiter` (`auth/sign-in-limit.ts`) blocks a client address after repeated refusals; both sign-in routes go through it. Details for later tickets: the spec2-notes `ticket-9.md` (outside the repository) and the README, "Client address and the sign-in limit".
+`POST /members/sign-in` (`members/sign-in.ts`, `signInMember`) is the one place a Member session starts. A route that needs a Member is `router.get(path, ...requireMember(deps), (_req, res) => { memberOf(res) })`; any signed-in person is `requireIdentity(deps)`; a Librarian is `...requireLibrarian(deps)`. Sessions are renewed at `POST /auth/refresh` and ended at `POST /auth/sign-out`. `AttemptLimiter` (`auth/attempt-limit.ts`) blocks a client address after repeated refusals; both sign-in routes and the scanner pairing route go through it. Each attempt reserves its failure before it runs and gives it back unless it ends in a 401 or 403, so parallel guesses cannot pass the limit together. Its state is in memory by decision (ticket #9): one instance, and a restart forgets it. Details for later tickets: the spec2-notes `ticket-9.md` (outside the repository) and the README, "Client address and the sign-in limit".
 
 ## Digital ID and Loan Policy
 
