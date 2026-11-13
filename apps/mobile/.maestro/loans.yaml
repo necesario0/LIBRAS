@@ -2,7 +2,8 @@
 # opens and nothing is recorded. When the Librarian confirms the Loan at the desk
 # (the end-to-end API does it, with the code on the Member's phone), the app shows
 # "Successfully Borrowed", My Loans lists the Loan with its dates, and Home counts
-# it. An overdue Loan is marked on Home and in My Loans.
+# it. An overdue Loan is marked on Home and in My Loans, and a Hold on a Book the
+# Member has on Loan is refused with the reason.
 # Needs the end-to-end API on port 3000 (npm run e2e starts it).
 appId: ph.edu.umak.libras
 ---
@@ -202,3 +203,32 @@ appId: ph.edu.umak.libras
     timeout: 15000
 - assertVisible: "1"
 - takeScreenshot: loans-book-after
+
+# The overdue Book's only Copy is out with this Member: a Hold on it is refused,
+# with the reason, because their own return would set the Copy aside for them.
+- tapOn:
+    id: book-close
+- extendedWaitUntil:
+    visible:
+      id: search-results
+    timeout: 10000
+- tapOn:
+    id: search-input
+- eraseText: 40
+- inputText: ${output.lateWord}
+- extendedWaitUntil:
+    visible: ${output.lateTitle}
+    timeout: 15000
+- tapOn: ${output.lateTitle}
+- extendedWaitUntil:
+    visible:
+      id: hold-action
+    timeout: 15000
+- tapOn:
+    id: hold-place
+- extendedWaitUntil:
+    visible:
+      id: hold-error
+    timeout: 15000
+- assertVisible: "You have a Copy of this Book on Loan, so you cannot place a Hold on it. You can see it in My Loans."
+- takeScreenshot: loans-hold-refused
