@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { HOLD_STATUS_LABELS, formatLibraryDateTime } from "@libras/shared";
+import { HOLD_STATUS_LABELS, formatLibraryDate, formatLibraryDateTime } from "@libras/shared";
 import type { Hold, HoldStatus } from "@libras/shared";
 import { BookCover } from "../components/BookCover";
 import { colors, fontFamily, fontSize, radii, spacing } from "../theme/tokens";
@@ -13,14 +13,6 @@ const PILL: Record<HoldStatus, { surface: string; text: string }> = {
   expired: { surface: colors.pill, text: colors.textMuted },
   cancelled: { surface: colors.pill, text: colors.textMuted },
 };
-
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
-
-/** "20 Nov 2026", in the phone's time zone. */
-export function placedOn(iso: string): string {
-  const date = new Date(iso);
-  return `${date.getDate()} ${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
-}
 
 interface HoldRowProps {
   hold: Hold;
@@ -56,7 +48,7 @@ export function HoldRow({ hold, onCancel }: HoldRowProps) {
   return (
     <View style={styles.row} testID={`hold-${hold.id}`}>
       <View style={styles.main}>
-        <BookCover id={hold.bookId} width={36} height={52} radius={6} />
+        <BookCover id={hold.bookId} width={36} height={52} radius={radii.coverSmall} />
         <View style={styles.text}>
           <Text style={styles.title} numberOfLines={2} testID="hold-title">
             {hold.bookTitle}
@@ -64,7 +56,7 @@ export function HoldRow({ hold, onCancel }: HoldRowProps) {
           <Text style={styles.authors} numberOfLines={1}>
             {hold.bookAuthors.length > 0 ? hold.bookAuthors.join("; ") : "Unknown author"}
           </Text>
-          <Text style={styles.placed}>{`Placed ${placedOn(hold.placedAt)}`}</Text>
+          <Text style={styles.placed}>{`Placed ${formatLibraryDate(hold.placedAt)}`}</Text>
         </View>
         <View style={[styles.pill, { backgroundColor: pill.surface }]} testID="hold-status">
           <Text style={[styles.pillText, { color: pill.text }]}>{HOLD_STATUS_LABELS[hold.status]}</Text>

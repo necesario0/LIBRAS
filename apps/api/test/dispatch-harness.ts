@@ -30,8 +30,7 @@ export function dispatchHarness() {
     if (!state.librarian) throw new Error("No Librarian is signed in");
     return state.librarian;
   };
-  const lendRequest = async (member: TestMember, copy: string, librarian = lita()) =>
-    h.send("POST", "/desk/loans", librarian.accessToken, { digitalId: await h.digitalIdOf(member), copy });
+  const lendRequest = (member: TestMember, copy: string, librarian = lita()) => h.lendAtDesk(librarian, member, copy);
   const lend = async (member: TestMember, copy: string) => {
     const response = await lendRequest(member, copy);
     assert.equal(response.status, 201, await response.clone().text());
@@ -105,10 +104,10 @@ export function dispatchHarness() {
     lend,
     giveBackRequest,
     giveBack,
-    /** A Book whose Copies are all out with `borrower`: the only way a Hold can be placed on it. */
-    lentBook: async (title: string, borrower: TestMember, copies = 1): Promise<TestBook> => {
+    /** A Book whose Copies are all out with `member`: the only way a Hold can be placed on it. */
+    lentBook: async (title: string, member: TestMember, copies = 1): Promise<TestBook> => {
       const book = await h.addBook(title, Array<CopyStatus>(copies).fill("available"));
-      for (const copy of book.copies) await lend(borrower, copy.barcode);
+      for (const copy of book.copies) await lend(member, copy.barcode);
       return book;
     },
     placeHoldRequest: (member: TestMember, bookId: string) => h.send("POST", "/holds", member.accessToken, { bookId }),

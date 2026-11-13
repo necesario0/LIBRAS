@@ -88,7 +88,7 @@ const styles = StyleSheet.create({
     shadowRadius: 27,
     shadowOffset: { width: 9, height: 4 },
   },
-  grabber: { alignSelf: "center", marginTop: 10, width: 56, height: 10, borderRadius: 58, backgroundColor: colors.grabber },
+  grabber: { alignSelf: "center", marginTop: 10, width: 56, height: 10, borderRadius: radii.grabber, backgroundColor: colors.grabber },
   close: { position: "absolute", right: 20, top: 20, zIndex: 1 },
   content: { paddingTop: 42, paddingHorizontal: spacing.xl, gap: spacing.xl },
   spinner: { marginTop: spacing.xxl },

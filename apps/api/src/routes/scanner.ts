@@ -4,7 +4,7 @@ import { SCANNER_MESSAGES, pairScannerRequestSchema, readScan, sendScanRequestSc
 import type { DeskScannerEventName, DeskScannerEvents, PairScannerResponse, ScannerStatusResponse } from "@libras/shared";
 import { z } from "zod";
 import type { AppDeps } from "../app.ts";
-import type { SignInLimiter } from "../auth/sign-in-limit.ts";
+import type { AttemptLimiter } from "../auth/attempt-limit.ts";
 import { bearerToken, librarianOf, requireLibrarian } from "../auth/guards.ts";
 import { AppError } from "../errors.ts";
 import { pairingLost } from "../scanner/hub.ts";
@@ -39,7 +39,7 @@ function sinkOf(res: Response): DeskSink {
  * signed in, pairs with the code and then sends scans with the scanner token it
  * got. That token is accepted by the `/scanner/*` endpoints and nowhere else.
  */
-export function scannerRouter(deps: AppDeps, hub: ScannerHub, pairingLimiter: SignInLimiter): Router {
+export function scannerRouter(deps: AppDeps, hub: ScannerHub, pairingLimiter: AttemptLimiter): Router {
   const router = Router();
 
   router.get("/desk/scanner/events", ...requireLibrarian(deps), (req, res) => {
@@ -58,7 +58,9 @@ export function scannerRouter(deps: AppDeps, hub: ScannerHub, pairingLimiter: Si
     const sink = sinkOf(res);
     const disconnect = hub.connectDesk(librarianOf(res).id, sink, resume);
     // A comment line every few seconds keeps proxies and the free host from closing an idle stream.
-    const keepAlive = setInterval(() => res.write(": ping\n\n"), KEEP_ALIVE_MS);
+    const keepAlive = setInterval(() => {
+      if (!res.writableEnded) res.write(": ping\n\n");
+    }, KEEP_ALIVE_MS);
     // The stream does not live for ever: ending it makes the page reconnect with a session that is checked again.
     const lifetime = setTimeout(() => {
       sink.send("end", {});

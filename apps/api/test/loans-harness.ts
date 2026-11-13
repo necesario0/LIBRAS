@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { randomInt, randomUUID } from "node:crypto";
-import type { DigitalIdResponse, MyLoansResponse } from "@libras/shared";
+import type { CopyStatus, DigitalIdResponse, IdentifyMemberResponse, MyLoansResponse } from "@libras/shared";
 import { createTestAccount, startTestApi } from "../src/testing/index.ts";
 import type { TestApi, TestMember } from "../src/testing/index.ts";
 
-export type CopyStatus = "available" | "on_loan" | "set_aside";
+export type { CopyStatus };
 
 export interface TestCopy {
   id: string;
@@ -41,9 +41,37 @@ export function loansHarness() {
       body: body === undefined ? undefined : JSON.stringify(body),
     });
 
+  /** The code on the Member's phone right now, from the real endpoint. */
+  const digitalIdOf = async (member: TestMember): Promise<string> => {
+    const response = await send("GET", "/members/me/digital-id", member.accessToken);
+    assert.equal(response.status, 200);
+    return ((await response.json()) as DigitalIdResponse).code;
+  };
+  /** The Librarian scans a Digital ID at the desk. */
+  const identify = (librarian: TestLibrarian, code: string) => send("POST", "/desk/members/identify", librarian.accessToken, { code });
+  /** The Librarian scans the Member's Digital ID: the token of the desk session that lends to them. */
+  const deskSessionFor = async (member: TestMember, librarian: TestLibrarian): Promise<string> => {
+    const response = await identify(librarian, await digitalIdOf(member));
+    assert.equal(response.status, 200, await response.clone().text());
+    return ((await response.json()) as IdentifyMemberResponse).deskSession.token;
+  };
+  /** The Librarian scans a Copy for the Member of a desk session. */
+  const lendWith = (librarian: TestLibrarian, deskSession: string, copy: string) =>
+    send("POST", "/desk/loans", librarian.accessToken, { deskSession, copy });
+
   return {
     api,
     send,
+    digitalIdOf,
+    identify,
+    deskSessionFor,
+    lendWith,
+    /** The Librarian scans the Member's Digital ID, then the Copy: one visit to the desk. */
+    lendAtDesk: async (librarian: TestLibrarian, member: TestMember, copy: string) =>
+      lendWith(librarian, await deskSessionFor(member, librarian), copy),
+    /** "Done with this Member": the desk session ends. */
+    endDeskSession: (librarian: TestLibrarian, deskSession: string) =>
+      send("POST", "/desk/sessions/end", librarian.accessToken, { deskSession }),
     start: async (options: Parameters<typeof startTestApi>[0] = {}) => {
       state.api = await startTestApi(options);
     },
@@ -82,12 +110,6 @@ export function loansHarness() {
       const signedIn = await send("POST", "/staff/sign-in", null, { email: account.email, password: account.password });
       const { session } = (await signedIn.json()) as { session: { accessToken: string } };
       return { userId: account.userId, accessToken: session.accessToken };
-    },
-    /** The code on the Member's phone right now, from the real endpoint. */
-    digitalIdOf: async (member: TestMember): Promise<string> => {
-      const response = await send("GET", "/members/me/digital-id", member.accessToken);
-      assert.equal(response.status, 200);
-      return ((await response.json()) as DigitalIdResponse).code;
     },
     myLoans: async (member: TestMember) => {
       const response = await send("GET", "/members/me/loans", member.accessToken);

@@ -1,13 +1,11 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { after, before, describe, it } from "node:test";
-import type { CancelHoldResponse, MyHoldsResponse, PlaceHoldResponse } from "@libras/shared";
+import type { CancelHoldResponse, CopyStatus, MyHoldsResponse, PlaceHoldResponse } from "@libras/shared";
 import { withIdentity } from "../src/auth/index.ts";
 import { HOLD_WEIGHT_HOURS, holdScore } from "../src/holds/priority.ts";
 import { createTestAccount, createTestMember, createTestMemberOfType, startTestApi } from "../src/testing/index.ts";
 import type { TestApi, TestMember } from "../src/testing/index.ts";
-
-type CopyStatus = "available" | "on_loan" | "set_aside";
 
 /** The things both groups of tests do: add Books with Copies, call the API, clean up. */
 function holdsHarness() {

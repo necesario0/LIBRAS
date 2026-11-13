@@ -19,7 +19,7 @@ export function LoanRow({ loan }: { loan: Loan }) {
   const pill = pillOf(loan);
   return (
     <View style={styles.row} testID={`loan-${loan.id}`}>
-      <BookCover id={loan.bookId} width={36} height={52} radius={6} />
+      <BookCover id={loan.bookId} width={36} height={52} radius={radii.coverSmall} />
       <View style={styles.text}>
         <Text style={styles.title} numberOfLines={2} testID="loan-title">
           {loan.bookTitle}

@@ -99,7 +99,7 @@ async function call<T>(method: string, path: string, token?: string, body?: unkn
 /** The real API on this computer, against the hosted database and Supabase Auth, with a sender that only captures. It makes test Members. */
 async function startSignUpApp(db: Database) {
   const email = new CapturingEmailSender();
-  const app = createApp({
+  const { app, stop } = createApp({
     db,
     auth: new SupabaseAuth({ url: config.supabaseUrl, publishableKey: config.supabasePublishableKey }),
     accounts: new SupabaseAuthAdmin({ url: config.supabaseUrl, secretKey: config.supabaseSecretKey }),
@@ -120,7 +120,11 @@ async function startSignUpApp(db: Database) {
       const verified = await post("/members/sign-up/verify", { email: body.email, code: codeFromEmail(email.lastTo(body.email)) });
       if (verified.status !== 200 && verified.status !== 201) throw new Error(`Verification failed: ${verified.status} ${await verified.text()}`);
     },
-    close: () => new Promise<void>((resolve) => server.close(() => resolve())),
+    close: () =>
+      new Promise<void>((resolve) => {
+        stop();
+        server.close(() => resolve());
+      }),
   };
 }
 
@@ -337,8 +341,13 @@ async function dispatchCommand(db: Database): Promise<void> {
     if (result.status !== 200) throw new Error(`Digital ID of ${key}: ${result.status}`);
     return result.body.code;
   };
+  /** The Librarian scans the Member's Digital ID (a desk session starts), then the Copy, and is done. Only the Copy's scan is timed. */
   const lend = async (key: string) => {
-    const result = await call<{ error?: { code: string } }>("POST", "/desk/loans", librarianToken, { digitalId: await digitalId(key), copy: TEST_BARCODE });
+    const identified = await call<{ deskSession: { token: string } }>("POST", "/desk/members/identify", librarianToken, { code: await digitalId(key) });
+    if (identified.status !== 200) throw new Error(`Identifying ${key} failed: ${identified.status}`);
+    const deskSession = identified.body.deskSession.token;
+    const result = await call<{ error?: { code: string } }>("POST", "/desk/loans", librarianToken, { deskSession, copy: TEST_BARCODE });
+    await call("POST", "/desk/sessions/end", librarianToken, { deskSession });
     if (result.status !== 201) throw new Error(`Lending to ${key} failed: ${result.status} ${result.body.error?.code}`);
     return result.ms;
   };

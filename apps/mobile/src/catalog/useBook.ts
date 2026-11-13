@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { BookDetail } from "@libras/shared";
 import { api } from "../api";
 import { ApiError } from "../api/client";
-import type { AuthorizedRequest } from "./useCatalogSearch";
+import type { AuthorizedRequest } from "../auth/authorized-request";
 
 /**
  * What the Book page shows:

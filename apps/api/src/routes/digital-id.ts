@@ -4,10 +4,11 @@ import type { DigitalIdResponse, IdentifyMemberResponse } from "@libras/shared";
 import type { AppDeps } from "../app.ts";
 import { identityOf, memberOf, requireLibrarian, requireMember } from "../auth/guards.ts";
 import { deskMember } from "../desk/members.ts";
-import { currentDigitalId, verifyDigitalId } from "../digital-id/index.ts";
+import { startDeskSession } from "../desk/sessions.ts";
+import { currentDigitalId } from "../digital-id/index.ts";
 import { parseBody } from "../validation.ts";
 
-/** The Member's Digital ID, and the desk identifying a Member by it. */
+/** The Member's Digital ID, and the desk identifying a Member by it, which starts a desk session (ADR 0008). */
 export function digitalIdRouter(deps: AppDeps): Router {
   const router = Router();
 
@@ -23,9 +24,10 @@ export function digitalIdRouter(deps: AppDeps): Router {
       req.body,
       "A Digital ID is 12 digits. Scan it again or type the code beneath the barcode.",
     );
-    const { memberId } = await verifyDigitalId(deps, code);
-    const body: IdentifyMemberResponse = { member: await deskMember(deps.db, identityOf(res), memberId) };
-    res.json(body);
+    const { memberId, deskSession } = await startDeskSession(deps, identityOf(res).userId, code);
+    const body: IdentifyMemberResponse = { member: await deskMember(deps.db, identityOf(res), memberId), deskSession };
+    // The desk session's token lends to the Member: no cache may keep it.
+    res.set("Cache-Control", "no-store").json(body);
   });
 
   return router;

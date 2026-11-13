@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, beforeEach, describe, it } from "node:test";
-import { LOAN_MESSAGES } from "@libras/shared";
+import { HOLD_MESSAGES, LOAN_MESSAGES } from "@libras/shared";
 import type { Hold, RecordReturnResponse } from "@libras/shared";
 import { createAuditLog } from "../src/audit/index.ts";
 import { createTestMember } from "../src/testing/index.ts";
@@ -45,6 +45,30 @@ describe("Hold dispatch when a Copy is returned", () => {
     // Set aside is not available: nobody is sent to the desk for it, and the next Member can still place a Hold.
     assert.equal(await h.availableCopies(carla, book.id), 0);
     assert.equal((await h.placeHoldRequest(carla, book.id)).status, 201);
+  });
+
+  it("refuses a Hold on a Book the Member has on Loan, so their own return never sets the Copy aside for them", async () => {
+    const book = await h.lentBook("Already In Ana's Bag", ana);
+
+    const response = await h.placeHoldRequest(ana, book.id);
+
+    assert.deepEqual(await refusal(response), { status: 409, code: "book_on_loan", message: HOLD_MESSAGES.bookOnLoan });
+    const returned = await h.giveBack((book.copies[0] as TestCopy).barcode);
+    assert.equal(returned.heldFor, null);
+    assert.equal(await h.availableCopies(ana, book.id), 1);
+  });
+
+  it("refuses it while the Member has any Copy of the Book out, and allows it again once that Copy is back", async () => {
+    const book = await h.addBook("Two Copies, Both Out", ["available", "available"]);
+    const [first, second] = book.copies as [TestCopy, TestCopy];
+    await h.lend(ana, first.barcode);
+    await h.lend(ben, second.barcode);
+
+    assert.equal((await refusal(await h.placeHoldRequest(ana, book.id))).code, "book_on_loan");
+
+    await h.giveBack(first.barcode);
+    await h.lend(carla, first.barcode);
+    assert.equal((await h.placeHoldRequest(ana, book.id)).status, 201);
   });
 
   it("simply makes the Copy available when no Hold is waiting, also after a Hold was cancelled", async () => {
@@ -178,7 +202,7 @@ describe("Hold dispatch when a Copy is returned", () => {
     assert.equal((await h.holdOn(ben, book.id)).status, "fulfilled");
   });
 
-  it("records each Hold dispatch in the audit log, and none when no Hold was waiting", async () => {
+  it("records each Hold dispatch in the audit log after the return that caused it, and none when no Hold was waiting", async () => {
     const audit = createAuditLog(h.api());
     const book = await h.lentBook("Audited Dispatch", ana);
     const copy = book.copies[0] as TestCopy;
@@ -192,9 +216,9 @@ describe("Hold dispatch when a Copy is returned", () => {
     const entries = (await audit.entries({ afterSeq: before })).filter((entry) => entry.data.copyId === copy.id);
     assert.deepEqual(
       entries.map((entry) => entry.type),
-      ["hold_dispatched", "copy_returned", "loan_confirmed", "copy_returned"],
+      ["copy_returned", "hold_dispatched", "loan_confirmed", "copy_returned"],
     );
-    const dispatched = entries[0];
+    const dispatched = entries[1];
     assert.equal(dispatched?.actorId, h.lita().userId);
     assert.equal(dispatched?.subject, hold.id);
     assert.deepEqual(dispatched?.data, {

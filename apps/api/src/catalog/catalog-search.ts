@@ -58,16 +58,7 @@ export class CatalogSearch {
 
   /** One Book with its Copy counts, read live from the database (not from the index), or undefined when there is no such Book. */
   async book(id: string): Promise<BookSearchResult | undefined> {
-    const { rows } = await this.#db.query<BookRow>(
-      `select b.id, b.title, b.authors, b.edition, b.publication_year, b.isbn, b.lc_call_number,
-              count(c.id)::int as total_copies,
-              (count(c.id) filter (where c.status = 'available'))::int as available_copies
-         from public.books b
-         left join public.copies c on c.book_id = b.id
-        where b.id = $1
-        group by b.id`,
-      [id],
-    );
+    const rows = await this.#booksWithCopyCounts([id]);
     const row = rows[0];
     return row ? toResult(row) : undefined;
   }
@@ -77,6 +68,18 @@ export class CatalogSearch {
     const { total, hits } = index.search(query, { limit });
     if (hits.length === 0) return { total, results: [] };
 
+    const rows = await this.#booksWithCopyCounts(hits.map((hit) => hit.bookId));
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    // Keep the ranking. A Book deleted since the index was built is simply left out.
+    const results = hits.flatMap((hit) => {
+      const row = byId.get(hit.bookId);
+      return row ? [toResult(row)] : [];
+    });
+    return { total, results };
+  }
+
+  /** These Books (in no particular order) with how many Copies each has and how many are available, read live. */
+  async #booksWithCopyCounts(ids: readonly string[]): Promise<BookRow[]> {
     const { rows } = await this.#db.query<BookRow>(
       `select b.id, b.title, b.authors, b.edition, b.publication_year, b.isbn, b.lc_call_number,
               count(c.id)::int as total_copies,
@@ -85,15 +88,9 @@ export class CatalogSearch {
          left join public.copies c on c.book_id = b.id
         where b.id = any($1::uuid[])
         group by b.id`,
-      [hits.map((hit) => hit.bookId)],
+      [ids],
     );
-    const byId = new Map(rows.map((row) => [row.id, row]));
-    // Keep the ranking. A Book deleted since the index was built is simply left out.
-    const results = hits.flatMap((hit) => {
-      const row = byId.get(hit.bookId);
-      return row ? [toResult(row)] : [];
-    });
-    return { total, results };
+    return rows;
   }
 
   /**

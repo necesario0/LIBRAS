@@ -28,6 +28,14 @@ export const catalogSearchQuerySchema = z.object({
 
 export type CatalogSearchQuery = z.input<typeof catalogSearchQuerySchema>;
 
+/**
+ * Where a Copy is: on the shelf (`available`), out with a Member (`on_loan`), or
+ * on the hold shelf for the Member of a ready Hold (`set_aside`). Only an
+ * available Copy counts towards a Book's availability.
+ */
+export const COPY_STATUSES = ["available", "on_loan", "set_aside"] as const;
+export type CopyStatus = (typeof COPY_STATUSES)[number];
+
 /** One Book in a search result. Availability is read live; it is not part of the search index. */
 export interface BookSearchResult {
   id: string;
