@@ -42,7 +42,7 @@ export default function HealthScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.white, paddingHorizontal: spacing.screen, gap: spacing.xl },
   brand: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.sm },
-  logo: { width: 31, height: 31, borderRadius: 16 },
+  logo: { width: 31, height: 31, borderRadius: radii.logo },
   brandName: { ...typography.title, color: colors.black },
   tagline: { ...typography.hero, color: colors.black, textAlign: "center" },
   card: { backgroundColor: colors.surface, borderRadius: radii.card, padding: spacing.xl, gap: spacing.lg },

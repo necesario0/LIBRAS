@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
   box: {
     width: 24,
     height: 24,
-    borderRadius: 6,
+    borderRadius: radii.checkbox,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.white,

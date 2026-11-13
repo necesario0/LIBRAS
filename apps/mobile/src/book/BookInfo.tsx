@@ -46,7 +46,7 @@ export function BookInfo({ book, accountType }: { book: BookDetail; accountType:
 
       <View style={styles.header}>
         <View style={styles.cover}>
-          <BookCover id={book.id} width={121} height={179} radius={10} />
+          <BookCover id={book.id} width={121} height={179} radius={radii.cover} />
         </View>
         <View style={styles.headerText}>
           <Text style={styles.title} testID="book-detail-title">
@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
   callNumberPill: {
     alignSelf: "stretch",
     minHeight: 25,
-    borderRadius: 43,
+    borderRadius: radii.callNumber,
     backgroundColor: colors.callNumber,
     alignItems: "center",
     justifyContent: "center",
@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
   callNumberText: { fontFamily: fontFamily.mono, fontSize: fontSize.body, color: colors.black, letterSpacing: -0.64, textAlign: "center" },
   header: { flexDirection: "row", alignItems: "center", gap: 9 },
   cover: {
-    borderRadius: 10,
+    borderRadius: radii.cover,
     elevation: 4,
     backgroundColor: colors.white,
     shadowColor: colors.shadow,
@@ -126,10 +126,10 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
   },
   headerText: { flex: 1, gap: 6 },
-  title: { fontFamily: fontFamily.medium, fontSize: 32, lineHeight: 26, letterSpacing: -2.56, color: colors.black },
+  title: { fontFamily: fontFamily.medium, fontSize: fontSize.headline, lineHeight: 26, letterSpacing: -2.56, color: colors.black },
   authors: { fontFamily: fontFamily.extraLight, fontSize: fontSize.subheading, letterSpacing: -0.8, color: colors.textMuted },
   tags: { flexDirection: "row", flexWrap: "wrap", gap: 5, alignItems: "center" },
-  tag: { height: 20, borderRadius: 39, paddingHorizontal: 10, justifyContent: "center" },
+  tag: { height: 20, borderRadius: radii.tag, paddingHorizontal: 10, justifyContent: "center" },
   tagText: { fontFamily: fontFamily.regular, fontSize: fontSize.micro, letterSpacing: -0.4 },
   editionTag: { backgroundColor: colors.selected },
   editionText: { color: colors.primary },

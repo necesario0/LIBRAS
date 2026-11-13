@@ -28,7 +28,7 @@ function LoanCard({ loan, out, limit }: { loan: Loan; out: number; limit: number
     <View style={styles.card} testID="borrowed-card">
       <View style={styles.book}>
         <View style={styles.cover}>
-          <BookCover id={loan.bookId} width={59} height={88} radius={10} />
+          <BookCover id={loan.bookId} width={59} height={88} radius={radii.cover} />
         </View>
         <View style={styles.bookText}>
           <Text style={styles.bookTitle} numberOfLines={3} testID="borrowed-title">
@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
   },
   book: { flexDirection: "row", alignItems: "center", gap: 11 },
   cover: {
-    borderRadius: 10,
+    borderRadius: radii.cover,
     backgroundColor: colors.white,
     elevation: 4,
     shadowColor: colors.shadow,

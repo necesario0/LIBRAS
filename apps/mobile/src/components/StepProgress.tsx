@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from "react-native";
-import { colors, fontFamily, fontSize, spacing } from "../theme/tokens";
+import { colors, fontFamily, fontSize, radii, spacing } from "../theme/tokens";
 
 const STEPS = [1, 2, 3, 4] as const;
 const CIRCLE = 32;
@@ -44,6 +44,6 @@ const styles = StyleSheet.create({
   circleUpcoming: { backgroundColor: colors.border },
   number: { fontFamily: fontFamily.regular, fontSize: fontSize.small, color: colors.link },
   numberReached: { color: colors.white },
-  line: { flex: 1, height: 2, borderRadius: 1, backgroundColor: colors.border },
+  line: { flex: 1, height: 2, borderRadius: radii.progress, backgroundColor: colors.border },
   lineReached: { backgroundColor: colors.primary },
 });
