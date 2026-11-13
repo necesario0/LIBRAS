@@ -17,7 +17,11 @@ import {
 type SignUpDeps = Pick<AppDeps, "db" | "accounts" | "clock" | "email" | "logger">;
 
 /** What the person entered at sign-up, less the email, password and acceptance, which live elsewhere. */
-type StoredProfile = Omit<ParsedSignUpRequest, "email" | "password" | "acceptedTerms">;
+type StoredProfile = ParsedSignUpRequest extends infer Request
+  ? Request extends ParsedSignUpRequest
+    ? Omit<Request, "email" | "password" | "acceptedTerms">
+    : never
+  : never;
 
 const PG_UNIQUE_VIOLATION = "23505";
 
@@ -82,11 +86,12 @@ export async function startSignUp(deps: SignUpDeps, request: ParsedSignUpRequest
   const { email, password, acceptedTerms, ...profile } = request;
   void acceptedTerms;
 
+  const studentNumber = profile.accountType === "umak_student" ? profile.details.studentNumber : null;
   const taken = await db.query<{ username: boolean; student_number: boolean }>(
     `select
        exists (select 1 from public.members where lower(username) = lower($1)) as username,
        exists (select 1 from public.members where account_type = 'umak_student' and details ->> 'studentNumber' = $2) as student_number`,
-    [profile.username, profile.details.studentNumber],
+    [profile.username, studentNumber],
   );
   if (taken.rows[0]?.username) throw errors.usernameTaken();
   if (taken.rows[0]?.student_number) throw errors.studentNumberTaken();

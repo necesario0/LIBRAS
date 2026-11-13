@@ -17,6 +17,7 @@ import { StepProgress } from "../../src/components/StepProgress";
 import { FieldError, TextField } from "../../src/components/TextField";
 import { Wordmark } from "../../src/components/Wordmark";
 import { useSignUp } from "../../src/sign-up/SignUpContext";
+import { DETAILS_ROUTE, buildSignUpRequest } from "../../src/sign-up/request";
 import { check } from "../../src/sign-up/validate";
 import { colors, fontFamily, fontSize, radii, spacing } from "../../src/theme/tokens";
 
@@ -58,23 +59,12 @@ export default function EmailScreen() {
     setEmailError(emailProblem);
     setTermsError(termsProblem);
     if (emailProblem !== undefined || termsProblem !== undefined) return;
-    if (draft.accountType !== "umak_student") return router.replace("/sign-up/account-type");
-    if (draft.college === undefined) return router.navigate("/sign-up/student");
+    const request = buildSignUpRequest(draft);
+    if (request === undefined) return router.navigate(DETAILS_ROUTE[draft.accountType]);
 
     setSending(true);
     try {
-      const pending = await api.signUp({
-        accountType: draft.accountType,
-        email: draft.email,
-        password: draft.password,
-        firstName: draft.firstName,
-        middleName: draft.middleName,
-        lastName: draft.lastName,
-        username: draft.username,
-        contactNumber: draft.contactNumber,
-        details: { studentNumber: draft.studentNumber, college: draft.college },
-        acceptedTerms: true,
-      });
+      const pending = await api.signUp(request);
       setPending(pending);
       router.push("/sign-up/verify");
     } catch (error) {

@@ -1,7 +1,7 @@
 import { randomInt, randomUUID } from "node:crypto";
 import { expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
-import type { AccountType, MyLoansResponse } from "@libras/shared";
+import type { AccountType, MyHoldsResponse, MyLoansResponse } from "@libras/shared";
 import { createTestAccount, signInDirect } from "@libras/api/testing";
 import { loadConfig } from "../../api/src/config.ts";
 import { createDatabase } from "../../api/src/db.ts";
@@ -88,6 +88,7 @@ export function createDeskFixtures() {
     setUp: () => seedLibrarians(db, [librarian]),
     /** Removes the Books, Copies and Loans this file made, and closes the connection. */
     cleanUp: async () => {
+      await db.query("delete from public.holds where book_id = any($1)", [bookIds]);
       await db.query("delete from public.loans where copy_id in (select id from public.copies where book_id = any($1))", [bookIds]);
       await db.query("delete from public.copies where book_id = any($1)", [bookIds]);
       await db.query("delete from public.books where id = any($1)", [bookIds]);
@@ -95,6 +96,24 @@ export function createDeskFixtures() {
     },
     createMember,
     addBook,
+    /** The id of the Book a Copy belongs to. */
+    bookOf: async (copy: DeskTestCopy): Promise<string> =>
+      ((await db.query("select book_id from public.copies where barcode = $1", [copy.barcode])).rows[0] as { book_id: string }).book_id,
+    /** The Member places a Hold from their app: the real endpoint. */
+    placeHold: async (member: DeskTestMember, bookId: string): Promise<void> => {
+      const response = await fetch(`${API_URL}/holds`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${member.accessToken}`, "content-type": "application/json" },
+        body: JSON.stringify({ bookId }),
+      });
+      expect(response.status).toBe(201);
+    },
+    /** What the Member's app reads: their own Holds, from the real endpoint. */
+    holdsOf: async (member: DeskTestMember) => {
+      const response = await fetch(`${API_URL}/members/me/holds`, { headers: { authorization: `Bearer ${member.accessToken}` } });
+      expect(response.status).toBe(200);
+      return ((await response.json()) as MyHoldsResponse).holds;
+    },
     /** The code the Member's app shows right now. */
     codeOnThePhoneOf: async (member: DeskTestMember): Promise<string> =>
       (await currentDigitalId({ db, clock: { now: () => new Date() } }, member.userId)).code,

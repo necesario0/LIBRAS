@@ -21,6 +21,7 @@ import { loansRouter } from "./routes/loans.ts";
 import { membersRouter } from "./routes/members.ts";
 import { scannerRouter } from "./routes/scanner.ts";
 import { staffRouter } from "./routes/staff.ts";
+import { sweepsRouter } from "./routes/sweeps.ts";
 
 /** Everything the API reaches outside itself. Tests swap the clock and the email sender. */
 export interface AppDeps {
@@ -48,6 +49,11 @@ export interface AppOptions {
    * of proxies. See the API README, "Client address and proxies".
    */
   trustProxy?: number;
+  /**
+   * The shared secret of the calls the database's schedule makes (`POST /internal/sweeps/...`).
+   * Unset, those routes do not exist. Default: unset.
+   */
+  sweepSecret?: string;
   /** Sign-in rate limit. Default: 5 failures per 15 minutes per client address. */
   signInLimit?: SignInLimitOptions;
   /** Pairing-code rate limit. Default: 5 wrong codes per 5 minutes per client address. */
@@ -82,6 +88,7 @@ export function createApp(deps: AppDeps, options: AppOptions = {}): Express {
   app.use(digitalIdRouter(deps));
   app.use(holdsRouter(deps));
   app.use(loansRouter(deps));
+  if (options.sweepSecret) app.use(sweepsRouter(deps, options.sweepSecret));
   const catalog = new CatalogSearch(deps.db, deps.logger);
   app.use(scannerRouter(deps, scannerHub, pairingLimiter));
   app.use(catalogRouter(deps, catalog));

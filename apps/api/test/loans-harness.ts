@@ -49,6 +49,7 @@ export function loansHarness() {
     },
     stop: async () => {
       try {
+        await api().db.query("delete from public.holds where book_id = any($1)", [bookIds]);
         await api().db.query(
           "delete from public.loans where copy_id in (select id from public.copies where book_id = any($1))",
           [bookIds],

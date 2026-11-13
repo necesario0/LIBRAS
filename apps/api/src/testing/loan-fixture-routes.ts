@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { Router } from "express";
 import type { AppDeps } from "../app.ts";
 import { currentDigitalId } from "../digital-id/index.ts";
+import { expireDueHolds } from "../holds/expiry.ts";
 import { confirmLoan, recordReturn } from "../loans/index.ts";
 import { seedLibrarians } from "../seed/librarians.ts";
 
@@ -14,7 +15,7 @@ const FIXTURE_LIBRARIAN = { email: "e2e-loan-desk@libras.test", fullName: "Lita 
  * A route that lets an end-to-end test on another process have a Librarian
  * confirm a Loan for a Member, the way the desk page does: it reads the code on
  * the Member's phone and runs the real confirmation with it and a Copy of the
- * Book. `daysAgo` runs the same confirmation with the clock set that many days
+ * Book (the Copy set aside for the Member's ready Hold when there is one). `daysAgo` runs the same confirmation with the clock set that many days
  * back, which is how a test gets a Loan that is overdue today. It exists only
  * on the end-to-end server (`e2e-server.ts`): the real server never imports this module.
  *
@@ -24,6 +25,13 @@ const FIXTURE_LIBRARIAN = { email: "e2e-loan-desk@libras.test", fullName: "Lita 
  * out of a Book, the way the desk page does: the real return, by the Copy's barcode.
  *
  *   POST /e2e/returns { email, bookId } -> 200 { loan }
+ *
+ * A third route lets the Pickup Window of the Member's ready Hold on a Book run out: the end-to-end
+ * server runs on the real clock, so it moves the start and the end of that window two days back and
+ * then runs the expiry sweep, as the API's timer and the database's schedule do. The Hold is expired
+ * and its Copy passed on without anyone opening the app.
+ *
+ *   POST /e2e/holds/lapse { email, bookId } -> 200 { expired }
  */
 export function loanFixtureRoutes(router: Router, deps: AppDeps): void {
   let librarian: Promise<string> | undefined;
@@ -49,14 +57,21 @@ export function loanFixtureRoutes(router: Router, deps: AppDeps): void {
       `select m.user_id from public.members m join auth.users u on u.id = m.user_id where lower(u.email) = lower($1)`,
       [email],
     );
-    const copy = await deps.db.query<{ barcode: string }>(
-      "select barcode from public.copies where book_id = $1 and status = 'available' order by accession_number limit 1",
-      [bookId],
-    );
     const memberId = member.rows[0]?.user_id;
+    // A Copy that is set aside for the Member's ready Hold first, then any available one.
+    const copy = await deps.db.query<{ barcode: string }>(
+      `select c.barcode
+         from public.copies c
+        where c.book_id = $1
+          and (c.status = 'available'
+               or exists (select 1 from public.holds h where h.copy_id = c.id and h.status = 'ready' and h.member_id = $2))
+        order by (c.status = 'set_aside') desc, c.accession_number
+        limit 1`,
+      [bookId, memberId ?? null],
+    );
     const barcode = copy.rows[0]?.barcode;
     if (memberId === undefined || barcode === undefined) {
-      res.status(404).json({ error: { code: "not_found", message: "No such Member, or the Book has no available Copy." } });
+      res.status(404).json({ error: { code: "not_found", message: "No such Member, or the Book has no Copy the Member can borrow." } });
       return;
     }
 
@@ -64,6 +79,26 @@ export function loanFixtureRoutes(router: Router, deps: AppDeps): void {
     const { code } = await currentDigitalId(then, memberId);
     const { loan } = await confirmLoan(then, { userId: await librarianId(), email: FIXTURE_LIBRARIAN.email }, { digitalId: code, copy: barcode });
     res.status(201).json({ loan });
+  });
+
+  router.post("/e2e/holds/lapse", async (req, res) => {
+    const { email, bookId } = (req.body ?? {}) as { email?: unknown; bookId?: unknown };
+    if (typeof email !== "string" || typeof bookId !== "string") {
+      res.status(400).json({ error: { code: "invalid_request", message: "Not a Hold fixture." } });
+      return;
+    }
+    const moved = await deps.db.query(
+      `update public.holds h
+          set ready_at = ready_at - interval '2 days', pickup_ends_at = pickup_ends_at - interval '2 days'
+         from auth.users u
+        where u.id = h.member_id and lower(u.email) = lower($1) and h.book_id = $2 and h.status = 'ready'`,
+      [email, bookId],
+    );
+    if (moved.rowCount !== 1) {
+      res.status(404).json({ error: { code: "not_found", message: "The Member has no ready Hold on that Book." } });
+      return;
+    }
+    res.json({ expired: await expireDueHolds(deps) });
   });
 
   router.post("/e2e/returns", async (req, res) => {

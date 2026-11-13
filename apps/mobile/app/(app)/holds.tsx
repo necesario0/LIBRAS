@@ -13,7 +13,8 @@ import { colors, fontFamily, fontSize, radii, spacing } from "../../src/theme/to
 
 /**
  * The Member's Holds and each one's status (waiting, ready for pickup,
- * borrowed, expired, cancelled), with a Cancel button on a waiting Hold.
+ * borrowed, expired, cancelled). A ready Hold shows the end of its Pickup
+ * Window. A waiting or ready Hold has a Cancel button.
  * There is no Figma frame for it: it uses the style of Home and the Book page.
  */
 export default function HoldsScreen() {

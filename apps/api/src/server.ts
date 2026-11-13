@@ -7,6 +7,7 @@ import { systemClock } from "./clock.ts";
 import { loadConfig } from "./config.ts";
 import { createDatabase } from "./db.ts";
 import { BrevoEmailSender, ConsoleEmailSender } from "./email.ts";
+import { startPickupSweeper } from "./holds/sweeper.ts";
 import { consoleLogger } from "./logger.ts";
 
 // Local development reads the repository's .env file. Hosted environments set real variables.
@@ -21,23 +22,34 @@ const email = config.email
   ? new BrevoEmailSender({ apiKey: config.email.apiKey, from: { address: config.email.fromAddress, name: config.email.fromName } })
   : new ConsoleEmailSender();
 
-const app = createApp(
-  {
-    db,
-    auth: new SupabaseAuth({ url: config.supabaseUrl, publishableKey: config.supabasePublishableKey }),
-    accounts: new SupabaseAuthAdmin({ url: config.supabaseUrl, secretKey: config.supabaseSecretKey }),
-    clock: systemClock,
-    email,
-    logger,
-  },
-  { corsAllowedOrigins: config.corsAllowedOrigins, trustProxy: config.trustProxy, warmCatalog: true },
-);
+const deps = {
+  db,
+  auth: new SupabaseAuth({ url: config.supabaseUrl, publishableKey: config.supabasePublishableKey }),
+  accounts: new SupabaseAuthAdmin({ url: config.supabaseUrl, secretKey: config.supabaseSecretKey }),
+  clock: systemClock,
+  email,
+  logger,
+};
+
+const app = createApp(deps, {
+  corsAllowedOrigins: config.corsAllowedOrigins,
+  trustProxy: config.trustProxy,
+  warmCatalog: true,
+  sweepSecret: config.sweepSecret,
+});
+
+// Pickup Windows end on their own: sweep while the API runs (ADR 0007).
+const sweeper = startPickupSweeper(deps);
+if (!config.sweepSecret && config.isProduction) {
+  logger.error("SWEEP_SECRET is not set: Pickup Windows expire only while this service is awake. See the API README, Pickup Window expiry.");
+}
 
 const server = app.listen(config.port, () => {
   logger.info(`LIBRAS API listening on http://localhost:${config.port}`);
 });
 
 function shutdown(): void {
+  sweeper.stop();
   server.close(() => {
     void db.end().finally(() => process.exit(0));
   });

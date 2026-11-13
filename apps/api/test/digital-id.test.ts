@@ -3,8 +3,7 @@ import { after, before, beforeEach, describe, it } from "node:test";
 import { DIGITAL_ID_MESSAGES } from "@libras/shared";
 import type { DigitalIdResponse, IdentifyMemberResponse } from "@libras/shared";
 import { withIdentity } from "../src/auth/index.ts";
-import { currentDigitalId } from "../src/digital-id/index.ts";
-import { createTestAccount, createTestMember, startTestApi } from "../src/testing/index.ts";
+import { createTestAccount, createTestMember, createTestMemberOfType, startTestApi } from "../src/testing/index.ts";
 import type { TestApi, TestMember } from "../src/testing/index.ts";
 
 function bearer(accessToken: string): Record<string, string> {
@@ -180,26 +179,27 @@ describe("Digital ID", () => {
     }
   });
 
-  it("shows a Visitor with a limit of zero", async () => {
-    const visitor = await createTestAccount(api);
-    await api.db.query(
-      `insert into public.members (user_id, account_type, first_name, last_name, username, terms_accepted_at)
-       values ($1, 'visitor', 'Vida', 'Lim', $2, now())`,
-      [visitor.userId, `vida_${visitor.userId.slice(0, 8)}`],
-    );
-    // A Visitor cannot reach /members/me/* until their sign-up ticket maps their profile, so the
-    // code is arranged with the function behind GET /members/me/digital-id.
-    const { code } = await currentDigitalId(api, visitor.userId);
+  for (const [accountType, limit, loanPeriodDays] of [
+    ["umak_student", 3, 7],
+    ["faculty", 3, 7],
+    ["ntp_employee", 3, 7],
+    ["visitor", 0, null],
+    ["alumni", 0, null],
+  ] as const) {
+    it(`gives a ${accountType} Member a Digital ID the desk identifies with their Loan Policy limit`, async () => {
+      const member = await createTestMemberOfType(api, accountType);
+      const { code } = await digitalIdOf(member);
 
-    const identified = (await (await identify({ code })).json()) as IdentifyMemberResponse;
+      const identified = (await (await identify({ code })).json()) as IdentifyMemberResponse;
 
-    assert.deepEqual(identified.member, {
-      id: visitor.userId,
-      fullName: "Vida Lim",
-      accountType: "visitor",
-      loans: { current: 0, limit: 0, loanPeriodDays: null },
+      assert.deepEqual(identified.member, {
+        id: member.member.id,
+        fullName: "Cobby Baldonado",
+        accountType,
+        loans: { current: 0, limit, loanPeriodDays },
+      });
     });
-  });
+  }
 
   it("lets only a Librarian identify a Member, and only a Member see a Digital ID", async () => {
     const { code } = await digitalIdOf(ana);

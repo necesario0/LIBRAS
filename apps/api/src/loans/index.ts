@@ -9,6 +9,10 @@ import { withTransaction } from "../db.ts";
 import { verifyDigitalId } from "../digital-id/index.ts";
 import type { VerifiedDigitalId } from "../digital-id/index.ts";
 import { AppError } from "../errors.ts";
+import { announceDispatch, dispatchCopy } from "../holds/dispatch.ts";
+import type { HoldDispatch } from "../holds/dispatch.ts";
+import { expireHold } from "../holds/expiry.ts";
+import { MEMBER_NAME_SQL } from "../members/profile.ts";
 
 /** The client of the confirmation's transaction, running as the API itself. */
 type Tx = pg.PoolClient;
@@ -98,18 +102,53 @@ async function useDigitalId(tx: Tx, verified: VerifiedDigitalId, librarianId: st
 }
 
 /**
- * Why this Copy cannot go out to this Member, or undefined when it can.
- *
- * SEAM for Hold dispatch (#18): a Copy that is `set_aside` is refused to every
- * Member here, because nothing records yet whose Hold it is set aside for. When
- * dispatch stores the Copy on the ready Hold, let the Member of that Hold
- * through in the `set_aside` case (and mark their Hold fulfilled in the same
- * transaction); every other Member keeps getting `copy_set_aside`.
+ * Thrown by `takeCopy` when the Copy is set aside for a Hold whose Pickup Window
+ * has ended but which nobody has expired yet. The Loan's transaction rolls
+ * back, the Hold is expired (`expireHold`), and the confirmation runs again.
  */
-function copyRefusal(copy: CopyRow, _borrower: BorrowerRow): AppError | undefined {
-  if (copy.status === "on_loan") return new AppError(409, "copy_on_loan", LOAN_MESSAGES.copyOnLoan);
-  if (copy.status === "set_aside") return new AppError(409, "copy_set_aside", LOAN_MESSAGES.copySetAside);
-  return undefined;
+class PickupWindowPassed extends Error {
+  readonly holdId: string;
+  constructor(holdId: string) {
+    super(`The Pickup Window of Hold ${holdId} has ended`);
+    this.holdId = holdId;
+  }
+}
+
+/** How many times a confirmation runs again after expiring the Hold whose window had ended. */
+const CONFIRM_ATTEMPTS = 3;
+
+/**
+ * Takes the Copy for this Member, or throws the reason it cannot go out to
+ * them. This is the one place that decides it. A Copy that is on Loan goes to
+ * nobody. A Copy that is set aside goes only to the Member whose ready Hold it
+ * is set aside for, and only until the end of the Hold's Pickup Window
+ * (`pickup_ends_at` itself is already too late). That Hold becomes fulfilled
+ * here, in the transaction of the Loan; every other Member is refused with
+ * `copy_set_aside`. When the window has ended, this is not decided by whether
+ * the expiry sweep has run yet: `PickupWindowPassed` makes the caller expire the
+ * Hold and ask again, so the outcome is the same as if the sweep had run first.
+ *
+ * The Copy's row is locked by the caller, so its status cannot change under
+ * this. The Hold's row is locked by the update, after the Copy's: the order
+ * every writer of Holds keeps.
+ */
+async function takeCopy(tx: Tx, copy: CopyRow, borrower: BorrowerRow, at: Date): Promise<void> {
+  if (copy.status === "on_loan") throw new AppError(409, "copy_on_loan", LOAN_MESSAGES.copyOnLoan);
+  if (copy.status === "set_aside") {
+    const fulfilled = await tx.query(
+      `update public.holds set status = 'fulfilled', fulfilled_at = $3
+        where copy_id = $1 and member_id = $2 and status = 'ready' and pickup_ends_at > $3`,
+      [copy.id, borrower.user_id, at],
+    );
+    if (fulfilled.rowCount !== 1) {
+      const over = await tx.query<{ id: string }>(
+        "select id from public.holds where copy_id = $1 and status = 'ready' and pickup_ends_at <= $2",
+        [copy.id, at],
+      );
+      if (over.rows[0]) throw new PickupWindowPassed(over.rows[0].id);
+      throw new AppError(409, "copy_set_aside", LOAN_MESSAGES.copySetAside);
+    }
+  }
 }
 
 export interface ConfirmedLoan {
@@ -123,7 +162,8 @@ export interface ConfirmedLoan {
  * reason the desk page shows, when the Digital ID is not accepted, when no Copy
  * has that barcode or accession number, when the Member's Account Type cannot
  * borrow, when the Member is at their loan limit, and when the Copy is already
- * on Loan or set aside for a Hold.
+ * on Loan or set aside for another Member's Hold. A Copy set aside for this
+ * Member's ready Hold goes out to them, and the Hold becomes fulfilled.
  *
  * One transaction locks the Member, then the Copy, checks both, writes the
  * Loan, marks the Copy `on_loan` (so the live count of available Copies falls)
@@ -131,6 +171,24 @@ export interface ConfirmedLoan {
  * Copy, or for the same Member's last allowed Loan, yield exactly one Loan.
  */
 export async function confirmLoan(
+  deps: AppDeps,
+  librarian: Identity,
+  request: { digitalId: string; copy: string },
+): Promise<ConfirmedLoan> {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return await confirmOnce(deps, librarian, request);
+    } catch (error) {
+      if (!(error instanceof PickupWindowPassed)) throw error;
+      if (attempt >= CONFIRM_ATTEMPTS) throw new AppError(409, "loan_conflict", LOAN_MESSAGES.changed);
+      // Nothing of the failed attempt was kept, not even the use of the Digital ID code.
+      await expireHold(deps, error.holdId);
+    }
+  }
+}
+
+/** One attempt at `confirmLoan`: one transaction. */
+async function confirmOnce(
   deps: AppDeps,
   librarian: Identity,
   request: { digitalId: string; copy: string },
@@ -156,8 +214,7 @@ export async function confirmLoan(
       if ((open.rows[0]?.count ?? 0) >= borrower.loan_limit) {
         throw new AppError(409, "loan_limit_reached", LOAN_MESSAGES.limitReached);
       }
-      const refused = copyRefusal(copy, borrower);
-      if (refused) throw refused;
+      await takeCopy(tx, copy, borrower, checkedOutAt);
 
       const dueAt = loanDueAt(checkedOutAt, borrower.loan_period_days);
       const inserted = await tx.query<{ id: string }>(
@@ -207,9 +264,6 @@ export async function confirmLoan(
   }
 }
 
-/** The Member's name as the desk writes it: first, middle and last. */
-const MEMBER_NAME_SQL = "concat_ws(' ', nullif(m.first_name, ''), nullif(m.middle_name, ''), nullif(m.last_name, ''))";
-
 /** Thrown inside the return's transaction to roll it back and look the Copy up again. */
 class CopyChangedHands extends Error {}
 
@@ -225,23 +279,12 @@ interface OpenLoanRow {
 }
 
 /**
- * SEAM for Hold dispatch (#18). A Copy has just come back and its Loan is
- * closed. This runs inside the return's transaction, with the Member's row and
- * the Copy's row locked (in that order). Today the Copy simply becomes
- * available. Dispatch looks for the Book's next Hold here and either sets the
- * Copy aside for that Hold's Member (status `set_aside`, the Pickup Window, its
- * own audit entry, the email) or, with none waiting, frees it as below. It runs
- * before the return's own audit entry, which is recorded last in the transaction.
- */
-async function placeReturnedCopy(tx: Tx, copy: CopyRow): Promise<void> {
-  await tx.query("update public.copies set status = 'available' where id = $1", [copy.id]);
-}
-
-/**
  * A Librarian records the return of a Copy: its barcode or accession number as
  * scanned or typed, with no Member involved. The Copy's open Loan is closed,
- * the Copy goes back on the shelf (`placeReturnedCopy`) and the audit log gets
- * a `copy_returned` entry, all in one transaction. It is refused, with a reason
+ * the Copy is placed by Hold dispatch (`dispatchCopy`: set aside for the Book's
+ * next waiting Hold, or available when none waits) and the audit log gets a
+ * `copy_returned` entry, all in one transaction. The Member whose Hold became
+ * ready is emailed once the transaction has committed. It is refused, with a reason
  * the desk page shows, when no Copy has that code and when the Copy is not on
  * Loan (including a Copy that was returned a moment ago).
  *
@@ -255,7 +298,8 @@ export async function recordReturn(deps: AppDeps, librarian: Identity, request: 
   const audit = createAuditLog(deps);
   for (let attempt = 1; ; attempt += 1) {
     try {
-      return await withTransaction(deps.db, async (tx) => {
+      let dispatch: HoldDispatch | null = null;
+      const returned = await withTransaction(deps.db, async (tx): Promise<ReturnedLoan> => {
         const returnedAt = deps.clock.now();
         const holder = await tx.query<{ member_id: string | null }>(
           `select l.member_id
@@ -288,7 +332,8 @@ export async function recordReturn(deps: AppDeps, librarian: Identity, request: 
 
         const closed = await tx.query("update public.loans set returned_at = $2 where id = $1 and returned_at is null", [loan.id, returnedAt]);
         if (closed.rowCount !== 1) throw new AppError(409, "copy_not_on_loan", RETURN_MESSAGES.copyNotOnLoan);
-        await placeReturnedCopy(tx, copy);
+        // The Copy's row is locked and its Loan is closed: the Book's next Hold gets it, or it is available.
+        dispatch = await dispatchCopy(deps, tx, copy, { at: returnedAt, cause: "copy_returned", actorId: librarian.userId });
 
         const late = isLoanOverdue(loan.due_at, returnedAt);
         // Last in the transaction: other writers of the audit log wait until it ends.
@@ -318,8 +363,11 @@ export async function recordReturn(deps: AppDeps, librarian: Identity, request: 
           dueAt: loan.due_at.toISOString(),
           returnedAt: returnedAt.toISOString(),
           late,
+          heldFor: dispatch && { memberName: dispatch.memberName, pickupEndsAt: dispatch.pickupEndsAt.toISOString() },
         };
       });
+      await announceDispatch(deps, dispatch);
+      return returned;
     } catch (error) {
       if (!(error instanceof CopyChangedHands)) throw error;
       if (attempt >= RETURN_ATTEMPTS) throw new AppError(409, "return_conflict", RETURN_MESSAGES.changedHands);

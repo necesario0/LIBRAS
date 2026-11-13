@@ -230,8 +230,16 @@ describe("Holds: seeing and cancelling them", () => {
     h.api().clock.advance({ minutes: 5 });
     const third = await place(ana, c);
     assert.equal((await cancel(ana, second.id)).status, 200);
-    // The dispatcher (a later ticket) moves a Hold to ready, fulfilled or expired: arrange the state here.
-    await h.api().db.query("update public.holds set status = 'ready' where id = $1", [first.id]);
+    // A return moves a Hold to ready (test/hold-dispatch.test.ts): arrange the state here.
+    await h.api().db.query(
+      `update public.holds
+          set status = 'ready',
+              copy_id = (select id from public.copies where book_id = holds.book_id limit 1),
+              ready_at = placed_at,
+              pickup_ends_at = placed_at + interval '24 hours'
+        where id = $1`,
+      [first.id],
+    );
 
     const holds = await holdsOf(ana);
 
@@ -276,7 +284,7 @@ describe("Holds: seeing and cancelling them", () => {
     assert.equal((await holdsOf(ana)).filter((hold) => hold.bookId === bookId && hold.status === "waiting").length, 1);
   });
 
-  it("refuses to cancel a Hold twice, or one that is no longer waiting", async () => {
+  it("refuses to cancel a Hold twice, or one that is fulfilled or expired", async () => {
     const bookId = await h.addBook("Cancel Once");
     const hold = await place(ana, bookId);
     assert.equal((await cancel(ana, hold.id)).status, 200);
@@ -285,11 +293,20 @@ describe("Holds: seeing and cancelling them", () => {
     assert.equal(twice.status, 409);
     assert.equal((await twice.json()).error.code, "hold_not_cancellable");
 
-    for (const status of ["ready", "fulfilled", "expired"]) {
+    for (const status of ["fulfilled", "expired"]) {
       const other = await h.addBook(`Not Cancellable ${status}`);
       const placed = await place(ana, other);
-      await h.api().db.query("update public.holds set status = $2 where id = $1", [placed.id, status]);
-      assert.equal((await cancel(ana, placed.id)).status, 409, status);
+      await h.api().db.query(
+        `update public.holds
+            set status = $2::public.hold_status,
+                fulfilled_at = case when $2 = 'fulfilled' then placed_at end,
+                expired_at = case when $2 = 'expired' then placed_at end
+          where id = $1`,
+        [placed.id, status],
+      );
+      const refused = await cancel(ana, placed.id);
+      assert.equal(refused.status, 409, status);
+      assert.equal((await refused.json()).error.code, "hold_not_cancellable");
     }
   });
 

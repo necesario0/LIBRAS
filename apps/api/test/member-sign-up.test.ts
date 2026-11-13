@@ -123,15 +123,6 @@ describe("UMAK Student sign-up", () => {
     assert.equal(verified.member.contactNumber, undefined);
   });
 
-  it("says plainly when an Account Type has no sign-up form yet", async () => {
-    const response = await postJson(signUpUrl(), { ...studentSignUpBody(), accountType: "faculty" });
-
-    assert.equal(response.status, 400);
-    const { error } = await response.json();
-    assert.equal(error.code, "account_type_unavailable");
-    assert.match(error.message, /Faculty/);
-  });
-
   describe("the verification code", () => {
     async function startSignUp() {
       const body = studentSignUpBody();

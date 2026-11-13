@@ -39,6 +39,10 @@ services:
         sync: false
       - key: EMAIL_FROM_NAME
         value: LIBRAS
+      # The shared secret of the calls the database's schedule makes to wake this service and end Pickup
+      # Windows (ADR 0007). Make one with `openssl rand -hex 32`; `npm run schedule:hosted` makes and saves it.
+      - key: SWEEP_SECRET
+        sync: false
       # Render's load balancer is one reverse proxy in front of the API. The sign-in rate limit counts
       # failures per client address, which Express reads from X-Forwarded-For (README, "Client address").
       - key: TRUST_PROXY

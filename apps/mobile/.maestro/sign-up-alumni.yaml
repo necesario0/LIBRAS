@@ -1,0 +1,50 @@
+# An Alumni signs up end to end with an email that is not UMAK: the form, the terms, the emailed code and the active account.
+# Needs the end-to-end API on port 3000 (npm run e2e starts it): the code is read
+# from the emails that API captured.
+appId: ph.edu.umak.libras
+---
+- runScript:
+    file: scripts/new-member.js
+    env:
+      EMAIL_DOMAIN: example.org
+- runFlow:
+    file: subflows/start.yaml
+    env:
+      ACCOUNT_TYPE: alumni
+
+# Step 2: the graduation year comes from a list; the contact number is optional.
+- tapOn:
+    id: alumni-year
+- tapOn:
+    id: alumni-year-option-2025-2026
+- tapOn:
+    id: alumni-id-number
+- inputText: ${output.idNumber}
+- hideKeyboard
+- tapOn:
+    id: alumni-continue
+
+# Step 3
+- runFlow:
+    file: subflows/account.yaml
+    env:
+      USERNAME: ${output.username}
+      PASSWORD: ${output.password}
+
+# Step 4: any email is accepted. The terms must be accepted before the account is created.
+- tapOn:
+    id: email-input
+- inputText: ${output.email}
+- hideKeyboard
+- tapOn:
+    id: email-continue
+- assertVisible: "Accept the terms to create your account."
+- tapOn:
+    id: email-accept-terms
+- tapOn:
+    id: email-continue
+- runFlow:
+    file: subflows/verify.yaml
+    env:
+      EMAIL: ${output.email}
+      FIRST_NAME: Cobby

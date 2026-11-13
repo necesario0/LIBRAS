@@ -5,5 +5,16 @@ export type { TestAccount, TestAccountOptions } from "./accounts.ts";
 export { FakeClock } from "./fake-clock.ts";
 export type { Duration } from "./fake-clock.ts";
 export { CapturingEmailSender } from "./capturing-email-sender.ts";
-export { codeFromEmail, createTestMember, createTestMemberOfType, signInDirect, studentSignUpBody } from "./members.ts";
+export {
+  alumniSignUpBody,
+  codeFromEmail,
+  createTestMember,
+  createTestMemberFromSignUp,
+  createTestMemberOfType,
+  facultySignUpBody,
+  ntpEmployeeSignUpBody,
+  signInDirect,
+  studentSignUpBody,
+  visitorSignUpBody,
+} from "./members.ts";
 export type { TestMember } from "./members.ts";

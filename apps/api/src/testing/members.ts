@@ -1,8 +1,7 @@
 import { randomInt, randomUUID } from "node:crypto";
-import type { MemberProfile, SignUpRequest } from "@libras/shared";
+import type { AccountType, MemberProfile, SignUpRequest } from "@libras/shared";
 import { loadConfig } from "../config.ts";
 import type { EmailMessage } from "../email.ts";
-import { createTestAccount } from "./accounts.ts";
 import type { TestApi } from "./test-api.ts";
 
 /** The profile of a UMAK Student, which carries the student details. */
@@ -24,6 +23,67 @@ export function studentSignUpBody(overrides: Partial<StudentSignUp> = {}): Stude
     username: `cobby_${unique.slice(0, 10)}`,
     details: { studentNumber: `K${randomInt(10_000_000, 99_999_999)}`, college: "CCIS" },
     acceptedTerms: true,
+    ...overrides,
+  };
+}
+
+type FacultySignUp = Extract<SignUpRequest, { accountType: "faculty" }>;
+type NtpEmployeeSignUp = Extract<SignUpRequest, { accountType: "ntp_employee" }>;
+type VisitorSignUp = Extract<SignUpRequest, { accountType: "visitor" }>;
+type AlumniSignUp = Extract<SignUpRequest, { accountType: "alumni" }>;
+
+/** The fields every Account Type gives, with a unique email, username and password. */
+function commonBody(prefix: string, domain: string) {
+  const unique = randomUUID().replaceAll("-", "");
+  return {
+    email: `${prefix}-${unique.slice(0, 12)}@${domain}`,
+    password: `pw-${unique}`,
+    firstName: "Cobby",
+    lastName: "Baldonado",
+    username: `${prefix}_${unique.slice(0, 10)}`,
+    acceptedTerms: true as const,
+  };
+}
+
+/** A valid Faculty sign-up body. Pass overrides for the field under test. */
+export function facultySignUpBody(overrides: Partial<FacultySignUp> = {}): FacultySignUp & { email: string; password: string } {
+  return {
+    accountType: "faculty",
+    ...commonBody("faculty", "umak.edu.ph"),
+    details: { facultyNumber: `F${randomInt(1_000_000, 9_999_999)}`, college: "CCIS" },
+    ...overrides,
+  };
+}
+
+/** A valid NTP / Employee sign-up body. */
+export function ntpEmployeeSignUpBody(
+  overrides: Partial<NtpEmployeeSignUp> = {},
+): NtpEmployeeSignUp & { email: string; password: string } {
+  return {
+    accountType: "ntp_employee",
+    ...commonBody("ntp", "umak.edu.ph"),
+    details: { employeeNumber: `E${randomInt(1_000_000, 9_999_999)}`, college: "CCIS" },
+    ...overrides,
+  };
+}
+
+/** A valid Visitor sign-up body. A Visitor must give a contact number. */
+export function visitorSignUpBody(overrides: Partial<VisitorSignUp> = {}): VisitorSignUp & { email: string; password: string } {
+  return {
+    accountType: "visitor",
+    ...commonBody("visitor", "gmail.com"),
+    contactNumber: "09034984958",
+    details: { validIdNumber: "39458-3940-380", idType: "Passport", institution: "FEU (Far Eastern University)" },
+    ...overrides,
+  };
+}
+
+/** A valid Alumni sign-up body. */
+export function alumniSignUpBody(overrides: Partial<AlumniSignUp> = {}): AlumniSignUp & { email: string; password: string } {
+  return {
+    accountType: "alumni",
+    ...commonBody("alumni", "yahoo.com"),
+    details: { yearGraduated: "2025-2026", alumniIdNumber: `${randomInt(1_000_000, 9_999_999)}` },
     ...overrides,
   };
 }
@@ -55,11 +115,13 @@ export interface TestMember<Profile extends MemberProfile = MemberProfile> {
 }
 
 /**
- * Signs a UMAK Student up through the API, reads the code from the captured
- * email, verifies it and signs in: a real Member with a session.
+ * Signs a Member up through the API with the given body, reads the code from the captured email,
+ * verifies it and signs in: a real Member with a session. Any Account Type.
  */
-export async function createTestMember(api: TestApi, overrides: Partial<StudentSignUp> = {}): Promise<TestMember<StudentProfile>> {
-  const body = studentSignUpBody(overrides);
+export async function createTestMemberFromSignUp<Profile extends MemberProfile>(
+  api: TestApi,
+  body: SignUpRequest & { email: string; password: string },
+): Promise<TestMember<Profile>> {
   const post = (path: string, payload: unknown) =>
     fetch(`${api.baseUrl}${path}`, {
       method: "POST",
@@ -72,37 +134,26 @@ export async function createTestMember(api: TestApi, overrides: Partial<StudentS
   const code = codeFromEmail(api.emails.lastTo(body.email));
   const verify = await post("/members/sign-up/verify", { email: body.email, code });
   if (verify.status !== 200) throw new Error(`Test verification failed: ${verify.status} ${await verify.text()}`);
-  const { member } = (await verify.json()) as { member: StudentProfile };
+  const { member } = (await verify.json()) as { member: Profile };
 
   const accessToken = await signInDirect(body.email, body.password);
   if (accessToken === undefined) throw new Error("The verified test Member could not sign in");
   return { member, email: body.email, password: body.password, accessToken };
 }
 
-/**
- * A verified Member of an Account Type that has no sign-up form yet (Visitor, Alumni: #8 builds
- * them). The Member row is written straight to the database, exactly what verifying a sign-up
- * would write, and the Member signs in at Supabase Auth. When #8 lands, sign-up can replace this.
- */
-export async function createTestMemberOfType(api: TestApi, accountType: "visitor" | "alumni"): Promise<TestMember> {
-  const account = await createTestAccount(api);
-  const username = `${accountType}_${account.userId.slice(0, 8)}`;
-  const lastName = accountType === "visitor" ? "Visitor" : "Alumni";
-  await api.db.query(
-    `insert into public.members (user_id, account_type, first_name, last_name, username, terms_accepted_at)
-     values ($1, $2, $3, $4, $5, now())`,
-    [account.userId, accountType, "Test", lastName, username],
-  );
-  const accessToken = await signInDirect(account.email, account.password);
-  if (accessToken === undefined) throw new Error("The test Member could not sign in");
-  const member: MemberProfile = {
-    id: account.userId,
-    email: account.email,
-    accountType,
-    firstName: "Test",
-    lastName,
-    username,
-    details: {},
+/** A UMAK Student, signed up through the API. */
+export function createTestMember(api: TestApi, overrides: Partial<StudentSignUp> = {}): Promise<TestMember<StudentProfile>> {
+  return createTestMemberFromSignUp(api, studentSignUpBody(overrides));
+}
+
+/** A Member of any Account Type, signed up through the API with valid details for that type. */
+export function createTestMemberOfType(api: TestApi, accountType: AccountType): Promise<TestMember> {
+  const bodies: Record<AccountType, () => SignUpRequest & { email: string; password: string }> = {
+    umak_student: studentSignUpBody,
+    faculty: facultySignUpBody,
+    ntp_employee: ntpEmployeeSignUpBody,
+    visitor: visitorSignUpBody,
+    alumni: alumniSignUpBody,
   };
-  return { member, email: account.email, password: account.password, accessToken };
+  return createTestMemberFromSignUp(api, bodies[accountType]());
 }

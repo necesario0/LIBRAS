@@ -1,0 +1,181 @@
+# A UMAK Student places a Hold on a Book whose only Copy is out with another
+# Member. The Librarian records the return (the end-to-end API does it, as the
+# desk page would): the Hold becomes ready, and the app shows it with the end of
+# the Pickup Window on the Holds screen, on Home and on the Book page. The Member
+# shows the Digital ID, the Librarian lends the set-aside Copy, and the Hold is
+# listed as borrowed.
+# Needs the end-to-end API on port 3000 (npm run e2e starts it).
+appId: ph.edu.umak.libras
+---
+- launchApp:
+    clearState: true
+- runScript: scripts/create-hold-ready.js
+
+# The UMAK Student signs in. The emulator sometimes doubles the first character
+# typed after a tap: check and retype.
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 30000
+- tapOn:
+    id: welcome-sign-in
+- tapOn:
+    id: sign-in-email
+- retry:
+    maxRetries: 3
+    commands:
+      - eraseText: 80
+      - inputText: ${output.email}
+      - assertVisible: ${output.email}
+- tapOn:
+    id: sign-in-password
+- inputText: ${output.password}
+- hideKeyboard
+- tapOn:
+    id: sign-in-continue
+
+# The Book's only Copy is out: the Member places a Hold.
+- extendedWaitUntil:
+    visible:
+      id: home-holds
+    timeout: 20000
+- tapOn:
+    id: search-input
+- inputText: ${output.heldWord}
+- extendedWaitUntil:
+    visible: ${output.heldTitle}
+    timeout: 15000
+- tapOn: ${output.heldTitle}
+- extendedWaitUntil:
+    visible:
+      id: book-sheet
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: hold-place
+    timeout: 15000
+- tapOn:
+    id: hold-place
+- extendedWaitUntil:
+    visible:
+      id: hold-placed
+    timeout: 15000
+- assertVisible: "You have a Hold on this Book: waiting"
+- assertNotVisible:
+    id: hold-digital-id
+- tapOn:
+    id: book-close
+- extendedWaitUntil:
+    visible:
+      id: search-results
+    timeout: 10000
+- tapOn:
+    id: search-input
+- eraseText: 40
+- hideKeyboard
+- extendedWaitUntil:
+    visible: "1 waiting"
+    timeout: 15000
+
+# The Copy comes back at the desk: the Hold is dispatched and the Member is emailed.
+- runScript: scripts/return-held-copy.js
+
+# The Holds screen shows the Hold as ready, with the end of the Pickup Window.
+- tapOn:
+    id: home-holds
+- extendedWaitUntil:
+    visible:
+      id: hold-pickup
+    timeout: 15000
+- assertVisible: ${output.heldTitle}
+- assertVisible: "Ready for pickup"
+- assertVisible: "A Copy is set aside for you"
+- assertVisible: "Show your Digital ID at the library desk by [A-Z][a-z]{2} [0-9]{1,2}, 20[0-9]{2}, [0-9]{1,2}:[0-9]{2} (AM|PM) to borrow it. After that your Hold expires."
+- assertNotVisible: "Waiting"
+- takeScreenshot: hold-ready-list
+
+# A ready Hold can be cancelled too: the app asks once more, in other words.
+- tapOn:
+    id: hold-cancel
+- assertVisible: "Give up the Copy that is set aside for you?"
+- takeScreenshot: hold-ready-cancel-confirm
+- tapOn:
+    id: hold-cancel-keep
+- assertVisible:
+    id: hold-pickup
+
+# Home counts it as ready.
+- tapOn:
+    id: holds-back
+- extendedWaitUntil:
+    visible: "1 ready for pickup"
+    timeout: 15000
+- takeScreenshot: hold-ready-home
+
+# The Book page says until when the Copy is set aside, and leads to the Digital ID.
+- tapOn:
+    id: search-input
+- inputText: ${output.heldWord}
+- extendedWaitUntil:
+    visible: ${output.heldTitle}
+    timeout: 15000
+- assertVisible: "None available"
+- tapOn: ${output.heldTitle}
+- extendedWaitUntil:
+    visible:
+      id: book-sheet
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: hold-see-all
+    direction: DOWN
+    timeout: 15000
+- assertVisible: "You have a Hold on this Book: ready for pickup"
+- assertVisible: "A Copy is set aside for you until [A-Z][a-z]{2} [0-9]{1,2}, 20[0-9]{2}, [0-9]{1,2}:[0-9]{2} (AM|PM). Show your Digital ID at the library desk to borrow it."
+- takeScreenshot: hold-ready-book
+
+# The Member shows the Digital ID, and the Librarian lends the set-aside Copy.
+- tapOn:
+    id: hold-digital-id
+- extendedWaitUntil:
+    visible:
+      id: digital-id-code
+    timeout: 15000
+- runScript: scripts/lend-held-copy.js
+- extendedWaitUntil:
+    visible:
+      id: borrowed-card
+    timeout: 20000
+- assertVisible: "Successfully.*Borrowed"
+- assertVisible: ${output.heldTitle}
+- takeScreenshot: hold-ready-borrowed
+
+# The Hold is over: Home has no active Hold, and the Holds screen lists it as borrowed.
+# Home still shows the search from before the Digital ID: clear it to see the summary.
+- tapOn:
+    id: borrowed-home
+- extendedWaitUntil:
+    visible:
+      id: search-input
+    timeout: 15000
+- tapOn:
+    id: search-input
+- eraseText: 40
+- hideKeyboard
+- extendedWaitUntil:
+    visible: "No active Holds"
+    timeout: 15000
+- assertVisible: "1 current Loan"
+- tapOn:
+    id: home-holds
+- extendedWaitUntil:
+    visible:
+      id: holds-past
+    timeout: 15000
+- assertVisible: "Borrowed"
+- assertNotVisible:
+    id: hold-pickup
+- assertNotVisible:
+    id: hold-cancel
+- assertNotVisible:
+    id: holds-active
+- takeScreenshot: hold-ready-fulfilled

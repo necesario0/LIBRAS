@@ -1,5 +1,11 @@
 import type { Session } from "./auth.ts";
-import type { UmakStudentDetails } from "./sign-up.ts";
+import type {
+  AlumniDetails,
+  FacultyDetails,
+  NtpEmployeeDetails,
+  UmakStudentDetails,
+  VisitorDetails,
+} from "./sign-up.ts";
 
 interface MemberBase {
   /** The account id: the same as the sign-in identity. */
@@ -14,12 +20,16 @@ interface MemberBase {
 
 /**
  * A Member as the app sees them. `details` holds what only that Account Type
- * gives at sign-up. Each ticket that builds another sign-up form adds a case.
+ * gives at sign-up, so the Account Type tells which details there are.
  */
-export type MemberProfile =
-  | (MemberBase & { accountType: "umak_student"; details: UmakStudentDetails })
-  // Visitor and Alumni: no extra details yet. Their sign-up ticket (#8) gives them their own cases.
-  | (MemberBase & { accountType: "visitor" | "alumni"; details: Record<string, never> });
+export type MemberProfile = MemberBase &
+  (
+    | { accountType: "umak_student"; details: UmakStudentDetails }
+    | { accountType: "faculty"; details: FacultyDetails }
+    | { accountType: "ntp_employee"; details: NtpEmployeeDetails }
+    | { accountType: "visitor"; details: VisitorDetails }
+    | { accountType: "alumni"; details: AlumniDetails }
+  );
 
 /** The body of `POST /members/sign-up` and `POST /members/sign-up/resend`: a code is on its way. */
 export interface SignUpCodeSentResponse {

@@ -1,9 +1,6 @@
 import { Router } from "express";
 import {
-  ACCOUNT_TYPE_LABELS,
   SIGN_UP_MESSAGES,
-  accountTypeSchema,
-  hasSignUpForm,
   resendSignUpCodeRequestSchema,
   signInRequestSchema,
   signUpRequestSchema,
@@ -51,15 +48,6 @@ export function membersRouter(deps: AppDeps, limiter: SignInLimiter): Router {
   });
 
   router.post("/members/sign-up", async (req, res) => {
-    // An Account Type whose form is not built yet is refused by name, not as a malformed request.
-    const accountType = accountTypeSchema.safeParse((req.body as { accountType?: unknown } | undefined)?.accountType);
-    if (accountType.success && !hasSignUpForm(accountType.data)) {
-      throw new AppError(
-        400,
-        "account_type_unavailable",
-        `Sign-up for ${ACCOUNT_TYPE_LABELS[accountType.data]} is not available yet.`,
-      );
-    }
     const parsed = signUpRequestSchema.safeParse(req.body);
     if (!parsed.success) throw signUpRefusal(parsed.error);
 
