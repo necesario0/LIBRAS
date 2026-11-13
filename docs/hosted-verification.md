@@ -67,8 +67,14 @@ The test Members, Book, Copy, Loans and Holds were deleted afterwards (`npm run 
 
 ## Audit chain
 
-`npm run audit:verify:hosted -w @libras/api` after the runs above: "Audit log intact: 33 entries checked" (12 returns, 12 Loans, 9 Hold dispatches, all from the dispatch run). The chain must be checked again after the demo walk on real phones.
+`npm run audit:verify:hosted -w @libras/api` after the runs above: "Audit log intact: 33 entries checked" (12 returns, 12 Loans, 9 Hold dispatches, all from the dispatch run). After the demo walk on real phones (2026-11-13): "Audit log intact: 48 entries checked".
 
-## Still to do (needs the developer)
+## Demo walk and camera checks on real phones
 
-The demo run on real phones (`docs/demo-script.md`), the real-device camera checks, and the comparison of every screen with Figma. Record the run in the table at the end of the demo script.
+Run by the developer on 2026-11-13 against the hosted API, the `libras-desk` static site and the hosted APK. The full demo path in `docs/demo-script.md` passed: sign-up, sign-in, search, Borrow, Digital ID scanned by the Librarian's paired phone, Loan confirmed, return, Hold placed, dispatched and picked up. The camera checks passed (Digital ID from a phone screen, a Copy label, the 3 second repeat guard, a scanner session of more than 10 minutes on Render), and no visible difference from Figma was found.
+
+## Known limits
+
+- **Search under no-pause load.** The free Render instance (0.1 CPU) serves about 33 to 36 searches a second, so 50 users searching with no pause miss the one-second target. Patron-paced load meets it. Moving the API to a paid instance and re-running `npm run verify:hosted -- search` is the remedy.
+- **Verification email lands in spam at UMAK.** Mail is sent through Brevo with a `@umak.edu.ph` sender, which that domain does not authorise, so UMAK's Google mail files it as spam (Brevo reports it delivered). The remedy is a sender on a domain authenticated in Brevo (DKIM, SPF, DMARC), or UMAK IT authorising Brevo for `umak.edu.ph`. Until then, presenters mark the code email "Not spam" before the demo.
+- **Render auto-deploy did not fire** for the merges of PR #22 and #23; the API was deployed by hand. Check it after every merge to `main` (README, "Auto-deploy: check that a merge reaches Render").
