@@ -7,7 +7,7 @@ A Hold is `ready` while a Copy is set aside for its Member, and its Pickup Windo
 
 ## The rule: strict at the point of use, lazy where a Member would notice
 
-`expireHold` (`apps/api/src/holds/expiry.ts`) ends one window: the Copy's row, then the Hold's row (the lock order of ADR 0006), the Hold becomes `expired` with `expired_at`, the audit log gets `hold_expired`, and `dispatchCopy` (cause `pickup_window_expired`, no actor) passes the Copy on, with the next Hold's Pickup Window starting at the expiry. The email goes out after the commit. A window has ended at `pickup_ends_at` itself: `pickup_ends_at <= now` is expired.
+`expireHold` (`apps/api/src/holds/expiry.ts`) ends one window: the Copy's row, then the Hold's row (the lock order of ADR 0006), the Hold becomes `expired` with `expired_at`, and `dispatchCopy` (which records `hold_expired` and then its own entry, cause before effect) (cause `pickup_window_expired`, no actor) passes the Copy on, with the next Hold's Pickup Window starting at the expiry. The email goes out after the commit. A window has ended at `pickup_ends_at` itself: `pickup_ends_at <= now` is expired.
 
 The sweep (`expireDueHolds`) expires every ready Hold whose window has ended, one transaction each, the oldest first. A failure on one Hold is logged and does not stop the others. Several sweeps at once are safe: `expireHold` looks again under its locks.
 

@@ -295,7 +295,6 @@ interface OpenLoanRow {
  * finds no open Loan: exactly one return and one audit entry.
  */
 export async function recordReturn(deps: AppDeps, librarian: Identity, request: { copy: string }): Promise<ReturnedLoan> {
-  const audit = createAuditLog(deps);
   for (let attempt = 1; ; attempt += 1) {
     try {
       let dispatch: HoldDispatch | null = null;
@@ -332,13 +331,15 @@ export async function recordReturn(deps: AppDeps, librarian: Identity, request: 
 
         const closed = await tx.query("update public.loans set returned_at = $2 where id = $1 and returned_at is null", [loan.id, returnedAt]);
         if (closed.rowCount !== 1) throw new AppError(409, "copy_not_on_loan", RETURN_MESSAGES.copyNotOnLoan);
-        // The Copy's row is locked and its Loan is closed: the Book's next Hold gets it, or it is available.
-        dispatch = await dispatchCopy(deps, tx, copy, { at: returnedAt, cause: "copy_returned", actorId: librarian.userId });
 
         const late = isLoanOverdue(loan.due_at, returnedAt);
-        // Last in the transaction: other writers of the audit log wait until it ends.
-        await audit.record(
-          {
+        // Last, as `dispatchCopy` asks. The Copy's row is locked and its Loan is closed: the Book's next Hold
+        // gets it, or it is available. The return's own audit entry goes in just before the dispatch's.
+        dispatch = await dispatchCopy(deps, tx, copy, {
+          at: returnedAt,
+          cause: "copy_returned",
+          actorId: librarian.userId,
+          causeEntry: {
             type: "copy_returned",
             actorId: librarian.userId,
             subject: loan.id,
@@ -351,8 +352,7 @@ export async function recordReturn(deps: AppDeps, librarian: Identity, request: 
               late,
             },
           },
-          tx,
-        );
+        });
 
         return {
           id: loan.id,

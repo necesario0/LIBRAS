@@ -2,6 +2,7 @@ import type pg from "pg";
 import { formatLibraryDateTime } from "@libras/shared";
 import type { AppDeps } from "../app.ts";
 import { createAuditLog } from "../audit/index.ts";
+import type { AuditEvent } from "../audit/index.ts";
 import type { EmailMessage } from "../email.ts";
 import { MEMBER_NAME_SQL } from "../members/profile.ts";
 
@@ -35,6 +36,12 @@ export interface DispatchContext {
   cause: DispatchCause;
   /** The signed-in person whose action freed the Copy: the Librarian of a return, the Member of a cancel, nobody for an expiry. */
   actorId: string | null;
+  /**
+   * The audit entry of what freed the Copy (`copy_returned`, `hold_expired`), if it has one. It is
+   * recorded here, just before the dispatch's own `hold_dispatched`, so the audit log reads cause,
+   * then effect, and every audit write of the transaction comes after all its other work.
+   */
+  causeEntry?: AuditEvent;
 }
 
 /** A Hold that was just chosen: its Copy is set aside for its Member until `pickupEndsAt`. */
@@ -100,8 +107,10 @@ export const DISPATCH_SQL = `
  *   and in which the Copy no longer belongs to anyone (its Loan is closed, or
  *   its ready Hold is cancelled or expired). The lock order of every writer is
  *   the Member's row, then the Copy's row, then a Hold's row.
- * - Call it last: it records the `hold_dispatched` audit entry, and other
- *   writers of the audit log wait until the transaction ends.
+ * - Call it last: it records the audit entries (the cause's `causeEntry`, then
+ *   `hold_dispatched`), and other writers of the audit log wait until the
+ *   transaction ends. Record nothing in the audit log before it: pass the
+ *   cause's entry as `causeEntry` instead.
  * - After the transaction commits, pass the result to `announceDispatch`.
  */
 export async function dispatchCopy(
@@ -113,9 +122,11 @@ export async function dispatchCopy(
   const { rows } = await tx.query<ChosenRow>(DISPATCH_SQL, [copy.book_id, copy.id, context.at]);
   const chosen = rows[0];
   await tx.query("update public.copies set status = $2 where id = $1", [copy.id, chosen ? "set_aside" : "available"]);
-  if (!chosen) return null;
 
-  await createAuditLog(deps).record(
+  const audit = createAuditLog(deps);
+  if (context.causeEntry) await audit.record(context.causeEntry, tx);
+  if (!chosen) return null;
+  await audit.record(
     {
       type: "hold_dispatched",
       actorId: context.actorId,

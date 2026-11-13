@@ -1,6 +1,5 @@
 import type { HoldStatus } from "@libras/shared";
 import type { AppDeps } from "../app.ts";
-import { createAuditLog } from "../audit/index.ts";
 import { withTransaction } from "../db.ts";
 import { announceDispatch, dispatchCopy, lockCopyById } from "./dispatch.ts";
 import type { HoldDispatch } from "./dispatch.ts";
@@ -42,11 +41,13 @@ export async function expireHold(deps: AppDeps, holdId: string): Promise<ExpiryO
     if (hold.pickup_ends_at.getTime() > now.getTime()) return "skipped";
 
     await tx.query("update public.holds set status = 'expired', expired_at = $2 where id = $1", [holdId, now]);
-    // The expiry is recorded before the dispatch, which then runs last as `dispatchCopy` asks. Writers of the
-    // audit log wait for each other, and nothing here waits for a row another writer holds: the dispatch
-    // skips a locked waiting Hold, and the Copy's row is already ours.
-    await createAuditLog(deps).record(
-      {
+    // Last, as `dispatchCopy` asks: it records the expiry and then the dispatch it causes. Nothing here waits
+    // for a row another writer holds: the dispatch skips a locked waiting Hold, and the Copy's row is already ours.
+    dispatch = await dispatchCopy(deps, tx, copy, {
+      at: now,
+      cause: "pickup_window_expired",
+      actorId: null,
+      causeEntry: {
         type: "hold_expired",
         subject: holdId,
         data: {
@@ -58,9 +59,7 @@ export async function expireHold(deps: AppDeps, holdId: string): Promise<ExpiryO
           expiredAt: now.toISOString(),
         },
       },
-      tx,
-    );
-    dispatch = await dispatchCopy(deps, tx, copy, { at: now, cause: "pickup_window_expired", actorId: null });
+    });
     return "expired";
   });
   await announceDispatch(deps, dispatch);
