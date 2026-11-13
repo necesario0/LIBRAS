@@ -63,12 +63,28 @@ export class ScannerHub {
   readonly #desks = new Map<string, Desk>();
   readonly #deskByCode = new Map<string, Desk>();
   readonly #deskByToken = new Map<string, Desk>();
+  readonly #sweeper: NodeJS.Timeout;
 
   constructor(clock: Clock, options: ScannerOptions = {}) {
     this.#clock = clock;
     this.#options = { ...DEFAULTS, ...options };
     // Drops the desk pages that stayed away too long, so memory does not fill with abandoned pairings.
-    setInterval(() => this.#sweep(), 15_000).unref();
+    this.#sweeper = setInterval(() => this.#sweep(), 15_000);
+    this.#sweeper.unref();
+  }
+
+  /**
+   * Shuts the hub down with the API: no timer of its own keeps running, every
+   * desk stream is ended and every pairing is forgotten.
+   */
+  stop(): void {
+    clearInterval(this.#sweeper);
+    for (const desk of this.#desks.values()) {
+      this.#clearCode(desk);
+      desk.sink?.close();
+    }
+    this.#desks.clear();
+    this.#deskByToken.clear();
   }
 
   get streamSeconds(): number {

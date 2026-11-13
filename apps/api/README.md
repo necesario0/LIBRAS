@@ -9,7 +9,7 @@ How to run it and its tests is in the [root README](../../README.md).
 | Path | Contents |
 | --- | --- |
 | `src/server.ts` | The entry point: reads configuration, wires the real clock, database and email sender, and listens |
-| `src/app.ts` | `createApp(deps)` builds the Express app. Each feature adds its router here |
+| `src/app.ts` | `createApp(deps)` builds the Express app (`{ app, stop }`: call `stop` when the server closes). Each feature adds its router here |
 | `src/routes/` | One router per feature. `health.ts` is the pattern to copy |
 | `src/errors.ts` | `AppError` and the error handler |
 | `src/clock.ts`, `src/email.ts`, `src/db.ts`, `src/logger.ts` | The things the API reaches outside itself, passed in as `AppDeps` |

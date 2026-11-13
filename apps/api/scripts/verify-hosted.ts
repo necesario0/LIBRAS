@@ -99,7 +99,7 @@ async function call<T>(method: string, path: string, token?: string, body?: unkn
 /** The real API on this computer, against the hosted database and Supabase Auth, with a sender that only captures. It makes test Members. */
 async function startSignUpApp(db: Database) {
   const email = new CapturingEmailSender();
-  const app = createApp({
+  const { app, stop } = createApp({
     db,
     auth: new SupabaseAuth({ url: config.supabaseUrl, publishableKey: config.supabasePublishableKey }),
     accounts: new SupabaseAuthAdmin({ url: config.supabaseUrl, secretKey: config.supabaseSecretKey }),
@@ -120,7 +120,11 @@ async function startSignUpApp(db: Database) {
       const verified = await post("/members/sign-up/verify", { email: body.email, code: codeFromEmail(email.lastTo(body.email)) });
       if (verified.status !== 200 && verified.status !== 201) throw new Error(`Verification failed: ${verified.status} ${await verified.text()}`);
     },
-    close: () => new Promise<void>((resolve) => server.close(() => resolve())),
+    close: () =>
+      new Promise<void>((resolve) => {
+        stop();
+        server.close(() => resolve());
+      }),
   };
 }
 

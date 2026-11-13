@@ -50,7 +50,7 @@ const deps = {
   logger: consoleLogger,
 };
 
-const app = createApp(deps, {
+const { app, stop } = createApp(deps, {
   extraRoutes: (router, deps, { catalog }) => {
     mailboxRoutes(emails)(router);
     catalogFixtureRoutes(router, deps, catalog);
@@ -73,6 +73,7 @@ const server = app.listen(config.port, "127.0.0.1", () => {
 
 function shutdown(): void {
   sweeper.stop();
+  stop();
   server.close(() => {
     void db.end().finally(() => process.exit(0));
   });

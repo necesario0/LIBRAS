@@ -58,7 +58,9 @@ export function scannerRouter(deps: AppDeps, hub: ScannerHub, pairingLimiter: At
     const sink = sinkOf(res);
     const disconnect = hub.connectDesk(librarianOf(res).id, sink, resume);
     // A comment line every few seconds keeps proxies and the free host from closing an idle stream.
-    const keepAlive = setInterval(() => res.write(": ping\n\n"), KEEP_ALIVE_MS);
+    const keepAlive = setInterval(() => {
+      if (!res.writableEnded) res.write(": ping\n\n");
+    }, KEEP_ALIVE_MS);
     // The stream does not live for ever: ending it makes the page reconnect with a session that is checked again.
     const lifetime = setTimeout(() => {
       sink.send("end", {});

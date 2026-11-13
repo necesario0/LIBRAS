@@ -70,7 +70,14 @@ export interface AppOptions {
 /** A wrong pairing code five times in five minutes blocks the address for the rest of the window. */
 const DEFAULT_PAIRING_LIMIT: AttemptLimitOptions = { maxFailures: 5, windowMinutes: 5 };
 
-export function createApp(deps: AppDeps, options: AppOptions = {}): Express {
+/** The API's Express app, and what to call when the server shuts down. */
+export interface LibrasApp {
+  app: Express;
+  /** Stops what the app runs besides answering requests (the scanner hub's timers and streams). Call it when the server closes. */
+  stop(): void;
+}
+
+export function createApp(deps: AppDeps, options: AppOptions = {}): LibrasApp {
   const app = express();
   app.disable("x-powered-by");
   app.set("trust proxy", options.trustProxy ?? 0);
@@ -102,5 +109,5 @@ export function createApp(deps: AppDeps, options: AppOptions = {}): Express {
 
   app.use(notFoundHandler);
   app.use(createErrorHandler(deps.logger));
-  return app;
+  return { app, stop: () => scannerHub.stop() };
 }

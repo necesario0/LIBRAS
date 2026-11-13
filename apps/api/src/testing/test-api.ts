@@ -66,7 +66,7 @@ export async function startTestApi(options: TestApiOptions = {}): Promise<TestAp
   const realAccounts = new SupabaseAuthAdmin({ url: config.supabaseUrl, secretKey: config.supabaseSecretKey });
   const accounts = options.wrapAccounts ? options.wrapAccounts(realAccounts) : realAccounts;
   const deps = { db, auth, accounts, clock, email: emails, logger };
-  const app = createApp(deps, options);
+  const { app, stop } = createApp(deps, options);
 
   const sweeper = options.sweepIntervalMs === undefined ? undefined : startPickupSweeper(deps, options.sweepIntervalMs);
 
@@ -84,6 +84,7 @@ export async function startTestApi(options: TestApiOptions = {}): Promise<TestAp
     sweepPickupWindows: () => expireDueHolds(deps),
     async close() {
       sweeper?.stop();
+      stop();
       await new Promise<void>((resolve, reject) => {
         server.close((error) => (error ? reject(error) : resolve()));
         server.closeAllConnections();

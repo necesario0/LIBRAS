@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHook } from "node:async_hooks";
 import { after, before, describe, it } from "node:test";
 import { readEventStream } from "@libras/shared";
 import type { DeskScannerEventName, DeskScannerEvents, PairScannerResponse, ScannerStatusResponse } from "@libras/shared";
@@ -451,5 +452,44 @@ describe("The phone as the scanner", () => {
         await short.close();
       }
     });
+  });
+});
+
+describe("Closing the API", () => {
+  it("ends the desk streams and leaves none of the API's timers running", async () => {
+    // Every timer the API's own code starts, until it is cleared or has fired. The time limits of its
+    // outgoing requests (AbortSignal.timeout) end by themselves and are left out.
+    const live = new Map<number, string>();
+    const hook = createHook({
+      init(asyncId, type) {
+        if (type !== "Timeout") return;
+        const stack = new Error().stack ?? "";
+        if (/apps[\\/]api[\\/]src[\\/]/.test(stack) && !stack.includes("AbortSignal.timeout")) live.set(asyncId, stack);
+      },
+      destroy(asyncId) {
+        live.delete(asyncId);
+      },
+    }).enable();
+    try {
+      const api = await startTestApi();
+      const account = await createTestAccount(api, { staff: { role: "librarian", fullName: "Lita Reyes" } });
+      const token = await signInDirect(account.email, account.password);
+      assert.ok(token);
+      const desk = await DeskStream.open(api, token);
+      await desk.next("pairing");
+      assert.ok(live.size > 0, "the hub and the stream start timers");
+
+      await api.close();
+
+      await desk.ended;
+      await eventually(
+        async () => live.size,
+        (size) => size === 0,
+        2000,
+      );
+      assert.deepEqual([...live.values()], []);
+    } finally {
+      hook.disable();
+    }
   });
 });
