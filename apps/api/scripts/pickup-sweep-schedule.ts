@@ -78,3 +78,38 @@ export async function unschedulePickupSweep(db: Database, options: { jobName?: s
   await db.query("select cron.unschedule(jobid) from cron.job where jobname = $1", [jobName]);
   await db.query("delete from vault.secrets where name = any($1)", [[`${jobName}_url`, `${jobName}_secret`]]);
 }
+
+export interface SweepSecretCheck {
+  /** True when the API ran the sweep, so the secret on the service matches. */
+  accepted: boolean;
+  /** What to tell the developer. Never contains the secret. */
+  message: string;
+}
+
+const RENDER_REMINDER =
+  "In the Render dashboard, open the libras-api service, Environment tab, and add SWEEP_SECRET with the value saved in .env.hosted. Render restarts the service when you save.";
+
+/** Asks the API to run the sweep with the secret, and says what is left to do (nothing, when it accepts). */
+export async function checkSweepSecret(options: { apiUrl: string; secret: string; timeoutMs?: number }): Promise<SweepSecretCheck> {
+  const apiUrl = options.apiUrl.replace(/\/+$/, "");
+  const response = await fetch(`${apiUrl}${PICKUP_SWEEP_PATH}`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${options.secret}` },
+    signal: AbortSignal.timeout(options.timeoutMs ?? 120_000),
+  }).catch(() => undefined);
+  if (response?.ok) {
+    return { accepted: true, message: `The API answered ${response.status}: the schedule works. ${JSON.stringify(await response.json().catch(() => ({})))}` };
+  }
+  const hint =
+    response === undefined
+      ? "The API did not answer. Check the service in the Render dashboard, then run this command again."
+      : response.status === 404
+        ? "The API has no sweep endpoint yet: SWEEP_SECRET is not set on the Render service, or the service runs an older version."
+        : response.status === 401
+          ? "The API refused the secret: the SWEEP_SECRET on the Render service differs from the one in .env.hosted."
+          : `The API answered ${response.status}.`;
+  return {
+    accepted: false,
+    message: `${hint}\n${RENDER_REMINDER}\nThe schedule is installed; run \`npm run check:hosted\` once the service is up, and this command again to check.`,
+  };
+}
