@@ -23,6 +23,8 @@
     "schedule:hosted": "node --env-file-if-exists=.env.hosted apps/api/scripts/schedule-pickup-sweep.ts",
     "db:migrate:hosted": "node --env-file-if-exists=.env.hosted apps/api/scripts/migrate-hosted.ts",
     "seed:hosted": "node --env-file-if-exists=.env.hosted apps/api/src/seed/index.ts",
+    "labels": "npm run labels -w @libras/api",
+    "labels:hosted": "node --env-file-if-exists=.env.hosted apps/api/scripts/copy-labels.ts",
     "email:test": "node --env-file-if-exists=.env.hosted apps/api/scripts/send-test-email.ts",
     "check:hosted": "node --env-file-if-exists=.env.hosted apps/api/scripts/check-hosted.ts",
     "typecheck": "npm run typecheck --workspaces --if-present",

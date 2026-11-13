@@ -104,3 +104,4 @@ apps/mobile/expo-env.d.ts
 # Playwright output
 apps/web/test-results/
 apps/web/playwright-report/
+copy-labels.html
