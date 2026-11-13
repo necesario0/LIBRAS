@@ -3,6 +3,7 @@ import type { CatalogSearchResponse } from "@libras/shared";
 import { CATALOG_SEARCH_MAX_QUERY_LENGTH } from "@libras/shared";
 import { api } from "../api";
 import { ApiError } from "../api/client";
+import type { AuthorizedRequest } from "../auth/authorized-request";
 
 /**
  * What the search area shows:
@@ -19,8 +20,6 @@ export type CatalogSearchState =
   | { status: "empty"; query: string }
   | { status: "error"; query: string; message: string };
 
-/** Runs a call with the Member's access token, renewing the session when needed (`useAuth().request`). */
-export type AuthorizedRequest = <T>(call: (accessToken: string) => Promise<T>) => Promise<T>;
 
 /** How long typing must pause before the search runs. */
 export const SEARCH_PAUSE_MS = 300;

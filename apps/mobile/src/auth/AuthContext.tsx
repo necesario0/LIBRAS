@@ -4,6 +4,7 @@ import type { MemberProfile, SignInRequest } from "@libras/shared";
 import { api } from "../api";
 import { ApiError } from "../api/client";
 import { SessionManager } from "./SessionManager";
+import type { AuthorizedRequest } from "./authorized-request";
 import { secureSessionStore } from "./session-store";
 
 /**
@@ -33,7 +34,7 @@ interface AuthContextValue {
    * Member out if the session cannot be renewed. Every screen that needs the
    * signed-in API goes through this.
    */
-  request<T>(call: (accessToken: string) => Promise<T>): Promise<T>;
+  request: AuthorizedRequest;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
