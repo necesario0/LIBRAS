@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { randomInt, randomUUID } from "node:crypto";
-import type { DigitalIdResponse, IdentifyMemberResponse, MyLoansResponse } from "@libras/shared";
+import type { CopyStatus, DigitalIdResponse, IdentifyMemberResponse, MyLoansResponse } from "@libras/shared";
 import { createTestAccount, startTestApi } from "../src/testing/index.ts";
 import type { TestApi, TestMember } from "../src/testing/index.ts";
 
-export type CopyStatus = "available" | "on_loan" | "set_aside";
+export type { CopyStatus };
 
 export interface TestCopy {
   id: string;

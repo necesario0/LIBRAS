@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { after, before, describe, it } from "node:test";
-import type { BookSearchResult, CatalogSearchResponse } from "@libras/shared";
+import type { BookSearchResult, CatalogSearchResponse, CopyStatus } from "@libras/shared";
 import { createTestAccount, createTestMember, signInDirect, startTestApi } from "../src/testing/index.ts";
 import type { TestApi, TestMember } from "../src/testing/index.ts";
 import { eventually } from "./eventually.ts";
@@ -20,7 +20,7 @@ describe("GET /catalog/search", () => {
   const bookIds: string[] = [];
 
   /** Adds a Book with Copies of the given statuses straight to the database, the way the seed would. */
-  async function addBook(title: string, authors: string[], copyStatuses: Array<"available" | "on_loan" | "set_aside">): Promise<string> {
+  async function addBook(title: string, authors: string[], copyStatuses: CopyStatus[]): Promise<string> {
     const { rows } = await api.db.query("insert into public.books (title, authors) values ($1, $2) returning id", [title, authors]);
     const id: string = rows[0].id;
     bookIds.push(id);

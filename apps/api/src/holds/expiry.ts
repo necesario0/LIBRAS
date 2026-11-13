@@ -1,7 +1,8 @@
 import type { HoldStatus } from "@libras/shared";
 import type { AppDeps } from "../app.ts";
 import { withTransaction } from "../db.ts";
-import { announceDispatch, dispatchCopy, lockCopyById } from "./dispatch.ts";
+import { lockCopy } from "../copies/index.ts";
+import { announceDispatch, dispatchCopy } from "./dispatch.ts";
 import type { HoldDispatch } from "./dispatch.ts";
 
 export type ExpiryOutcome = "expired" | "skipped";
@@ -18,7 +19,7 @@ export type ExpiryOutcome = "expired" | "skipped";
  * window has passed at `pickup_ends_at` itself: a Member cannot borrow at that
  * instant (`takeCopy`).
  *
- * Locks, in the order of ADR 0006: the Copy's row, then the Hold's row. An
+ * Locks, in the order of ADR 0006: the Copy's row (`lockCopy`), then the Hold's row. An
  * unlocked read says which Copy that is, as in cancelling a ready Hold. A ready
  * Hold never changes its Copy, so after both locks the Hold is only read again
  * to see whether it is still ready.
@@ -31,7 +32,7 @@ export async function expireHold(deps: AppDeps, holdId: string): Promise<ExpiryO
     const setAside = seen.rows[0]?.copy_id;
     if (setAside === undefined) return "skipped";
 
-    const copy = await lockCopyById(tx, setAside);
+    const copy = await lockCopy(tx, { id: setAside });
     const locked = await tx.query<{ status: HoldStatus; copy_id: string | null; member_id: string; pickup_ends_at: Date | null }>(
       "select status, copy_id, member_id, pickup_ends_at from public.holds where id = $1 for update",
       [holdId],

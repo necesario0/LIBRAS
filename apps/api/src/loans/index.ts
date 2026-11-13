@@ -1,11 +1,13 @@
-import type pg from "pg";
 import { LOAN_MESSAGES, RETURN_MESSAGES, isLoanOverdue, loanDueAt } from "@libras/shared";
 import type { AccountType, DeskLoan, Loan, MyLoansResponse, ReturnedLoan } from "@libras/shared";
 import type { AppDeps } from "../app.ts";
 import { createAuditLog } from "../audit/index.ts";
 import type { Identity } from "../auth/auth-provider.ts";
 import { withIdentity } from "../auth/identity.ts";
-import { withTransaction } from "../db.ts";
+import { COPY_MATCH, COPY_ORDER, lockCopy } from "../copies/index.ts";
+import type { CopyRow } from "../copies/index.ts";
+import { isUniqueViolation, retryOnConflict, withTransaction } from "../db.ts";
+import type { Tx } from "../db.ts";
 import { useDeskSession } from "../desk/sessions.ts";
 import { AppError } from "../errors.ts";
 import { announceDispatch, dispatchCopy } from "../holds/dispatch.ts";
@@ -13,25 +15,12 @@ import type { HoldDispatch } from "../holds/dispatch.ts";
 import { expireHold } from "../holds/expiry.ts";
 import { MEMBER_NAME_SQL } from "../members/profile.ts";
 
-/** The client of the confirmation's transaction, running as the API itself. */
-type Tx = pg.PoolClient;
-
-/** PostgreSQL's code for a unique index refusing a row. */
-const UNIQUE_VIOLATION = "23505";
-
-interface BorrowerRow {
+/** A Member and the Loan Policy of their Account Type. */
+interface MemberPolicyRow {
   user_id: string;
   account_type: AccountType;
   loan_limit: number;
   loan_period_days: number | null;
-}
-
-interface CopyRow {
-  id: string;
-  book_id: string;
-  accession_number: string;
-  status: "available" | "on_loan" | "set_aside";
-  title: string;
 }
 
 /**
@@ -40,8 +29,8 @@ interface CopyRow {
  * at once cannot both pass the limit. The lock does not block anything that
  * only refers to the Member (a Hold being placed, for example).
  */
-async function lockBorrower(tx: Tx, memberId: string): Promise<BorrowerRow> {
-  const { rows } = await tx.query<BorrowerRow>(
+async function lockMember(tx: Tx, memberId: string): Promise<MemberPolicyRow> {
+  const { rows } = await tx.query<MemberPolicyRow>(
     `select m.user_id, m.account_type, p.loan_limit, p.loan_period_days
        from public.members m
        join public.loan_policies p on p.account_type = m.account_type
@@ -51,31 +40,6 @@ async function lockBorrower(tx: Tx, memberId: string): Promise<BorrowerRow> {
   );
   // A desk session always names an existing Member, and every Account Type has a policy.
   if (!rows[0]) throw new Error(`No Member or Loan Policy for ${memberId}`);
-  return rows[0];
-}
-
-/** Which Copy a scan names: the barcode, or the accession number typed by hand in either case. `$1` is the scan. */
-const COPY_MATCH = "(c.barcode = $1 or c.accession_number = $1 or c.accession_number = upper($1))";
-/** A barcode match wins over an accession number match, and an exact one over an upper-cased one. */
-const COPY_ORDER = "(c.barcode = $1) desc, (c.accession_number = $1) desc";
-
-/**
- * The Copy a scan names, by its barcode or (typed by hand, in either case) its
- * accession number, with its row locked until the transaction ends: two
- * confirmations of one Copy run one after another, and the second sees the
- * status the first one left.
- */
-async function lockCopy(tx: Tx, code: string): Promise<CopyRow | undefined> {
-  const { rows } = await tx.query<CopyRow>(
-    `select c.id, c.book_id, c.accession_number, c.status, b.title
-       from public.copies c
-       join public.books b on b.id = c.book_id
-      where ${COPY_MATCH}
-      order by ${COPY_ORDER}
-      limit 1
-        for no key update of c`,
-    [code],
-  );
   return rows[0];
 }
 
@@ -110,13 +74,13 @@ const CONFIRM_ATTEMPTS = 3;
  * this. The Hold's row is locked by the update, after the Copy's: the order
  * every writer of Holds keeps.
  */
-async function takeCopy(tx: Tx, copy: CopyRow, borrower: BorrowerRow, at: Date): Promise<void> {
+async function takeCopy(tx: Tx, copy: CopyRow, member: MemberPolicyRow, at: Date): Promise<void> {
   if (copy.status === "on_loan") throw new AppError(409, "copy_on_loan", LOAN_MESSAGES.copyOnLoan);
   if (copy.status === "set_aside") {
     const fulfilled = await tx.query(
       `update public.holds set status = 'fulfilled', fulfilled_at = $3
         where copy_id = $1 and member_id = $2 and status = 'ready' and pickup_ends_at > $3`,
-      [copy.id, borrower.user_id, at],
+      [copy.id, member.user_id, at],
     );
     if (fulfilled.rowCount !== 1) {
       const over = await tx.query<{ id: string }>(
@@ -157,16 +121,16 @@ export async function confirmLoan(
 ): Promise<ConfirmedLoan> {
   // Every scan for the Member renews the session, whether or not it lends.
   const memberId = await useDeskSession(deps, librarian.userId, request.deskSession);
-  for (let attempt = 1; ; attempt += 1) {
-    try {
-      return await confirmOnce(deps, librarian, memberId, request.copy);
-    } catch (error) {
-      if (!(error instanceof PickupWindowPassed)) throw error;
-      if (attempt >= CONFIRM_ATTEMPTS) throw new AppError(409, "loan_conflict", LOAN_MESSAGES.changed);
+  return retryOnConflict(
+    {
+      attempts: CONFIRM_ATTEMPTS,
+      isConflict: (error) => error instanceof PickupWindowPassed,
       // Nothing of the failed attempt was kept.
-      await expireHold(deps, error.holdId);
-    }
-  }
+      beforeRetry: (error) => expireHold(deps, (error as PickupWindowPassed).holdId).then(() => undefined),
+      exhausted: () => new AppError(409, "loan_conflict", LOAN_MESSAGES.changed),
+    },
+    () => confirmOnce(deps, librarian, memberId, request.copy),
+  );
 }
 
 /** One attempt at `confirmLoan`: one transaction. */
@@ -176,28 +140,28 @@ async function confirmOnce(deps: AppDeps, librarian: Identity, memberId: string,
 
   try {
     return await withTransaction(deps.db, async (tx) => {
-      const borrower = await lockBorrower(tx, memberId);
+      const member = await lockMember(tx, memberId);
 
-      const copy = await lockCopy(tx, code);
+      const copy = await lockCopy(tx, { code });
       if (!copy) throw new AppError(404, "copy_not_found", LOAN_MESSAGES.copyNotFound);
-      if (borrower.loan_limit === 0 || borrower.loan_period_days === null) {
+      if (member.loan_limit === 0 || member.loan_period_days === null) {
         throw new AppError(403, "cannot_borrow", LOAN_MESSAGES.cannotBorrow);
       }
       const open = await tx.query<{ count: number }>(
         "select count(*)::int as count from public.loans where member_id = $1 and returned_at is null",
-        [borrower.user_id],
+        [member.user_id],
       );
-      if ((open.rows[0]?.count ?? 0) >= borrower.loan_limit) {
+      if ((open.rows[0]?.count ?? 0) >= member.loan_limit) {
         throw new AppError(409, "loan_limit_reached", LOAN_MESSAGES.limitReached);
       }
-      await takeCopy(tx, copy, borrower, checkedOutAt);
+      await takeCopy(tx, copy, member, checkedOutAt);
 
-      const dueAt = loanDueAt(checkedOutAt, borrower.loan_period_days);
+      const dueAt = loanDueAt(checkedOutAt, member.loan_period_days);
       const inserted = await tx.query<{ id: string }>(
         `insert into public.loans (copy_id, member_id, confirmed_by, checked_out_at, due_at)
          values ($1, $2, $3, $4, $5)
          returning id`,
-        [copy.id, borrower.user_id, librarian.userId, checkedOutAt, dueAt],
+        [copy.id, member.user_id, librarian.userId, checkedOutAt, dueAt],
       );
       const id = (inserted.rows[0] as { id: string }).id;
       await tx.query("update public.copies set status = 'on_loan' where id = $1", [copy.id]);
@@ -209,7 +173,7 @@ async function confirmOnce(deps: AppDeps, librarian: Identity, memberId: string,
           actorId: librarian.userId,
           subject: id,
           data: {
-            memberId: borrower.user_id,
+            memberId: member.user_id,
             copyId: copy.id,
             bookId: copy.book_id,
             accessionNumber: copy.accession_number,
@@ -220,7 +184,7 @@ async function confirmOnce(deps: AppDeps, librarian: Identity, memberId: string,
       );
 
       return {
-        memberId: borrower.user_id,
+        memberId: member.user_id,
         loan: {
           id,
           bookTitle: copy.title,
@@ -232,8 +196,7 @@ async function confirmOnce(deps: AppDeps, librarian: Identity, memberId: string,
     });
   } catch (error) {
     // The Copy lock makes this unreachable; the unique index is the database's own word on it.
-    const violation = error as { code?: string; constraint?: string };
-    if (violation.code === UNIQUE_VIOLATION && violation.constraint === "loans_one_open_per_copy") {
+    if (isUniqueViolation(error, "loans_one_open_per_copy")) {
       throw new AppError(409, "copy_on_loan", LOAN_MESSAGES.copyOnLoan);
     }
     throw error;
@@ -271,12 +234,17 @@ interface OpenLoanRow {
  * finds no open Loan: exactly one return and one audit entry.
  */
 export async function recordReturn(deps: AppDeps, librarian: Identity, request: { copy: string }): Promise<ReturnedLoan> {
-  for (let attempt = 1; ; attempt += 1) {
-    try {
+  return retryOnConflict(
+    {
+      attempts: RETURN_ATTEMPTS,
+      isConflict: (error) => error instanceof CopyChangedHands,
+      exhausted: () => new AppError(409, "return_conflict", RETURN_MESSAGES.changedHands),
+    },
+    async () => {
       let dispatch: HoldDispatch | null = null;
       const returned = await withTransaction(deps.db, async (tx): Promise<ReturnedLoan> => {
         const returnedAt = deps.clock.now();
-        const holder = await tx.query<{ member_id: string | null }>(
+        const lending = await tx.query<{ member_id: string | null }>(
           `select l.member_id
              from public.copies c
              left join public.loans l on l.copy_id = c.id and l.returned_at is null
@@ -285,12 +253,12 @@ export async function recordReturn(deps: AppDeps, librarian: Identity, request: 
             limit 1`,
           [request.copy],
         );
-        if (!holder.rows[0]) throw new AppError(404, "copy_not_found", RETURN_MESSAGES.copyNotFound);
-        const holderId = holder.rows[0].member_id;
-        if (holderId === null) throw new AppError(409, "copy_not_on_loan", RETURN_MESSAGES.copyNotOnLoan);
+        if (!lending.rows[0]) throw new AppError(404, "copy_not_found", RETURN_MESSAGES.copyNotFound);
+        const lendingMemberId = lending.rows[0].member_id;
+        if (lendingMemberId === null) throw new AppError(409, "copy_not_on_loan", RETURN_MESSAGES.copyNotOnLoan);
 
-        await lockBorrower(tx, holderId);
-        const copy = await lockCopy(tx, request.copy);
+        await lockMember(tx, lendingMemberId);
+        const copy = await lockCopy(tx, { code: request.copy });
         if (!copy) throw new AppError(404, "copy_not_found", RETURN_MESSAGES.copyNotFound);
         const open = await tx.query<OpenLoanRow>(
           `select l.id, l.member_id, ${MEMBER_NAME_SQL} as member_name, l.checked_out_at, l.due_at
@@ -302,8 +270,8 @@ export async function recordReturn(deps: AppDeps, librarian: Identity, request: 
         const loan = open.rows[0];
         // Someone else's return got here first.
         if (!loan) throw new AppError(409, "copy_not_on_loan", RETURN_MESSAGES.copyNotOnLoan);
-        // Returned and lent to another Member while this waited: the Member locked is not the holder.
-        if (loan.member_id !== holderId) throw new CopyChangedHands();
+        // Returned and lent to another Member while this waited: the Member locked is not the one who has it out.
+        if (loan.member_id !== lendingMemberId) throw new CopyChangedHands();
 
         const closed = await tx.query("update public.loans set returned_at = $2 where id = $1 and returned_at is null", [loan.id, returnedAt]);
         if (closed.rowCount !== 1) throw new AppError(409, "copy_not_on_loan", RETURN_MESSAGES.copyNotOnLoan);
@@ -344,11 +312,8 @@ export async function recordReturn(deps: AppDeps, librarian: Identity, request: 
       });
       await announceDispatch(deps, dispatch);
       return returned;
-    } catch (error) {
-      if (!(error instanceof CopyChangedHands)) throw error;
-      if (attempt >= RETURN_ATTEMPTS) throw new AppError(409, "return_conflict", RETURN_MESSAGES.changedHands);
-    }
-  }
+    },
+  );
 }
 
 interface LoanRow {

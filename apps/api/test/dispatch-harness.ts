@@ -104,10 +104,10 @@ export function dispatchHarness() {
     lend,
     giveBackRequest,
     giveBack,
-    /** A Book whose Copies are all out with `borrower`: the only way a Hold can be placed on it. */
-    lentBook: async (title: string, borrower: TestMember, copies = 1): Promise<TestBook> => {
+    /** A Book whose Copies are all out with `member`: the only way a Hold can be placed on it. */
+    lentBook: async (title: string, member: TestMember, copies = 1): Promise<TestBook> => {
       const book = await h.addBook(title, Array<CopyStatus>(copies).fill("available"));
-      for (const copy of book.copies) await lend(borrower, copy.barcode);
+      for (const copy of book.copies) await lend(member, copy.barcode);
       return book;
     },
     placeHoldRequest: (member: TestMember, bookId: string) => h.send("POST", "/holds", member.accessToken, { bookId }),

@@ -1,27 +1,14 @@
-import type pg from "pg";
 import { formatLibraryDateTime } from "@libras/shared";
 import type { AppDeps } from "../app.ts";
 import { createAuditLog } from "../audit/index.ts";
 import type { AuditEvent } from "../audit/index.ts";
+import type { CopyRow } from "../copies/index.ts";
+import type { Tx } from "../db.ts";
 import type { EmailMessage } from "../email.ts";
 import { MEMBER_NAME_SQL } from "../members/profile.ts";
 
-/** The client of a transaction run as the API itself (`withTransaction`). */
-type Tx = pg.PoolClient;
-
 /** What dispatch needs to know about the Copy it places. */
-export interface DispatchableCopy {
-  id: string;
-  book_id: string;
-  accession_number: string;
-  /** The title of the Copy's Book. */
-  title: string;
-}
-
-/** A Copy as `lockCopyById` reads it. */
-export interface LockedCopy extends DispatchableCopy {
-  status: "available" | "on_loan" | "set_aside";
-}
+export type DispatchableCopy = Omit<CopyRow, "status">;
 
 /**
  * Why a Copy is being placed: it came back from a Loan, the Member it was set
@@ -103,7 +90,7 @@ export const DISPATCH_SQL = `
  *
  * The caller's rules:
  * - Call it inside a transaction in which the Copy's row is already locked
- *   (`for no key update`: `lockCopy` of the Loans module, or `lockCopyById`),
+ *   (`lockCopy` in `src/copies`),
  *   and in which the Copy no longer belongs to anyone (its Loan is closed, or
  *   its ready Hold is cancelled or expired). The lock order of every writer is
  *   the Member's row, then the Copy's row, then a Hold's row.
@@ -151,23 +138,6 @@ export async function dispatchCopy(
     accessionNumber: copy.accession_number,
     pickupEndsAt: chosen.pickup_ends_at,
   };
-}
-
-/**
- * The Copy with this id, with its row locked until the transaction ends, for a
- * writer that starts from a Hold and not from a scan (cancelling a ready Hold,
- * a Pickup Window passing). Lock the Copy before the Hold's row.
- */
-export async function lockCopyById(tx: Tx, copyId: string): Promise<LockedCopy | undefined> {
-  const { rows } = await tx.query<LockedCopy>(
-    `select c.id, c.book_id, c.accession_number, c.status, b.title
-       from public.copies c
-       join public.books b on b.id = c.book_id
-      where c.id = $1
-        for no key update of c`,
-    [copyId],
-  );
-  return rows[0];
 }
 
 /** The email a Member gets when their Hold is ready. */

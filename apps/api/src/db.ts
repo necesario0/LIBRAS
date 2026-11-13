@@ -49,6 +49,36 @@ export function isUniqueViolation(error: unknown, constraint: string): boolean {
   return violatedUniqueConstraint(error) === constraint;
 }
 
+export interface RetryOptions {
+  /** How many times `attempt` runs at most. */
+  attempts: number;
+  /** Whether the failure is a conflict that a fresh attempt can get past. Anything else is thrown as it is. */
+  isConflict: (error: unknown) => boolean;
+  /** Work to do between a conflict and the next attempt (for example expiring the Hold that was in the way). */
+  beforeRetry?: (error: unknown) => Promise<void>;
+  /** The refusal to throw when the last attempt also ended in a conflict. */
+  exhausted: () => Error;
+}
+
+/**
+ * Runs `attempt` (one transaction) again when it ends in a conflict: a writer
+ * that reads a row without a lock to learn which rows to lock (in the lock
+ * order every writer keeps) finds, once it holds them, that something changed
+ * in between. It rolls back, and a fresh attempt reads again. After
+ * `attempts` tries, the caller's refusal is thrown.
+ */
+export async function retryOnConflict<T>(options: RetryOptions, attempt: () => Promise<T>): Promise<T> {
+  for (let tried = 1; ; tried += 1) {
+    try {
+      return await attempt();
+    } catch (error) {
+      if (!options.isConflict(error)) throw error;
+      if (tried >= options.attempts) throw options.exhausted();
+      await options.beforeRetry?.(error);
+    }
+  }
+}
+
 /**
  * Runs `work` in one transaction on one connection: it commits when `work`
  * resolves and rolls back when it throws. Runs as the API itself, so

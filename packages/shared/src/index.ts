@@ -114,9 +114,10 @@ export {
   CATALOG_SEARCH_MAX_QUERY_LENGTH,
   CATALOG_SEARCH_MESSAGES,
   bookIdSchema,
+  COPY_STATUSES,
   catalogSearchQuerySchema,
 } from "./catalog.ts";
-export type { BookDetail, BookDetailResponse, BookSearchResult, CatalogSearchQuery, CatalogSearchResponse } from "./catalog.ts";
+export type { BookDetail, BookDetailResponse, BookSearchResult, CatalogSearchQuery, CatalogSearchResponse, CopyStatus } from "./catalog.ts";
 export {
   HOLD_MESSAGES,
   HOLD_STATUSES,

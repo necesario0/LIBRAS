@@ -1,11 +1,12 @@
 import { HOLD_MESSAGES, canBorrow } from "@libras/shared";
-import type { Hold, HoldStatus, MemberProfile } from "@libras/shared";
+import type { CopyStatus, Hold, HoldStatus, MemberProfile } from "@libras/shared";
 import type { AppDeps } from "../app.ts";
 import type { Identity } from "../auth/auth-provider.ts";
 import { withIdentity } from "../auth/identity.ts";
-import { isUniqueViolation, withTransaction } from "../db.ts";
+import { lockCopy } from "../copies/index.ts";
+import { isUniqueViolation, retryOnConflict, withTransaction } from "../db.ts";
 import { AppError } from "../errors.ts";
-import { announceDispatch, dispatchCopy, lockCopyById } from "./dispatch.ts";
+import { announceDispatch, dispatchCopy } from "./dispatch.ts";
 import type { HoldDispatch } from "./dispatch.ts";
 import { expireDueHolds, expireHold } from "./expiry.ts";
 import { HOLD_WEIGHT_HOURS, holdScore } from "./priority.ts";
@@ -55,7 +56,7 @@ export async function placeHold(deps: AppDeps, member: MemberProfile, bookId: st
     return await withTransaction(deps.db, async (tx) => {
       const book = await tx.query("select 1 from public.books where id = $1", [bookId]);
       if (!book.rows[0]) throw new AppError(404, "book_not_found", "We could not find this Book. It may have been removed from the catalog.");
-      const copies = await tx.query<{ status: string }>(
+      const copies = await tx.query<{ status: CopyStatus }>(
         "select c.status from public.copies c where c.book_id = $1 order by c.id for share of c",
         [bookId],
       );
@@ -141,48 +142,55 @@ const CANCEL_SQL = `
  * its Copy was passed on) the transaction rolls back and starts again.
  */
 export async function cancelHold(deps: AppDeps, member: MemberProfile, holdId: string): Promise<Hold> {
-  for (let attempt = 1; ; attempt += 1) {
-    try {
-      let dispatch: HoldDispatch | null = null;
-      const cancelled = await withTransaction(deps.db, async (tx) => {
-        const cancelledAt = deps.clock.now();
-        const seen = await tx.query<{ status: HoldStatus; copy_id: string | null }>(
-          "select status, copy_id from public.holds where id = $1 and member_id = $2",
-          [holdId, member.id],
-        );
-        if (!seen.rows[0]) throw new AppError(404, "hold_not_found", HOLD_MESSAGES.holdNotFound);
-        const setAside = seen.rows[0].status === "ready" ? seen.rows[0].copy_id : null;
-
-        const copy = setAside === null ? undefined : await lockCopyById(tx, setAside);
-        const locked = await tx.query<{ status: HoldStatus; copy_id: string | null; pickup_ends_at: Date | null }>(
-          "select status, copy_id, pickup_ends_at from public.holds where id = $1 and member_id = $2 for update",
-          [holdId, member.id],
-        );
-        const hold = locked.rows[0];
-        if (!hold) throw new AppError(404, "hold_not_found", HOLD_MESSAGES.holdNotFound);
-        if (hold.status !== "waiting" && hold.status !== "ready") {
-          throw new AppError(409, "hold_not_cancellable", HOLD_MESSAGES.notCancellable);
-        }
-        // Dispatched while this waited: its Copy must be locked first, so start again.
-        if (hold.status === "ready" && (!copy || copy.id !== hold.copy_id)) throw new HoldChanged();
-        if (hold.status === "ready" && hold.pickup_ends_at !== null && hold.pickup_ends_at.getTime() <= cancelledAt.getTime()) throw new WindowEnded();
-
-        const updated = await tx.query<HoldRow>(CANCEL_SQL, [holdId, cancelledAt]);
-        // Last in the transaction: the Copy this Hold gave up goes to the next Hold, or back on the shelf.
-        if (hold.status === "ready" && copy) {
-          dispatch = await dispatchCopy(deps, tx, copy, { at: cancelledAt, cause: "hold_cancelled", actorId: member.id });
-        }
-        return toHold(updated.rows[0] as HoldRow);
-      });
-      await announceDispatch(deps, dispatch);
-      return cancelled;
-    } catch (error) {
-      if (error instanceof WindowEnded) {
-        await expireHold(deps, holdId);
-        throw new AppError(409, "hold_not_cancellable", HOLD_MESSAGES.notCancellable);
-      }
-      if (!(error instanceof HoldChanged)) throw error;
-      if (attempt >= CANCEL_ATTEMPTS) throw new AppError(409, "hold_conflict", HOLD_MESSAGES.changed);
-    }
+  try {
+    return await retryOnConflict(
+      {
+        attempts: CANCEL_ATTEMPTS,
+        isConflict: (error) => error instanceof HoldChanged,
+        exhausted: () => new AppError(409, "hold_conflict", HOLD_MESSAGES.changed),
+      },
+      () => cancelOnce(deps, member, holdId),
+    );
+  } catch (error) {
+    if (!(error instanceof WindowEnded)) throw error;
+    await expireHold(deps, holdId);
+    throw new AppError(409, "hold_not_cancellable", HOLD_MESSAGES.notCancellable);
   }
+}
+
+/** One attempt at `cancelHold`: one transaction. */
+async function cancelOnce(deps: AppDeps, member: MemberProfile, holdId: string): Promise<Hold> {
+  let dispatch: HoldDispatch | null = null;
+  const cancelled = await withTransaction(deps.db, async (tx) => {
+    const cancelledAt = deps.clock.now();
+    const seen = await tx.query<{ status: HoldStatus; copy_id: string | null }>(
+      "select status, copy_id from public.holds where id = $1 and member_id = $2",
+      [holdId, member.id],
+    );
+    if (!seen.rows[0]) throw new AppError(404, "hold_not_found", HOLD_MESSAGES.holdNotFound);
+    const setAside = seen.rows[0].status === "ready" ? seen.rows[0].copy_id : null;
+
+    const copy = setAside === null ? undefined : await lockCopy(tx, { id: setAside });
+    const locked = await tx.query<{ status: HoldStatus; copy_id: string | null; pickup_ends_at: Date | null }>(
+      "select status, copy_id, pickup_ends_at from public.holds where id = $1 and member_id = $2 for update",
+      [holdId, member.id],
+    );
+    const hold = locked.rows[0];
+    if (!hold) throw new AppError(404, "hold_not_found", HOLD_MESSAGES.holdNotFound);
+    if (hold.status !== "waiting" && hold.status !== "ready") {
+      throw new AppError(409, "hold_not_cancellable", HOLD_MESSAGES.notCancellable);
+    }
+    // Dispatched while this waited: its Copy must be locked first, so start again.
+    if (hold.status === "ready" && (!copy || copy.id !== hold.copy_id)) throw new HoldChanged();
+    if (hold.status === "ready" && hold.pickup_ends_at !== null && hold.pickup_ends_at.getTime() <= cancelledAt.getTime()) throw new WindowEnded();
+
+    const updated = await tx.query<HoldRow>(CANCEL_SQL, [holdId, cancelledAt]);
+    // Last in the transaction: the Copy this Hold gave up goes to the next Hold, or back on the shelf.
+    if (hold.status === "ready" && copy) {
+      dispatch = await dispatchCopy(deps, tx, copy, { at: cancelledAt, cause: "hold_cancelled", actorId: member.id });
+    }
+    return toHold(updated.rows[0] as HoldRow);
+  });
+  await announceDispatch(deps, dispatch);
+  return cancelled;
 }

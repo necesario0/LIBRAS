@@ -1,6 +1,7 @@
 import { DIGITAL_ID_MESSAGES, DIGITAL_ID_NUMBER_DIGITS } from "@libras/shared";
 import type { DigitalIdResponse } from "@libras/shared";
 import type { Clock } from "../clock.ts";
+import { isUniqueViolation } from "../db.ts";
 import type { Database } from "../db.ts";
 import { AppError } from "../errors.ts";
 import { newIdNumber, newSecret, tokenFor, tokensEqual, windowOf, windowStart } from "./code.ts";
@@ -30,11 +31,6 @@ const MAX_NUMBER_ATTEMPTS = 20;
 
 /** Stands in for a missing Member's secret, so an unknown number costs the same HMAC work as a known one. */
 const NO_SECRET = Buffer.alloc(32);
-
-function isUniqueViolation(error: unknown, constraint: string): boolean {
-  const pg = error as { code?: unknown; constraint?: unknown };
-  return pg.code === "23505" && pg.constraint === constraint;
-}
 
 /**
  * The Member's Digital ID number and secret, created on first use. Runs as the
