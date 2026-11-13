@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import type { DeskLoan, DeskMember, ReturnedLoan, ScanReading, StaffProfile } from "@libras/shared";
-import { ApiError, confirmLoan, identifyMember, recordReturn } from "../api.ts";
+import { ApiError, confirmLoan, endDeskSession, identifyMember, recordReturn } from "../api.ts";
 import { Brand } from "../components/Brand.tsx";
 import { LoanNotice } from "../components/LoanNotice.tsx";
 import { MemberCard } from "../components/MemberCard.tsx";
@@ -15,10 +15,10 @@ interface Props {
   onSignOut: () => void;
 }
 
-/** The Member at the desk: who they are, and the Digital ID code that was scanned, which confirms their Loans. */
+/** The Member at the desk: who they are, and the token of the desk session that lends to them (ADR 0008). */
 interface Identified {
   member: DeskMember;
-  digitalId: string;
+  deskSession: string;
 }
 
 /** What the last scan did, shown under the scan field. */
@@ -49,8 +49,8 @@ const STATUS: Record<Status, string> = {
   refused: "Scan not accepted",
 };
 
-/** A Loan refused because of the Digital ID itself: the Member must show it again, so the desk forgets them. */
-const DIGITAL_ID_REFUSALS = new Set(["digital_id_expired", "digital_id_invalid", "digital_id_used"]);
+/** A Loan refused because the Member's desk session is over: the Member must show their Digital ID again, so the desk forgets them. */
+const SESSION_ENDED = "desk_session_ended";
 
 function statusOf(state: DeskState): Status {
   if (state.kind === "identifying" || state.kind === "confirming" || state.kind === "returning") return state.kind;
@@ -82,8 +82,10 @@ export function DeskPage({ staff, onSignOut }: Props) {
   const identified = state.kind === "member" || state.kind === "confirming" ? state.identified : undefined;
   const outcome: Outcome = state.kind === "ready" || state.kind === "member" ? state.outcome : { kind: "none" };
 
-  /** Shows the Member at the desk (or nobody) and what the last scan did. */
+  /** Shows the Member at the desk (or nobody) and what the last scan did. A Member who leaves the desk has their desk session ended. */
   function show(member: Identified | undefined, result: Outcome) {
+    const leaving = atDesk.current;
+    if (leaving && leaving.deskSession !== member?.deskSession) void endDeskSession(leaving.deskSession);
     atDesk.current = member;
     setState(member ? { kind: "member", identified: member, outcome: result } : { kind: "ready", outcome: result });
   }
@@ -91,9 +93,9 @@ export function DeskPage({ staff, onSignOut }: Props) {
   async function identify(code: string) {
     setState({ kind: "identifying" });
     try {
-      const member = await identifyMember(code);
-      if (member === undefined) onSignOut();
-      else show({ member, digitalId: code }, { kind: "none" });
+      const identified = await identifyMember(code);
+      if (identified === undefined) onSignOut();
+      else show({ member: identified.member, deskSession: identified.deskSession.token }, { kind: "none" });
     } catch (error) {
       show(undefined, { kind: "refused", message: messageOf(error) });
     }
@@ -102,13 +104,13 @@ export function DeskPage({ staff, onSignOut }: Props) {
   async function lend(to: Identified, copy: string) {
     setState({ kind: "confirming", identified: to });
     try {
-      const confirmed = await confirmLoan(to.digitalId, copy);
+      const confirmed = await confirmLoan(to.deskSession, copy);
       if (confirmed === undefined) onSignOut();
-      else show({ member: confirmed.member, digitalId: to.digitalId }, { kind: "confirmed", loan: confirmed.loan });
+      else show({ member: confirmed.member, deskSession: to.deskSession }, { kind: "confirmed", loan: confirmed.loan });
     } catch (error) {
       const refused: Outcome = { kind: "refused", message: messageOf(error) };
-      // The Digital ID itself was refused: the Member must show it again.
-      show(error instanceof ApiError && DIGITAL_ID_REFUSALS.has(error.code) ? undefined : to, refused);
+      // The desk session is over (timed out, or ended): the Member must show their Digital ID again.
+      show(error instanceof ApiError && error.code === SESSION_ENDED ? undefined : to, refused);
     }
   }
 
@@ -132,7 +134,7 @@ export function DeskPage({ staff, onSignOut }: Props) {
     else await lend(member, reading.code);
   }
 
-  /** The Member has what they came for: forget them, so the next Copy scanned is a return. */
+  /** The Member has what they came for: end their desk session and forget them, so the next Copy scanned is a return. */
   function finishWithMember() {
     queue.current = queue.current.then(() => show(undefined, { kind: "none" }));
   }
@@ -178,7 +180,7 @@ export function DeskPage({ staff, onSignOut }: Props) {
             <ScanField
               input={scanInput}
               busy={busy}
-              focusKey={identified?.digitalId}
+              focusKey={identified?.deskSession}
               placeholder={identified ? "Copy barcode or accession number, then Enter" : "Digital ID or Copy, then Enter"}
             />
             {outcome.kind === "refused" && (
