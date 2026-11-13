@@ -1,8 +1,12 @@
-// The seed script: `npm run seed`. Later tickets add the Loan Policy and
-// the settings here. Safe to run again.
+// The seed script: `npm run seed` (`npm run seed:hosted` for the hosted
+// project). It makes the system demo-ready without an admin module: the
+// Librarian account, the Loan Policy of every Account Type and the Pickup Window
+// setting (also created by the migrations; existing values are kept), and the
+// sample catalog of Books and Copies. Safe to run again.
 import { loadConfig } from "../config.ts";
 import { createDatabase } from "../db.ts";
 import { seedCatalog } from "./catalog.ts";
+import { SEED_PICKUP_WINDOW_HOURS, seedCirculationSettings } from "./circulation.ts";
 import { generateCatalog } from "./catalog-generator.ts";
 import { seedLibrarians } from "./librarians.ts";
 import type { LibrarianSeed } from "./librarians.ts";
@@ -27,6 +31,8 @@ try {
   const librarian = librarianFromEnvironment(process.env, config.isProduction);
   await seedLibrarians(db, [librarian]);
   console.log(`Librarian ready: ${librarian.email}`);
+  await seedCirculationSettings(db);
+  console.log(`Loan Policy and Pickup Window ready (seeded as ${SEED_PICKUP_WINDOW_HOURS} hours; existing values kept)`);
   const catalog = await seedCatalog(db, generateCatalog());
   console.log(`Catalog ready: ${catalog.books} Books, ${catalog.copies} Copies`);
 } finally {

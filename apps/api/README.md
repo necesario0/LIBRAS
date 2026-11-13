@@ -20,7 +20,7 @@ How to run it and its tests is in the [root README](../../README.md).
 | `src/loans/` | Loans: `confirmLoan` and `recordReturn` (the desk) and `listLoans` (My Loans) |
 | `src/scanner/` | The phone as the scanner: `ScannerHub` (pairing codes, scanner tokens, the desk streams), see "The phone scanner" |
 | `src/catalog/` | `CatalogSearch`: the in-memory search index, its rebuild-and-swap, and live availability |
-| `src/seed/` | `npm run seed`: the Librarian and the sample catalog (`catalog-generator.ts` is pure and reproducible, `catalog.ts` writes it) |
+| `src/seed/` | `npm run seed`: the Librarian, the Loan Policy rows and the Pickup Window setting (`circulation.ts`: puts back missing rows, keeps existing values), and the sample catalog (`catalog-generator.ts` is pure and reproducible, `catalog.ts` writes it) |
 | `src/testing/` | The HTTP test harness, also exported as `@libras/api/testing`, and the end-to-end server `e2e-server.ts` |
 | `test/` | Tests, `*.test.ts`, run with Node's built-in test runner |
 
@@ -97,7 +97,7 @@ A Digital ID is 12 digits: the Member's fixed 6-digit Digital ID number, then a 
 - `GET /members/me/digital-id` (Member) -> `DigitalIdResponse` `{ code, windowStartsAt, refreshAt, serverTime }`, `Cache-Control: no-store`.
 - `POST /desk/members/identify` `{ code }` (Librarian) -> `{ member: { id, fullName, accountType, loans: { current, limit, loanPeriodDays } } }`. 400 `invalid_request` unless `code` is exactly 12 digits.
 - `public.digital_id_secrets` has no grants for any client role, `service_role` included: only the API, connected as itself, reads it.
-- `public.loan_policies` holds one row per Account Type (placeholders seeded by the migration). Librarians read Member profiles through the `members_read_staff` policy.
+- `public.loan_policies` holds one row per Account Type (placeholders created by the migration, and put back by the seed script if missing). Librarians read Member profiles through the `members_read_staff` policy.
 
 Tests: `test/digital-id.test.ts` (HTTP, fake clock), `test/digital-id-code.test.ts` (RFC 6238 vectors).
 

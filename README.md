@@ -45,7 +45,7 @@ No Supabase key lives in the source. `npm run dev`, `npm test`, `npm run test:ap
 | `npm run db:status` | Show the local Supabase URLs and keys |
 | `npm run db:reset` | Recreate the local database from `supabase/migrations` |
 | `npm run db:stop` | Stop the local Supabase stack |
-| `npm run seed` | Create the demo Librarian (`librarian@libras.test`, local only). Safe to run again |
+| `npm run seed` | Create the demo Librarian (`librarian@libras.test`, local only), make sure the Loan Policy rows and the Pickup Window setting exist (existing values are kept), and write the sample catalog. Safe to run again |
 
 ## Run the tests and checks locally
 
@@ -92,7 +92,7 @@ The hosted system is three services, all on free tiers (ADR 0003):
 | --- | --- |
 | `npm run setup:hosted` | The guided setup wizard (`scripts/setup-hosted.sh`, launched by `scripts/run-setup-hosted.mjs` so Windows uses Git Bash, not WSL). Opens each dashboard, asks for each value, writes `.env.hosted` and the GitHub secrets, applies the migrations, creates the Librarian, checks the API and sends a test email |
 | `npm run db:migrate:hosted` | Applies `supabase/migrations` to the hosted database. It first lists the pending migrations and asks you to type `apply`. `-- --dry-run` only lists them. `-- --yes` skips the question. Safe to run again |
-| `npm run seed:hosted` | Creates (or resets) the Librarian from `SEED_LIBRARIAN_EMAIL` and `SEED_LIBRARIAN_PASSWORD` in `.env.hosted`. Later seed steps (catalog, Loan Policy) run here too |
+| `npm run seed:hosted` | Creates (or resets) the Librarian from `SEED_LIBRARIAN_EMAIL` and `SEED_LIBRARIAN_PASSWORD` in `.env.hosted`, makes sure the Loan Policy rows and the Pickup Window setting exist (existing values are kept) and writes the sample catalog |
 | `npm run labels:hosted -- --title "text" [--books 1] [--copies 3]` | Writes `copy-labels.html`: printable Code 128 labels (85 x 36 mm, two per row on A4) for available Copies of a Book whose title contains the text, or for given barcodes (`npm run labels:hosted -- 3100078314 3100078315`). Open in Chrome, print at 100% scale. Reads the database only. `npm run labels` does the same on the local database |
 | `npm run verify:hosted -- member | search | dispatch | cleanup` | The Tier 1 measurements on the hosted system (`docs/hosted-verification.md`): search at 50 users, Hold dispatch on the hosted database. `member` makes the measurement Visitor and saves its login in `.env.hosted`; `dispatch` makes and then deletes test Members and sends Hold-ready mail only to a +alias of `SEED_LIBRARIAN_EMAIL` |
 | `npm run check:hosted` | Asks the hosted API for `/health` until it answers (up to five minutes, to cover Render waking up) |
