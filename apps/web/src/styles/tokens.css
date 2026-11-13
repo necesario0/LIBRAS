@@ -23,10 +23,15 @@
   --color-danger-soft: #fdecec;
   --color-success: #1d7a46; /* a Member identified: not in the Figma frames */
   --color-success-soft: #e7f5ec;
+  --color-on-primary: #ffffff; /* text on the primary blue, the success green and the camera */
+  --color-camera: #101820; /* the camera area of the scanner page before and around the picture */
+  --color-viewfinder: rgb(255 255 255 / 0.85); /* the frame to hold a barcode in */
+  --color-camera-shade: rgb(0 0 0 / 0.28); /* the picture outside that frame, dimmed */
 
   --radius-pill: 999px; /* inputs and buttons are fully rounded in the designs */
   --radius-card: 24px;
   --radius-notice: 16px;
+  --radius-key: 6px; /* the small "Enter" key in the scan field */
 
   --space-1: 4px;
   --space-2: 8px;

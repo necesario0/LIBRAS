@@ -57,7 +57,7 @@ input {
   border: 0;
   border-radius: var(--radius-pill);
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-on-primary);
   cursor: pointer;
 }
 .button:hover:not(:disabled) {
@@ -363,7 +363,7 @@ input {
   margin-right: var(--space-3);
   padding: 2px var(--space-2);
   border: 1px solid var(--color-border);
-  border-radius: 6px;
+  border-radius: var(--radius-key);
   background: var(--color-surface);
   color: var(--color-text-muted);
   font-family: inherit;
@@ -761,7 +761,7 @@ input {
   aspect-ratio: 4 / 3;
   overflow: hidden;
   border-radius: var(--radius-card);
-  background: #101820;
+  background: var(--color-camera);
 }
 .camera__video {
   width: 100%;
@@ -776,9 +776,9 @@ input {
 .camera__frame {
   position: absolute;
   inset: 18% 8%;
-  border: 3px solid rgb(255 255 255 / 0.85);
+  border: 3px solid var(--color-viewfinder);
   border-radius: var(--radius-notice);
-  box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.28);
+  box-shadow: 0 0 0 100vmax var(--color-camera-shade);
 }
 .camera__line {
   position: absolute;
@@ -795,7 +795,7 @@ input {
   display: grid;
   place-items: center;
   margin: 0;
-  color: #fff;
+  color: var(--color-on-primary);
   font-size: var(--text-sm);
 }
 .camera--ready .camera__starting {
@@ -837,7 +837,7 @@ input {
   from {
     transform: scale(0.96);
     background: var(--color-success);
-    color: #fff;
+    color: var(--color-on-primary);
   }
 }
 .scanner__refused {
@@ -863,7 +863,7 @@ input {
   border: 0;
   border-radius: var(--radius-pill);
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-on-primary);
   cursor: pointer;
 }
 .scanner__send:disabled {
