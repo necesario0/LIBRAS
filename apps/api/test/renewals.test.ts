@@ -14,7 +14,7 @@ describe("Renewing a Loan from My Loans", () => {
   const h = dispatchHarness();
 
   /** A Member with the first Copy of a new Book out, lent at the desk now. */
-  const borrower = async (title: string, copies = 1) => {
+  const memberWithLoan = async (title: string, copies = 1) => {
     const member = await createTestMember(h.api());
     const book = await h.addBook(title, Array<CopyStatus>(copies).fill("available"));
     const copy = book.copies[0] as TestCopy;
@@ -42,7 +42,7 @@ describe("Renewing a Loan from My Loans", () => {
   });
 
   it("lists a new Loan as renewable, with the due date a Renewal would give", async () => {
-    const { loan } = await borrower("Renewable Today");
+    const { loan } = await memberWithLoan("Renewable Today");
 
     // Due at the end of 19 Nov in Manila; one more loan period of 7 days from there is the end of 26 Nov.
     assert.equal(loan.dueAt, "2026-11-19T15:59:59.999Z");
@@ -51,7 +51,7 @@ describe("Renewing a Loan from My Loans", () => {
   });
 
   it("adds one loan period to the current due date, however early the Member renews, and My Loans shows the renewed Loan", async () => {
-    const { member, loan } = await borrower("Renewed Early");
+    const { member, loan } = await memberWithLoan("Renewed Early");
     // Two days into the Loan: renewing early costs no days.
     h.api().clock.advance({ days: 2 });
 
@@ -70,7 +70,7 @@ describe("Renewing a Loan from My Loans", () => {
   });
 
   it("renews on the last moment of the due day, and refuses from the next: an overdue Loan cannot be renewed", async () => {
-    const { member, loan } = await borrower("Due Today");
+    const { member, loan } = await memberWithLoan("Due Today");
     h.api().clock.set("2026-11-19T15:59:59.999Z");
     assert.equal((await listed(member, loan.id)).renewal?.renewable, true);
 
@@ -86,7 +86,7 @@ describe("Renewing a Loan from My Loans", () => {
   });
 
   it("refuses a second Renewal once the renewal limit of the Loan Policy is used", async () => {
-    const { member, loan } = await borrower("Renewed Once");
+    const { member, loan } = await memberWithLoan("Renewed Once");
     assert.equal((await renew(member, loan.id)).status, 200);
 
     assert.deepEqual(await refusal(await renew(member, loan.id)), {
@@ -123,7 +123,7 @@ describe("Renewing a Loan from My Loans", () => {
   });
 
   it("refuses a Renewal while another Member's Hold on the Book is waiting, even when My Loans said it could be renewed", async () => {
-    const { member, book, loan } = await borrower("Someone Is Waiting");
+    const { member, book, loan } = await memberWithLoan("Someone Is Waiting");
     const waiter = await createTestMember(h.api());
     // My Loans was loaded before the other Member placed the Hold.
     assert.equal(loan.renewal?.renewable, true);
@@ -139,7 +139,7 @@ describe("Renewing a Loan from My Loans", () => {
   });
 
   it("lets a ready Hold on the Book stand: only a waiting Hold blocks a Renewal", async () => {
-    const { member, book, loan } = await borrower("Ready Elsewhere", 2);
+    const { member, book, loan } = await memberWithLoan("Ready Elsewhere", 2);
     const other = await createTestMember(h.api());
     const holder = await createTestMember(h.api());
     const second = book.copies[1] as TestCopy;
@@ -154,7 +154,7 @@ describe("Renewing a Loan from My Loans", () => {
   });
 
   it("renews only the Member's own Loan: another Member's is not found, and so is one that does not exist", async () => {
-    const { member, loan } = await borrower("Not Yours");
+    const { member, loan } = await memberWithLoan("Not Yours");
     const stranger = await createTestMember(h.api());
 
     assert.deepEqual(await refusal(await renew(stranger, loan.id)), {
@@ -173,7 +173,7 @@ describe("Renewing a Loan from My Loans", () => {
   });
 
   it("refuses to renew a Loan whose Copy has been returned, and lists no Renewal for it", async () => {
-    const { member, copy, loan } = await borrower("Already Back");
+    const { member, copy, loan } = await memberWithLoan("Already Back");
     await h.giveBack(copy.barcode);
 
     assert.equal((await listed(member, loan.id)).renewal, null);
@@ -186,7 +186,7 @@ describe("Renewing a Loan from My Loans", () => {
 
   it("records each Renewal in the audit log, with the Member as the actor, and nothing for a refused one", async () => {
     const audit = createAuditLog(h.api());
-    const { member, book, copy, loan } = await borrower("For The Record");
+    const { member, book, copy, loan } = await memberWithLoan("For The Record");
     const before = (await audit.newest())?.seq ?? 0;
 
     assert.equal((await renew(member, loan.id)).status, 200);
@@ -209,7 +209,7 @@ describe("Renewing a Loan from My Loans", () => {
   });
 
   it("sends no email", async () => {
-    const { member, loan } = await borrower("Quietly Renewed");
+    const { member, loan } = await memberWithLoan("Quietly Renewed");
     h.api().emails.clear();
 
     assert.equal((await renew(member, loan.id)).status, 200);
@@ -218,7 +218,7 @@ describe("Renewing a Loan from My Loans", () => {
   });
 
   it("gives the desk the new due date: a return after a Renewal reports it", async () => {
-    const { member, copy, loan } = await borrower("Back After Renewal");
+    const { member, copy, loan } = await memberWithLoan("Back After Renewal");
     assert.equal((await renew(member, loan.id)).status, 200);
     // A day after the original due date, but before the new one: on time.
     h.api().clock.set("2026-11-20T02:00:00.000Z");
