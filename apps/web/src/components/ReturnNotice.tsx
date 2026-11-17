@@ -1,13 +1,14 @@
-import { formatLibraryDate, formatLibraryDateTime } from "@libras/shared";
-import type { ReturnedLoan } from "@libras/shared";
+import { formatLibraryDate, formatLibraryDateTime, formatPesos } from "@libras/shared";
+import type { LoanFine, ReturnedLoan } from "@libras/shared";
 
 /**
  * The return the desk has just recorded: which Book and Copy came back, who had
  * it, the day it was returned, and whether that was on time or late against its
- * due date (the current one, after any Renewal: the date the Member saw). Tier 1
- * charges nothing for a late return. When the Copy is now set aside for a Hold,
- * a second panel tells the Librarian for which Member and until when, so the
- * Copy goes on the hold shelf and not back on the stacks.
+ * due date (the current one, after any Renewal: the date the Member saw). A
+ * late Copy's Fine, fixed by this return, gets a panel with the Member's name,
+ * how late it was and the amount, so the Librarian can tell the Member. When the
+ * Copy is now set aside for a Hold, a panel tells the Librarian for which Member
+ * and until when, so the Copy goes on the hold shelf and not back on the stacks.
  */
 export function ReturnNotice({ loan }: { loan: ReturnedLoan }) {
   return (
@@ -42,28 +43,64 @@ export function ReturnNotice({ loan }: { loan: ReturnedLoan }) {
           </span>
         </div>
       </div>
+      {loan.fine && <FinePanel fine={loan.fine} memberName={loan.memberName} />}
       {loan.heldFor && (
-        <div className="hold-shelf" data-testid="desk-return-held">
-          <svg className="hold-shelf__icon" viewBox="0 0 24 24" aria-hidden="true">
+        <div className="return-panel return-panel--hold" data-testid="desk-return-held">
+          <svg className="return-panel__icon" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M6 2h12a1 1 0 0 1 1 1v19l-7-4.4L5 22V3a1 1 0 0 1 1-1z" />
           </svg>
-          <div className="hold-shelf__text">
-            <h3 className="hold-shelf__title">
+          <div className="return-panel__text">
+            <h3 className="return-panel__title">
               {"Set aside for "}
-              <strong className="hold-shelf__member" data-testid="desk-return-held-member">
+              <strong className="return-panel__name" data-testid="desk-return-held-member">
                 {loan.heldFor.memberName}
               </strong>
             </h3>
-            <span className="hold-shelf__body">Put this Copy on the hold shelf, not back on the stacks. Only this Member can borrow it.</span>
+            <span className="return-panel__body">Put this Copy on the hold shelf, not back on the stacks. Only this Member can borrow it.</span>
           </div>
-          <div className="hold-shelf__until">
-            <span className="hold-shelf__until-label">Pickup Window ends</span>
-            <span className="hold-shelf__until-date" data-testid="desk-return-held-until">
+          <div className="return-panel__side">
+            <span className="return-panel__side-label">Pickup Window ends</span>
+            <span className="return-panel__side-value" data-testid="desk-return-held-until">
               {formatLibraryDateTime(loan.heldFor.pickupEndsAt)}
             </span>
           </div>
         </div>
       )}
     </section>
+  );
+}
+
+/** "3 days late, at PHP 5 a day." or, once it reached the cap, "75 days late, at PHP 5 a day, up to the cap of PHP 300." */
+function fineReason(fine: LoanFine): string {
+  const days = `${fine.daysLate} ${fine.daysLate === 1 ? "day" : "days"} late, at ${formatPesos(fine.dailyRateCentavos)} a day`;
+  const capped = fine.amountCentavos < fine.daysLate * fine.dailyRateCentavos;
+  return capped ? `${days}, up to the cap of ${formatPesos(fine.capCentavos)}.` : `${days}.`;
+}
+
+/** The Fine a late return fixed: whose it is, why, and how much. */
+function FinePanel({ fine, memberName }: { fine: LoanFine; memberName: string }) {
+  return (
+    <div className="return-panel return-panel--fine" data-testid="desk-return-fine">
+      <svg className="return-panel__icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
+      </svg>
+      <div className="return-panel__text">
+        <h3 className="return-panel__title">
+          {"Fine for "}
+          <strong className="return-panel__name" data-testid="desk-return-fine-member">
+            {memberName}
+          </strong>
+        </h3>
+        <span className="return-panel__body" data-testid="desk-return-fine-reason">
+          {fineReason(fine)}
+        </span>
+      </div>
+      <div className="return-panel__side">
+        <span className="return-panel__side-label">Fine</span>
+        <span className="return-panel__amount" data-testid="desk-return-fine-amount">
+          {formatPesos(fine.amountCentavos)}
+        </span>
+      </div>
+    </div>
   );
 }

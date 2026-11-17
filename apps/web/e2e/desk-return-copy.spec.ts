@@ -45,6 +45,7 @@ test("a Librarian records a return: the Copy's barcode, then its accession numbe
   await expect(notice.getByTestId("desk-return-member")).toHaveText("Ana Santos");
   await expect(notice.getByTestId("desk-return-date")).toHaveText(today());
   await expect(notice).not.toContainText("late");
+  await expect(notice.getByTestId("desk-return-fine")).toHaveCount(0);
   await expect(page.getByLabel("Scan or type a code")).toBeFocused();
   await page.screenshot({ path: test.info().outputPath("desk-return-recorded.png") });
   expect(await copyStatus(first.barcode)).toBe("available");
@@ -104,10 +105,10 @@ test("a Copy that is not on Loan, or not known, gets a clear message and changes
   await expect(alert).toHaveText(SCAN_MESSAGES.notAllowed);
 });
 
-test("a Copy returned a second time is refused, and a Copy that came back late says so", async ({ page }) => {
+test("a Copy that came back late says so and shows its Fine with the Member's name, and a second return of it is refused", async ({ page }) => {
   const ben = await createMember("umak_student", "Ben", "Reyes");
   const [copy] = (await addBook("Back Twice", 1)) as [DeskTestCopy];
-  // Ben borrowed it eight days ago: the loan period is seven days, so it is a day late.
+  // Ben borrowed it eight days ago: the loan period is seven days, so it is a day late, and the Fine is one day's rate.
   await desk.db.query(
     `insert into public.loans (copy_id, member_id, confirmed_by, checked_out_at, due_at)
      select c.id, $2, s.user_id, now() - interval '8 days', now() - interval '1 day'
@@ -121,6 +122,17 @@ test("a Copy returned a second time is refused, and a Copy that came back late s
   const notice = page.getByRole("region", { name: "Return recorded" });
   await expect(notice).toBeVisible();
   await expect(notice).toContainText("Returned late");
+  const fine = notice.getByTestId("desk-return-fine");
+  await expect(fine.getByTestId("desk-return-fine-member")).toHaveText("Ben Reyes");
+  await expect(fine.getByTestId("desk-return-fine-reason")).toHaveText("1 day late, at PHP 5 a day.");
+  await expect(fine.getByTestId("desk-return-fine-amount")).toHaveText("PHP 5");
+  expect((await loansOf(ben)).find((loan) => loan.returnedAt !== null)?.fine).toEqual({
+    amountCentavos: 500,
+    daysLate: 1,
+    dailyRateCentavos: 500,
+    capCentavos: 30_000,
+    final: true,
+  });
   await page.screenshot({ path: test.info().outputPath("desk-return-late.png") });
 
   await scan(page, copy.barcode);
