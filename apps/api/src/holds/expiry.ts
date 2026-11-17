@@ -77,7 +77,7 @@ const BATCH_SIZE = 100;
  * next run, and does not stop the others. Running it twice at once, or while a
  * Member borrows, is safe: `expireHold` re-checks the Hold under its locks.
  *
- * This is the sweep. It runs on its own (`startPickupSweeper`, and the
+ * This is the sweep. It runs on its own (`startSweeper` in `sweep.ts`, and the
  * database's schedule through `POST /internal/sweeps/pickup-expiry`), and it
  * also runs where a Member would otherwise see an expired window as still
  * running (their list of Holds).

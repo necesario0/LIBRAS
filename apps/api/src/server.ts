@@ -7,8 +7,8 @@ import { systemClock } from "./clock.ts";
 import { loadConfig } from "./config.ts";
 import { createDatabase } from "./db.ts";
 import { BrevoEmailSender, ConsoleEmailSender } from "./email.ts";
-import { startPickupSweeper } from "./holds/sweeper.ts";
 import { consoleLogger } from "./logger.ts";
+import { startSweeper } from "./sweep.ts";
 
 // Local development reads the repository's .env file. Hosted environments set real variables.
 const envFile = fileURLToPath(new URL("../../../.env", import.meta.url));
@@ -38,10 +38,10 @@ const { app, stop } = createApp(deps, {
   sweepSecret: config.sweepSecret,
 });
 
-// Pickup Windows end on their own: sweep while the API runs (ADR 0007).
-const sweeper = startPickupSweeper(deps);
+// Pickup Windows end and Loan notices go out on their own: sweep while the API runs (ADR 0007, ADR 0009).
+const sweeper = startSweeper(deps);
 if (!config.sweepSecret && config.isProduction) {
-  logger.error("SWEEP_SECRET is not set: Pickup Windows expire only while this service is awake. See the API README, Pickup Window expiry.");
+  logger.error("SWEEP_SECRET is not set: Pickup Windows expire and Loan notices go out only while this service is awake. See the API README, Pickup Window expiry.");
 }
 
 const server = app.listen(config.port, () => {

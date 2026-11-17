@@ -4,7 +4,7 @@ import type { RequestHandler } from "express";
 import type { AppDeps } from "../app.ts";
 import { bearerToken } from "../auth/guards.ts";
 import { AppError } from "../errors.ts";
-import { expireDueHolds } from "../holds/expiry.ts";
+import { runSweep } from "../sweep.ts";
 
 /** Compares two secrets without leaking, through timing, how much of the guess was right. */
 function sameSecret(given: string | undefined, expected: string): boolean {
@@ -19,7 +19,10 @@ function sameSecret(given: string | undefined, expected: string): boolean {
  * the shared secret as a bearer token. Without a configured secret there are no
  * such routes. They are not part of the clients' API.
  *
- *   POST /internal/sweeps/pickup-expiry -> 200 { expired: number }
+ *   POST /internal/sweeps/pickup-expiry -> 200 { expired: number, noticeEmails: number }
+ *
+ * The path keeps the name of the sweep's first job, because the hosted schedule
+ * calls it; it runs the whole tick (`runSweep`): Pickup Window expiry, then Loan notices.
  */
 export function sweepsRouter(deps: AppDeps, secret: string): Router {
   const router = Router();
@@ -32,7 +35,7 @@ export function sweepsRouter(deps: AppDeps, secret: string): Router {
   };
 
   router.post("/internal/sweeps/pickup-expiry", requireSecret, async (_req, res) => {
-    res.json({ expired: await expireDueHolds(deps) });
+    res.json(await runSweep(deps));
   });
 
   return router;

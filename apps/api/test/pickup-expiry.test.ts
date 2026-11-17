@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { after, afterEach, before, beforeEach, describe, it } from "node:test";
 import { createAuditLog } from "../src/audit/index.ts";
 import type { AppDeps } from "../src/app.ts";
-import { startPickupSweeper } from "../src/holds/sweeper.ts";
+import { startSweeper } from "../src/sweep.ts";
 import { createTestMember, startTestApi } from "../src/testing/index.ts";
 import type { TestMember } from "../src/testing/index.ts";
 import { dispatchHarness, pause, started } from "./dispatch-harness.ts";
@@ -454,7 +454,7 @@ describe("Pickup Window expiry on a timer", () => {
       logger: { info: () => {}, error: (_message: string, error?: unknown) => logged.push(error) },
     };
 
-    const sweeper = startPickupSweeper(deps as unknown as AppDeps, 20);
+    const sweeper = startSweeper(deps as unknown as AppDeps, 20);
     try {
       await eventually(
         async () => queries,
@@ -488,7 +488,7 @@ describe("Pickup Window expiry on a timer", () => {
       logger: { info: () => {}, error: () => {} },
     };
 
-    const sweeper = startPickupSweeper(deps as unknown as AppDeps, 10);
+    const sweeper = startSweeper(deps as unknown as AppDeps, 10);
     await pause(400);
     sweeper.stop();
     await pause(200);
@@ -531,9 +531,9 @@ describe("Pickup Window expiry on the database's schedule", () => {
     const response = await sweepRequest(SECRET);
 
     assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), { expired: 1 });
+    assert.deepEqual(await response.json(), { expired: 1, noticeEmails: 0 });
     assert.equal(await statusOf(), "expired");
-    assert.deepEqual(await (await sweepRequest(SECRET)).json(), { expired: 0 });
+    assert.deepEqual(await (await sweepRequest(SECRET)).json(), { expired: 0, noticeEmails: 0 });
   });
 
   it("answers 401 to a request without the secret or with a wrong one, and expires nothing", async () => {

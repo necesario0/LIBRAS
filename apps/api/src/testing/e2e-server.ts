@@ -20,8 +20,8 @@ import { SupabaseAuth } from "../auth/supabase-auth.ts";
 import { systemClock } from "../clock.ts";
 import { loadConfig } from "../config.ts";
 import { createDatabase } from "../db.ts";
-import { startPickupSweeper } from "../holds/sweeper.ts";
 import { consoleLogger } from "../logger.ts";
+import { startSweeper } from "../sweep.ts";
 import { CapturingEmailSender } from "./capturing-email-sender.ts";
 import { catalogFixtureRoutes } from "./catalog-fixture-routes.ts";
 import { loanFixtureRoutes } from "./loan-fixture-routes.ts";
@@ -69,8 +69,8 @@ const { app, stop } = createApp(deps, {
   },
 });
 
-// Pickup Windows end on their own here too, as on the real server.
-const sweeper = startPickupSweeper(deps);
+// Pickup Windows end and Loan notices go out on their own here too, as on the real server.
+const sweeper = startSweeper(deps);
 
 const server = app.listen(config.port, "127.0.0.1", () => {
   consoleLogger.info(`LIBRAS end-to-end API (emails captured) on http://127.0.0.1:${config.port}`);
