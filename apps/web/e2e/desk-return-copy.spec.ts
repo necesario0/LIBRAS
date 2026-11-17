@@ -201,6 +201,9 @@ test("a Fine left unsettled at the return is listed when the Member's Digital ID
   await expect(rows.nth(0)).toContainText("Left For Later");
   await expect(rows.nth(0).getByTestId("desk-member-fine-amount")).toHaveText("PHP 5");
   await expect(rows.nth(1).getByTestId("desk-member-fine-amount")).toHaveText("PHP 15");
+  // Both Copies are back, so the Fines alone stand in the way of Clearance.
+  await expect(member.getByTestId("desk-member-clearance")).toHaveText("Not cleared");
+  await expect(member.getByTestId("desk-member-clearance-reasons")).toHaveText("2 unsettled Fines, PHP 20");
   await page.screenshot({ path: test.info().outputPath("desk-member-unsettled-fines.png") });
 
   // Waived asks first; then the row goes and the other Fine stays.
@@ -210,8 +213,12 @@ test("a Fine left unsettled at the return is listed when the Member's Digital ID
   await rows.nth(0).getByTestId("desk-member-fine-confirm").click();
   await expect(rows).toHaveCount(1);
   await expect(rows.nth(0).getByTestId("desk-member-fine-amount")).toHaveText("PHP 15");
+  await expect(member.getByTestId("desk-member-clearance-reasons")).toHaveText("1 unsettled Fine, PHP 15");
   await rows.nth(0).getByTestId("desk-member-fine-paid").click();
   await expect(member.getByTestId("desk-member-fines")).toHaveCount(0);
+  // Settled in the same session: cleared at once.
+  await expect(member.getByTestId("desk-member-clearance")).toHaveText("Cleared");
+  await expect(member.getByTestId("desk-member-clearance-reasons")).toHaveCount(0);
   await page.screenshot({ path: test.info().outputPath("desk-member-fines-settled.png") });
 
   const outcomes = (await loansOf(dana)).map((loan) => [loan.fine?.amountCentavos, loan.fine?.settlement?.outcome]);

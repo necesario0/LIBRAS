@@ -1,5 +1,5 @@
-import { ACCOUNT_TYPE_LABELS, formatLibraryDate } from "@libras/shared";
-import type { UnsettledFine, DeskMember, FineOutcome, SettleFineResponse } from "@libras/shared";
+import { ACCOUNT_TYPE_LABELS, formatLibraryDate, formatPesos } from "@libras/shared";
+import type { Clearance, DeskMember, FineOutcome, SettleFineResponse, UnsettledFine } from "@libras/shared";
 import { FineActions } from "./FineActions.tsx";
 import { FinePanel } from "./FinePanel.tsx";
 
@@ -8,6 +8,20 @@ function initialsOf(fullName: string): string {
   const first = parts[0]?.[0] ?? "";
   const last = parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? "") : "";
   return (first + last).toUpperCase();
+}
+
+/** What stands in the way of Clearance, in a line: "2 Loans still out (1 overdue); 1 unsettled Fine, PHP 5". */
+function clearanceReasons({ loansOut, unsettledFines }: Clearance): string {
+  const reasons: string[] = [];
+  if (loansOut.length > 0) {
+    const overdue = loansOut.filter((loan) => loan.overdue).length;
+    reasons.push(`${loansOut.length} ${loansOut.length === 1 ? "Loan" : "Loans"} still out${overdue > 0 ? ` (${overdue} overdue)` : ""}`);
+  }
+  if (unsettledFines.length > 0) {
+    const owed = unsettledFines.reduce((total, fine) => total + fine.amountCentavos, 0);
+    reasons.push(`${unsettledFines.length} unsettled ${unsettledFines.length === 1 ? "Fine" : "Fines"}, ${formatPesos(owed)}`);
+  }
+  return reasons.join("; ");
 }
 
 /**
@@ -19,8 +33,8 @@ export type SettleMemberFine = (fine: UnsettledFine, outcome: FineOutcome) => Pr
 
 /**
  * Who the scanned Digital ID belongs to: name, Account Type, and Loans against
- * the Loan Policy limit, then the Fines they have not settled, each with Paid
- * and Waived.
+ * the Loan Policy limit, whether they are cleared and what stands in the way,
+ * then the Fines they have not settled, each with Paid and Waived.
  */
 export function MemberCard({ member, settleFine }: { member: DeskMember; settleFine: SettleMemberFine }) {
   const { loans } = member;
@@ -59,6 +73,20 @@ export function MemberCard({ member, settleFine }: { member: DeskMember; settleF
             </>
           )}
         </div>
+      </div>
+      <div className="member-card__clearance" data-testid="desk-member-clearance-line">
+        <span className="member-card__clearance-label">Clearance</span>
+        <span
+          className={`member-card__clearance-status${member.clearance.cleared ? " member-card__clearance-status--cleared" : ""}`}
+          data-testid="desk-member-clearance"
+        >
+          {member.clearance.cleared ? "Cleared" : "Not cleared"}
+        </span>
+        {!member.clearance.cleared && (
+          <span className="member-card__clearance-reasons" data-testid="desk-member-clearance-reasons">
+            {clearanceReasons(member.clearance)}
+          </span>
+        )}
       </div>
       {member.unsettledFines.length > 0 && (
         <div className="member-card__fines" data-testid="desk-member-fines">

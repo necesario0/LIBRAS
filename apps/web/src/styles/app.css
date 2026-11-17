@@ -580,6 +580,35 @@ input {
   justify-content: space-between;
   gap: var(--space-5);
 }
+.member-card__clearance {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+.member-card__clearance-label {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.member-card__clearance-status {
+  padding: 2px var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+.member-card__clearance-status--cleared {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+.member-card__clearance-reasons {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
 .member-card__fines {
   display: flex;
   flex-direction: column;
