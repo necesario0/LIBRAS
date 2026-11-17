@@ -4,18 +4,22 @@
 //   search     catalog search through the hosted API: one at a time, then 50 users at once (target 1.0 s)
 //   dispatch   hold dispatch on the hosted database: the dispatch query at queue sizes up to 5,000 inside a transaction that is
 //              rolled back, then the whole return -> Hold ready -> pickup path through the hosted API with test Members
-//   cleanup    delete every test Member, Book, Copy, Loan and Hold the dispatch command made
+//   tier2      walk the Tier 2 paths through the hosted API with one test UMAK Student and a test Book (issue #40):
+//              Renewal, the Loans list, a Fine and its settlement, Clearance, the Good standing refusals, the neutral
+//              password reset reply, the sweep endpoint and the audit chain (`checkTier2` in hosted-checks.ts), then clean up
+//   cleanup    delete every test Member, Book, Copy, Loan, Fine and Hold the dispatch and tier2 commands made
 //
 // Everything reads .env.hosted (DATABASE_URL, SUPABASE_*, SEED_LIBRARIAN_*, EXPO_PUBLIC_API_URL). Nothing secret is printed.
 // Test Members are made through the real sign-up code with a capturing email sender (no verification mail goes anywhere).
 // The hosted API still sends the Hold-ready email when a Hold is dispatched, so the test Members' addresses are changed to
 // a +alias of SEED_LIBRARIAN_EMAIL (the developer's own address): the only mail is the Hold-ready notices in that inbox.
+// tier2 does the same for its test Member, so a Loan notice the sweep sends it lands there too.
 import { randomBytes, randomUUID } from "node:crypto";
 import type { Server } from "node:http";
 import { closeSync, fstatSync, openSync, readSync, writeSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { PoolClient } from "pg";
-import { tokenize } from "@libras/shared";
+import { counted, formatPesos, tokenize } from "@libras/shared";
 import { createApp } from "../src/app.ts";
 import { SupabaseAuth } from "../src/auth/supabase-auth.ts";
 import { SupabaseAuthAdmin } from "../src/auth/supabase-auth-admin.ts";
@@ -27,11 +31,10 @@ import { DISPATCH_SQL } from "../src/holds/dispatch.ts";
 import { consoleLogger } from "../src/logger.ts";
 import { generateCatalog } from "../src/seed/catalog-generator.ts";
 import { CapturingEmailSender } from "../src/testing/capturing-email-sender.ts";
+import { TEST_BOOK_TITLE, TEST_EMAIL_PREFIX, checkTier2, cleanupHostedChecks } from "./hosted-checks.ts";
 import { codeFromEmail, ntpEmployeeSignUpBody, facultySignUpBody, signInDirect, studentSignUpBody, visitorSignUpBody } from "../src/testing/members.ts";
 
 const envFile = fileURLToPath(new URL("../../../.env.hosted", import.meta.url));
-const TEST_EMAIL_PREFIX = "libras-hosted-check-";
-const TEST_BOOK_TITLE = "ZZ Hosted Check Book (delete me)";
 const TEST_BARCODE = "9900000001";
 const TEST_ACCESSION = "HC-0000001";
 
@@ -337,12 +340,7 @@ async function dispatchCommand(db: Database): Promise<void> {
   const bookId = book.rows[0]?.id as string;
   await db.query("insert into public.copies (book_id, accession_number, barcode) values ($1, $2, $3)", [bookId, TEST_ACCESSION, TEST_BARCODE]);
 
-  const librarian = await call<{ session: { accessToken: string } }>("POST", "/staff/sign-in", undefined, {
-    email: process.env.SEED_LIBRARIAN_EMAIL,
-    password: process.env.SEED_LIBRARIAN_PASSWORD,
-  });
-  if (librarian.status !== 200) throw new Error(`Librarian sign-in failed: ${librarian.status}`);
-  const librarianToken = librarian.body.session.accessToken;
+  const deskToken = await librarianToken();
 
   const digitalId = async (key: string): Promise<string> => {
     const result = await call<{ code: string }>("GET", "/members/me/digital-id", members[key]?.token);
@@ -351,16 +349,16 @@ async function dispatchCommand(db: Database): Promise<void> {
   };
   /** The Librarian scans the Member's Digital ID (a desk session starts), then the Copy, and is done. Only the Copy's scan is timed. */
   const lend = async (key: string) => {
-    const identified = await call<{ deskSession: { token: string } }>("POST", "/desk/members/identify", librarianToken, { code: await digitalId(key) });
+    const identified = await call<{ deskSession: { token: string } }>("POST", "/desk/members/identify", deskToken, { code: await digitalId(key) });
     if (identified.status !== 200) throw new Error(`Identifying ${key} failed: ${identified.status}`);
     const deskSession = identified.body.deskSession.token;
-    const result = await call<{ error?: { code: string } }>("POST", "/desk/loans", librarianToken, { deskSession, copy: TEST_BARCODE });
-    await call("POST", "/desk/sessions/end", librarianToken, { deskSession });
+    const result = await call<{ error?: { code: string } }>("POST", "/desk/loans", deskToken, { deskSession, copy: TEST_BARCODE });
+    await call("POST", "/desk/sessions/end", deskToken, { deskSession });
     if (result.status !== 201) throw new Error(`Lending to ${key} failed: ${result.status} ${result.body.error?.code}`);
     return result.ms;
   };
   const giveBack = async () => {
-    const result = await call<{ loan: { heldFor: { memberName: string } | null } }>("POST", "/desk/returns", librarianToken, { copy: TEST_BARCODE });
+    const result = await call<{ loan: { heldFor: { memberName: string } | null } }>("POST", "/desk/returns", deskToken, { copy: TEST_BARCODE });
     if (result.status !== 201 && result.status !== 200) throw new Error(`Return failed: ${result.status}`);
     return { ms: result.ms, heldFor: result.body.loan.heldFor?.memberName ?? null };
   };
@@ -401,18 +399,44 @@ async function dispatchCommand(db: Database): Promise<void> {
 }
 
 async function cleanup(db: Database, say: boolean): Promise<void> {
-  const users = await db.query<{ id: string }>("select id from auth.users where email like $1 or email like $2", [`${TEST_EMAIL_PREFIX}%`, `%+${TEST_EMAIL_PREFIX}%`]);
-  const ids = users.rows.map((row) => row.id);
-  const books = (await db.query<{ id: string }>("select id from public.books where title like $1", [`${TEST_BOOK_TITLE}%`])).rows.map((row) => row.id);
-  await withTransaction(db, async (tx) => {
-    await tx.query("delete from public.digital_id_uses where member_id = any($1)", [ids]);
-    await tx.query("delete from public.loans where member_id = any($1) or copy_id in (select id from public.copies where book_id = any($2))", [ids, books]);
-    await tx.query("delete from public.holds where member_id = any($1) or book_id = any($2)", [ids, books]);
-    await tx.query("delete from public.copies where book_id = any($1)", [books]);
-    await tx.query("delete from public.books where id = any($1)", [books]);
-    await tx.query("delete from auth.users where id = any($1)", [ids]);
+  const removed = await cleanupHostedChecks(db);
+  if (say) console.log(`Removed ${counted(removed.members, "test Member")}, ${counted(removed.books, "test Book")} and their Copies, Loans, Fines and Holds. The audit log keeps its entries.`);
+}
+
+async function librarianToken(): Promise<string> {
+  const librarian = await call<{ session: { accessToken: string } }>("POST", "/staff/sign-in", undefined, {
+    email: process.env.SEED_LIBRARIAN_EMAIL,
+    password: process.env.SEED_LIBRARIAN_PASSWORD,
   });
-  if (say) console.log(`Removed ${ids.length} test Members, ${books.length} test Book(s) and their Copies, Loans and Holds. The audit log keeps its entries.`);
+  if (librarian.status !== 200) throw new Error(`Librarian sign-in failed: ${librarian.status}`);
+  return librarian.body.session.accessToken;
+}
+
+async function tier2Command(db: Database): Promise<void> {
+  const sweepSecret = process.env.SWEEP_SECRET;
+  if (!sweepSecret) throw new Error("SWEEP_SECRET is not in .env.hosted: copy the line `npm run schedule:hosted` saved (the value set on Render).");
+  await cleanup(db, false);
+  const email = `${TEST_EMAIL_PREFIX}tier2-${randomUUID().slice(0, 6)}@umak.edu.ph`;
+  const password = randomBytes(12).toString("base64url");
+  const sender = await startSignUpApp(db);
+  try {
+    await sender.signUp(studentSignUpBody({ email, password, firstName: "HostedCheck", lastName: "Tier Two" }));
+  } finally {
+    await sender.close();
+  }
+  const token = await signInDirect(email, password);
+  if (!token) throw new Error("The test Member could not sign in");
+  const userId = (await db.query<{ id: string }>("select id from auth.users where email = $1", [email])).rows[0]?.id as string;
+  // A Loan notice the sweep sends this Member goes to the developer's own inbox.
+  await db.query("update auth.users set email = $2 where id = $1", [userId, developerAlias(`${TEST_EMAIL_PREFIX}tier2`)]);
+  console.log(`Hosted API ${new URL(apiUrl).host}: one test UMAK Student and the test Book "${TEST_BOOK_TITLE} tier 2"\n`);
+  try {
+    const report = await checkTier2({ apiUrl, db, librarianToken: await librarianToken(), member: { accessToken: token, userId }, sweepSecret, log: console.log });
+    console.log(`\nAll ${report.passed.length} Tier 2 checks passed. The late return fixed a Fine of ${formatPesos(report.fineCentavos)}, settled as paid.`);
+    console.log("If a Loan notice was due, the sweep sent it to your +libras-hosted-check-tier2 alias.");
+  } finally {
+    await cleanup(db, true);
+  }
 }
 
 const command = process.argv[2];
@@ -421,8 +445,9 @@ try {
   if (command === "member") await memberCommand(db);
   else if (command === "search") await searchCommand();
   else if (command === "dispatch") await dispatchCommand(db);
+  else if (command === "tier2") await tier2Command(db);
   else if (command === "cleanup") await cleanup(db, true);
-  else throw new Error("Usage: npm run verify:hosted -- member | search | dispatch | cleanup");
+  else throw new Error("Usage: npm run verify:hosted -- member | search | dispatch | tier2 | cleanup");
 } catch (error) {
   console.error(error instanceof Error ? error.message : error);
   process.exitCode = 1;
