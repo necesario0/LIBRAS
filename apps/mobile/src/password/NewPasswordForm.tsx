@@ -192,7 +192,8 @@ const styles = StyleSheet.create({
   requirement: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   requirementLabel: { fontFamily: fontFamily.regular, fontSize: fontSize.caption, lineHeight: 17, color: colors.textSubtle },
   requirementMet: { color: colors.ink },
-  actions: { flexDirection: "row", gap: spacing.md, marginTop: "auto", paddingTop: 48 },
+  // Right under the form, as in Figma 926:14514 (67 pt below the requirements), not pinned to the bottom of the screen.
+  actions: { flexDirection: "row", gap: spacing.md, marginTop: 67 },
   action: { flex: 1, height: passwordActionHeight, borderRadius: radii.passwordAction, alignItems: "center", justifyContent: "center" },
   cancel: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.cancel },
   save: { backgroundColor: colors.save },

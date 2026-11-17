@@ -18,7 +18,7 @@ interface PasswordUpdatedDialogProps {
  */
 export function PasswordUpdatedDialog({ visible, message, actionLabel, onAction }: PasswordUpdatedDialogProps) {
   return (
-    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={onAction}>
+    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent navigationBarTranslucent onRequestClose={onAction}>
       <View style={styles.scrim}>
         <View style={styles.dialog} accessibilityViewIsModal testID="password-updated">
           <View style={styles.badge}>

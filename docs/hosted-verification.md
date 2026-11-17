@@ -96,6 +96,7 @@ The test AVD runs Android 8, which draws no `boxShadow` (React Native needs Andr
 - [ ] My Account: the "Change password" row has a tight shadow (Figma 580:1832).
 - [ ] Digital ID: the card has its shadow.
 - [ ] My Loans, the overdue Loan: the red line "Fine so far: PHP 15 (3 days late)" sits under "Was due ..." and is not cut off.
+- [ ] Change password and Forgot password's new password screen: Cancel and Save sit right under the requirements (Figma 926:14514), and the "Password updated" dialog dims the whole screen, the navigation bar included (Figma 928:14929).
 - [ ] Nothing else looks misaligned or cut off on the Tier 2 screens: the Renew confirmation, Change password, Forgot password, the Clearance card, and the reasons shown in place of Renew, Borrow and Place a Hold.
 
 ## 8. Proof afterwards
