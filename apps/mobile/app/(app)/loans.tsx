@@ -2,19 +2,21 @@ import { useRouter } from "expo-router";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { isCurrentLoan } from "@libras/shared";
+import type { Loan } from "@libras/shared";
 import { useAuth } from "../../src/auth/AuthContext";
 import { Button } from "../../src/components/Button";
 import { ChevronBackIcon } from "../../src/components/icons";
 import { useScreenTop } from "../../src/hooks/useScreenTop";
 import { LoanRow } from "../../src/loans/LoanRow";
-import { useLoans } from "../../src/loans/useLoans";
+import { loanFailureMessage, renewLoan, useLoans } from "../../src/loans/useLoans";
 import { colors, fontFamily, fontSize, radii, spacing } from "../../src/theme/tokens";
 
 /**
  * My Loans: the Copies the Member has out, each with the day it was checked out
  * and the day it is due, overdue ones marked, and under them their past Loans:
- * the ones that have been returned, each with the day it came back. There is no Figma frame for it: it uses the style of
- * Home, the Book page and the Holds screen.
+ * the ones that have been returned, each with the day it came back. A current
+ * Loan can be renewed from its row, or says why it cannot. There is no Figma
+ * frame for it: it uses the style of Home, the Book page and the Holds screen.
  */
 export default function LoansScreen() {
   const router = useRouter();
@@ -23,6 +25,17 @@ export default function LoansScreen() {
   const { request } = useAuth();
   const { state, reload } = useLoans(request);
   const back = () => (router.canGoBack() ? router.back() : router.replace("/home"));
+
+  const renew = async (loan: Loan) => {
+    try {
+      await renewLoan(request, loan.id);
+    } catch (error) {
+      // The Loan may have changed since the list was loaded: show the refusal, then the fresh reason in the row.
+      void reload();
+      throw new Error(loanFailureMessage(error, "Your Loan could not be renewed. Please try again."), { cause: error });
+    }
+    await reload();
+  };
 
   const current = state.status === "loaded" ? state.loans.filter(isCurrentLoan) : [];
   const past = state.status === "loaded" ? state.loans.filter((loan) => !isCurrentLoan(loan)) : [];
@@ -86,7 +99,7 @@ export default function LoansScreen() {
               {state.status === "loaded" && state.loanLimit > 0 ? `Current - ${current.length} of ${state.loanLimit}` : "Current"}
             </Text>
             {current.map((loan) => (
-              <LoanRow key={loan.id} loan={loan} />
+              <LoanRow key={loan.id} loan={loan} onRenew={renew} />
             ))}
           </View>
         ) : null}
@@ -104,7 +117,7 @@ export default function LoansScreen() {
           <View testID="loans-past">
             <Text style={styles.section} testID="loans-past-count">{`Past Loans - ${past.length}`}</Text>
             {past.map((loan) => (
-              <LoanRow key={loan.id} loan={loan} />
+              <LoanRow key={loan.id} loan={loan} onRenew={renew} />
             ))}
           </View>
         ) : null}

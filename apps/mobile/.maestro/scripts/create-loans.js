@@ -4,6 +4,7 @@
 //   borrowWord, borrowTitle         the Book the Student borrows in the flow
 //   borrowBookId                    its id, for confirm-loan.js
 //   lateBookId, lateTitle           the Book of the Loan that overdue-loan.js makes overdue
+//   wantedBookId, wantedTitle       a Book with one Copy, for wanted-loan.js and hold-on-wanted-loan.js
 //   returnWord, returnTitle         a Book with one Copy, for the returns flow
 //   returnBookId                    its id, for confirm-return-loan.js and return-loan.js
 //
@@ -49,6 +50,8 @@ const lateWord = randomWord("zl");
 const lateTitle = "The " + capitalize(lateWord) + " Almanac";
 const borrowBook = post("/e2e/books", { title: borrowTitle, authors: ["Zxqy, Bea"], availableCopies: 2, onLoanCopies: 0 });
 const lateBook = post("/e2e/books", { title: lateTitle, authors: ["Zxqy, Lena"], availableCopies: 1, onLoanCopies: 0 });
+const wantedTitle = "The " + capitalize(randomWord("zw")) + " Atlas";
+const wantedBook = post("/e2e/books", { title: wantedTitle, authors: ["Zxqy, Wen"], availableCopies: 1, onLoanCopies: 0 });
 const returnWord = randomWord("zr");
 const returnTitle = "The " + capitalize(returnWord) + " Chronicle";
 const returnBook = post("/e2e/books", { title: returnTitle, authors: ["Zxqy, Rae"], availableCopies: 1, onLoanCopies: 0 });
@@ -61,6 +64,8 @@ output.borrowBookId = borrowBook.id;
 output.lateBookId = lateBook.id;
 output.lateWord = lateWord;
 output.lateTitle = lateTitle;
+output.wantedBookId = wantedBook.id;
+output.wantedTitle = wantedTitle;
 output.returnWord = returnWord;
 output.returnTitle = returnTitle;
 output.returnBookId = returnBook.id;

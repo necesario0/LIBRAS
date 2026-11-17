@@ -11,6 +11,7 @@ import type {
   MyLoansResponse,
   PlaceHoldResponse,
   RefreshSessionResponse,
+  RenewLoanResponse,
   ResendSignUpCodeRequest,
   SignInRequest,
   SignUpCodeSentResponse,
@@ -116,6 +117,12 @@ export function createApiClient({ baseUrl, fetch: fetchImpl = fetch, timeoutMs =
       request<CancelHoldResponse>(`/holds/${encodeURIComponent(holdId)}/cancel`, { method: "POST", headers: bearer(accessToken) }),
     /** The Member's own Loans, current ones first, with the loan limit and loan period of their Loan Policy. */
     getLoans: (accessToken: string) => request<MyLoansResponse>("/members/me/loans", { headers: bearer(accessToken) }),
+    /**
+     * Renews one of the Member's Loans: its due date moves one loan period later. Failures: `loan_not_found` (404),
+     * `loan_returned`, `loan_overdue`, `renewal_limit_reached` and `hold_waiting` (409).
+     */
+    renewLoan: (accessToken: string, loanId: string) =>
+      request<RenewLoanResponse>(`/loans/${encodeURIComponent(loanId)}/renew`, { method: "POST", headers: bearer(accessToken) }),
     /** Starts a sign-up: the API emails a verification code. */
     signUp: (body: SignUpRequest) => post<SignUpCodeSentResponse>("/members/sign-up", body),
     /** Accepts the emailed code: the account is active from here on. */
