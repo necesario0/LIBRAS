@@ -11,15 +11,14 @@ import type { MemberMeResponse, VerifySignUpResponse } from "@libras/shared";
 import type { z } from "zod";
 import type { AppDeps } from "../app.ts";
 import { createAuditLog, recordingSignInFailures } from "../audit/index.ts";
-import { bearerToken, memberOf, requireMember } from "../auth/guards.ts";
+import { accessTokenOf, memberOf, requireMember } from "../auth/guards.ts";
 import type { AttemptLimiter } from "../auth/attempt-limit.ts";
 import { AppError } from "../errors.ts";
-import { changeMemberPassword } from "../members/change-password.ts";
+import { changeMemberPassword, verifyCurrentPassword } from "../members/change-password.ts";
 import { signInMember } from "../members/sign-in.ts";
 import { resendSignUpCode, startSignUp, verifySignUp } from "../members/sign-up.ts";
-import { parseBody } from "../validation.ts";
+import { parseBody, passwordRuleRefusal } from "../validation.ts";
 
-const PASSWORD_MESSAGES: ReadonlySet<string> = new Set([SIGN_UP_MESSAGES.passwordTooShort, SIGN_UP_MESSAGES.passwordTooLong]);
 const KNOWN_MESSAGES: ReadonlySet<string> = new Set(Object.values(SIGN_UP_MESSAGES));
 
 /**
@@ -77,25 +76,23 @@ export function membersRouter(deps: AppDeps, limiter: AttemptLimiter): Router {
     const parsed = changePasswordSchema.safeParse(req.body);
     if (!parsed.success) {
       // A new password that breaks the sign-up rules gets the rule; anything else is a bad request.
-      const message = parsed.error.issues.find((issue) => issue.path[0] === "newPassword")?.message;
-      if (message !== undefined && PASSWORD_MESSAGES.has(message)) throw new AppError(400, "invalid_password", message);
-      throw new AppError(400, "invalid_request", "Enter your current password and a new one.");
+      throw (
+        passwordRuleRefusal(parsed.error, "newPassword") ??
+        new AppError(400, "invalid_request", "Enter your current password and a new one.")
+      );
     }
-    const member = memberOf(res);
-    const accessToken = bearerToken(req.get("authorization"));
-    if (accessToken === undefined) throw new Error("requireMember let a request through without an access token");
-    // A wrong current password counts like a failed sign-in: the same limiter, so guessing it here
-    // cannot get around the limit on the sign-in screen.
-    await limiter.attempt(req.ip, () =>
-      changeMemberPassword(deps, {
-        accessToken,
-        memberId: member.id,
-        email: member.email,
-        currentPassword: parsed.data.currentPassword,
-        newPassword: parsed.data.newPassword,
-        clientAddress: req.ip,
-      }),
-    );
+    const change = {
+      member: memberOf(res),
+      accessToken: accessTokenOf(res),
+      currentPassword: parsed.data.currentPassword,
+      newPassword: parsed.data.newPassword,
+      clientAddress: req.ip,
+    };
+    // Only a wrong current password counts like a failed sign-in, and through the same limiter, so guessing it
+    // here cannot get around the limit on the sign-in screen. Setting the new password is outside it: a session
+    // that ended meanwhile (401) is not a guess.
+    await limiter.attempt(req.ip, () => verifyCurrentPassword(deps, change));
+    await changeMemberPassword(deps, change);
     res.status(204).end();
   });
 

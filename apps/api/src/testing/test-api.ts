@@ -2,7 +2,7 @@ import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { createApp } from "../app.ts";
 import type { AppOptions } from "../app.ts";
-import type { AccountAdmin } from "../auth/auth-provider.ts";
+import type { AccountAdmin, AuthProvider } from "../auth/auth-provider.ts";
 import { SupabaseAuthAdmin } from "../auth/supabase-auth-admin.ts";
 import { SupabaseAuth } from "../auth/supabase-auth.ts";
 import { LOCAL_DATABASE_URL, loadConfig } from "../config.ts";
@@ -45,6 +45,11 @@ export interface TestApiOptions extends AppOptions {
    * fail or do something more. Default: the real one, untouched.
    */
   wrapAccounts?: (accounts: AccountAdmin) => AccountAdmin;
+  /**
+   * Wraps the real Supabase Auth, for a test that makes one of its calls fail or answer differently
+   * (a session that ended while a request was running, for example). Default: the real one, untouched.
+   */
+  wrapAuth?: (auth: AuthProvider) => AuthProvider;
 }
 
 const silentLogger: Logger = {
@@ -62,7 +67,8 @@ export async function startTestApi(options: TestApiOptions = {}): Promise<TestAp
   const clock = new FakeClock();
   const emails = new CapturingEmailSender();
   const config = loadConfig();
-  const auth = new SupabaseAuth({ url: config.supabaseUrl, publishableKey: config.supabasePublishableKey });
+  const realAuth = new SupabaseAuth({ url: config.supabaseUrl, publishableKey: config.supabasePublishableKey });
+  const auth = options.wrapAuth ? options.wrapAuth(realAuth) : realAuth;
   const realAccounts = new SupabaseAuthAdmin({ url: config.supabaseUrl, secretKey: config.supabaseSecretKey });
   const accounts = options.wrapAccounts ? options.wrapAccounts(realAccounts) : realAccounts;
   const deps = { db, auth, accounts, clock, email: emails, logger };

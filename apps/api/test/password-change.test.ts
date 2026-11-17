@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { after, afterEach, before, beforeEach, describe, it } from "node:test";
 import { SIGN_UP_MESSAGES } from "@libras/shared";
 import { createAuditLog } from "../src/audit/index.ts";
+import type { AuthProvider } from "../src/auth/auth-provider.ts";
 import { createTestAccount, createTestMember, startTestApi } from "../src/testing/index.ts";
 import type { TestApi, TestMember } from "../src/testing/index.ts";
 import { signInDirect } from "../src/testing/members.ts";
@@ -177,6 +178,47 @@ describe("Change password", () => {
     assert.equal((await errorOf(refused)).code, "not_member");
     assert.ok(await signInDirect(librarian.email, librarian.password), "the Librarian's password is unchanged");
   });
+
+  it("keeps the change when the audit write fails: the Member is told it worked, and the email still goes out", async () => {
+    const trigger = "libras_test_fail_password_changed_audit";
+    await api.db.query(
+      `create or replace function public.${trigger}() returns trigger language plpgsql as $$
+         begin raise exception 'audit write refused for the test'; end $$`,
+    );
+    await api.db.query(
+      `create trigger a_${trigger} before insert on public.audit_log for each row
+         when (new.event_type = 'password_changed') execute function public.${trigger}()`,
+    );
+    try {
+      const newPassword = `new-${randomUUID()}`;
+
+      const response = await changePassword(api, member.accessToken, member.password, newPassword);
+
+      assert.equal(response.status, 204, "the password is changed, so the answer is a success");
+      assert.ok(await signInDirect(member.email, newPassword), "the new password works");
+      assert.equal(api.emails.lastTo(member.email)?.subject, "Your LIBRAS password was changed", "the Member is still told");
+    } finally {
+      await api.db.query(`drop trigger if exists a_${trigger} on public.audit_log`);
+      await api.db.query(`drop function if exists public.${trigger}()`);
+    }
+  });
+
+  it("keeps the change when the email cannot be sent: the Member is told it worked and the audit entry is written", async () => {
+    const audit = createAuditLog(api);
+    const before = (await audit.newest())?.seq ?? 0;
+    const newPassword = `new-${randomUUID()}`;
+    api.emails.failing = true;
+    try {
+      const response = await changePassword(api, member.accessToken, member.password, newPassword);
+
+      assert.equal(response.status, 204);
+    } finally {
+      api.emails.failing = false;
+    }
+    assert.ok(await signInDirect(member.email, newPassword));
+    const entries = (await audit.entries({ afterSeq: before })).filter((entry) => entry.type === "password_changed");
+    assert.equal(entries.length, 1);
+  });
 });
 
 describe("Change password limit", () => {
@@ -230,5 +272,44 @@ describe("Change password limit", () => {
       assert.equal((await changePassword(api, member.accessToken, current, next)).status, 204);
       current = next;
     }
+  });
+});
+
+describe("Change password limit: what counts", () => {
+  let api: TestApi;
+  /** While true, Supabase Auth says the session is gone when the new password is set: it ended after the guard checked it. */
+  let sessionEnded = false;
+
+  beforeEach(async () => {
+    sessionEnded = false;
+    api = await startTestApi({
+      signInLimit: { maxFailures: 3, windowMinutes: 15 },
+      wrapAuth: (auth): AuthProvider => ({
+        signInWithPassword: (email, password) => auth.signInWithPassword(email, password),
+        refresh: (refreshToken) => auth.refresh(refreshToken),
+        identify: (accessToken) => auth.identify(accessToken),
+        signOut: (accessToken) => auth.signOut(accessToken),
+        changePassword: (accessToken, newPassword) =>
+          sessionEnded ? Promise.resolve(false) : auth.changePassword(accessToken, newPassword),
+      }),
+    });
+  });
+  afterEach(() => api.close());
+
+  it("counts only a wrong current password: a session that ended after the right password is a 401 and is not counted", async () => {
+    const member = await createTestMember(api);
+    sessionEnded = true;
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      const response = await changePassword(api, member.accessToken, member.password, `new-${attempt}-${randomUUID()}`);
+      assert.equal(response.status, 401);
+      assert.equal((await errorOf(response)).code, "not_signed_in");
+    }
+
+    sessionEnded = false;
+    const newPassword = `new-${randomUUID()}`;
+    const response = await changePassword(api, member.accessToken, member.password, newPassword);
+
+    assert.equal(response.status, 204, "four 401s did not fill the limit of three");
+    assert.ok(await signInDirect(member.email, newPassword));
   });
 });

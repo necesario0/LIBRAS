@@ -10,7 +10,7 @@ import { RequestLimiter } from "../auth/request-limit.ts";
 import type { RequestLimitOptions } from "../auth/request-limit.ts";
 import { AppError } from "../errors.ts";
 import { checkPasswordResetCode, completePasswordReset, requestPasswordReset } from "../members/password-reset.ts";
-import { parseBody } from "../validation.ts";
+import { parseBody, passwordRuleRefusal } from "../validation.ts";
 
 export interface PasswordResetLimit {
   /** Code requests from one client address, whatever the email. */
@@ -27,8 +27,6 @@ export const DEFAULT_PASSWORD_RESET_LIMIT: PasswordResetLimit = {
   perClientAddress: { maxRequests: 10, windowMinutes: 15 },
   perEmail: { maxRequests: 5, windowMinutes: 60 },
 };
-
-const PASSWORD_MESSAGES: ReadonlySet<string> = new Set([SIGN_UP_MESSAGES.passwordTooShort, SIGN_UP_MESSAGES.passwordTooLong]);
 
 /** Forgot password: request a code, check it, then set the new password with it. Members only. */
 export function passwordResetRouter(deps: AppDeps, limit: PasswordResetLimit = DEFAULT_PASSWORD_RESET_LIMIT): Router {
@@ -53,9 +51,7 @@ export function passwordResetRouter(deps: AppDeps, limit: PasswordResetLimit = D
     const parsed = completePasswordResetSchema.safeParse(req.body);
     if (!parsed.success) {
       // A new password that breaks the sign-up rules gets the rule; anything else is a bad code.
-      const message = parsed.error.issues.find((issue) => issue.path[0] === "password")?.message;
-      if (message !== undefined && PASSWORD_MESSAGES.has(message)) throw new AppError(400, "invalid_password", message);
-      throw new AppError(400, "invalid_request", SIGN_UP_MESSAGES.codeInvalid);
+      throw passwordRuleRefusal(parsed.error, "password") ?? new AppError(400, "invalid_request", SIGN_UP_MESSAGES.codeInvalid);
     }
     await completePasswordReset(deps, { ...parsed.data, clientAddress: req.ip });
     res.status(204).end();
