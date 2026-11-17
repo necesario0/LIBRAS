@@ -4,7 +4,7 @@ import { createDeskFixtures, scan, signInAtTheDesk } from "./desk-fixtures.ts";
 import type { DeskTestCopy } from "./desk-fixtures.ts";
 
 const desk = createDeskFixtures();
-const { addBook, codeOnThePhoneOf, createMember, db, loansOf } = desk;
+const { addBook, codeOnThePhoneOf, createMember, db, lendLate, loansOf } = desk;
 
 test.beforeAll(desk.setUp);
 test.afterAll(desk.cleanUp);
@@ -116,6 +116,24 @@ test("a refused Loan shows its reason and keeps the Member at the desk", async (
   await expect(alert).toHaveText(LOAN_MESSAGES.cannotBorrow);
   await expect(vidasCard).toBeVisible();
   await page.screenshot({ path: test.info().outputPath("desk-loan-cannot-borrow.png") });
+});
+
+test("a Loan to a Member with an overdue Loan is refused with the reason, and the Member stays at the desk", async ({ page }) => {
+  const omar = await createMember("umak_student", "Omar", "Diaz");
+  const [late, wanted] = (await addBook("Overdue At The Desk", 2)) as [DeskTestCopy, DeskTestCopy];
+  await lendLate(omar, late, 2);
+  await signInAtTheDesk(page);
+
+  await scan(page, await codeOnThePhoneOf(omar));
+  const card = page.getByRole("region", { name: "Omar Diaz" });
+  await expect(card.getByTestId("desk-member-clearance-reasons")).toHaveText("1 Loan still out (1 overdue)");
+  await scan(page, wanted.barcode);
+
+  await expect(page.getByRole("alert")).toHaveText(LOAN_MESSAGES.notInGoodStanding.overdue_loan);
+  await expect(page.getByRole("region", { name: "Loan confirmed" })).toHaveCount(0);
+  await expect(card).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath("desk-loan-overdue-loan.png") });
+  expect(await loansOf(omar)).toHaveLength(1);
 });
 
 test("a Copy scanned before any Digital ID is a return, never a Loan", async ({ page }) => {

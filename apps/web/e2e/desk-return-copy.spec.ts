@@ -179,9 +179,10 @@ test("a late return is settled right there: Paid at once, Waived only after a co
   expect((await settlementOf(carla))?.outcome).toBe("paid");
 });
 
-test("a Fine left unsettled at the return is listed when the Member's Digital ID is scanned, and settled there", async ({ page }) => {
+test("a Fine left unsettled at the return is listed when the Member's Digital ID is scanned, refuses a Loan until it is settled there, and the same visit then lends", async ({ page }) => {
   const dana = await createMember("umak_student", "Dana", "Lim");
   const [first, second] = (await addBook("Left For Later", 2)) as [DeskTestCopy, DeskTestCopy];
+  const [wanted] = (await addBook("Borrowed Once Settled", 1)) as [DeskTestCopy];
   await lendLate(dana, first, 1);
   await lendLate(dana, second, 3);
   await signInAtTheDesk(page);
@@ -214,12 +215,26 @@ test("a Fine left unsettled at the return is listed when the Member's Digital ID
   await expect(rows).toHaveCount(1);
   await expect(rows.nth(0).getByTestId("desk-member-fine-amount")).toHaveText("PHP 15");
   await expect(member.getByTestId("desk-member-clearance-reasons")).toHaveText("1 unsettled Fine, PHP 15");
+
+  // While a Fine is unsettled Dana is not in Good standing: the Loan is refused, with the reason, and she stays at the desk.
+  await scan(page, wanted.barcode);
+  await expect(page.getByRole("alert")).toHaveText(LOAN_MESSAGES.notInGoodStanding.unsettled_fine);
+  await expect(page.getByRole("status")).toHaveText("Scan not accepted");
+  await expect(page.getByRole("region", { name: "Loan confirmed" })).toHaveCount(0);
+  await expect(member).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath("desk-loan-unsettled-fine.png") });
+
   await rows.nth(0).getByTestId("desk-member-fine-paid").click();
   await expect(member.getByTestId("desk-member-fines")).toHaveCount(0);
   // Settled in the same session: cleared at once.
   await expect(member.getByTestId("desk-member-clearance")).toHaveText("Cleared");
   await expect(member.getByTestId("desk-member-clearance-reasons")).toHaveCount(0);
   await page.screenshot({ path: test.info().outputPath("desk-member-fines-settled.png") });
+
+  // The last Fine settled, the same desk session lends her the Copy.
+  await scan(page, wanted.barcode);
+  await expect(page.getByRole("region", { name: "Loan confirmed" })).toContainText("Borrowed Once Settled");
+  await expect(page.getByRole("alert")).toHaveCount(0);
 
   const outcomes = (await loansOf(dana)).map((loan) => [loan.fine?.amountCentavos, loan.fine?.settlement?.outcome]);
   expect(outcomes).toEqual(expect.arrayContaining([[500, "waived"], [1500, "paid"]]));
