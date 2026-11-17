@@ -4,6 +4,9 @@
 # and Home has none. Profile also shows the Member's Clearance: cleared with no
 # Loan out and no Fine; not cleared with a Loan out and on time; with an overdue
 # Loan that comes back late, the Fine stands in the way after the Loan is back.
+# Not in Good standing (an overdue Loan, then an unsettled Fine), the Member
+# reads why on Profile, in My Loans in place of Renew, and on the Book page in
+# place of Place a Hold.
 # Needs the end-to-end API on port 3000 (npm run e2e starts it).
 appId: ph.edu.umak.libras
 ---
@@ -78,8 +81,8 @@ appId: ph.edu.umak.libras
 - assertNotVisible: "Overdue"
 - takeScreenshot: profile-clearance-loan-out
 
-# A second Loan goes overdue and comes back three days late: its Fine of PHP 15
-# is unsettled, and the on-time Loan is still out.
+# A second Loan goes overdue (it was lent ten days ago, while the Member was in
+# Good standing): Profile says the Member cannot borrow, place a Hold or renew.
 - tapOn:
     id: profile-my-account
 - extendedWaitUntil:
@@ -87,6 +90,25 @@ appId: ph.edu.umak.libras
       id: my-account-name
     timeout: 10000
 - runScript: scripts/overdue-loan.js
+- tapOn:
+    id: my-account-back
+- extendedWaitUntil:
+    visible:
+      id: profile-good-standing
+    timeout: 10000
+- assertVisible:
+    id: profile-good-standing
+    text: "You cannot borrow, place a Hold or renew a Loan while you have an overdue Loan. Return it to the library desk and settle its Fine there."
+- takeScreenshot: profile-not-in-good-standing-overdue
+
+# It comes back three days late: its Fine of PHP 15 is unsettled, and the
+# on-time Loan is still out. The Fine is now what stands in the way.
+- tapOn:
+    id: profile-my-account
+- extendedWaitUntil:
+    visible:
+      id: my-account-name
+    timeout: 10000
 - runScript: scripts/return-late-loan.js
 - tapOn:
     id: my-account-back
@@ -99,7 +121,71 @@ appId: ph.edu.umak.libras
 - assertVisible: "PHP 15"
 - assertVisible: ".*3 days late, returned.*"
 - assertVisible: ${output.borrowTitle}
+- assertVisible:
+    id: profile-good-standing
+    text: "You cannot borrow, place a Hold or renew a Loan while you have an unsettled Fine. Settle it at the library desk."
 - takeScreenshot: profile-clearance-fine
+
+# My Loans says why the on-time Loan cannot be renewed, in place of Renew.
+- tapOn:
+    id: profile-back
+- extendedWaitUntil:
+    visible: "Hi, Cobby"
+    timeout: 10000
+- tapOn:
+    id: home-loans
+- extendedWaitUntil:
+    visible:
+      id: loans-current
+    timeout: 15000
+- assertVisible: ${output.borrowTitle}
+- assertVisible: "You have an unsettled Fine. Renewals can be made again once it is settled at the library desk."
+- assertNotVisible:
+    id: loan-renew
+- takeScreenshot: profile-loans-not-in-good-standing
+- tapOn:
+    id: loans-back
+
+# The Book page says why in place of Place a Hold, on a Book with no Copy on the shelf.
+- extendedWaitUntil:
+    visible:
+      id: home-loans-summary
+    timeout: 15000
+- tapOn:
+    id: search-input
+- inputText: ${output.outWord}
+- extendedWaitUntil:
+    visible: ${output.outTitle}
+    timeout: 15000
+- tapOn: ${output.outTitle}
+- extendedWaitUntil:
+    visible:
+      id: hold-not-in-good-standing
+    timeout: 15000
+- assertVisible: "You have an unsettled Fine, so you cannot place a Hold. Settle it at the library desk first. You can see it on your Profile."
+- assertNotVisible:
+    id: hold-place
+- takeScreenshot: profile-book-not-in-good-standing
+- tapOn:
+    id: book-close
+- extendedWaitUntil:
+    visible:
+      id: search-results
+    timeout: 10000
+- tapOn:
+    id: search-input
+- eraseText: 40
+- hideKeyboard
+- extendedWaitUntil:
+    visible:
+      id: home-loans-summary
+    timeout: 15000
+- tapOn:
+    id: home-profile
+- extendedWaitUntil:
+    visible:
+      id: profile-name
+    timeout: 10000
 
 # The on-time Loan comes back: only the Fine is left in the way.
 - tapOn:

@@ -3,11 +3,12 @@
 # (the end-to-end API does it, with the code on the Member's phone), the app shows
 # "Successfully Borrowed", My Loans lists the Loan with its dates, and Home counts
 # it. The Member renews the Loan from My Loans after a confirmation that shows
-# the new due date. An overdue Loan is marked on Home and in My Loans with its
-# Fine so far, each Loan
-# that cannot be renewed says why, a Renewal refused because another Member's
-# Hold arrived after the list loaded says so, and a Hold on a Book the Member has
-# on Loan is refused with the reason.
+# the new due date. A Renewal refused because another Member's Hold arrived
+# after the list loaded says so, and a Hold on a Book the Member has on Loan is
+# refused with the reason. An overdue Loan is marked on Home and in My Loans with
+# its Fine so far, each Loan that cannot be renewed says why, and the Book page
+# says in place of Borrow and of Place a Hold that a Member with an overdue Loan
+# is not in Good standing.
 # Needs the end-to-end API on port 3000 (npm run e2e starts it).
 appId: ph.edu.umak.libras
 ---
@@ -213,34 +214,16 @@ appId: ph.edu.umak.libras
 - assertVisible: "1 current Loan"
 - takeScreenshot: loans-home-one
 
-# A Loan that is past its due date is marked on Home and in My Loans, and
-# cannot be renewed. A third Loan, of a Book nobody waits for, can be.
-- runScript: scripts/overdue-loan.js
+# A second Loan, of a Book nobody waits for yet, can be renewed.
 - runScript: scripts/wanted-loan.js
 - tapOn:
     id: home-loans
 - extendedWaitUntil:
     visible:
-      id: loans-overdue-notice
-    timeout: 15000
-- assertVisible: "1 Loan is overdue"
-- assertVisible: "Current - 3 of 3"
-- assertVisible: ${output.lateTitle}
-- assertVisible: "Overdue"
-- assertVisible: "Was due [A-Z][a-z]{2} [0-9]{1,2}, 20[0-9]{2}"
-# It was due three days ago: three days at PHP 5 a day.
-- assertVisible:
-    id: loan-fine
-    text: "Fine so far: PHP 15 \\(3 days late\\)"
-- assertVisible: "Overdue Loans cannot be renewed. Please return it to the library desk."
-- scrollUntilVisible:
-    element:
       id: loan-renew
-    direction: DOWN
-    timeout: 10000
+    timeout: 15000
+- assertVisible: "Current - 2 of 3"
 - assertVisible: ${output.wantedTitle}
-- assertVisible: "On loan"
-- takeScreenshot: loans-list-overdue
 
 # Another Member places a Hold on that Book while the list is open. Renew then
 # says what changed, and the row shows the fresh reason.
@@ -263,11 +246,76 @@ appId: ph.edu.umak.libras
 - tapOn:
     id: loans-back
 - extendedWaitUntil:
+    visible: "2 current Loans"
+    timeout: 15000
+
+# That Book's only Copy is out with this Member: a Hold on it is refused, with
+# the reason, because their own return would set the Copy aside for them.
+- tapOn:
+    id: search-input
+- inputText: ${output.wantedWord}
+- extendedWaitUntil:
+    visible: ${output.wantedTitle}
+    timeout: 15000
+- tapOn: ${output.wantedTitle}
+- extendedWaitUntil:
+    visible:
+      id: hold-action
+    timeout: 15000
+- tapOn:
+    id: hold-place
+- extendedWaitUntil:
+    visible:
+      id: hold-error
+    timeout: 15000
+- assertVisible: "You have a Copy of this Book on Loan, so you cannot place a Hold on it. You can see it in My Loans."
+- takeScreenshot: loans-hold-refused
+- tapOn:
+    id: book-close
+- extendedWaitUntil:
+    visible:
+      id: search-results
+    timeout: 10000
+- tapOn:
+    id: search-input
+- eraseText: 40
+- hideKeyboard
+- extendedWaitUntil:
+    visible:
+      id: home-loans-summary
+    timeout: 15000
+
+# A Loan that is past its due date is marked on Home and in My Loans with its
+# Fine so far, and cannot be renewed. (It was lent ten days ago, before the
+# Member had anything overdue: a Member with an overdue Loan is not in Good
+# standing and is lent nothing more.)
+- runScript: scripts/overdue-loan.js
+- tapOn:
+    id: home-loans
+- extendedWaitUntil:
+    visible:
+      id: loans-overdue-notice
+    timeout: 15000
+- assertVisible: "1 Loan is overdue"
+- assertVisible: "Current - 3 of 3"
+- assertVisible: ${output.lateTitle}
+- assertVisible: "Overdue"
+- assertVisible: "Was due [A-Z][a-z]{2} [0-9]{1,2}, 20[0-9]{2}"
+# It was due three days ago: three days at PHP 5 a day.
+- assertVisible:
+    id: loan-fine
+    text: "Fine so far: PHP 15 \\(3 days late\\)"
+- assertVisible: "Overdue Loans cannot be renewed. Please return it to the library desk."
+- takeScreenshot: loans-list-overdue
+- tapOn:
+    id: loans-back
+- extendedWaitUntil:
     visible: "3 current Loans, 1 overdue"
     timeout: 15000
 - takeScreenshot: loans-home-overdue
 
-# The Book now has one Copy fewer on the shelf, and Borrow still leads to the Digital ID.
+# With an overdue Loan the Member is not in Good standing. The Book page says
+# so in place of Borrow (the Book has one Copy fewer on the shelf now) ...
 - tapOn:
     id: search-input
 - inputText: ${output.borrowWord}
@@ -277,13 +325,15 @@ appId: ph.edu.umak.libras
 - tapOn: ${output.borrowTitle}
 - extendedWaitUntil:
     visible:
-      id: book-sheet
+      id: borrow-not-in-good-standing
     timeout: 15000
 - assertVisible: "1"
-- takeScreenshot: loans-book-after
+- assertVisible: "You cannot borrow, place a Hold or renew a Loan while you have an overdue Loan. Return it to the library desk and settle its Fine there."
+- assertNotVisible:
+    id: book-borrow
+- takeScreenshot: loans-book-not-in-good-standing
 
-# The overdue Book's only Copy is out with this Member: a Hold on it is refused,
-# with the reason, because their own return would set the Copy aside for them.
+# ... and in place of Place a Hold, on a Book with no Copy on the shelf.
 - tapOn:
     id: book-close
 - extendedWaitUntil:
@@ -300,13 +350,9 @@ appId: ph.edu.umak.libras
 - tapOn: ${output.lateTitle}
 - extendedWaitUntil:
     visible:
-      id: hold-action
+      id: hold-not-in-good-standing
     timeout: 15000
-- tapOn:
+- assertVisible: "You have an overdue Loan, so you cannot place a Hold. Return it to the library desk first. You can see it in My Loans."
+- assertNotVisible:
     id: hold-place
-- extendedWaitUntil:
-    visible:
-      id: hold-error
-    timeout: 15000
-- assertVisible: "You have a Copy of this Book on Loan, so you cannot place a Hold on it. You can see it in My Loans."
-- takeScreenshot: loans-hold-refused
+- takeScreenshot: loans-hold-not-in-good-standing

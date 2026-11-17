@@ -5,6 +5,8 @@
 //   borrowBookId                    its id, for confirm-loan.js
 //   lateBookId, lateTitle           the Book of the Loan that overdue-loan.js makes overdue
 //   wantedBookId, wantedTitle       a Book with one Copy, for wanted-loan.js and hold-on-wanted-loan.js
+//   wantedWord                      the word that finds it in search
+//   outWord, outTitle               a Book whose only Copy is out with nobody in this flow: the Book page offers a Hold
 //   returnWord, returnTitle         a Book with one Copy, for the returns flow
 //   returnBookId                    its id, for confirm-return-loan.js and return-loan.js
 //
@@ -50,8 +52,12 @@ const lateWord = randomWord("zl");
 const lateTitle = "The " + capitalize(lateWord) + " Almanac";
 const borrowBook = post("/e2e/books", { title: borrowTitle, authors: ["Zxqy, Bea"], availableCopies: 2, onLoanCopies: 0 });
 const lateBook = post("/e2e/books", { title: lateTitle, authors: ["Zxqy, Lena"], availableCopies: 1, onLoanCopies: 0 });
-const wantedTitle = "The " + capitalize(randomWord("zw")) + " Atlas";
+const wantedWord = randomWord("zw");
+const wantedTitle = "The " + capitalize(wantedWord) + " Atlas";
 const wantedBook = post("/e2e/books", { title: wantedTitle, authors: ["Zxqy, Wen"], availableCopies: 1, onLoanCopies: 0 });
+const outWord = randomWord("zo");
+const outTitle = "The " + capitalize(outWord) + " Gazetteer";
+post("/e2e/books", { title: outTitle, authors: ["Zxqy, Otto"], availableCopies: 0, onLoanCopies: 1 });
 const returnWord = randomWord("zr");
 const returnTitle = "The " + capitalize(returnWord) + " Chronicle";
 const returnBook = post("/e2e/books", { title: returnTitle, authors: ["Zxqy, Rae"], availableCopies: 1, onLoanCopies: 0 });
@@ -66,6 +72,9 @@ output.lateWord = lateWord;
 output.lateTitle = lateTitle;
 output.wantedBookId = wantedBook.id;
 output.wantedTitle = wantedTitle;
+output.wantedWord = wantedWord;
+output.outWord = outWord;
+output.outTitle = outTitle;
 output.returnWord = returnWord;
 output.returnTitle = returnTitle;
 output.returnBookId = returnBook.id;
