@@ -53,7 +53,7 @@ export default function MyAccountScreen() {
           <ReadOnlyField label="Full name" value={memberFullName(member)} testID="my-account-name" />
           <ReadOnlyField label="Email" value={member.email} testID="my-account-email" />
           <ReadOnlyField label="Account Type (cannot be changed)" value={ACCOUNT_TYPE_LABELS[member.accountType]} testID="my-account-account-type" />
-          <MenuRow label="Change password" onPress={() => router.push("/change-password")} testID="my-account-change-password" />
+          <MenuRow variant="action" label="Change password" onPress={() => router.push("/change-password")} testID="my-account-change-password" />
         </View>
       </ScrollView>
     </View>

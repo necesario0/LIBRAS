@@ -78,8 +78,10 @@ export const cardShadow = "0px 7px 17.9px rgba(0, 0, 0, 0.25)";
 
 /** The rows of the Profile menu (Figma 921:13989: x 0, y 4, blur 6.5, black 25%). */
 export const menuRowShadow = "0px 4px 6.5px rgba(0, 0, 0, 0.25)";
-/** The "Change password" row of My Account (Figma 580:1832): a tighter shadow than the Profile rows. */
-export const plainRowShadow = "0px 4px 2px rgba(0, 0, 0, 0.25)";
+/** The action row of My Account, "Change password" (Figma 580:1832): a tighter shadow than the Profile menu rows. */
+export const actionRowShadow = "0px 4px 2px rgba(0, 0, 0, 0.25)";
+/** The height of that row. */
+export const actionRowHeight = 46;
 
 /** Montserrat is the only family. Keys are the names registered with `useFonts`. */
 export const fontFamily = {
