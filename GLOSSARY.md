@@ -72,8 +72,32 @@ _Avoid_: Barcode, QR, library card
 The short time after a Librarian scans a Member's Digital ID in which every Copy they scan is lent to that Member. It ends 10 minutes after the last scan, or when the Librarian is done with the Member; then the Digital ID must be scanned again.
 _Avoid_: Checkout session, visit (as a technical term)
 
+**Renewal**:
+A Member moving the due date of one of their own Loans later, in the app and without a Librarian. It adds one loan period, counted from the current due date. It is refused once the Loan is overdue, when the Loan has used up its renewal limit, while another Member's Hold is waiting for the Book, or when the Member is not in Good standing.
+_Avoid_: Extension, reborrow, reloan
+
+**Loan notice**:
+An email that tells a Member about the due dates of their Loans. There are three kinds: due tomorrow, now overdue, and still overdue, which repeats weekly up to four times. The overdue kinds state the Fine so far. A Member gets at most one Loan notice a day, covering all their Loans that need one, and none for a Loan after its Copy is returned.
+_Avoid_: Reminder, overdue email (it also covers Loans that are not overdue yet), alert
+
+**Fine**:
+The peso amount a Member owes for one Loan returned late. It grows by the daily rate for every calendar day after the due date, up to the cap, and stops at the return, when the amount is fixed for good. A Fine is unsettled until a Librarian settles it.
+_Avoid_: Penalty, fee, charge, overdue fee
+
+**Settle**:
+A Librarian closing a Fine at the desk, as either paid or waived. LIBRAS records who settled it and when, not the money.
+_Avoid_: Pay (the Member pays, the Librarian settles), clear (see Clearance), collect
+
+**Good standing**:
+A Member is in Good standing when they have no overdue Loan and no unsettled Fine. A Member who is not cannot get a new Loan, place a Hold or make a Renewal.
+_Avoid_: Blocked, suspended, cleared (see Clearance)
+
+**Clearance**:
+A Member is cleared when they have no Loan still out and no unsettled Fine. It is stricter than Good standing: a Member with a Loan that is out and on time is in Good standing but not cleared. LIBRAS works it out from the Member's Loans and Fines; nobody grants it.
+_Avoid_: Clearance status as something a staff member sets, good standing
+
 **Loan Policy**:
-The loan limit and loan period that apply to an Account Type. Visitor and Alumni have a limit of zero.
+The loan limit, loan period, renewal limit, daily Fine rate and Fine cap that apply to an Account Type. Visitor and Alumni have a loan limit of zero.
 _Avoid_: Borrowing rules, limits
 
 **Reservation**:
