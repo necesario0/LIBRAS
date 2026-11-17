@@ -79,8 +79,7 @@ input {
   background: var(--color-danger);
 }
 .button--danger:hover:not(:disabled) {
-  background: var(--color-danger);
-  filter: brightness(0.9);
+  background: var(--color-danger-hover);
 }
 
 .field {

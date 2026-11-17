@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { formatPesos } from "@libras/shared";
 import type { FineOutcome } from "@libras/shared";
-import { ApiError } from "../api.ts";
+import { ApiError, GENERIC_ERROR_MESSAGE } from "../api.ts";
 
 interface Props {
   amountCentavos: number;
   memberName: string;
   /** Settles the Fine. Rejects with the reason to show; resolves once it is settled, and the caller then stops showing these buttons. */
-  settle: (outcome: FineOutcome) => Promise<void>;
+  settle: (outcome: FineOutcome) => Promise<unknown>;
   /** A line beside the buttons while the Librarian is choosing. */
   hint?: string;
   /** Prefix of the test ids: `-paid`, `-waive`, `-confirm`, `-keep`, `-error`. */
@@ -29,7 +29,7 @@ export function FineActions({ amountCentavos, memberName, settle, hint, testId }
     try {
       await settle(outcome);
     } catch (error) {
-      setStep({ kind: "refused", message: error instanceof ApiError ? error.message : "Something went wrong. Please try again." });
+      setStep({ kind: "refused", message: error instanceof ApiError ? error.message : GENERIC_ERROR_MESSAGE });
     }
   }
 

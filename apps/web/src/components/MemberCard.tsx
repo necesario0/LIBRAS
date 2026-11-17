@@ -1,6 +1,7 @@
-import { ACCOUNT_TYPE_LABELS, formatLibraryDate, formatPesos } from "@libras/shared";
-import type { DeskFine, DeskMember, FineOutcome } from "@libras/shared";
+import { ACCOUNT_TYPE_LABELS, formatLibraryDate } from "@libras/shared";
+import type { DeskFine, DeskMember, FineOutcome, SettleFineResponse } from "@libras/shared";
 import { FineActions } from "./FineActions.tsx";
+import { FinePanel } from "./FinePanel.tsx";
 
 function initialsOf(fullName: string): string {
   const parts = fullName.split(" ").filter(Boolean);
@@ -9,8 +10,12 @@ function initialsOf(fullName: string): string {
   return (first + last).toUpperCase();
 }
 
-/** Settles one of the Member's Fines in their desk session. Rejects with the reason to show; resolves once it is settled. */
-export type SettleMemberFine = (fine: DeskFine, outcome: FineOutcome) => Promise<void>;
+/**
+ * Settles one of the Member's Fines in their desk session. Resolves with the
+ * settlement (undefined when the Librarian's session is gone) and rejects with
+ * the reason to show.
+ */
+export type SettleMemberFine = (fine: DeskFine, outcome: FineOutcome) => Promise<SettleFineResponse | undefined>;
 
 /**
  * Who the scanned Digital ID belongs to: name, Account Type, and Loans against
@@ -60,32 +65,22 @@ export function MemberCard({ member, settleFine }: { member: DeskMember; settleF
           <h3 className="member-card__fines-title">Unsettled Fines</h3>
           <ul className="member-card__fine-list">
             {member.unsettledFines.map((fine) => (
-              <li className="return-panel return-panel--fine" key={fine.loanId} data-testid="desk-member-fine">
-                <svg className="return-panel__icon" viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
-                </svg>
-                <div className="return-panel__text">
-                  <h4 className="return-panel__title">
-                    <strong className="return-panel__name">{fine.bookTitle}</strong>
-                  </h4>
-                  <span className="return-panel__body">
-                    {`Copy ${fine.accessionNumber} - ${fine.daysLate} ${fine.daysLate === 1 ? "day" : "days"} late, returned ${formatLibraryDate(fine.returnedAt)}`}
-                  </span>
-                </div>
-                <div className="return-panel__side">
-                  <span className="return-panel__side-label">Fine</span>
-                  <span className="return-panel__amount" data-testid="desk-member-fine-amount">
-                    {formatPesos(fine.amountCentavos)}
-                  </span>
-                </div>
-                <div className="return-panel__actions">
-                  <FineActions
-                    amountCentavos={fine.amountCentavos}
-                    memberName={member.fullName}
-                    testId="desk-member-fine"
-                    settle={(outcome) => settleFine(fine, outcome)}
-                  />
-                </div>
+              <li key={fine.loanId}>
+                <FinePanel
+                  testId="desk-member-fine"
+                  heading="h4"
+                  title={<strong className="return-panel__name">{fine.bookTitle}</strong>}
+                  reason={`Copy ${fine.accessionNumber} - ${fine.daysLate} ${fine.daysLate === 1 ? "day" : "days"} late, returned ${formatLibraryDate(fine.returnedAt)}`}
+                  amountCentavos={fine.amountCentavos}
+                  actions={
+                    <FineActions
+                      amountCentavos={fine.amountCentavos}
+                      memberName={member.fullName}
+                      testId="desk-member-fine"
+                      settle={(outcome) => settleFine(fine, outcome)}
+                    />
+                  }
+                />
               </li>
             ))}
           </ul>

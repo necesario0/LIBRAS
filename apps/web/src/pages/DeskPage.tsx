@@ -1,6 +1,15 @@
 import { useRef, useState } from "react";
-import { LOAN_MESSAGES } from "@libras/shared";
-import type { DeskFine, DeskLoan, DeskMember, FineOutcome, FineSettlement, ReturnedLoan, ScanReading, StaffProfile } from "@libras/shared";
+import type {
+  DeskFine,
+  DeskLoan,
+  DeskMember,
+  FineOutcome,
+  ReturnedLoan,
+  ScanReading,
+  SettleFineRequest,
+  SettleFineResponse,
+  StaffProfile,
+} from "@libras/shared";
 import { ApiError, confirmLoan, endDeskSession, identifyMember, recordReturn, settleFine } from "../api.ts";
 import { Brand } from "../components/Brand.tsx";
 import { LoanNotice } from "../components/LoanNotice.tsx";
@@ -135,30 +144,29 @@ export function DeskPage({ staff, onSignOut }: Props) {
     else await lend(member, reading.code);
   }
 
+  /** Settles a Fine through the API. A Librarian whose session is gone goes back to sign-in and gets undefined. */
+  async function settle(request: SettleFineRequest): Promise<SettleFineResponse | undefined> {
+    const settled = await settleFine(request);
+    if (settled === undefined) onSignOut();
+    return settled;
+  }
+
   /** Settles the Fine of the return on screen, as the Librarian who recorded it. Rejects with the reason to show. */
-  async function settleReturnFine(loan: ReturnedLoan, outcome: FineOutcome): Promise<FineSettlement> {
-    const settled = await settleFine({ place: "return", loan: loan.id, outcome });
-    if (settled === undefined) {
-      onSignOut();
-      throw new ApiError(401, "not_signed_in", "Please sign in again to continue.");
-    }
-    return settled.settlement;
+  function settleReturnFine(loan: ReturnedLoan, outcome: FineOutcome): Promise<SettleFineResponse | undefined> {
+    return settle({ place: "return", loan: loan.id, outcome });
   }
 
   /** Settles one of the Fines listed for the Member at the desk, in their desk session. Rejects with the reason to show. */
-  async function settleMemberFine(fine: DeskFine, outcome: FineOutcome): Promise<void> {
-    const at = atDesk.current;
-    if (!at) throw new ApiError(409, SESSION_ENDED, LOAN_MESSAGES.deskSessionEnded);
+  async function settleMemberFine(at: Identified, fine: DeskFine, outcome: FineOutcome): Promise<SettleFineResponse | undefined> {
     try {
-      const settled = await settleFine({ place: "desk_session", deskSession: at.deskSession, loan: fine.loanId, outcome });
-      if (settled === undefined) {
-        onSignOut();
-        return;
+      const settled = await settle({ place: "desk_session", deskSession: at.deskSession, loan: fine.loanId, outcome });
+      if (settled) {
+        // The Member as the API now has them: this Fine is gone from the list.
+        const updated: Identified = { member: settled.member, deskSession: at.deskSession };
+        atDesk.current = updated;
+        setState((current) => (current.kind === "member" ? { ...current, identified: updated } : current));
       }
-      // The Member as the API now has them: this Fine is gone from the list.
-      const updated: Identified = { member: settled.member, deskSession: at.deskSession };
-      atDesk.current = updated;
-      setState((current) => (current.kind === "member" ? { ...current, identified: updated } : current));
+      return settled;
     } catch (error) {
       // The desk session is over: the Member must show their Digital ID again, so the desk forgets them.
       if (error instanceof ApiError && error.code === SESSION_ENDED) show(undefined, { kind: "refused", message: error.message });
@@ -222,7 +230,7 @@ export function DeskPage({ staff, onSignOut }: Props) {
             )}
             {outcome.kind === "confirmed" && <LoanNotice loan={outcome.loan} />}
             {outcome.kind === "returned" && <ReturnNotice loan={outcome.loan} settleFine={settleReturnFine} />}
-            {identified && <MemberCard member={identified.member} settleFine={settleMemberFine} />}
+            {identified && <MemberCard member={identified.member} settleFine={(fine, outcome) => settleMemberFine(identified, fine, outcome)} />}
             {identified && (
               <button className="button button--quiet desk__done" type="button" onClick={finishWithMember}>
                 Done with this Member

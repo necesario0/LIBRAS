@@ -16,6 +16,9 @@ import { clearSession, loadSession, saveSession } from "./session.ts";
 /** Where the API is. `/api` is proxied to the API by Vite in development and by the host in production. */
 const API_BASE = import.meta.env.VITE_API_URL ?? "/api";
 
+/** What the person is told when the API's own error has no words to show. */
+export const GENERIC_ERROR_MESSAGE = "Something went wrong. Please try again.";
+
 /** An error response from the API: a stable `code` and a `message` that is safe to show. */
 export class ApiError extends Error {
   readonly status: number;
@@ -50,7 +53,7 @@ export async function failure(response: Response): Promise<ApiError> {
   if (typeof error?.code === "string" && typeof error.message === "string") {
     return new ApiError(response.status, error.code, error.message);
   }
-  return new ApiError(response.status, "unexpected", "Something went wrong. Please try again.");
+  return new ApiError(response.status, "unexpected", GENERIC_ERROR_MESSAGE);
 }
 
 /** Signs a Librarian in. Throws ApiError: `invalid_credentials`, `not_staff`, `invalid_request` or `unreachable`. */

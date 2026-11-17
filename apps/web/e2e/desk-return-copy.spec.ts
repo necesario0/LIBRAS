@@ -218,6 +218,45 @@ test("a Fine left unsettled at the return is listed when the Member's Digital ID
   expect(outcomes).toEqual(expect.arrayContaining([[500, "waived"], [1500, "paid"]]));
 });
 
+test("the scan field takes a scan typed over a button, but never keys typed in another text field or a dialog", async ({ page }) => {
+  await signInAtTheDesk(page);
+  const field = page.getByLabel("Scan or type a code");
+
+  // Another text field keeps what is typed in it.
+  await page.evaluate(() => {
+    const input = document.createElement("input");
+    input.id = "other-field";
+    document.body.append(input);
+    input.focus();
+  });
+  await page.keyboard.type("12345");
+  await expect(page.locator("#other-field")).toHaveValue("12345");
+  await expect(field).toHaveValue("");
+
+  // So does a control inside a dialog.
+  await page.evaluate(() => {
+    const dialog = document.createElement("dialog");
+    dialog.setAttribute("open", "");
+    dialog.innerHTML = '<button id="in-dialog" type="button">Close</button>';
+    document.body.append(dialog);
+    document.getElementById("in-dialog")?.focus();
+  });
+  await page.keyboard.type("678");
+  await expect(page.locator("#in-dialog")).toBeFocused();
+  await expect(field).toHaveValue("");
+
+  // A scan typed with the focus on a button elsewhere on the page goes to the scan field.
+  await page.evaluate(() => {
+    const button = document.createElement("button");
+    button.id = "plain-button";
+    button.textContent = "Elsewhere";
+    document.body.append(button);
+    button.focus();
+  });
+  await page.keyboard.type("3999999997");
+  await expect(field).toHaveValue("3999999997");
+});
+
 test("a returned Copy with a waiting Hold is set aside: the desk says for which Member, and only that Member can borrow it", async ({ page }) => {
   const ana = await createMember("umak_student", "Ana", "Santos");
   const ben = await createMember("umak_student", "Ben", "Reyes");

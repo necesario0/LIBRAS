@@ -20,6 +20,7 @@
   --color-text-muted: #747474; /* placeholders and secondary text */
   --color-border: #e4e4e4;
   --color-danger: #d92d2d;
+  --color-danger-hover: #b92424; /* the danger red, pressed */
   --color-danger-soft: #fdecec;
   --color-success: #1d7a46; /* a Member identified: not in the Figma frames */
   --color-success-soft: #e7f5ec;

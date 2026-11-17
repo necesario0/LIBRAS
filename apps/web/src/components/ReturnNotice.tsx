@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { formatLibraryDate, formatLibraryDateTime, formatPesos } from "@libras/shared";
-import type { FineOutcome, FineSettlement, LoanFine, ReturnedLoan } from "@libras/shared";
+import type { FineOutcome, FineSettlement, LoanFine, ReturnedLoan, SettleFineResponse } from "@libras/shared";
 import { FineActions } from "./FineActions.tsx";
+import { FinePanel } from "./FinePanel.tsx";
 
 /**
  * The return the desk has just recorded: which Book and Copy came back, who had
@@ -47,7 +48,7 @@ export function ReturnNotice({ loan, settleFine }: { loan: ReturnedLoan; settleF
           </span>
         </div>
       </div>
-      {loan.fine && <FinePanel key={loan.id} fine={loan.fine} memberName={loan.memberName} settle={(outcome) => settleFine(loan, outcome)} />}
+      {loan.fine && <ReturnFine key={loan.id} fine={loan.fine} memberName={loan.memberName} settle={(outcome) => settleFine(loan, outcome)} />}
       {loan.heldFor && (
         <div className="return-panel return-panel--hold" data-testid="desk-return-held">
           <svg className="return-panel__icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -81,46 +82,40 @@ function fineReason(fine: LoanFine): string {
   return capped ? `${days}, up to the cap of ${formatPesos(fine.capCentavos)}.` : `${days}.`;
 }
 
-/** Settles the Fine of a return as the Librarian chose, in the place of that return. Rejects with the reason to show. */
-export type SettleReturnFine = (loan: ReturnedLoan, outcome: FineOutcome) => Promise<FineSettlement>;
+/**
+ * Settles the Fine of a return as the Librarian chose, in the place of that
+ * return. Resolves with the settlement (undefined when the Librarian's session
+ * is gone) and rejects with the reason to show.
+ */
+export type SettleReturnFine = (loan: ReturnedLoan, outcome: FineOutcome) => Promise<SettleFineResponse | undefined>;
 
-interface FinePanelProps {
+interface ReturnFineProps {
   fine: LoanFine;
   memberName: string;
-  settle: (outcome: FineOutcome) => Promise<FineSettlement>;
+  settle: (outcome: FineOutcome) => Promise<SettleFineResponse | undefined>;
 }
 
-const OUTCOME_LABEL: Record<FineOutcome, string> = { paid: "Paid", waived: "Waived" };
-
 /** The Fine a late return fixed: whose it is, why, how much, and Paid and Waived (or how it was settled). */
-function FinePanel({ fine, memberName, settle }: FinePanelProps) {
+function ReturnFine({ fine, memberName, settle }: ReturnFineProps) {
   const [settlement, setSettlement] = useState<FineSettlement | null>(fine.settlement);
   return (
-    <div className="return-panel return-panel--fine" data-testid="desk-return-fine">
-      <svg className="return-panel__icon" viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
-      </svg>
-      <div className="return-panel__text">
-        <h3 className="return-panel__title">
+    <FinePanel
+      testId="desk-return-fine"
+      heading="h3"
+      title={
+        <>
           {"Fine for "}
           <strong className="return-panel__name" data-testid="desk-return-fine-member">
             {memberName}
           </strong>
-        </h3>
-        <span className="return-panel__body" data-testid="desk-return-fine-reason">
-          {fineReason(fine)}
-        </span>
-      </div>
-      <div className="return-panel__side">
-        <span className="return-panel__side-label">Fine</span>
-        <span className="return-panel__amount" data-testid="desk-return-fine-amount">
-          {formatPesos(fine.amountCentavos)}
-        </span>
-      </div>
-      <div className="return-panel__actions">
-        {settlement ? (
+        </>
+      }
+      reason={fineReason(fine)}
+      amountCentavos={fine.amountCentavos}
+      actions={
+        settlement ? (
           <span className="return-panel__settled" data-testid="desk-return-fine-settled">
-            {`Settled: ${OUTCOME_LABEL[settlement.outcome].toLowerCase()}`}
+            {`Settled: ${settlement.outcome}`}
           </span>
         ) : (
           <FineActions
@@ -128,10 +123,13 @@ function FinePanel({ fine, memberName, settle }: FinePanelProps) {
             memberName={memberName}
             hint="Member not here? Leave it. Scan their Digital ID later to settle it."
             testId="desk-return-fine"
-            settle={async (outcome) => setSettlement(await settle(outcome))}
+            settle={async (outcome) => {
+              const settled = await settle(outcome);
+              if (settled) setSettlement(settled.settlement);
+            }}
           />
-        )}
-      </div>
-    </div>
+        )
+      }
+    />
   );
 }
