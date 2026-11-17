@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { RENEWAL_REASONS, formatLibraryDate, formatPesos } from "@libras/shared";
+import { RENEWAL_REASONS, counted, formatLibraryDate, formatPesos } from "@libras/shared";
 import type { Loan } from "@libras/shared";
 import { BookCover } from "../components/BookCover";
+import { StatusPill } from "../components/StatusPill";
 import { colors, fontFamily, fontSize, radii, spacing } from "../theme/tokens";
 
 /** The status pill of a Loan: overdue stands out, a renewed Loan says so, a Loan in time is calm, a returned one is muted. */
@@ -68,7 +69,7 @@ export function LoanRow({ loan, onRenew }: LoanRowProps) {
               {/* Truthy, not `!== null`: an API from before Fines sends no `fine` at all. */}
               {loan.fine ? (
                 <Text style={[styles.dates, styles.fine]} testID="loan-fine">
-                  {`Fine so far: ${formatPesos(loan.fine.amountCentavos)} (${loan.fine.daysLate} ${loan.fine.daysLate === 1 ? "day" : "days"} late)`}
+                  {`Fine so far: ${formatPesos(loan.fine.amountCentavos)} (${counted(loan.fine.daysLate, "day")} late)`}
                 </Text>
               ) : null}
             </>
@@ -76,9 +77,7 @@ export function LoanRow({ loan, onRenew }: LoanRowProps) {
             <Text style={styles.dates} testID="loan-returned">{`Returned on ${formatLibraryDate(loan.returnedAt)}`}</Text>
           )}
         </View>
-        <View style={[styles.pill, { backgroundColor: pill.surface }]} testID="loan-status">
-          <Text style={[styles.pillText, { color: pill.text }]}>{pill.label}</Text>
-        </View>
+        <StatusPill label={pill.label} surface={pill.surface} text={pill.text} testID="loan-status" />
       </View>
 
       {failure === undefined ? null : (
@@ -146,8 +145,6 @@ const styles = StyleSheet.create({
   due: { color: colors.primary },
   overdue: { fontFamily: fontFamily.semiBold, color: colors.danger },
   fine: { fontFamily: fontFamily.medium, color: colors.danger },
-  pill: { borderRadius: radii.panel, paddingHorizontal: spacing.sm, paddingVertical: 3 },
-  pillText: { fontFamily: fontFamily.medium, fontSize: fontSize.micro },
   reason: { fontFamily: fontFamily.regular, fontSize: fontSize.caption, lineHeight: 18, color: colors.textMuted },
   failure: { fontFamily: fontFamily.regular, fontSize: fontSize.caption, lineHeight: 18, color: colors.danger },
   confirm: { gap: spacing.sm },

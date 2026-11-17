@@ -150,6 +150,43 @@ describe("Clearance", () => {
     }
   });
 
+  it("tells a Member and the desk exactly these fields and no Librarian: not who lent a Copy, fixed a Fine or settled it", async () => {
+    const ana = await createTestMember(h.api(), { firstName: "Ana", lastName: "Santos" });
+    await lend(ana, "Shape Of It");
+    const late = await lend(ana, "Shape Of It Late");
+    at("2026-11-21 15:00");
+    await giveBack(late.copy);
+    const spent = await lend(ana, "Shape Of It Settled");
+    at("2026-11-21 16:00");
+    await giveBack(spent.copy);
+    await settle(ana, spent.loanId, "paid");
+
+
+    const response = await h.send("GET", "/members/me/clearance", ana.accessToken);
+    const text = await response.text();
+    const body = JSON.parse(text) as { clearance: Clearance };
+    const atDesk = await identifyAtDesk(lita, ana);
+
+    for (const [clearance, whole] of [
+      [body.clearance, text],
+      [atDesk.member.clearance, JSON.stringify(atDesk.member.clearance)],
+    ] as const) {
+      assert.deepEqual(Object.keys(clearance).sort(), ["cleared", "loansOut", "unsettledFines"]);
+      assert.equal(clearance.loansOut.length, 1);
+      assert.equal(clearance.unsettledFines.length, 1);
+      for (const loan of clearance.loansOut) {
+        assert.deepEqual(Object.keys(loan).sort(), ["accessionNumber", "bookTitle", "dueAt", "loanId", "overdue"]);
+      }
+      for (const fine of clearance.unsettledFines) {
+        assert.deepEqual(Object.keys(fine).sort(), ["accessionNumber", "amountCentavos", "bookTitle", "daysLate", "loanId", "returnedAt"]);
+      }
+      assert.ok(!whole.includes(lita.userId), "the Librarian's id is not in what is read");
+    }
+    assert.deepEqual(Object.keys(body), ["clearance"]);
+    // The desk Member keeps its Fines in one place only.
+    assert.equal("unsettledFines" in atDesk.member, false);
+  });
+
   it("lists every Loan out, the one due soonest first, and every unsettled Fine, the earliest return first", async () => {
     const ana = await createTestMember(h.api(), { firstName: "Ana", lastName: "Santos" });
     const first = await lend(ana, "First Out");

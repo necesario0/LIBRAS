@@ -61,7 +61,6 @@ describe("Confirming a Loan at the desk", () => {
       fullName: "Bea Cruz",
       accountType: "umak_student",
       loans: { current: 1, limit: 3, loanPeriodDays: 7 },
-      unsettledFines: [],
       // The Loan just confirmed is out and on time: the Member is not cleared until it is back.
       clearance: {
         cleared: false,

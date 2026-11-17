@@ -1,4 +1,4 @@
-import { ACCOUNT_TYPE_LABELS, formatLibraryDate, formatPesos } from "@libras/shared";
+import { ACCOUNT_TYPE_LABELS, counted, formatLibraryDate, formatPesos, totalOwedCentavos } from "@libras/shared";
 import type { Clearance, DeskMember, FineOutcome, SettleFineResponse, UnsettledFine } from "@libras/shared";
 import { FineActions } from "./FineActions.tsx";
 import { FinePanel } from "./FinePanel.tsx";
@@ -15,11 +15,10 @@ function clearanceReasons({ loansOut, unsettledFines }: Clearance): string {
   const reasons: string[] = [];
   if (loansOut.length > 0) {
     const overdue = loansOut.filter((loan) => loan.overdue).length;
-    reasons.push(`${loansOut.length} ${loansOut.length === 1 ? "Loan" : "Loans"} still out${overdue > 0 ? ` (${overdue} overdue)` : ""}`);
+    reasons.push(`${counted(loansOut.length, "Loan")} still out${overdue > 0 ? ` (${overdue} overdue)` : ""}`);
   }
   if (unsettledFines.length > 0) {
-    const owed = unsettledFines.reduce((total, fine) => total + fine.amountCentavos, 0);
-    reasons.push(`${unsettledFines.length} unsettled ${unsettledFines.length === 1 ? "Fine" : "Fines"}, ${formatPesos(owed)}`);
+    reasons.push(`${counted(unsettledFines.length, "unsettled Fine")}, ${formatPesos(totalOwedCentavos({ unsettledFines }))}`);
   }
   return reasons.join("; ");
 }
@@ -88,17 +87,17 @@ export function MemberCard({ member, settleFine }: { member: DeskMember; settleF
           </span>
         )}
       </div>
-      {member.unsettledFines.length > 0 && (
+      {member.clearance.unsettledFines.length > 0 && (
         <div className="member-card__fines" data-testid="desk-member-fines">
           <h3 className="member-card__fines-title">Unsettled Fines</h3>
           <ul className="member-card__fine-list">
-            {member.unsettledFines.map((fine) => (
+            {member.clearance.unsettledFines.map((fine) => (
               <li key={fine.loanId}>
                 <FinePanel
                   testId="desk-member-fine"
                   heading="h4"
                   title={<strong className="return-panel__name">{fine.bookTitle}</strong>}
-                  reason={`Copy ${fine.accessionNumber} - ${fine.daysLate} ${fine.daysLate === 1 ? "day" : "days"} late, returned ${formatLibraryDate(fine.returnedAt)}`}
+                  reason={`Copy ${fine.accessionNumber} - ${counted(fine.daysLate, "day")} late, returned ${formatLibraryDate(fine.returnedAt)}`}
                   amountCentavos={fine.amountCentavos}
                   actions={
                     <FineActions

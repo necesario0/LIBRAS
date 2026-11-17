@@ -89,5 +89,5 @@ export async function settleFine(deps: Deps, librarian: Identity, request: Settl
     return { outcome: request.outcome, settledAt: now.toISOString() };
   });
 
-  return { loanId: request.loan, settlement, member: await deskMember(deps.db, librarian, memberId, deps.clock.now()) };
+  return { loanId: request.loan, settlement, member: await deskMember({ db: deps.db, librarian, memberId, now: deps.clock.now() }) };
 }

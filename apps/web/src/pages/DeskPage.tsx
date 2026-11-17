@@ -1,6 +1,5 @@
 import { useRef, useState } from "react";
 import type {
-  UnsettledFine,
   DeskLoan,
   DeskMember,
   FineOutcome,
@@ -9,6 +8,7 @@ import type {
   SettleFineRequest,
   SettleFineResponse,
   StaffProfile,
+  UnsettledFine,
 } from "@libras/shared";
 import { ApiError, confirmLoan, endDeskSession, identifyMember, recordReturn, settleFine } from "../api.ts";
 import { Brand } from "../components/Brand.tsx";

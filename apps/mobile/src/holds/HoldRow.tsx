@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { HOLD_STATUS_LABELS, formatLibraryDate, formatLibraryDateTime } from "@libras/shared";
 import type { Hold, HoldStatus } from "@libras/shared";
 import { BookCover } from "../components/BookCover";
+import { StatusPill } from "../components/StatusPill";
 import { colors, fontFamily, fontSize, radii, spacing } from "../theme/tokens";
 
 /** Fill and text of the status pill, from the pills the Book page already uses. */
@@ -58,9 +59,7 @@ export function HoldRow({ hold, onCancel }: HoldRowProps) {
           </Text>
           <Text style={styles.placed}>{`Placed ${formatLibraryDate(hold.placedAt)}`}</Text>
         </View>
-        <View style={[styles.pill, { backgroundColor: pill.surface }]} testID="hold-status">
-          <Text style={[styles.pillText, { color: pill.text }]}>{HOLD_STATUS_LABELS[hold.status]}</Text>
-        </View>
+        <StatusPill label={HOLD_STATUS_LABELS[hold.status]} surface={pill.surface} text={pill.text} testID="hold-status" />
       </View>
 
       {hold.status === "ready" && hold.pickupEndsAt !== null ? (
@@ -129,8 +128,6 @@ const styles = StyleSheet.create({
   title: { fontFamily: fontFamily.medium, fontSize: fontSize.label, color: colors.black },
   authors: { fontFamily: fontFamily.regular, fontSize: fontSize.caption, color: colors.textMuted },
   placed: { fontFamily: fontFamily.regular, fontSize: fontSize.micro, color: colors.textFaint },
-  pill: { borderRadius: radii.panel, paddingHorizontal: spacing.sm, paddingVertical: 3 },
-  pillText: { fontFamily: fontFamily.medium, fontSize: fontSize.micro },
   pickup: { borderRadius: radii.panel, backgroundColor: colors.successSurface, paddingVertical: spacing.md, paddingHorizontal: spacing.lg, gap: 2 },
   pickupTitle: { fontFamily: fontFamily.semiBold, fontSize: fontSize.small, color: colors.availableText },
   pickupBody: { fontFamily: fontFamily.regular, fontSize: fontSize.caption, lineHeight: 18, color: colors.textSecondary },

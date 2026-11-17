@@ -1,7 +1,8 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
-import { formatLibraryDate, formatPesos } from "@libras/shared";
-import type { Clearance, ClearanceLoan, UnsettledFine } from "@libras/shared";
+import { counted, formatLibraryDate, formatPesos, plural } from "@libras/shared";
+import type { Clearance } from "@libras/shared";
 import { DollarSignIcon } from "../components/icons";
+import { StatusPill } from "../components/StatusPill";
 import { colors, fontFamily, fontSize, menuRowShadow, radii, spacing } from "../theme/tokens";
 import type { ClearanceState } from "./useClearance";
 
@@ -10,54 +11,61 @@ interface ClearancePanelProps {
   onRetry: () => void;
 }
 
-const days = (count: number) => `${count} ${count === 1 ? "day" : "days"}`;
-
-function LoanLine({ loan }: { loan: ClearanceLoan }) {
-  return (
-    <View style={styles.line} testID={`profile-clearance-loan-${loan.loanId}`}>
-      <View style={styles.lineText}>
-        <Text style={styles.lineTitle} numberOfLines={2}>
-          {loan.bookTitle}
-        </Text>
-        <Text style={[styles.lineNote, loan.overdue && styles.overdue]}>
-          {`Copy ${loan.accessionNumber} - ${loan.overdue ? "overdue, was due" : "due"} ${formatLibraryDate(loan.dueAt)}`}
-        </Text>
-      </View>
-    </View>
-  );
+interface LineProps {
+  testID: string;
+  title: string;
+  note: string;
+  /** The note in red: the Loan is overdue. */
+  alert?: boolean;
+  /** What is owed, on the right: a Fine has one, a Loan does not. */
+  amountCentavos?: number;
 }
 
-function FineLine({ fine }: { fine: UnsettledFine }) {
+/** One Loan still out or one unsettled Fine: the Book, then the Copy and the dates, with the amount for a Fine. */
+function Line({ testID, title, note, alert = false, amountCentavos }: LineProps) {
   return (
-    <View style={styles.line} testID={`profile-clearance-fine-${fine.loanId}`}>
+    <View style={styles.line} testID={testID}>
       <View style={styles.lineText}>
         <Text style={styles.lineTitle} numberOfLines={2}>
-          {fine.bookTitle}
+          {title}
         </Text>
-        <Text style={styles.lineNote}>{`Copy ${fine.accessionNumber} - ${days(fine.daysLate)} late, returned ${formatLibraryDate(fine.returnedAt)}`}</Text>
+        <Text style={[styles.lineNote, alert && styles.overdue]}>{note}</Text>
       </View>
-      <Text style={styles.amount}>{formatPesos(fine.amountCentavos)}</Text>
+      {amountCentavos === undefined ? null : <Text style={styles.amount}>{formatPesos(amountCentavos)}</Text>}
     </View>
   );
 }
 
 function Blockers({ clearance }: { clearance: Clearance }) {
+  const { loansOut, unsettledFines } = clearance;
   return (
     <View style={styles.details}>
       <Text style={styles.note}>To be cleared, return your Loans and settle your Fines at the library desk.</Text>
-      {clearance.loansOut.length > 0 ? (
+      {loansOut.length > 0 ? (
         <View style={styles.group} testID="profile-clearance-loans">
-          <Text style={styles.groupTitle}>{clearance.loansOut.length === 1 ? "Loan still out" : "Loans still out"}</Text>
-          {clearance.loansOut.map((loan) => (
-            <LoanLine key={loan.loanId} loan={loan} />
+          <Text style={styles.groupTitle}>{`${plural(loansOut.length, "Loan")} still out`}</Text>
+          {loansOut.map((loan) => (
+            <Line
+              key={loan.loanId}
+              testID={`profile-clearance-loan-${loan.loanId}`}
+              title={loan.bookTitle}
+              note={`Copy ${loan.accessionNumber} - ${loan.overdue ? "overdue, was due" : "due"} ${formatLibraryDate(loan.dueAt)}`}
+              alert={loan.overdue}
+            />
           ))}
         </View>
       ) : null}
-      {clearance.unsettledFines.length > 0 ? (
+      {unsettledFines.length > 0 ? (
         <View style={styles.group} testID="profile-clearance-fines">
-          <Text style={styles.groupTitle}>{clearance.unsettledFines.length === 1 ? "Unsettled Fine" : "Unsettled Fines"}</Text>
-          {clearance.unsettledFines.map((fine) => (
-            <FineLine key={fine.loanId} fine={fine} />
+          <Text style={styles.groupTitle}>{`Unsettled ${plural(unsettledFines.length, "Fine")}`}</Text>
+          {unsettledFines.map((fine) => (
+            <Line
+              key={fine.loanId}
+              testID={`profile-clearance-fine-${fine.loanId}`}
+              title={fine.bookTitle}
+              note={`Copy ${fine.accessionNumber} - ${counted(fine.daysLate, "day")} late, returned ${formatLibraryDate(fine.returnedAt)}`}
+              amountCentavos={fine.amountCentavos}
+            />
           ))}
         </View>
       ) : null}
@@ -90,11 +98,14 @@ export function ClearancePanel({ state, onRetry }: ClearancePanelProps) {
           <Text style={styles.label}>Clearance</Text>
         </View>
         {pill === undefined ? null : (
-          <View style={[styles.pill, { backgroundColor: pill.surface }]}>
-            <Text style={[styles.pillText, { color: pill.text }]} testID="profile-clearance-status">
-              {pill.label}
-            </Text>
-          </View>
+          <StatusPill
+            label={pill.label}
+            surface={pill.surface}
+            text={pill.text}
+            size={fontSize.caption}
+            style={styles.pill}
+            testID="profile-clearance-status"
+          />
         )}
       </View>
 
@@ -129,8 +140,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   title: { flexDirection: "row", alignItems: "center" },
   label: { fontFamily: fontFamily.regular, fontSize: fontSize.body, letterSpacing: -0.96, lineHeight: 16, color: colors.black },
-  pill: { borderRadius: radii.panel, paddingHorizontal: spacing.sm, paddingVertical: 3, marginRight: spacing.xs },
-  pillText: { fontFamily: fontFamily.medium, fontSize: fontSize.caption },
+  pill: { marginRight: spacing.xs },
   spinner: { alignSelf: "center", paddingBottom: spacing.sm },
   details: { gap: spacing.md, paddingHorizontal: spacing.xs, paddingBottom: spacing.xs },
   note: { fontFamily: fontFamily.regular, fontSize: fontSize.caption, lineHeight: 18, color: colors.textSecondary },

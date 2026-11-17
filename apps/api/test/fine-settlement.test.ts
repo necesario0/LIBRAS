@@ -60,7 +60,7 @@ describe("Settling a Fine at the desk", () => {
       const settlement = { outcome, settledAt: "2026-11-21T07:04:00.000Z" };
       assert.equal(body.loanId, returned.id);
       assert.deepEqual(body.settlement, settlement);
-      assert.deepEqual(body.member.unsettledFines, []);
+      assert.deepEqual(body.member.clearance.unsettledFines, []);
       // The Member sees the same, and the amount is untouched.
       assert.deepEqual((await loanOf(ana, returned.id)).fine, {
         amountCentavos: 2 * RATE,
@@ -94,7 +94,7 @@ describe("Settling a Fine at the desk", () => {
     const identified = await identifyAtDesk(lita, ana);
 
     // Earliest return first, with what the Librarian needs to tell the Member.
-    assert.deepEqual(identified.member.unsettledFines, [
+    assert.deepEqual(identified.member.clearance.unsettledFines, [
       {
         loanId: first.id,
         bookTitle: "Settle Me",
@@ -118,16 +118,16 @@ describe("Settling a Fine at the desk", () => {
     const body = (await waived.json()) as SettleFineResponse;
     assert.deepEqual(body.settlement, { outcome: "waived", settledAt: "2026-12-03T01:00:00.000Z" });
     assert.deepEqual(
-      body.member.unsettledFines.map((fine) => fine.loanId),
+      body.member.clearance.unsettledFines.map((fine) => fine.loanId),
       [second.id],
     );
     const paid = await settleInSession(lita, identified.deskSession.token, second.id, "paid");
     assert.equal(paid.status, 200);
-    assert.deepEqual(((await paid.json()) as SettleFineResponse).member.unsettledFines, []);
+    assert.deepEqual(((await paid.json()) as SettleFineResponse).member.clearance.unsettledFines, []);
 
     assert.equal((await loanOf(ana, first.id)).fine?.settlement?.outcome, "waived");
     assert.equal((await loanOf(ana, second.id)).fine?.settlement?.outcome, "paid");
-    assert.deepEqual((await identifyAtDesk(lita, ana)).member.unsettledFines, []);
+    assert.deepEqual((await identifyAtDesk(lita, ana)).member.clearance.unsettledFines, []);
     for (const loan of [first, second]) {
       const [entry] = await settledEntries(loan.id);
       assert.equal(entry?.actorId, lita.userId);

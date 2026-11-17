@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { formatLibraryDate, formatLibraryDateTime, formatPesos } from "@libras/shared";
+import { counted, formatLibraryDate, formatLibraryDateTime, formatPesos } from "@libras/shared";
 import type { FineOutcome, FineSettlement, LoanFine, ReturnedLoan, SettleFineResponse } from "@libras/shared";
 import { FineActions } from "./FineActions.tsx";
 import { FinePanel } from "./FinePanel.tsx";
@@ -77,7 +77,7 @@ export function ReturnNotice({ loan, settleFine }: { loan: ReturnedLoan; settleF
 
 /** "3 days late, at PHP 5 a day." or, once it reached the cap, "75 days late, at PHP 5 a day, up to the cap of PHP 300." */
 function fineReason(fine: LoanFine): string {
-  const days = `${fine.daysLate} ${fine.daysLate === 1 ? "day" : "days"} late, at ${formatPesos(fine.dailyRateCentavos)} a day`;
+  const days = `${counted(fine.daysLate, "day")} late, at ${formatPesos(fine.dailyRateCentavos)} a day`;
   const capped = fine.amountCentavos < fine.daysLate * fine.dailyRateCentavos;
   return capped ? `${days}, up to the cap of ${formatPesos(fine.capCentavos)}.` : `${days}.`;
 }

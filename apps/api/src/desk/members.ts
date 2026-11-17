@@ -15,12 +15,20 @@ interface DeskMemberRow {
   loan_period_days: number | null;
 }
 
+/** Whose panel to build, as whom (row-level security applies to the Librarian), and the moment overdue is judged at. */
+export interface DeskMemberRequest {
+  db: Database;
+  librarian: Identity;
+  memberId: string;
+  now: Date;
+}
+
 /**
  * What the desk shows about a Member: name, Account Type, Loans against the
- * Loan Policy limit, unsettled Fines and Clearance, as of `now`. Read as the
- * Librarian, so row-level security applies.
+ * Loan Policy limit and Clearance (the Loans still out and the unsettled
+ * Fines), as of `now`. Read as the Librarian, so row-level security applies.
  */
-export async function deskMember(db: Database, librarian: Identity, memberId: string, now: Date): Promise<DeskMember> {
+export async function deskMember({ db, librarian, memberId, now }: DeskMemberRequest): Promise<DeskMember> {
   return withIdentity(db, librarian, async (scope) => {
     const { rows } = await scope.query<DeskMemberRow>(
       `select m.user_id, m.account_type, m.first_name, m.middle_name, m.last_name, p.loan_limit, p.loan_period_days
@@ -42,7 +50,6 @@ export async function deskMember(db: Database, librarian: Identity, memberId: st
         limit: row.loan_limit,
         loanPeriodDays: row.loan_period_days,
       },
-      unsettledFines: standing.unsettledFines,
       clearance: clearanceOf(standing),
     };
   });

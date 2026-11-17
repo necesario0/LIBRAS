@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { AccountType } from "./accounts.ts";
-import type { Clearance, UnsettledFine } from "./standing.ts";
+import type { Clearance } from "./standing.ts";
 
 /**
  * What the desk page shows about the Member at the desk, and the token of the
@@ -28,8 +28,10 @@ export interface DeskMember {
   fullName: string;
   accountType: AccountType;
   loans: LoanStanding;
-  /** The Member's Fines that were fixed at a return and not yet settled, the earliest return first. Each can be settled here. */
-  unsettledFines: UnsettledFine[];
-  /** Whether the Member is cleared, and what stands in the way (ADR 0010). Its `unsettledFines` are the same list as above. */
+  /**
+   * Whether the Member is cleared, and what stands in the way (ADR 0010): the
+   * Loans still out, and the Fines fixed at a return and not yet settled (the
+   * earliest return first), each of which can be settled here.
+   */
   clearance: Clearance;
 }

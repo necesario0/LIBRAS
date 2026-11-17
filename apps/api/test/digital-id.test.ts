@@ -96,7 +96,6 @@ describe("Digital ID", () => {
       fullName: "Ana Cruz Santos",
       accountType: "umak_student",
       loans: { current: 0, limit: 3, loanPeriodDays: 7 },
-      unsettledFines: [],
       clearance: { cleared: true, loansOut: [], unsettledFines: [] },
     });
   });
@@ -199,7 +198,6 @@ describe("Digital ID", () => {
         fullName: "Cobby Baldonado",
         accountType,
         loans: { current: 0, limit, loanPeriodDays },
-        unsettledFines: [],
         clearance: { cleared: true, loansOut: [], unsettledFines: [] },
       });
     });

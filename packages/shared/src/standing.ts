@@ -45,6 +45,11 @@ export interface Clearance {
   unsettledFines: UnsettledFine[];
 }
 
+/** What a Member owes in unsettled Fines, in centavos. The desk and the app both total it this way. */
+export function totalOwedCentavos({ unsettledFines }: Pick<Clearance, "unsettledFines">): number {
+  return unsettledFines.reduce((total, fine) => total + fine.amountCentavos, 0);
+}
+
 /** The body of `GET /members/me/clearance`. */
 export interface ClearanceResponse {
   clearance: Clearance;
