@@ -41,7 +41,7 @@ export default function HomeScreen() {
       <View style={styles.header}>
         <Pressable
           accessibilityRole="button"
-          accessibilityHint="Opens your profile"
+          accessibilityLabel="Open Profile"
           onPress={() => router.push("/profile")}
           testID="home-profile"
         >

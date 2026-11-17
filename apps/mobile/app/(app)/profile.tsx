@@ -1,30 +1,33 @@
 import { useRouter } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ACCOUNT_TYPE_LABELS } from "@libras/shared";
+import { ACCOUNT_TYPE_LABELS, memberFullName } from "@libras/shared";
+import { BackButton } from "../../src/account/BackButton";
+import { MenuRow } from "../../src/account/MenuRow";
 import { useAuth, useMember } from "../../src/auth/AuthContext";
 import { Avatar } from "../../src/components/Avatar";
-import { ChevronBackIcon } from "../../src/components/icons";
+import { PersonIcon } from "../../src/components/icons";
+import { useGoBack } from "../../src/hooks/useGoBack";
 import { useScreenTop } from "../../src/hooks/useScreenTop";
 import { colors, fontFamily, fontSize, radii, spacing } from "../../src/theme/tokens";
 
 const AVATAR = 84;
-const BACK = 42;
-/** The design puts the menu button (not built yet) beside the back button; its slot is kept empty so the back button stays where the design has it. */
-const MENU_SLOT = 42 + 11 + 24;
 
 /**
- * The Profile account screen: the Figma "Profile" frame (node 572:1468) cut down
- * to what is built. It shows who is signed in - name, email and Account Type -
- * and Sign out, which lives here and nowhere else. Left out until they exist:
- * the barcode panel (the Digital ID has its own screen), and the Saved books,
- * Borrowing history, Fines and Help rows.
+ * The Profile screen: the Figma "Profile" frame (node 572:1468), cut down to
+ * what is built. The Member's avatar, name, email and Account Type sit at the
+ * top (the design's third line, the ID number, shows the Account Type here),
+ * then the menu, which has one row, "My account" (opens `my-account.tsx`), and
+ * Sign out, which is only here.
  *
- * The design puts Change password on a separate "My Account" frame (node
- * 580:1742, reached from the "My account" row, next to Full name, Student ID,
- * Email and Google account). That frame is not built, so Change password joins
- * this screen as a row in the style of the menu rows, between the identity and
- * Sign out, and so does the Clearance status.
+ * Not built, so left out of the menu: Saved books, Borrowing history, Fines and
+ * Help, the barcode panel (the Digital ID has its own screen) and the menu
+ * button beside the back button. The Clearance status (ticket #38) goes in the
+ * menu where the design has its Fines row.
+ *
+ * The design's button says "Log out" and its rows are 30 pt from the left edge
+ * and 26 from the right; this screen says "Sign out", as the rest of the app
+ * does, and uses the symmetric `spacing.screen`.
  */
 export default function ProfileScreen() {
   const router = useRouter();
@@ -32,8 +35,7 @@ export default function ProfileScreen() {
   const { signOut } = useAuth();
   const insets = useSafeAreaInsets();
   const screenTop = useScreenTop();
-  const back = () => (router.canGoBack() ? router.back() : router.replace("/home"));
-  const name = [member.firstName, member.middleName, member.lastName].filter((part) => part !== undefined && part !== "").join(" ");
+  const back = useGoBack();
 
   return (
     <View style={[styles.screen, { paddingTop: screenTop }]}>
@@ -41,9 +43,7 @@ export default function ProfileScreen() {
         <Text style={styles.title} accessibilityRole="header">
           Profile
         </Text>
-        <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={back} hitSlop={8} style={styles.back} testID="profile-back">
-          <ChevronBackIcon />
-        </Pressable>
+        <BackButton onPress={back} testID="profile-back" />
       </View>
 
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.xl }]} showsVerticalScrollIndicator={false}>
@@ -51,7 +51,7 @@ export default function ProfileScreen() {
           <Avatar size={AVATAR} />
           <View style={styles.details}>
             <Text style={styles.name} testID="profile-name">
-              {name.toUpperCase()}
+              {memberFullName(member).toUpperCase()}
             </Text>
             <View style={styles.facts}>
               <Text style={styles.fact} testID="profile-email">
@@ -64,7 +64,9 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* Change password (#34) and the Clearance status (#38) go here, above Sign out. */}
+        <View style={styles.menu}>
+          <MenuRow icon={<PersonIcon />} label="My account" onPress={() => router.push("/my-account")} testID="profile-my-account" />
+        </View>
 
         <Pressable accessibilityRole="button" onPress={() => void signOut()} style={styles.signOut} testID="profile-sign-out">
           <Text style={styles.signOutLabel}>Sign out</Text>
@@ -76,21 +78,21 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.white },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingLeft: spacing.home, paddingRight: MENU_SLOT },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: spacing.home },
   title: { fontFamily: fontFamily.semiBold, fontSize: fontSize.heading, letterSpacing: -2.16, lineHeight: fontSize.heading, color: colors.black },
-  back: { width: BACK, height: BACK, borderRadius: BACK / 2, backgroundColor: colors.accent, alignItems: "center", justifyContent: "center" },
-  content: { paddingTop: spacing.xl - 6, gap: spacing.xl },
-  identity: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: spacing.home },
+  content: { paddingTop: spacing.lg, gap: spacing.lg },
+  identity: { flexDirection: "row", alignItems: "center", gap: spacing.inset, paddingHorizontal: spacing.home },
   details: { flex: 1, gap: spacing.xs },
   name: { fontFamily: fontFamily.regular, fontSize: fontSize.large, letterSpacing: -1.44, lineHeight: 30, color: colors.black },
   facts: { gap: spacing.sm },
   fact: { fontFamily: fontFamily.regular, fontSize: fontSize.small, letterSpacing: -0.78, lineHeight: 16, color: colors.textMuted },
+  menu: { marginHorizontal: spacing.screen, marginTop: spacing.sm },
   signOut: {
     marginHorizontal: spacing.screen,
+    padding: spacing.inset,
     borderWidth: 1,
     borderColor: colors.error,
-    borderRadius: radii.accountButton,
-    padding: 10,
+    borderRadius: radii.actionButton,
     alignItems: "center",
     justifyContent: "center",
   },

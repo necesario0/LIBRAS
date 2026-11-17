@@ -66,6 +66,9 @@ export const colors = {
 /** Raised cards (Figma 617:3265: x 0, y 7, blur 17.9, black 25%). */
 export const cardShadow = "0px 7px 17.9px rgba(0, 0, 0, 0.25)";
 
+/** The rows of the Profile menu (Figma 921:13989: x 0, y 4, blur 6.5, black 25%). */
+export const menuRowShadow = "0px 4px 6.5px rgba(0, 0, 0, 0.25)";
+
 /** Montserrat is the only family. Keys are the names registered with `useFonts`. */
 export const fontFamily = {
   regular: "Montserrat_400Regular",
@@ -120,6 +123,8 @@ export const spacing = {
   xl: 24,
   xxl: 32,
   screen: 25,
+  /** The 10 pt inside a pill (menu row, read-only field, Sign out) and between the avatar and the name on Profile. */
+  inset: 10,
   /** The side gutter of the Home frame, whose content is 366 pt wide on a 402 pt screen. */
   home: 18,
 } as const;
@@ -159,8 +164,8 @@ export const radii = {
   tag: 39,
   /** The grabber at the top of the Book page's sheet (Figma 609:1159). */
   grabber: 58,
-  /** The outlined "Sign out" button of the Profile account screen (Figma 580:1741). */
-  accountButton: 25,
+  /** The rounded rectangle buttons of the account frames: Log out (Figma 580:1741), Cancel and Save changes (580:1842, 580:1845). */
+  actionButton: 25,
   /** The round logo of the wordmark (31 pt). */
   logo: 16,
   /** The terms checkbox of sign-up. */

@@ -1,7 +1,7 @@
-# A Member opens the Profile account screen from the Home header and sees the
-# name, email and Account Type the API holds for them, then signs out from it.
-# Home has no Sign out of its own any more. Needs the end-to-end API on port 3000
-# (npm run e2e starts it).
+# A Member opens the Profile screen from the Home header and sees the name,
+# email and Account Type the API holds for them. The "My account" row opens My
+# Account, which shows the same three as read-only fields. Sign out is on Profile
+# and Home has none. Needs the end-to-end API on port 3000 (npm run e2e starts it).
 appId: ph.edu.umak.libras
 ---
 - launchApp:
@@ -41,6 +41,30 @@ appId: ph.edu.umak.libras
 - assertVisible: ${output.email}
 - assertVisible: "UMAK Student"
 - takeScreenshot: profile
+
+# My account opens the read-only account fields, and Back returns to Profile.
+- tapOn:
+    id: profile-my-account
+- extendedWaitUntil:
+    visible:
+      id: my-account-name
+    timeout: 10000
+- assertVisible:
+    id: my-account-name
+    text: "Cobby Baldonado"
+- assertVisible:
+    id: my-account-email
+    text: ${output.email}
+- assertVisible:
+    id: my-account-account-type
+    text: "UMAK Student"
+- takeScreenshot: my-account
+- tapOn:
+    id: my-account-back
+- extendedWaitUntil:
+    visible:
+      id: profile-name
+    timeout: 10000
 
 # Back returns to Home.
 - tapOn:

@@ -2,10 +2,17 @@ import { Image, StyleSheet, View } from "react-native";
 import avatar from "../../assets/images/home-avatar.png";
 
 /**
- * The Member's round avatar (Figma "notifications icon (3)", on Home and on
- * Profile). Every Member has the same artwork until photos are built. The
- * design crops the exported picture: it is drawn 248.68% of the circle, offset
- * by -74.47% and -73.99%.
+ * The Figma export of the avatar is a larger picture that the design crops to
+ * the circle: drawn this many times the circle's size, shifted left and up by
+ * these fractions of it (248.68%, -74.47% and -73.99% in node 574:1557).
+ */
+const CROP_SCALE = 2.4868;
+const CROP_LEFT = 0.7447;
+const CROP_TOP = 0.7399;
+
+/**
+ * The Member's round avatar (Figma "notifications icon (3)", on Home, Profile and
+ * My Account). Every Member has the same artwork until photos are built.
  */
 export function Avatar({ size }: { size: number }) {
   return (
@@ -13,7 +20,7 @@ export function Avatar({ size }: { size: number }) {
       <Image
         source={avatar}
         accessibilityIgnoresInvertColors
-        style={{ position: "absolute", width: size * 2.4868, height: size * 2.4868, left: -size * 0.7447, top: -size * 0.7399 }}
+        style={{ position: "absolute", width: size * CROP_SCALE, height: size * CROP_SCALE, left: -size * CROP_LEFT, top: -size * CROP_TOP }}
       />
     </View>
   );
