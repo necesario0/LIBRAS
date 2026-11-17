@@ -19,6 +19,8 @@ import { healthRouter } from "./routes/health.ts";
 import { holdsRouter } from "./routes/holds.ts";
 import { loansRouter } from "./routes/loans.ts";
 import { membersRouter } from "./routes/members.ts";
+import { passwordResetRouter } from "./routes/password-reset.ts";
+import type { PasswordResetLimit } from "./routes/password-reset.ts";
 import { scannerRouter } from "./routes/scanner.ts";
 import { staffRouter } from "./routes/staff.ts";
 import { sweepsRouter } from "./routes/sweeps.ts";
@@ -56,6 +58,8 @@ export interface AppOptions {
   sweepSecret?: string;
   /** Sign-in rate limit. Default: 5 failures per 15 minutes per client address. */
   signInLimit?: AttemptLimitOptions;
+  /** Forgot password code requests, per client address and per email. Default: `DEFAULT_PASSWORD_RESET_LIMIT`. */
+  passwordResetLimit?: PasswordResetLimit;
   /** Pairing-code rate limit. Default: 5 wrong codes per 5 minutes per client address. */
   pairingLimit?: AttemptLimitOptions;
   /** The phone scanner: code life, grace time, stream life, scan rate. The defaults are the product. */
@@ -92,6 +96,7 @@ export function createApp(deps: AppDeps, options: AppOptions = {}): LibrasApp {
   app.use(authRouter(deps));
   app.use(staffRouter(deps, signInLimiter));
   app.use(membersRouter(deps, signInLimiter));
+  app.use(passwordResetRouter(deps, options.passwordResetLimit));
   app.use(digitalIdRouter(deps));
   app.use(holdsRouter(deps));
   app.use(loansRouter(deps));

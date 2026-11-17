@@ -98,6 +98,18 @@ export type {
   VisitorIdType,
   YearGraduated,
 } from "./sign-up.ts";
+export {
+  PASSWORD_RESET_MESSAGES,
+  checkPasswordResetCodeSchema,
+  completePasswordResetSchema,
+  requestPasswordResetSchema,
+} from "./password-reset.ts";
+export type {
+  CheckPasswordResetCodeRequest,
+  CompletePasswordResetRequest,
+  PasswordResetRequestedResponse,
+  RequestPasswordResetRequest,
+} from "./password-reset.ts";
 export { buildTrie, searchTrie } from "./search/flat-trie.ts";
 export type { FlatTrie, TrieMatch } from "./search/flat-trie.ts";
 export { buildCatalogIndex, buildCatalogIndexAsync, normalizeText, tokenize, typoBoundFor } from "./search/catalog-index.ts";

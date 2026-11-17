@@ -33,7 +33,7 @@ export interface AuthProvider {
 
 /**
  * Creating and confirming accounts. Needs Supabase's secret key, so it is the
- * one part of the API that holds it. Only the sign-up flow uses it.
+ * one part of the API that holds it. Only the sign-up and Forgot password flows use it.
  */
 export interface AccountAdmin {
   /**
@@ -41,6 +41,11 @@ export interface AccountAdmin {
    * Returns its id, or undefined when the email already has an account.
    */
   createUnverifiedAccount(email: string, password: string): Promise<string | undefined>;
+  /**
+   * Replaces the account's password. Supabase Auth also ends every session of
+   * the account (access and refresh tokens), which Forgot password relies on
+   * (`password-reset.test.ts` proves it against the real Supabase Auth).
+   */
   setPassword(userId: string, password: string): Promise<void>;
   /** Marks the email as confirmed: from now on the person can sign in. */
   confirmEmail(userId: string): Promise<void>;

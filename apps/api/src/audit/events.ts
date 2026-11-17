@@ -25,6 +25,18 @@ export const AUDIT_EVENTS = {
       clientAddress: z.string().max(64).nullable(),
     }),
   },
+  /**
+   * A Member set a new password with a code from a Forgot password email. Every
+   * session of the account was ended. `actorId` is the Member.
+   */
+  password_reset: {
+    /** The Member's account id. */
+    subject: z.uuid(),
+    data: z.strictObject({
+      /** The client address that completed the reset, when known. */
+      clientAddress: z.string().max(64).nullable(),
+    }),
+  },
   /** A Librarian confirmed a Loan at the desk. `actorId` is the Librarian. */
   loan_confirmed: {
     /** The Loan's id. */
