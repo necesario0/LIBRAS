@@ -161,9 +161,9 @@ It goes to sleep after 15 minutes without traffic and takes about a minute to wa
 
 ### Pickup Window expiry while the service sleeps
 
-A Hold's Pickup Window must end on time even when nobody uses the app and Render has put the service to sleep (ADR 0007). The API sweeps every minute while it is awake. To wake it, a schedule in the Supabase database (pg_cron and pg_net) calls it every five minutes with the shared secret. After the deploy:
+A Hold's Pickup Window must end on time, and Loan notices must go out, even when nobody uses the app and Render has put the service to sleep (ADR 0007, ADR 0009). The API sweeps every minute while it is awake. To wake it, a schedule in the Supabase database (pg_cron and pg_net) calls it every five minutes with the shared secret. After the deploy:
 
-1. `npm run db:migrate:hosted` (the expiry migration).
+1. `npm run db:migrate:hosted` (the expiry and Loan notice migrations).
 2. `npm run schedule:hosted`. It makes a `SWEEP_SECRET`, saves it in `.env.hosted` and on the clipboard, and installs the schedule (it enables pg_cron and pg_net itself and keeps the service address and the secret in Supabase Vault). Run it again any time to update; `npm run schedule:hosted -- --remove` removes the schedule.
 3. In the Render dashboard, open `libras-api`, Environment, add `SWEEP_SECRET` with the value from `.env.hosted`, save (Render restarts the service). Run `npm run schedule:hosted` once more: it asks the API whether it accepts the secret and says what is missing if not.
 

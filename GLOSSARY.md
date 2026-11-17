@@ -54,7 +54,7 @@ Ending a Pickup Window that has passed: the Hold becomes expired and its Copy go
 _Avoid_: Timeout, release (the Copy is passed on, not just released)
 
 **Sweep**:
-The job that runs Pickup Window expiry for every Hold whose window has passed: a timer in the API while it runs, and a schedule in the database that wakes it while it sleeps.
+The work that must happen on time whether or not anyone uses LIBRAS. Each run does Pickup Window expiry for every Hold whose window has passed, then sends the Loan notices that are due. A timer in the API runs it while the API is up, and a schedule in the database wakes the API while it sleeps.
 
 **Hold dispatch**:
 Choosing the next waiting Hold of a Book when one of its Copies is free again, by arrival time minus the weight of the Member's Account Type. The Hold becomes ready and the Copy is set aside for its Member.
