@@ -38,6 +38,23 @@ export const AUDIT_EVENTS = {
       dueAt: z.iso.datetime(),
     }),
   },
+  /** A Member renewed one of their Loans in the app. `actorId` is the Member. */
+  loan_renewed: {
+    /** The Loan's id. */
+    subject: z.uuid(),
+    data: z.strictObject({
+      memberId: z.uuid(),
+      copyId: z.uuid(),
+      bookId: z.uuid(),
+      accessionNumber: z.string().max(64),
+      /** The due date before the Renewal, ISO 8601. */
+      previousDueAt: z.iso.datetime(),
+      /** The due date the Renewal gave, ISO 8601. */
+      dueAt: z.iso.datetime(),
+      /** How many times the Loan has been renewed, this Renewal included. */
+      renewalCount: z.number().int().positive(),
+    }),
+  },
   /** A Librarian recorded the return of a Copy at the desk. `actorId` is the Librarian. */
   copy_returned: {
     /** The id of the Loan that was closed. */

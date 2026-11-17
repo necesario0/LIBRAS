@@ -1,0 +1,114 @@
+import { isLoanOverdue } from "@libras/shared";
+import type { Loan, MyLoansResponse } from "@libras/shared";
+import type { AppDeps } from "../app.ts";
+import type { Identity } from "../auth/auth-provider.ts";
+import { withIdentity } from "../auth/identity.ts";
+import { booksWithWaitingHolds, renewalOf } from "./renewability.ts";
+
+/** One Loan as a Member reads it: `LOAN_SELECT` gives these columns. */
+export interface LoanRow {
+  id: string;
+  copy_id: string;
+  book_id: string;
+  title: string;
+  authors: string[];
+  accession_number: string;
+  checked_out_at: Date;
+  due_at: Date;
+  returned_at: Date | null;
+  renewal_count: number;
+}
+
+/** Loans with their Copy and Book, as `LoanRow`s: `l` is the Loan. Add a `where`. */
+export const LOAN_SELECT = `
+  select l.id, l.copy_id, c.book_id, b.title, b.authors, c.accession_number,
+         l.checked_out_at, l.due_at, l.returned_at, l.renewal_count
+    from public.loans l
+    join public.copies c on c.id = l.copy_id
+    join public.books b on b.id = c.book_id`;
+
+/** The parts of the Member's Loan Policy that a Renewal depends on. */
+export interface RenewalPolicy {
+  loan_period_days: number | null;
+  renewal_limit: number;
+}
+
+/**
+ * A Loan as the Member reads it. Overdue and whether it can be renewed are
+ * worked out at `now`, by the API's clock; `holdWaiting` says whether another
+ * Member's Hold on the Book is waiting.
+ */
+export function toLoan(row: LoanRow, policy: RenewalPolicy, holdWaiting: boolean, now: Date): Loan {
+  const current = row.returned_at === null;
+  return {
+    id: row.id,
+    bookId: row.book_id,
+    bookTitle: row.title,
+    bookAuthors: row.authors,
+    accessionNumber: row.accession_number,
+    checkedOutAt: row.checked_out_at.toISOString(),
+    dueAt: row.due_at.toISOString(),
+    returnedAt: current ? null : (row.returned_at as Date).toISOString(),
+    overdue: current && isLoanOverdue(row.due_at, now),
+    renewalCount: row.renewal_count,
+    renewal: current
+      ? renewalOf(
+          {
+            dueAt: row.due_at,
+            renewalCount: row.renewal_count,
+            renewalLimit: policy.renewal_limit,
+            loanPeriodDays: policy.loan_period_days,
+            holdWaiting,
+          },
+          now,
+        )
+      : null,
+  };
+}
+
+interface PolicyRow extends RenewalPolicy {
+  loan_limit: number;
+}
+
+/**
+ * The Member's own Loans: current ones first, the one due soonest at the top,
+ * then past ones, the latest return first. Read as the Member, so row-level
+ * security shows nobody else's. Overdue is worked out from the due date by the
+ * API's clock, and so is whether each current Loan can be renewed (`renewalOf`):
+ * the app shows it and holds no rules of its own. With them comes the loan
+ * limit of the Member's Loan Policy.
+ */
+export async function listLoans(deps: AppDeps, identity: Identity): Promise<MyLoansResponse> {
+  const now = deps.clock.now();
+  const { rows, policy } = await withIdentity(deps.db, identity, async (scope) => {
+    const result = await scope.query<LoanRow>(
+      `${LOAN_SELECT}
+        where l.member_id = $1
+        order by (l.returned_at is null) desc,
+                 case when l.returned_at is null then l.due_at end,
+                 l.returned_at desc,
+                 l.checked_out_at desc`,
+      [identity.userId],
+    );
+    const policy = await scope.query<PolicyRow>(
+      `select p.loan_limit, p.loan_period_days, p.renewal_limit
+         from public.members m
+         join public.loan_policies p on p.account_type = m.account_type
+        where m.user_id = $1`,
+      [identity.userId],
+    );
+    // A signed-in Member always has a profile, and every Account Type has a policy.
+    if (!policy.rows[0]) throw new Error(`No Member or Loan Policy for ${identity.userId}`);
+    return { rows: result.rows, policy: policy.rows[0] };
+  });
+  const waiting = await booksWithWaitingHolds(
+    deps.db,
+    identity.userId,
+    rows.filter((row) => row.returned_at === null).map((row) => row.book_id),
+  );
+  return {
+    loans: rows.map((row) => toLoan(row, policy, waiting.has(row.book_id), now)),
+    loanLimit: policy.loan_limit,
+    loanPeriodDays: policy.loan_period_days,
+  };
+}

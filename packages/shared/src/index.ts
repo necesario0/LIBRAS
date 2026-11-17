@@ -130,6 +130,9 @@ export type { CancelHoldResponse, Hold, HoldStatus, MyHoldsResponse, PlaceHoldRe
 export {
   LIBRARY_UTC_OFFSET_HOURS,
   LOAN_MESSAGES,
+  RENEWAL_MESSAGES,
+  RENEWAL_REASONS,
+  RENEWAL_REFUSALS,
   RETURN_MESSAGES,
   confirmLoanRequestSchema,
   copyCodeSchema,
@@ -142,6 +145,7 @@ export {
   isCurrentLoan,
   isLoanOverdue,
   loanDueAt,
+  loanIdSchema,
   recordReturnRequestSchema,
 } from "./loans.ts";
 export type {
@@ -150,9 +154,12 @@ export type {
   DeskLoan,
   EndDeskSessionRequest,
   Loan,
+  LoanRenewal,
   MyLoansResponse,
   RecordReturnRequest,
   RecordReturnResponse,
+  RenewLoanResponse,
+  RenewalRefusal,
   ReturnedLoan,
 } from "./loans.ts";
 export { readEventStream } from "./event-stream.ts";

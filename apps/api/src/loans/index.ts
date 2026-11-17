@@ -1,9 +1,8 @@
 import { LOAN_MESSAGES, RETURN_MESSAGES, isLoanOverdue, loanDueAt } from "@libras/shared";
-import type { AccountType, DeskLoan, Loan, MyLoansResponse, ReturnedLoan } from "@libras/shared";
+import type { DeskLoan, ReturnedLoan } from "@libras/shared";
 import type { AppDeps } from "../app.ts";
 import { createAuditLog } from "../audit/index.ts";
 import type { Identity } from "../auth/auth-provider.ts";
-import { withIdentity } from "../auth/identity.ts";
 import { COPY_MATCH, COPY_ORDER, lockCopy } from "../copies/index.ts";
 import type { CopyRow } from "../copies/index.ts";
 import { isUniqueViolation, retryOnConflict, withTransaction } from "../db.ts";
@@ -14,34 +13,11 @@ import { announceDispatch, dispatchCopy } from "../holds/dispatch.ts";
 import type { HoldDispatch } from "../holds/dispatch.ts";
 import { expireHold } from "../holds/expiry.ts";
 import { MEMBER_NAME_SQL } from "../members/profile.ts";
+import { lockMember } from "./policy.ts";
+import type { MemberPolicyRow } from "./policy.ts";
 
-/** A Member and the Loan Policy of their Account Type. */
-interface MemberPolicyRow {
-  user_id: string;
-  account_type: AccountType;
-  loan_limit: number;
-  loan_period_days: number | null;
-}
-
-/**
- * The Member and their Loan Policy, with the Member's row locked until the
- * transaction ends: confirmations for one Member run one after another, so two
- * at once cannot both pass the limit. The lock does not block anything that
- * only refers to the Member (a Hold being placed, for example).
- */
-async function lockMember(tx: Tx, memberId: string): Promise<MemberPolicyRow> {
-  const { rows } = await tx.query<MemberPolicyRow>(
-    `select m.user_id, m.account_type, p.loan_limit, p.loan_period_days
-       from public.members m
-       join public.loan_policies p on p.account_type = m.account_type
-      where m.user_id = $1
-        for no key update of m`,
-    [memberId],
-  );
-  // A desk session always names an existing Member, and every Account Type has a policy.
-  if (!rows[0]) throw new Error(`No Member or Loan Policy for ${memberId}`);
-  return rows[0];
-}
+export { listLoans } from "./my-loans.ts";
+export { renewLoan } from "./renewals.ts";
 
 /**
  * Thrown by `takeCopy` when the Copy is set aside for a Hold whose Pickup Window
@@ -314,59 +290,4 @@ export async function recordReturn(deps: AppDeps, librarian: Identity, request: 
       return returned;
     },
   );
-}
-
-interface LoanRow {
-  id: string;
-  book_id: string;
-  title: string;
-  authors: string[];
-  accession_number: string;
-  checked_out_at: Date;
-  due_at: Date;
-  returned_at: Date | null;
-}
-
-/**
- * The Member's own Loans: current ones first, the one due soonest at the top,
- * then past ones, the latest return first. Read as the Member, so row-level
- * security shows nobody else's. Overdue is worked out from the due date by the
- * API's clock. With them comes the loan limit of the Member's Loan Policy.
- */
-export async function listLoans(deps: AppDeps, identity: Identity): Promise<MyLoansResponse> {
-  const now = deps.clock.now();
-  const { rows, policy } = await withIdentity(deps.db, identity, async (scope) => {
-    const result = await scope.query<LoanRow>(
-      `select l.id, c.book_id, b.title, b.authors, c.accession_number, l.checked_out_at, l.due_at, l.returned_at
-         from public.loans l
-         join public.copies c on c.id = l.copy_id
-         join public.books b on b.id = c.book_id
-        where l.member_id = $1
-        order by (l.returned_at is null) desc,
-                 case when l.returned_at is null then l.due_at end,
-                 l.returned_at desc,
-                 l.checked_out_at desc`,
-      [identity.userId],
-    );
-    const policy = await scope.query<{ loan_limit: number; loan_period_days: number | null }>(
-      `select p.loan_limit, p.loan_period_days
-         from public.members m
-         join public.loan_policies p on p.account_type = m.account_type
-        where m.user_id = $1`,
-      [identity.userId],
-    );
-    return { rows: result.rows, policy: policy.rows[0] };
-  });
-  const loans: Loan[] = rows.map((row) => ({
-    id: row.id,
-    bookId: row.book_id,
-    bookTitle: row.title,
-    bookAuthors: row.authors,
-    accessionNumber: row.accession_number,
-    checkedOutAt: row.checked_out_at.toISOString(),
-    dueAt: row.due_at.toISOString(),
-    returnedAt: row.returned_at === null ? null : row.returned_at.toISOString(),
-    overdue: row.returned_at === null && isLoanOverdue(row.due_at, now),
-  }));
-  return { loans, loanLimit: policy?.loan_limit ?? 0, loanPeriodDays: policy?.loan_period_days ?? null };
 }

@@ -1,14 +1,23 @@
 import { Router } from "express";
-import { LOAN_MESSAGES, RETURN_MESSAGES, confirmLoanRequestSchema, endDeskSessionRequestSchema, recordReturnRequestSchema } from "@libras/shared";
-import type { ConfirmLoanResponse, MyLoansResponse, RecordReturnResponse } from "@libras/shared";
+import {
+  LOAN_MESSAGES,
+  RENEWAL_MESSAGES,
+  RETURN_MESSAGES,
+  confirmLoanRequestSchema,
+  endDeskSessionRequestSchema,
+  loanIdSchema,
+  recordReturnRequestSchema,
+} from "@libras/shared";
+import type { ConfirmLoanResponse, MyLoansResponse, RecordReturnResponse, RenewLoanResponse } from "@libras/shared";
 import type { AppDeps } from "../app.ts";
 import { identityOf, requireLibrarian, requireMember } from "../auth/guards.ts";
 import { deskMember } from "../desk/members.ts";
 import { endDeskSession } from "../desk/sessions.ts";
-import { confirmLoan, listLoans, recordReturn } from "../loans/index.ts";
+import { confirmLoan, listLoans, recordReturn, renewLoan } from "../loans/index.ts";
+import { AppError } from "../errors.ts";
 import { parseBody } from "../validation.ts";
 
-/** Loans: a Librarian confirms one and records its return at the desk, and a Member reads their own. */
+/** Loans: a Librarian confirms one and records its return at the desk, and a Member reads and renews their own. */
 export function loansRouter(deps: AppDeps): Router {
   const router = Router();
 
@@ -33,6 +42,13 @@ export function loansRouter(deps: AppDeps): Router {
 
   router.get("/members/me/loans", ...requireMember(deps), async (_req, res) => {
     const body: MyLoansResponse = await listLoans(deps, identityOf(res));
+    res.json(body);
+  });
+
+  router.post("/loans/:id/renew", ...requireMember(deps), async (req, res) => {
+    const id = loanIdSchema.safeParse(req.params.id);
+    if (!id.success) throw new AppError(400, "invalid_request", RENEWAL_MESSAGES.invalidId);
+    const body: RenewLoanResponse = { loan: await renewLoan(deps, identityOf(res), id.data) };
     res.json(body);
   });
 

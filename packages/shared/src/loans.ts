@@ -77,6 +77,54 @@ export interface Loan {
   returnedAt: string | null;
   /** Still out and past its due date, by the API's clock when it answered. */
   overdue: boolean;
+  /** How many times the Member has renewed this Loan. `dueAt` is already the due date after them. */
+  renewalCount: number;
+  /** Whether a Renewal is possible now, by the API's rules and clock. Null for a Loan whose Copy has been returned. */
+  renewal: LoanRenewal | null;
+}
+
+/**
+ * Why the API refuses a Renewal, in the order it checks them: the Loan is past
+ * its due date, it has used the renewal limit of the Member's Loan Policy, or
+ * another Member's Hold on the Book is waiting (a ready Hold does not block).
+ */
+export const RENEWAL_REFUSALS = ["loan_overdue", "renewal_limit_reached", "hold_waiting"] as const;
+export type RenewalRefusal = (typeof RENEWAL_REFUSALS)[number];
+
+/**
+ * Whether a current Loan can be renewed now. When it can: the due date the
+ * Renewal would give (one loan period after the current due date), and whether
+ * that Renewal would use up the renewal limit (`last`). When it cannot: the
+ * reason. The API works this out; the app only shows it.
+ */
+export type LoanRenewal = { renewable: true; dueAt: string; last: boolean } | { renewable: false; reason: RenewalRefusal };
+
+/** What My Loans shows in place of the Renew button of a Loan that cannot be renewed. */
+export const RENEWAL_REASONS: Readonly<Record<RenewalRefusal, string>> = {
+  loan_overdue: "Overdue Loans cannot be renewed. Please return it to the library desk.",
+  renewal_limit_reached: "Already renewed. It cannot be renewed again.",
+  hold_waiting: "Another Member is waiting for this Book, so it cannot be renewed.",
+};
+
+/** The words the API returns and the app shows when a Renewal is refused. */
+export const RENEWAL_MESSAGES = {
+  invalidId: "This Loan could not be found. Open My Loans and try again.",
+  loanNotFound: "This Loan could not be found. Open My Loans and try again.",
+  loanReturned: "This Copy has been returned, so there is no Loan to renew.",
+  /** A refusal of the Renewal itself. The Loans list said it could be renewed, so something changed since. */
+  refused: {
+    loan_overdue: "Your Loan was not renewed: it is now past its due date. Please return the Copy to the library desk.",
+    renewal_limit_reached: "Your Loan was not renewed: it has already been renewed, and it cannot be renewed again.",
+    hold_waiting: "Your Loan was not renewed: another Member is now waiting for this Book. Please return the Copy by its due date.",
+  } satisfies Record<RenewalRefusal, string>,
+} as const;
+
+/** A Loan's id, as `POST /loans/:id/renew` takes it. */
+export const loanIdSchema = z.uuid(RENEWAL_MESSAGES.invalidId);
+
+/** The body of `POST /loans/:id/renew`: the renewed Loan, with its new due date. */
+export interface RenewLoanResponse {
+  loan: Loan;
 }
 
 /** A Loan is current until its Copy is returned. */
