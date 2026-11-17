@@ -65,11 +65,12 @@ export function LoanRow({ loan, onRenew }: LoanRowProps) {
               <Text style={[styles.dates, styles.due, loan.overdue && styles.overdue]} testID="loan-due">
                 {`${loan.overdue ? "Was due" : "Return by"} ${formatLibraryDate(loan.dueAt)}`}
               </Text>
-              {loan.fine === null ? null : (
+              {/* Truthy, not `!== null`: an API from before Fines sends no `fine` at all. */}
+              {loan.fine ? (
                 <Text style={[styles.dates, styles.fine]} testID="loan-fine">
                   {`Fine so far: ${formatPesos(loan.fine.amountCentavos)} (${loan.fine.daysLate} ${loan.fine.daysLate === 1 ? "day" : "days"} late)`}
                 </Text>
-              )}
+              ) : null}
             </>
           ) : (
             <Text style={styles.dates} testID="loan-returned">{`Returned on ${formatLibraryDate(loan.returnedAt)}`}</Text>
