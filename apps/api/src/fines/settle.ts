@@ -1,5 +1,5 @@
 import { FINE_MESSAGES, SETTLE_AT_RETURN_MINUTES } from "@libras/shared";
-import type { FineOutcome, SettleFineRequest, SettleFineResponse } from "@libras/shared";
+import type { SettleFineRequest, SettleFineResponse } from "@libras/shared";
 import type { AppDeps } from "../app.ts";
 import { createAuditLog } from "../audit/index.ts";
 import type { Identity } from "../auth/auth-provider.ts";
@@ -15,8 +15,10 @@ import { lockMember } from "../loans/policy.ts";
  * a payment. It happens in two places only, and the request says which:
  *
  * - `return`: on the return of the late Copy, by the Librarian who recorded that
- *   return, up to `SETTLE_AT_RETURN_MINUTES` after it. The Fine on screen is the
- *   one named; nobody else's Fine can be reached this way.
+ *   return (`fixed_by`), up to `SETTLE_AT_RETURN_MINUTES` after it. The Fine on
+ *   screen is the one named; nobody else's Fine can be reached this way. A Fine
+ *   whose Librarian is unknown (null `fixed_by`, see the migration) cannot be
+ *   settled here.
  * - `desk_session`: in the desk session of the Fine's Member (ADR 0008), for as
  *   long as the session lasts. This is the place for a Fine left unsettled at its
  *   return and for earlier ones listed in the Member panel.
@@ -30,11 +32,10 @@ import { lockMember } from "../loans/policy.ts";
  * same moment give one winner whatever happens to the locks.
  */
 
-type Deps = Pick<AppDeps, "db" | "clock" | "auth">;
+type Deps = Pick<AppDeps, "db" | "clock">;
 
 interface FineRow {
-  member_id: string;
-  fixed_by: string;
+  fixed_by: string | null;
   fixed_at: Date;
   amount_centavos: number;
   settled_at: Date | null;
@@ -42,6 +43,7 @@ interface FineRow {
 
 const notFound = () => new AppError(404, "fine_not_found", FINE_MESSAGES.notFound);
 const alreadySettled = () => new AppError(409, "fine_already_settled", FINE_MESSAGES.alreadySettled);
+const settleAtReturnEnded = () => new AppError(409, "settle_at_return_ended", FINE_MESSAGES.returnSettleEnded);
 
 export async function settleFine(deps: Deps, librarian: Identity, request: SettleFineRequest): Promise<SettleFineResponse> {
   // In a desk session the Member is the session's. It is renewed like for any Copy scanned, and refused when it is over.
@@ -55,7 +57,7 @@ export async function settleFine(deps: Deps, librarian: Identity, request: Settl
   const settlement = await withTransaction(deps.db, async (tx) => {
     await lockMember(tx, memberId);
     const { rows } = await tx.query<FineRow>(
-      `select member_id, fixed_by, fixed_at, amount_centavos, settled_at
+      `select fixed_by, fixed_at, amount_centavos, settled_at
          from public.fines where loan_id = $1
           for update`,
       [request.loan],
@@ -66,12 +68,12 @@ export async function settleFine(deps: Deps, librarian: Identity, request: Settl
     if (fine.settled_at !== null) throw alreadySettled();
     const now = deps.clock.now();
     if (request.place === "return" && now.getTime() - fine.fixed_at.getTime() > SETTLE_AT_RETURN_MINUTES * 60_000) {
-      throw new AppError(409, "settle_at_return_ended", FINE_MESSAGES.returnSettleEnded);
+      throw settleAtReturnEnded();
     }
     const updated = await tx.query(
       `update public.fines set settled_outcome = $2, settled_by = $3, settled_at = $4
         where loan_id = $1 and settled_at is null`,
-      [request.loan, request.outcome satisfies FineOutcome, librarian.userId, now],
+      [request.loan, request.outcome, librarian.userId, now],
     );
     if (updated.rowCount !== 1) throw alreadySettled();
     // Last in the transaction, so a failed write leaves nothing in the audit log.

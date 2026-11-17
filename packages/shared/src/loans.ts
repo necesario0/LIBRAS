@@ -1,5 +1,6 @@
 import { z } from "zod";
-import type { DeskMember } from "./digital-id.ts";
+import { deskSessionTokenSchema } from "./desk.ts";
+import type { DeskMember } from "./desk.ts";
 import type { LoanFine } from "./fines.ts";
 import { SCAN_INPUT_PATTERN } from "./scan.ts";
 
@@ -154,9 +155,6 @@ export interface MyLoansResponse {
 
 /** A Copy as the desk names it: its barcode or its accession number, already through the scan whitelist. */
 export const copyCodeSchema = z.string().regex(SCAN_INPUT_PATTERN);
-
-/** A desk session's token, as `POST /desk/members/identify` gave it: 32 random bytes, base64url. */
-export const deskSessionTokenSchema = z.string().regex(/^[A-Za-z0-9_-]{43}$/);
 
 /** The body of `POST /desk/loans`: the desk session of the Member at the desk, and the Copy's barcode or accession number. */
 export const confirmLoanRequestSchema = z.object({ deskSession: deskSessionTokenSchema, copy: copyCodeSchema }).strict();

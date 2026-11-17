@@ -1,6 +1,5 @@
 import { z } from "zod";
-import type { AccountType } from "./accounts.ts";
-import type { DeskFine } from "./fines.ts";
+import type { DeskMember } from "./desk.ts";
 
 /**
  * The Digital ID: 12 digits, drawn as a Code 128 subset C barcode (ADR 0004).
@@ -48,26 +47,6 @@ export interface DigitalIdResponse {
 export function msUntilRefresh(id: DigitalIdResponse, msSinceReceived: number): number {
   const left = Date.parse(id.refreshAt) - Date.parse(id.serverTime) - msSinceReceived;
   return Math.max(0, left);
-}
-
-/** A Member's Loans against their Loan Policy limit. */
-export interface LoanStanding {
-  current: number;
-  /** The Loan Policy limit of the Member's Account Type. Zero means the Account Type cannot borrow. */
-  limit: number;
-  /** The Loan Policy loan period, or null for an Account Type that cannot borrow. */
-  loanPeriodDays: number | null;
-}
-
-/** What the desk page shows about the Member whose Digital ID was scanned. */
-export interface DeskMember {
-  id: string;
-  /** First, middle and last name. */
-  fullName: string;
-  accountType: AccountType;
-  loans: LoanStanding;
-  /** The Member's Fines that were fixed at a return and not yet settled, the earliest return first. Each can be settled here. */
-  unsettledFines: DeskFine[];
 }
 
 /**

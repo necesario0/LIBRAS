@@ -13,15 +13,10 @@ export {
   identifyMemberRequestSchema,
   msUntilRefresh,
 } from "./digital-id.ts";
-export type {
-  DeskMember,
-  DeskSession,
-  DigitalIdResponse,
-  IdentifyMemberRequest,
-  IdentifyMemberResponse,
-  LoanStanding,
-} from "./digital-id.ts";
-export { SCAN_INPUT_MAX_LENGTH, SCAN_INPUT_PATTERN, SCAN_MESSAGES, readScan } from "./scan.ts";
+export type { DeskSession, DigitalIdResponse, IdentifyMemberRequest, IdentifyMemberResponse } from "./digital-id.ts";
+export { deskSessionTokenSchema } from "./desk.ts";
+export type { DeskFine, DeskMember, LoanStanding } from "./desk.ts";
+export { SCAN_INPUT_MAX_LENGTH, SCAN_INPUT_PATTERN, SCAN_MESSAGES, isScanKey, readScan } from "./scan.ts";
 export type { ScanReading, ScanRejection } from "./scan.ts";
 export { refreshSessionRequestSchema, signInRequestSchema } from "./auth.ts";
 export type {
@@ -151,7 +146,6 @@ export {
   RETURN_MESSAGES,
   confirmLoanRequestSchema,
   copyCodeSchema,
-  deskSessionTokenSchema,
   endDeskSessionRequestSchema,
   formatLibraryDate,
   formatLibraryDateTime,
@@ -178,7 +172,7 @@ export type {
   ReturnedLoan,
 } from "./loans.ts";
 export { FINE_MESSAGES, FINE_OUTCOMES, SETTLE_AT_RETURN_MINUTES, formatPesos, settleFineRequestSchema } from "./fines.ts";
-export type { DeskFine, FineOutcome, FineSettlement, LoanFine, SettleFineRequest, SettleFineResponse } from "./fines.ts";
+export type { FineOutcome, FineSettlement, LoanFine, SettleFineRequest, SettleFineResponse } from "./fines.ts";
 export { readEventStream } from "./event-stream.ts";
 export type { StreamEvent } from "./event-stream.ts";
 export {

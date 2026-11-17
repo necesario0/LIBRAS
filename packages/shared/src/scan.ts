@@ -11,8 +11,21 @@
 /** Longest input the scan input point looks at. */
 export const SCAN_INPUT_MAX_LENGTH = 64;
 
-/** The whitelist: ASCII letters, digits, spaces and hyphens, 1 to 64 of them. */
-export const SCAN_INPUT_PATTERN = /^[0-9A-Za-z -]{1,64}$/;
+/** The characters a scan may have, as the inside of a regular expression character class: ASCII letters, digits, spaces and hyphens. */
+const SCAN_CHARACTERS = "0-9A-Za-z -";
+
+/** The whitelist: the scan characters, 1 to `SCAN_INPUT_MAX_LENGTH` of them. */
+export const SCAN_INPUT_PATTERN = new RegExp(`^[${SCAN_CHARACTERS}]{1,${SCAN_INPUT_MAX_LENGTH}}$`);
+
+const SCAN_CHARACTER_PATTERN = new RegExp(`^[${SCAN_CHARACTERS}]$`);
+
+/**
+ * Whether a typed key (a `KeyboardEvent.key`) can start or continue a scan: one character
+ * of the whitelist, other than the space, which also presses a focused button.
+ */
+export function isScanKey(key: string): boolean {
+  return key !== " " && SCAN_CHARACTER_PATTERN.test(key);
+}
 
 /** A Digital ID as a scanner sends it (12 digits) or as the app prints it (three groups of four). */
 const DIGITAL_ID_INPUT_PATTERN = /^[0-9]{4} ?[0-9]{4} ?[0-9]{4}$/;

@@ -1,6 +1,6 @@
 import { z } from "zod";
-import type { DeskMember } from "./digital-id.ts";
-import { deskSessionTokenSchema } from "./loans.ts";
+import { deskSessionTokenSchema } from "./desk.ts";
+import type { DeskMember } from "./desk.ts";
 
 /**
  * Fines (ADR 0010): the peso amount a Member owes for one Loan returned late.
@@ -43,20 +43,6 @@ export function formatPesos(centavos: number): string {
   return rest === 0 ? `PHP ${whole}` : `PHP ${whole}.${String(rest).padStart(2, "0")}`;
 }
 
-/** A Fine that has been fixed and not yet settled, as the desk's Member panel lists it. */
-export interface DeskFine {
-  /** The id of the Loan the Fine is on, which names the Fine. */
-  loanId: string;
-  bookTitle: string;
-  accessionNumber: string;
-  /** What the Member owes, in centavos. */
-  amountCentavos: number;
-  /** Calendar days after the due date, the day of the return included. */
-  daysLate: number;
-  /** When the Copy came back and the Fine was fixed, ISO 8601. */
-  returnedAt: string;
-}
-
 /** How long after a late return its Librarian may still settle the Fine on that return, in minutes. Later, the Member's desk session is the place. */
 export const SETTLE_AT_RETURN_MINUTES = 10;
 
@@ -65,9 +51,10 @@ export const SETTLE_AT_RETURN_MINUTES = 10;
  * and the request says which: on the return of the late Copy (by the Librarian
  * who recorded it, soon after), or in the desk session of the Fine's Member.
  */
+const settleFineBase = z.object({ loan: z.uuid(), outcome: z.enum(FINE_OUTCOMES) });
 export const settleFineRequestSchema = z.discriminatedUnion("place", [
-  z.object({ place: z.literal("return"), loan: z.uuid(), outcome: z.enum(FINE_OUTCOMES) }).strict(),
-  z.object({ place: z.literal("desk_session"), deskSession: deskSessionTokenSchema, loan: z.uuid(), outcome: z.enum(FINE_OUTCOMES) }).strict(),
+  settleFineBase.extend({ place: z.literal("return") }).strict(),
+  settleFineBase.extend({ place: z.literal("desk_session"), deskSession: deskSessionTokenSchema }).strict(),
 ]);
 export type SettleFineRequest = z.infer<typeof settleFineRequestSchema>;
 

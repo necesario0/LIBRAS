@@ -1,15 +1,7 @@
 import assert from "node:assert/strict";
 import { after, before, beforeEach, describe, it } from "node:test";
 import { FINE_MESSAGES } from "@libras/shared";
-import type {
-  ConfirmLoanResponse,
-  FineOutcome,
-  IdentifyMemberResponse,
-  Loan,
-  RecordReturnResponse,
-  ReturnedLoan,
-  SettleFineResponse,
-} from "@libras/shared";
+import type { ConfirmLoanResponse, FineOutcome, Loan, ReturnedLoan, SettleFineResponse } from "@libras/shared";
 import { createAuditLog } from "../src/audit/index.ts";
 import { withIdentity } from "../src/auth/index.ts";
 import { createTestMember } from "../src/testing/index.ts";
@@ -25,24 +17,8 @@ describe("Settling a Fine at the desk", () => {
   let lita: TestLibrarian;
   let manuel: TestLibrarian;
 
-  /** A moment in Manila, "2026-11-20 00:00", as the API's clock takes it. */
-  const at = (manila: string) => h.api().clock.set(new Date(`${manila.replace(" ", "T")}:00.000+08:00`).toISOString());
-
-  /** A Member borrows a Copy on 12 Nov at 10:00 in Manila (due the end of 19 Nov) and it comes back `daysLate` days late, at 15:00. */
-  const lateReturn = async (member: TestMember, daysLate = 2) => {
-    const book = await h.addBook("Settle Me");
-    const copy = book.copies[0] as TestCopy;
-    h.api().clock.set("2026-11-12T02:00:00.000Z");
-    const lent = await h.lendAtDesk(lita, member, copy.barcode);
-    assert.equal(lent.status, 201);
-    const { loan } = (await lent.json()) as ConfirmLoanResponse;
-    at(`2026-11-${19 + daysLate} 15:00`);
-    const response = await h.send("POST", "/desk/returns", lita.accessToken, { copy: copy.barcode });
-    assert.equal(response.status, 200, await response.clone().text());
-    const returned = ((await response.json()) as RecordReturnResponse).loan;
-    assert.equal(returned.id, loan.id);
-    return returned;
-  };
+  const { at, identifyAtDesk } = h;
+  const lateReturn = (member: TestMember, daysLate?: number) => h.lateReturn(lita, member, daysLate);
   const settle = (librarian: TestLibrarian, body: unknown) => h.send("POST", "/desk/fines/settle", librarian.accessToken, body);
   const settleAtReturn = (librarian: TestLibrarian, loan: ReturnedLoan, outcome: FineOutcome) =>
     settle(librarian, { place: "return", loan: loan.id, outcome });
@@ -52,12 +28,6 @@ describe("Settling a Fine at the desk", () => {
     const loan = (await h.loansOf(member)).find((candidate) => candidate.id === loanId);
     assert.ok(loan, "the Loan is in My Loans");
     return loan;
-  };
-  /** The Librarian scans the Member's Digital ID: the Member panel and the desk session, as the desk page gets them. */
-  const identifyAtDesk = async (librarian: TestLibrarian, member: TestMember): Promise<IdentifyMemberResponse> => {
-    const response = await h.identify(librarian, await h.digitalIdOf(member));
-    assert.equal(response.status, 200, await response.clone().text());
-    return (await response.json()) as IdentifyMemberResponse;
   };
   const fineRows = async (loanId: string) =>
     (await h.api().db.query("select settled_outcome, settled_by, settled_at from public.fines where loan_id = $1", [loanId])).rows;
@@ -325,5 +295,59 @@ describe("Settling a Fine at the desk", () => {
       h.api().db.query("update public.fines set settled_outcome = 'paid' where loan_id = $1", [returned.id]),
       /fines_settlement_complete/,
     );
+  });
+
+  it("lets a Member read their own amount and how and when it was settled, but not which Librarians fixed or settled it", async () => {
+    const ana = await createTestMember(h.api(), { firstName: "Ana", lastName: "Santos" });
+    const returned = await lateReturn(ana);
+    at("2026-11-21 15:04");
+    assert.equal((await settleAtReturn(lita, returned, "paid")).status, 200);
+
+    for (const identity of [
+      { userId: ana.member.id, email: ana.email },
+      { userId: lita.userId, email: "librarian@example.com" },
+    ]) {
+      const read = async (columns: string) =>
+        withIdentity(h.api().db, identity, async (scope) => {
+          await scope.query("savepoint attempt");
+          try {
+            return (await scope.query(`select ${columns} from public.fines where loan_id = $1`, [returned.id])).rows;
+          } catch (error) {
+            return (error as Error).message;
+          } finally {
+            await scope.query("rollback to savepoint attempt");
+          }
+        });
+      assert.deepEqual(
+        await read("amount_centavos, settled_outcome, settled_at"),
+        [{ amount_centavos: 2 * RATE, settled_outcome: "paid", settled_at: new Date("2026-11-21T07:04:00.000Z") }],
+        identity.email,
+      );
+      for (const columns of ["settled_by", "fixed_by", "*"]) {
+        assert.match(String(await read(columns)), /permission denied for table fines/, `${identity.email}: ${columns}`);
+      }
+    }
+  });
+
+  it("refuses a Fine with no Librarian who fixed it, but still lets a Fine from before that column be settled in a desk session", async () => {
+    const ana = await createTestMember(h.api(), { firstName: "Ana", lastName: "Santos" });
+    const fresh = await lateReturn(ana);
+    await assert.rejects(h.api().db.query("update public.fines set fixed_by = null where loan_id = $1", [fresh.id]), /fines_fixed_by_present/);
+
+    // A Fine the migration could not attribute to a Librarian (no audit entry): the constraint is NOT VALID for it, as in the migration.
+    const old = await lateReturn(ana);
+    const db = h.api().db;
+    await db.query("alter table public.fines drop constraint fines_fixed_by_present");
+    try {
+      await db.query("update public.fines set fixed_by = null where loan_id = $1", [old.id]);
+    } finally {
+      await db.query("alter table public.fines add constraint fines_fixed_by_present check (fixed_by is not null or settled_at is not null) not valid");
+    }
+    // Nobody settled it on a return: there is no Librarian whose return it was. The Member's desk session is the place.
+    assert.equal((await refusal(await settleAtReturn(lita, old, "paid"))).code, "fine_not_found");
+    const identified = await identifyAtDesk(lita, ana);
+    const settled = await settleInSession(lita, identified.deskSession.token, old.id, "waived");
+    assert.equal(settled.status, 200, await settled.clone().text());
+    assert.equal((await loanOf(ana, old.id)).fine?.settlement?.outcome, "waived");
   });
 });

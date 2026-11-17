@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { SCAN_MESSAGES, formatDigitalId, msUntilRefresh, readScan } from "../src/index.ts";
+import { SCAN_MESSAGES, formatDigitalId, isScanKey, msUntilRefresh, readScan } from "../src/index.ts";
 
 describe("reading a scan", () => {
   it("reads a Digital ID as a USB scanner sends it", () => {
@@ -59,5 +59,15 @@ describe("timing the next Digital ID", () => {
 describe("printing a Digital ID", () => {
   it("groups the digits in fours so a person can read and type them", () => {
     assert.equal(formatDigitalId("482109375512"), "4821 0937 5512");
+  });
+});
+
+describe("keys that can be part of a scan", () => {
+  it("accepts the characters a barcode or accession number has", () => {
+    for (const key of ["0", "9", "a", "Z", "-"]) assert.equal(isScanKey(key), true, key);
+  });
+
+  it("does not take a space, Enter, Tab, an arrow or a character outside the whitelist, which a focused control may need", () => {
+    for (const key of [" ", "Enter", "Tab", "ArrowDown", "Escape", "<", "é", ""]) assert.equal(isScanKey(key), false, JSON.stringify(key));
   });
 });
