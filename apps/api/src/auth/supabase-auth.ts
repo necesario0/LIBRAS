@@ -100,9 +100,14 @@ export class SupabaseAuth implements AuthProvider {
     await this.#request("POST", "/logout?scope=local", { accessToken });
   }
 
+  async changePassword(accessToken: string, newPassword: string): Promise<boolean> {
+    const body = await this.#request("PUT", "/user", { accessToken, body: { password: newPassword } });
+    return body !== undefined;
+  }
+
   /** Returns the parsed body, or undefined when Supabase Auth refused the credentials or the token. */
   async #request(
-    method: "GET" | "POST",
+    method: "GET" | "POST" | "PUT",
     path: string,
     options: { body?: unknown; accessToken?: string },
     extraRefusalCodes: readonly string[] = [],
@@ -113,7 +118,7 @@ export class SupabaseAuth implements AuthProvider {
 
   /** Like #request, but says which refusal code Supabase Auth gave. */
   async #send(
-    method: "GET" | "POST",
+    method: "GET" | "POST" | "PUT",
     path: string,
     options: { body?: unknown; accessToken?: string },
     extraRefusalCodes: readonly string[] = [],

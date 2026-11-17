@@ -37,6 +37,31 @@ export const AUDIT_EVENTS = {
       clientAddress: z.string().max(64).nullable(),
     }),
   },
+  /**
+   * A signed-in Member changed their password. Every other session of the
+   * account was ended; the one that made the change stays. `actorId` is the Member.
+   */
+  password_changed: {
+    /** The Member's account id. */
+    subject: z.uuid(),
+    data: z.strictObject({
+      /** The client address that made the change, when known. */
+      clientAddress: z.string().max(64).nullable(),
+    }),
+  },
+  /**
+   * A signed-in Member gave a wrong current password in Change password (the
+   * same refusal the sign-in limiter counts). `actorId` is the Member. Whoever
+   * holds an unlocked phone is guessing here, so the address is kept.
+   */
+  password_change_failed: {
+    /** The Member's account id. */
+    subject: z.uuid(),
+    data: z.strictObject({
+      /** The client address the sign-in limiter counts, when known. */
+      clientAddress: z.string().max(64).nullable(),
+    }),
+  },
   /** A Librarian confirmed a Loan at the desk. `actorId` is the Librarian. */
   loan_confirmed: {
     /** The Loan's id. */

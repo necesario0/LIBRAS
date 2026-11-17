@@ -110,6 +110,8 @@ export type {
   PasswordResetRequestedResponse,
   RequestPasswordResetRequest,
 } from "./password-reset.ts";
+export { PASSWORD_CHANGE_MESSAGES, changePasswordSchema } from "./password-change.ts";
+export type { ChangePasswordRequest } from "./password-change.ts";
 export { buildTrie, searchTrie } from "./search/flat-trie.ts";
 export type { FlatTrie, TrieMatch } from "./search/flat-trie.ts";
 export { buildCatalogIndex, buildCatalogIndexAsync, normalizeText, tokenize, typoBoundFor } from "./search/catalog-index.ts";
