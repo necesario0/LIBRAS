@@ -123,6 +123,11 @@ export function createDeskFixtures() {
       expect(response.status).toBe(200);
       return ((await response.json()) as MyLoansResponse).loans;
     },
+    /** The Member renews a Loan from My Loans: the real endpoint. */
+    renew: async (member: DeskTestMember, loanId: string): Promise<void> => {
+      const response = await fetch(`${API_URL}/loans/${loanId}/renew`, { method: "POST", headers: { authorization: `Bearer ${member.accessToken}` } });
+      expect(response.status).toBe(200);
+    },
     copyStatus: async (barcode: string): Promise<string> =>
       ((await db.query("select status from public.copies where barcode = $1", [barcode])).rows[0] as { status: string }).status,
   };

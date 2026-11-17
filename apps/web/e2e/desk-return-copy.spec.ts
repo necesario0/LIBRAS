@@ -1,10 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { LOAN_MESSAGES, RETURN_MESSAGES, SCAN_MESSAGES, formatLibraryDateTime } from "@libras/shared";
+import { LOAN_MESSAGES, RETURN_MESSAGES, SCAN_MESSAGES, formatLibraryDate, formatLibraryDateTime } from "@libras/shared";
 import { createDeskFixtures, scan, signInAtTheDesk } from "./desk-fixtures.ts";
 import type { DeskTestCopy } from "./desk-fixtures.ts";
 
 const desk = createDeskFixtures();
-const { addBook, bookOf, codeOnThePhoneOf, copyStatus, createMember, holdsOf, loansOf, placeHold } = desk;
+const { addBook, bookOf, codeOnThePhoneOf, copyStatus, createMember, holdsOf, loansOf, placeHold, renew } = desk;
 
 test.beforeAll(desk.setUp);
 test.afterAll(desk.cleanUp);
@@ -58,6 +58,30 @@ test("a Librarian records a return: the Copy's barcode, then its accession numbe
   await expect(notice).toContainText(`Copy ${second.accessionNumber}`);
   expect(await copyStatus(second.barcode)).toBe("available");
   expect((await loansOf(ana)).every((loan) => loan.returnedAt !== null)).toBe(true);
+});
+
+test("a Copy returned after the Member renewed its Loan shows the renewed due date, the one the Member sees", async ({ page }) => {
+  const ana = await createMember("umak_student", "Ana", "Santos");
+  const [copy] = (await addBook("Renewed Then Returned", 1)) as [DeskTestCopy];
+  await signInAtTheDesk(page);
+  await scan(page, await codeOnThePhoneOf(ana));
+  await scan(page, copy.barcode);
+  const confirmed = page.getByRole("region", { name: "Loan confirmed" });
+  await expect(confirmed).toBeVisible();
+  await page.getByRole("button", { name: "Done with this Member" }).click();
+
+  // The Member renews the Loan from My Loans.
+  const [loan] = await loansOf(ana);
+  if (loan?.renewal?.renewable !== true) throw new Error("The new Loan cannot be renewed");
+  await renew(ana, loan.id);
+  const [renewed] = await loansOf(ana);
+  expect(renewed?.dueAt).toBe(loan.renewal.dueAt);
+
+  await scan(page, copy.barcode);
+  const notice = page.getByRole("region", { name: "Return recorded" });
+  await expect(notice).toBeVisible();
+  await expect(notice.getByTestId("desk-return-due")).toHaveText(`Returned on time - due ${formatLibraryDate(loan.renewal.dueAt)}`);
+  await page.screenshot({ path: test.info().outputPath("desk-return-renewed.png") });
 });
 
 test("a Copy that is not on Loan, or not known, gets a clear message and changes nothing", async ({ page }) => {

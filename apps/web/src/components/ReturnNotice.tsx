@@ -3,8 +3,9 @@ import type { ReturnedLoan } from "@libras/shared";
 
 /**
  * The return the desk has just recorded: which Book and Copy came back, who had
- * it, and the day it was returned. A Copy that came back after its due day says
- * so; Tier 1 charges nothing for it. When the Copy is now set aside for a Hold,
+ * it, the day it was returned, and whether that was on time or late against its
+ * due date (the current one, after any Renewal: the date the Member saw). Tier 1
+ * charges nothing for a late return. When the Copy is now set aside for a Hold,
  * a second panel tells the Librarian for which Member and until when, so the
  * Copy goes on the hold shelf and not back on the stacks.
  */
@@ -24,9 +25,13 @@ export function ReturnNotice({ loan }: { loan: ReturnedLoan }) {
               {loan.memberName}
             </strong>
           </span>
-          {loan.late && (
+          {loan.late ? (
             <span className="loan-notice__late" data-testid="desk-return-late">
               {`Returned late - was due ${formatLibraryDate(loan.dueAt)}`}
+            </span>
+          ) : (
+            <span className="loan-notice__copy" data-testid="desk-return-due">
+              {`Returned on time - due ${formatLibraryDate(loan.dueAt)}`}
             </span>
           )}
         </div>
