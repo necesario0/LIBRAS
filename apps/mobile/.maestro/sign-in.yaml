@@ -169,7 +169,36 @@ appId: ph.edu.umak.libras
 - assertVisible: "The library for problem solver"
 - assertNotVisible: "Hi, Cobby"
 
-# The old password is refused ...
+# Sign-in still holds the email, and the new password signs the Member in.
+- assertVisible:
+    id: sign-in-email
+    text: ${output.email}
+- tapOn:
+    id: sign-in-password-toggle
+- retry:
+    maxRetries: 3
+    commands:
+      - tapOn:
+          id: sign-in-password
+      - eraseText: 80
+      - inputText: ${output.password}-new
+      - assertVisible:
+          id: sign-in-password
+          text: ${output.password}-new
+- hideKeyboard
+- tapOn:
+    id: sign-in-continue
+- extendedWaitUntil:
+    visible: "Hi, Cobby"
+    timeout: 20000
+- runFlow: subflows/sign-out.yaml
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 20000
+
+# The old password no longer works.
+- tapOn:
+    id: welcome-sign-in
 - tapOn:
     id: sign-in-email
 - retry:
@@ -177,7 +206,9 @@ appId: ph.edu.umak.libras
     commands:
       - eraseText: 80
       - inputText: ${output.email}
-      - assertVisible: ${output.email}
+      - assertVisible:
+          id: sign-in-email
+          text: ${output.email}
 - tapOn:
     id: sign-in-password
 - tapOn:
@@ -196,26 +227,8 @@ appId: ph.edu.umak.libras
 - tapOn:
     id: sign-in-continue
 - assertVisible: "The email or password is incorrect."
-
-# ... and the new one signs the Member in.
-- retry:
-    maxRetries: 3
-    commands:
-      - tapOn:
-          id: sign-in-password
-      - eraseText: 80
-      - inputText: ${output.password}-new
-      - assertVisible: ${output.password}-new
-- hideKeyboard
-- tapOn:
-    id: sign-in-continue
-- extendedWaitUntil:
-    visible: "Hi, Cobby"
-    timeout: 20000
-- runFlow: subflows/sign-out.yaml
-- extendedWaitUntil:
-    visible: "SIGN  UP"
-    timeout: 20000
+- assertNotVisible: "Hi, Cobby"
+- back
 
 # An account that never finished verification is guided to the code step.
 - tapOn:
