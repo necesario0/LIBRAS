@@ -42,7 +42,13 @@ appId: ph.edu.umak.libras
 # A Book with a Copy available has no Hold action.
 - tapOn:
     id: search-input
-- inputText: ${output.openWord}
+# Typing can start before the keyboard is ready and lose the first letter; type until the whole word is in the field.
+- retry:
+    maxRetries: 3
+    commands:
+      - eraseText: 40
+      - inputText: ${output.openWord}
+      - assertVisible: ${output.openWord}
 - extendedWaitUntil:
     visible: ${output.openTitle}
     timeout: 15000
@@ -67,8 +73,13 @@ appId: ph.edu.umak.libras
     timeout: 10000
 - tapOn:
     id: search-input
-- eraseText: 40
-- inputText: ${output.heldWord}
+# Typing can start before the keyboard is ready and lose the first letter; type until the whole word is in the field.
+- retry:
+    maxRetries: 3
+    commands:
+      - eraseText: 40
+      - inputText: ${output.heldWord}
+      - assertVisible: ${output.heldWord}
 - extendedWaitUntil:
     visible: ${output.heldTitle}
     timeout: 15000
@@ -178,7 +189,13 @@ appId: ph.edu.umak.libras
     timeout: 20000
 - tapOn:
     id: search-input
-- inputText: ${output.heldWord}
+# Typing can start before the keyboard is ready and lose the first letter; type until the whole word is in the field.
+- retry:
+    maxRetries: 3
+    commands:
+      - eraseText: 40
+      - inputText: ${output.heldWord}
+      - assertVisible: ${output.heldWord}
 - extendedWaitUntil:
     visible: ${output.heldTitle}
     timeout: 15000
