@@ -44,6 +44,7 @@ export {
   requiresUmakEmail,
 } from "./accounts.ts";
 export type { AccountType } from "./accounts.ts";
+export { memberFullName } from "./members.ts";
 export type {
   MemberMeResponse,
   MemberProfile,

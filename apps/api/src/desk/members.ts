@@ -1,3 +1,4 @@
+import { memberFullName } from "@libras/shared";
 import type { AccountType, DeskMember } from "@libras/shared";
 import type { Identity } from "../auth/auth-provider.ts";
 import { withIdentity } from "../auth/identity.ts";
@@ -41,7 +42,7 @@ export async function deskMember(db: Database, librarian: Identity, memberId: st
     if (!row) throw new Error(`No Member profile or Loan Policy visible for ${memberId}`);
     return {
       id: row.user_id,
-      fullName: [row.first_name, row.middle_name, row.last_name].filter((part) => part !== null && part !== "").join(" "),
+      fullName: memberFullName({ firstName: row.first_name, middleName: row.middle_name, lastName: row.last_name }),
       accountType: row.account_type,
       loans: {
         current: await currentLoanCount(scope, row.user_id),
