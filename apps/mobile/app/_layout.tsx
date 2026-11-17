@@ -44,7 +44,7 @@ export default function RootLayout() {
  *   signing out (or a session that cannot be renewed) removes them from the
  *   navigator and sends the Member to the welcome screen, and a link to one of
  *   them while signed out goes nowhere.
- * - sign-in and sign-up: only while signed out.
+ * - sign-in, sign-up and forgot-password: only while signed out.
  * - the root route, terms and status: always. The root route sends a signed-in
  *   Member to `/home` and shows the welcome screen to everyone else.
  * While the stored session is being checked at launch the splash screen stays up.
@@ -70,6 +70,7 @@ function Navigator() {
       <Stack.Protected guard={!signedIn}>
         <Stack.Screen name="sign-in" />
         <Stack.Screen name="sign-up" />
+        <Stack.Screen name="forgot-password" />
       </Stack.Protected>
       <Stack.Screen name="terms" />
       <Stack.Screen name="status" />

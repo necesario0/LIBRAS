@@ -59,6 +59,16 @@ export const colors = {
   dangerSurface: "#FDECEC",
   /** The sheet that holds a Book page (Figma 609:1159 grabber). */
   grabber: "#D9D9D9",
+  /** Password screens (Figma 926:14226): headings and typed text. */
+  ink: "#1A1A1F",
+  /** Password screens: the intro line, unmet requirements and the success message. */
+  textSubtle: "#737885",
+  /** Password screens: the outlined Cancel button (Figma 926:14378). */
+  cancel: "#D93025",
+  /** Password screens: Save and the success dialog's button (Figma 926:14380, 928:14993). */
+  save: "#F9B233",
+  /** The dimmed screen behind a dialog (Figma 928:14986). */
+  scrim: "rgba(0,0,0,0.55)",
   /** The lighter spine drawn over a placeholder Book cover. */
   coverSpine: "rgba(255,255,255,0.35)",
 } as const;
@@ -166,6 +176,10 @@ export const radii = {
   grabber: 58,
   /** The rounded rectangle buttons of the account frames: Log out (Figma 580:1741), Cancel and Save changes (580:1842, 580:1845). */
   actionButton: 25,
+  /** Cancel and Save of the password screens (Figma 926:14377, 46 pt high). */
+  passwordAction: 23,
+  /** The success dialog of the password screens (Figma 928:14987). */
+  dialog: 28,
   /** The round logo of the wordmark (31 pt). */
   logo: 16,
   /** The terms checkbox of sign-up. */
@@ -178,6 +192,12 @@ export const radii = {
 
 /** Height of text fields and buttons. */
 export const controlHeight = 44;
+
+/** Height of a password field (Figma 926:14350). */
+export const passwordFieldHeight = 48;
+
+/** Height of Cancel and Save on the password screens, and of the success dialog's button (Figma 926:14377). */
+export const passwordActionHeight = 46;
 
 /** Height of the outlined button of the borrow flow (Figma 617:3265). */
 export const outlineButtonHeight = 61;

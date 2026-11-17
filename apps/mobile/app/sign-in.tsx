@@ -1,7 +1,7 @@
 import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
 import type { ComponentRef } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { TextInput } from "react-native";
 import { emailSchema } from "@libras/shared";
 import { ApiError } from "../src/api/client";
@@ -19,8 +19,10 @@ import { colors, fontFamily, fontSize, spacing } from "../src/theme/tokens";
  * "Login with account" (Figma "iPhone 17 - 9", error states 13, 14 and 96): the
  * wordmark, the book, the tagline, then email, password and Continue.
  *
- * Deliberate differences from the frames: no "forgot password?" link (password
- * reset is out of scope for Tier 1); the error frames swap the tagline for the
+ * "Forgot password?" under Continue opens Forgot password (the frame writes it
+ * "forgot password?"), carrying the email typed so far.
+ *
+ * Deliberate difference from the frames: the error frames swap the tagline for the
  * university's name, which here stays the tagline so the layout does not jump
  * when an error appears. A wrong email or password marks both fields and says
  * "The email or password is incorrect", never which one.
@@ -123,6 +125,15 @@ export default function SignInScreen() {
           />
           <FieldError message={formError} testID="sign-in-error" />
           <Button label="Continue" onPress={() => void onContinue()} loading={submitting} testID="sign-in-continue" />
+          <Pressable
+            onPress={() => router.push({ pathname: "/forgot-password", params: { email: email.trim() } })}
+            accessibilityRole="link"
+            hitSlop={8}
+            style={styles.forgot}
+            testID="sign-in-forgot-password"
+          >
+            <Text style={styles.forgotLabel}>Forgot password?</Text>
+          </Pressable>
         </View>
       </ScrollView>
     </KeyboardAvoiding>
@@ -142,4 +153,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.screen,
   },
   form: { alignSelf: "stretch", paddingHorizontal: spacing.screen, marginTop: spacing.xs, gap: spacing.sm },
+  forgot: { alignSelf: "center", marginTop: spacing.xs },
+  forgotLabel: { fontFamily: fontFamily.regular, fontSize: fontSize.caption, color: colors.black, textDecorationLine: "underline" },
 });

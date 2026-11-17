@@ -5,6 +5,9 @@ import closeXml from "../../assets/icons/close.svg";
 import homeSearchXml from "../../assets/icons/home-search.svg";
 import loaderXml from "../../assets/icons/loader.svg";
 import personXml from "../../assets/icons/person.svg";
+import requirementMetXml from "../../assets/icons/requirement-met.svg";
+import requirementUnmetXml from "../../assets/icons/requirement-unmet.svg";
+import successCheckXml from "../../assets/icons/success-check.svg";
 import visibilityOffXml from "../../assets/icons/visibility-off.svg";
 import visibilityXml from "../../assets/icons/visibility.svg";
 
@@ -41,3 +44,9 @@ export const SearchIcon = icon(homeSearchXml, 24, 24);
 export const CloseIcon = icon(closeXml, 37, 37);
 /** The outline of a person: the "My account" row of Profile (Figma 652:2531, 18 by 19 pt with its 1 pt stroke overflow). */
 export const PersonIcon = icon(personXml, 18, 19);
+/** A password requirement that is met: green disc with a white tick (Figma 926:14679, 16 pt). */
+export const RequirementMetIcon = icon(requirementMetXml, 16, 16);
+/** A password requirement not met yet: grey ring (Figma 926:14366, 16 pt). */
+export const RequirementUnmetIcon = icon(requirementUnmetXml, 16, 16);
+/** The green tick of the "Password updated" dialog (Figma 928:14989, 36 pt). */
+export const SuccessCheckIcon = icon(successCheckXml, 36, 36);

@@ -3,15 +3,19 @@ import type {
   BookDetailResponse,
   CancelHoldResponse,
   CatalogSearchResponse,
+  CheckPasswordResetCodeRequest,
+  CompletePasswordResetRequest,
   DigitalIdResponse,
   HealthResponse,
   MemberMeResponse,
   MemberSignInResponse,
   MyHoldsResponse,
   MyLoansResponse,
+  PasswordResetRequestedResponse,
   PlaceHoldResponse,
   RefreshSessionResponse,
   RenewLoanResponse,
+  RequestPasswordResetRequest,
   ResendSignUpCodeRequest,
   SignInRequest,
   SignUpCodeSentResponse,
@@ -129,6 +133,19 @@ export function createApiClient({ baseUrl, fetch: fetchImpl = fetch, timeoutMs =
     verifySignUp: (body: VerifySignUpRequest) => post<VerifySignUpResponse>("/members/sign-up/verify", body),
     /** Emails a new code. The old one stops working. */
     resendSignUpCode: (body: ResendSignUpCodeRequest) => post<SignUpCodeSentResponse>("/members/sign-up/resend", body),
+    /**
+     * Forgot password: emails a code when the address belongs to a Member. The reply is the same for any
+     * address. Failure: `too_many_attempts` (429) when too many codes were asked for.
+     */
+    requestPasswordReset: (body: RequestPasswordResetRequest) =>
+      post<PasswordResetRequestedResponse>("/members/password-reset", body),
+    /** Checks the emailed code before the new password is asked for. Failures: `invalid_code`, `code_expired`, `too_many_attempts`. */
+    checkPasswordResetCode: (body: CheckPasswordResetCodeRequest) => post<null>("/members/password-reset/check", body),
+    /**
+     * Sets the new password. Every session of the account ends and nobody is signed in. Failures: the code ones,
+     * and `invalid_password` when the password breaks the sign-up rules.
+     */
+    completePasswordReset: (body: CompletePasswordResetRequest) => post<null>("/members/password-reset/complete", body),
     /** Signs a Member in. Failures: `invalid_credentials`, `email_not_verified`, `too_many_attempts`. */
     signIn: (body: SignInRequest) => post<MemberSignInResponse>("/members/sign-in", body),
     /** Swaps a refresh token for a new session. A refresh token works once. */

@@ -62,6 +62,11 @@ const { app, stop } = createApp(deps, {
   // limit would lock the next test run out after a few deliberate wrong
   // passwords. The block itself is proved by the API tests, not here.
   signInLimit: { maxFailures: 1_000, windowMinutes: 15 },
+  // The same for Forgot password code requests.
+  passwordResetLimit: {
+    perClientAddress: { maxRequests: 1_000, windowMinutes: 15 },
+    perEmail: { maxRequests: 1_000, windowMinutes: 15 },
+  },
 });
 
 // Pickup Windows end on their own here too, as on the real server.
