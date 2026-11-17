@@ -1,6 +1,8 @@
 import type { AppDeps } from "../app.ts";
 import type { Database, Tx } from "../db.ts";
 import { withTransaction } from "../db.ts";
+import { fineAt } from "../fines/index.ts";
+import type { FinePolicy } from "../fines/index.ts";
 import { booksWithWaitingHolds, renewalOf } from "../loans/renewability.ts";
 import { loanNoticeEmail } from "./email.ts";
 import type { NoticeLoan } from "./email.ts";
@@ -61,7 +63,7 @@ function pending(rows: readonly CandidateRow[], now: Date): Array<CandidateRow &
   });
 }
 
-interface MemberRow {
+interface MemberRow extends FinePolicy {
   email: string;
   first_name: string;
   loan_period_days: number | null;
@@ -105,7 +107,7 @@ async function notifyMember(deps: AppDeps, memberId: string): Promise<boolean> {
     }
 
     const member = await tx.query<MemberRow>(
-      `select u.email, m.first_name, p.loan_period_days, p.renewal_limit
+      `select u.email, m.first_name, p.loan_period_days, p.renewal_limit, p.fine_daily_rate_centavos, p.fine_cap_centavos
          from public.members m
          join auth.users u on u.id = m.user_id
          join public.loan_policies p on p.account_type = m.account_type
@@ -137,6 +139,12 @@ async function notifyMember(deps: AppDeps, memberId: string): Promise<boolean> {
               now,
             )
           : null,
+      fineRate:
+        loan.slot.kind === "due_tomorrow" && row.fine_daily_rate_centavos > 0 && row.fine_cap_centavos > 0
+          ? { dailyRateCentavos: row.fine_daily_rate_centavos, capCentavos: row.fine_cap_centavos }
+          : null,
+      // The same Fine so far that My Loans shows at this moment.
+      fineSoFar: loan.slot.kind === "due_tomorrow" ? null : (fineAt(loan.due_at, row, now)?.amountCentavos ?? null),
     }));
 
     await deps.email.send({ to: row.email, ...loanNoticeEmail({ firstName: row.first_name, loans, now }) });

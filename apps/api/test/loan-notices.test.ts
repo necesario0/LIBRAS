@@ -104,14 +104,20 @@ describe("Loan notices", () => {
     ]);
   });
 
-  it("says in the overdue notices since when the Loan is overdue", async () => {
+  it("says in the overdue notices since when the Loan is overdue, and the Fine so far", async () => {
     const { member } = await memberWithLoans(["Late Book"]);
 
     const first = await tickAt("2026-11-20 08:00", member);
     const second = await tickAt("2026-11-27 08:00", member);
 
-    assert.match(first[0]?.text ?? "", /"Late Book" \(Copy [^)]+\) is overdue: it was due on Nov 19, 2026, 1 day ago\.\nPlease return it to the library desk\./);
-    assert.match(second[0]?.text ?? "", /"Late Book" \(Copy [^)]+\) is still overdue: it was due on Nov 19, 2026, 8 days ago\./);
+    assert.match(
+      first[0]?.text ?? "",
+      /"Late Book" \(Copy [^)]+\) is overdue: it was due on Nov 19, 2026, 1 day ago\.\nThe Fine so far is PHP 5\.\nPlease return it to the library desk\./,
+    );
+    assert.match(
+      second[0]?.text ?? "",
+      /"Late Book" \(Copy [^)]+\) is still overdue: it was due on Nov 19, 2026, 8 days ago\.\nThe Fine so far is PHP 40\.\nPlease return it to the library desk\./,
+    );
   });
 
   it("covers every Loan of a Member that needs a notice in one email a day, and each Member gets their own", async () => {
@@ -135,12 +141,15 @@ describe("Loan notices", () => {
     assert.doesNotMatch(omars[0]?.text ?? "", /Of Three/);
   });
 
-  it("says in the due-tomorrow notice that the Loan can be renewed, and to what date", async () => {
+  it("says in the due-tomorrow notice that the Loan can be renewed, to what date, and the daily Fine rate", async () => {
     const { member } = await memberWithLoans(["Can Be Renewed"]);
 
     const [email] = await tickAt("2026-11-18 08:00", member);
 
-    assert.match(email?.text ?? "", /is due tomorrow, Nov 19, 2026\.\nYou can renew it in the LIBRAS app, under My Loans, until then: the new due date would be Nov 26, 2026\./);
+    assert.match(
+      email?.text ?? "",
+      /is due tomorrow, Nov 19, 2026\.\nYou can renew it in the LIBRAS app, under My Loans, until then: the new due date would be Nov 26, 2026\.\nIf it is returned late, the Fine is PHP 5 a day, up to PHP 300\./,
+    );
   });
 
   it("says in the due-tomorrow notice why the Loan cannot be renewed: another Member is waiting for the Book", async () => {

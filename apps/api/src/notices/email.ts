@@ -1,4 +1,4 @@
-import { RENEWAL_REASONS, formatLibraryDate } from "@libras/shared";
+import { RENEWAL_REASONS, formatLibraryDate, formatPesos } from "@libras/shared";
 import type { LoanRenewal } from "@libras/shared";
 import type { EmailMessage } from "../email.ts";
 import { libraryDayOf } from "./schedule.ts";
@@ -12,6 +12,10 @@ export interface NoticeLoan {
   dueAt: Date;
   /** Whether the Loan can be renewed now (`renewalOf`): for a due-tomorrow notice only, null otherwise. */
   renewal: LoanRenewal | null;
+  /** The Member's daily Fine rate and Fine cap, in centavos: for a due-tomorrow notice, null otherwise or when nothing would be owed. */
+  fineRate: { dailyRateCentavos: number; capCentavos: number } | null;
+  /** The Fine so far, in centavos (`fineAt`, as My Loans shows it): for an overdue notice, null otherwise. */
+  fineSoFar: number | null;
 }
 
 export interface LoanNoticeEmail {
@@ -49,11 +53,16 @@ function paragraphOf(loan: NoticeLoan, now: Date): string {
         : renewal.renewable
           ? `You can renew it in the LIBRAS app, under My Loans, until then: the new due date would be ${formatLibraryDate(renewal.dueAt)}.`
           : `It cannot be renewed: ${RENEWAL_REASONS[renewal.reason]} Please return it to the library desk by then.`;
-    return `${copy} is due ${dueWhen(loan, now)}, ${due}.\n${renew}`;
+    const rate =
+      loan.fineRate === null
+        ? ""
+        : `\nIf it is returned late, the Fine is ${formatPesos(loan.fineRate.dailyRateCentavos)} a day, up to ${formatPesos(loan.fineRate.capCentavos)}.`;
+    return `${copy} is due ${dueWhen(loan, now)}, ${due}.\n${renew}${rate}`;
   }
   const days = libraryDayOf(now) - libraryDayOf(loan.dueAt);
   const late = loan.slot.kind === "now_overdue" ? "is overdue" : "is still overdue";
-  return `${copy} ${late}: it was due on ${due}, ${days} ${days === 1 ? "day" : "days"} ago.\nPlease return it to the library desk.`;
+  const fine = loan.fineSoFar === null ? "" : `\nThe Fine so far is ${formatPesos(loan.fineSoFar)}.`;
+  return `${copy} ${late}: it was due on ${due}, ${days} ${days === 1 ? "day" : "days"} ago.${fine}\nPlease return it to the library desk.`;
 }
 
 /**
