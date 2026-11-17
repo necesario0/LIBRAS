@@ -1,4 +1,3 @@
-import { useRouter } from "expo-router";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { isCurrentLoan } from "@libras/shared";
@@ -6,6 +5,7 @@ import type { Loan } from "@libras/shared";
 import { useAuth } from "../../src/auth/AuthContext";
 import { Button } from "../../src/components/Button";
 import { ChevronBackIcon } from "../../src/components/icons";
+import { useGoBack } from "../../src/hooks/useGoBack";
 import { useScreenTop } from "../../src/hooks/useScreenTop";
 import { LoanRow } from "../../src/loans/LoanRow";
 import { loanFailureMessage, renewLoan, useLoans } from "../../src/loans/useLoans";
@@ -19,12 +19,11 @@ import { colors, fontFamily, fontSize, radii, spacing } from "../../src/theme/to
  * frame for it: it uses the style of Home, the Book page and the Holds screen.
  */
 export default function LoansScreen() {
-  const router = useRouter();
   const insets = useSafeAreaInsets();
   const screenTop = useScreenTop();
   const { request } = useAuth();
   const { state, reload } = useLoans(request);
-  const back = () => (router.canGoBack() ? router.back() : router.replace("/home"));
+  const back = useGoBack();
 
   const renew = async (loan: Loan) => {
     try {

@@ -1,4 +1,4 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth, useMember } from "../../../src/auth/AuthContext";
@@ -6,6 +6,7 @@ import { BookInfo } from "../../../src/book/BookInfo";
 import { useBook } from "../../../src/catalog/useBook";
 import { Button } from "../../../src/components/Button";
 import { CloseIcon } from "../../../src/components/icons";
+import { useGoBack } from "../../../src/hooks/useGoBack";
 import { HoldAction } from "../../../src/holds/HoldAction";
 import { BorrowAction } from "../../../src/loans/BorrowAction";
 import { colors, fontFamily, fontSize, radii, spacing } from "../../../src/theme/tokens";
@@ -21,13 +22,12 @@ const SHEET_TOP = 200 / 874;
  */
 export default function BookScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const router = useRouter();
   const member = useMember();
   const { request } = useAuth();
   const { height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { state, retry } = useBook(request, id);
-  const close = () => (router.canGoBack() ? router.back() : router.replace("/home"));
+  const close = useGoBack();
 
   return (
     <View style={styles.screen}>
