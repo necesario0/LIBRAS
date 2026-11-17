@@ -25,7 +25,7 @@ export function digitalIdRouter(deps: AppDeps): Router {
       "A Digital ID is 12 digits. Scan it again or type the code beneath the barcode.",
     );
     const { memberId, deskSession } = await startDeskSession(deps, identityOf(res).userId, code);
-    const body: IdentifyMemberResponse = { member: await deskMember(deps.db, identityOf(res), memberId), deskSession };
+    const body: IdentifyMemberResponse = { member: await deskMember(deps.db, identityOf(res), memberId, deps.clock.now()), deskSession };
     // The desk session's token lends to the Member: no cache may keep it.
     res.set("Cache-Control", "no-store").json(body);
   });

@@ -24,7 +24,7 @@ export function loansRouter(deps: AppDeps): Router {
   router.post("/desk/loans", ...requireLibrarian(deps), async (req, res) => {
     const request = parseBody(confirmLoanRequestSchema, req.body, LOAN_MESSAGES.invalidRequest);
     const { loan, memberId } = await confirmLoan(deps, identityOf(res), request);
-    const body: ConfirmLoanResponse = { loan, member: await deskMember(deps.db, identityOf(res), memberId) };
+    const body: ConfirmLoanResponse = { loan, member: await deskMember(deps.db, identityOf(res), memberId, deps.clock.now()) };
     res.status(201).json(body);
   });
 

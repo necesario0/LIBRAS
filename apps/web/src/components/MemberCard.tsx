@@ -1,5 +1,5 @@
 import { ACCOUNT_TYPE_LABELS, formatLibraryDate } from "@libras/shared";
-import type { DeskFine, DeskMember, FineOutcome, SettleFineResponse } from "@libras/shared";
+import type { UnsettledFine, DeskMember, FineOutcome, SettleFineResponse } from "@libras/shared";
 import { FineActions } from "./FineActions.tsx";
 import { FinePanel } from "./FinePanel.tsx";
 
@@ -15,7 +15,7 @@ function initialsOf(fullName: string): string {
  * settlement (undefined when the Librarian's session is gone) and rejects with
  * the reason to show.
  */
-export type SettleMemberFine = (fine: DeskFine, outcome: FineOutcome) => Promise<SettleFineResponse | undefined>;
+export type SettleMemberFine = (fine: UnsettledFine, outcome: FineOutcome) => Promise<SettleFineResponse | undefined>;
 
 /**
  * Who the scanned Digital ID belongs to: name, Account Type, and Loans against

@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import type {
-  DeskFine,
+  UnsettledFine,
   DeskLoan,
   DeskMember,
   FineOutcome,
@@ -157,7 +157,7 @@ export function DeskPage({ staff, onSignOut }: Props) {
   }
 
   /** Settles one of the Fines listed for the Member at the desk, in their desk session. Rejects with the reason to show. */
-  async function settleMemberFine(at: Identified, fine: DeskFine, outcome: FineOutcome): Promise<SettleFineResponse | undefined> {
+  async function settleMemberFine(at: Identified, fine: UnsettledFine, outcome: FineOutcome): Promise<SettleFineResponse | undefined> {
     try {
       const settled = await settle({ place: "desk_session", deskSession: at.deskSession, loan: fine.loanId, outcome });
       if (settled) {

@@ -7,16 +7,18 @@ import {
   signUpRequestSchema,
   verifySignUpRequestSchema,
 } from "@libras/shared";
-import type { MemberMeResponse, VerifySignUpResponse } from "@libras/shared";
+import type { ClearanceResponse, MemberMeResponse, VerifySignUpResponse } from "@libras/shared";
 import type { z } from "zod";
 import type { AppDeps } from "../app.ts";
 import { createAuditLog, recordingSignInFailures } from "../audit/index.ts";
-import { accessTokenOf, memberOf, requireMember } from "../auth/guards.ts";
+import { accessTokenOf, identityOf, memberOf, requireMember } from "../auth/guards.ts";
+import { withIdentity } from "../auth/identity.ts";
 import type { AttemptLimiter } from "../auth/attempt-limit.ts";
 import { AppError } from "../errors.ts";
 import { changeMemberPassword, verifyCurrentPassword } from "../members/change-password.ts";
 import { signInMember } from "../members/sign-in.ts";
 import { resendSignUpCode, startSignUp, verifySignUp } from "../members/sign-up.ts";
+import { clearanceOf, readStanding } from "../standing/index.ts";
 import { parseBody, passwordRuleRefusal } from "../validation.ts";
 
 const KNOWN_MESSAGES: ReadonlySet<string> = new Set(Object.values(SIGN_UP_MESSAGES));
@@ -34,7 +36,7 @@ function signUpRefusal(error: z.ZodError): AppError {
   return new AppError(400, "invalid_request", message ?? "Check what you entered and try again.");
 }
 
-/** Sign-up, sign-in and the Member's own profile. */
+/** Sign-up, sign-in, the Member's own profile and their Clearance. */
 export function membersRouter(deps: AppDeps, limiter: AttemptLimiter): Router {
   const router = Router();
   const audit = createAuditLog(deps);
@@ -69,6 +71,14 @@ export function membersRouter(deps: AppDeps, limiter: AttemptLimiter): Router {
 
   router.get("/members/me", ...requireMember(deps), (_req, res) => {
     const body: MemberMeResponse = { member: memberOf(res) };
+    res.json(body);
+  });
+
+  // Read as the Member, so row-level security shows only their own Loans and Fines.
+  router.get("/members/me/clearance", ...requireMember(deps), async (_req, res) => {
+    const identity = identityOf(res);
+    const standing = await withIdentity(deps.db, identity, (scope) => readStanding(scope, identity.userId, deps.clock.now()));
+    const body: ClearanceResponse = { clearance: clearanceOf(standing) };
     res.json(body);
   });
 

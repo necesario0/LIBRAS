@@ -97,6 +97,7 @@ describe("Digital ID", () => {
       accountType: "umak_student",
       loans: { current: 0, limit: 3, loanPeriodDays: 7 },
       unsettledFines: [],
+      clearance: { cleared: true, loansOut: [], unsettledFines: [] },
     });
   });
 
@@ -199,6 +200,7 @@ describe("Digital ID", () => {
         accountType,
         loans: { current: 0, limit, loanPeriodDays },
         unsettledFines: [],
+        clearance: { cleared: true, loansOut: [], unsettledFines: [] },
       });
     });
   }

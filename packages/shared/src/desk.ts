@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { AccountType } from "./accounts.ts";
+import type { Clearance, UnsettledFine } from "./standing.ts";
 
 /**
  * What the desk page shows about the Member at the desk, and the token of the
@@ -20,20 +21,6 @@ export interface LoanStanding {
   loanPeriodDays: number | null;
 }
 
-/** A Fine that has been fixed and not yet settled, as the desk's Member panel lists it. */
-export interface DeskFine {
-  /** The id of the Loan the Fine is on, which names the Fine. */
-  loanId: string;
-  bookTitle: string;
-  accessionNumber: string;
-  /** What the Member owes, in centavos. */
-  amountCentavos: number;
-  /** Calendar days after the due date, the day of the return included. */
-  daysLate: number;
-  /** When the Copy came back and the Fine was fixed, ISO 8601. */
-  returnedAt: string;
-}
-
 /** What the desk page shows about the Member whose Digital ID was scanned. */
 export interface DeskMember {
   id: string;
@@ -42,5 +29,7 @@ export interface DeskMember {
   accountType: AccountType;
   loans: LoanStanding;
   /** The Member's Fines that were fixed at a return and not yet settled, the earliest return first. Each can be settled here. */
-  unsettledFines: DeskFine[];
+  unsettledFines: UnsettledFine[];
+  /** Whether the Member is cleared, and what stands in the way (ADR 0010). Its `unsettledFines` are the same list as above. */
+  clearance: Clearance;
 }
