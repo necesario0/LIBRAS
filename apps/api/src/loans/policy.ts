@@ -13,11 +13,12 @@ export interface MemberPolicyRow extends FinePolicy {
 
 /**
  * The Member and their Loan Policy, with the Member's row locked until the
- * transaction ends: confirmations, returns and Renewals for one Member run one
- * after another, so two at once cannot both pass the limit, and a Renewal never
- * sees a Loan that a return is closing at that moment. The lock does not block
- * anything that only refers to the Member (a Hold being placed, for example).
- * Every writer that needs both takes this lock before the Copy's.
+ * transaction ends: confirmations, returns, Renewals, Holds being placed and
+ * Fines being settled for one Member run one after another, so two at once
+ * cannot both pass the limit, a Renewal never sees a Loan that a return is
+ * closing at that moment, and Good standing is never read with a return or a
+ * settle half done. It does not block a foreign key check that only refers to
+ * the Member. Every writer that needs both takes this lock before the Copy's.
  */
 export async function lockMember(tx: Tx, memberId: string): Promise<MemberPolicyRow> {
   const { rows } = await tx.query<MemberPolicyRow>(

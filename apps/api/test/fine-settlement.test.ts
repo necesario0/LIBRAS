@@ -86,8 +86,7 @@ describe("Settling a Fine at the desk", () => {
 
   it("leaves a Fine unsettled when nobody settles it at the return, then lists it in the Member's desk session, where it is settled", async () => {
     const ana = await createTestMember(h.api(), { firstName: "Ana", lastName: "Santos" });
-    const first = await lateReturn(ana, 1);
-    const second = await lateReturn(ana, 3);
+    const [first, second] = (await h.lateReturns(lita, ana, [1, 3])) as [ReturnedLoan, ReturnedLoan];
     assert.equal((await loanOf(ana, first.id)).fine?.settlement, null);
     at("2026-12-03 09:00");
 
@@ -215,13 +214,15 @@ describe("Settling a Fine at the desk", () => {
   it("settles in a desk session only a Fine of that session's Member, and only while the session lasts", async () => {
     const ana = await createTestMember(h.api(), { firstName: "Ana", lastName: "Santos" });
     const ben = await createTestMember(h.api(), { firstName: "Ben", lastName: "Reyes" });
-    const anas = await lateReturn(ana);
-    const bens = await lateReturn(ben);
+    // Lent while Ana is in Good standing, before her late return.
     const book = await h.addBook("On Time");
     const copy = book.copies[0] as TestCopy;
     h.api().clock.set("2026-11-12T02:00:00.000Z");
     const lent = await h.lendAtDesk(lita, ana, copy.barcode);
     const onTime = ((await lent.json()) as ConfirmLoanResponse).loan.id;
+    h.api().clock.advance({ minutes: 1 });
+    const anas = await lateReturn(ana);
+    const bens = await lateReturn(ben);
     at("2026-11-25 10:00");
     const session = await identifyAtDesk(lita, ana);
 
@@ -331,11 +332,10 @@ describe("Settling a Fine at the desk", () => {
 
   it("refuses a Fine with no Librarian who fixed it, but still lets a Fine from before that column be settled in a desk session", async () => {
     const ana = await createTestMember(h.api(), { firstName: "Ana", lastName: "Santos" });
-    const fresh = await lateReturn(ana);
+    const [fresh, old] = (await h.lateReturns(lita, ana, [2, 2])) as [ReturnedLoan, ReturnedLoan];
     await assert.rejects(h.api().db.query("update public.fines set fixed_by = null where loan_id = $1", [fresh.id]), /fines_fixed_by_present/);
 
     // A Fine the migration could not attribute to a Librarian (no audit entry): the constraint is NOT VALID for it, as in the migration.
-    const old = await lateReturn(ana);
     const db = h.api().db;
     await db.query("alter table public.fines drop constraint fines_fixed_by_present");
     try {

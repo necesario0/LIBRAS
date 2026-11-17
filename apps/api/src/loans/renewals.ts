@@ -9,14 +9,16 @@ import { AppError } from "../errors.ts";
 import { LOAN_SELECT, toLoan } from "./my-loans.ts";
 import type { LoanRow } from "./my-loans.ts";
 import { lockMember } from "./policy.ts";
+import { goodStandingRefusal } from "../standing/index.ts";
 import { booksWithWaitingHolds, renewalOf } from "./renewability.ts";
 
 /**
  * A Member renews one of their own Loans: its due date moves one loan period
  * of their Account Type later, counted from the current due date. It is
  * refused, with the reason the app shows, when the Loan is overdue, when it has
- * used the renewal limit of the Member's Loan Policy, or when another Member's
- * Hold on the Book is waiting (`renewalOf` decides, as it does for the Loans
+ * used the renewal limit of the Member's Loan Policy, when another Member's
+ * Hold on the Book is waiting, or when the Member is not in Good standing
+ * (`overdue_loan` or `unsettled_fine`; `renewalOf` decides, as it does for the Loans
  * list). A Loan that is not the Member's is reported as not found, the same as
  * one that does not exist; a Loan whose Copy is back is `loan_returned`.
  *
@@ -54,6 +56,8 @@ export async function renewLoan(deps: AppDeps, member: Identity, loanId: string)
         renewalLimit: policy.renewal_limit,
         loanPeriodDays: policy.loan_period_days,
         holdWaiting: waiting.has(loan.book_id),
+        // Under the Member's lock, like the Loan: a return fixing a Fine, or a settle, is wholly before or after.
+        notInGoodStanding: await goodStandingRefusal(tx, member.userId, now),
       },
       now,
     );
@@ -84,6 +88,7 @@ export async function renewLoan(deps: AppDeps, member: Identity, loanId: string)
       },
       tx,
     );
-    return toLoan(renewed, policy, false, now);
+    // Renewed: no Hold was waiting and the Member is in Good standing.
+    return toLoan(renewed, policy, { holdWaiting: false, notInGoodStanding: null }, now);
   });
 }

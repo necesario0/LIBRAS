@@ -1,10 +1,11 @@
 import { isLoanOverdue } from "@libras/shared";
-import type { Loan, MyLoansResponse } from "@libras/shared";
+import type { GoodStandingRefusal, Loan, MyLoansResponse } from "@libras/shared";
 import type { AppDeps } from "../app.ts";
 import type { Identity } from "../auth/auth-provider.ts";
 import { withIdentity } from "../auth/identity.ts";
 import { FINE_COLUMNS, fineAt, storedFine } from "../fines/index.ts";
 import type { FineColumns, FinePolicy } from "../fines/index.ts";
+import { goodStandingRefusal } from "../standing/index.ts";
 import { booksWithWaitingHolds, renewalOf } from "./renewability.ts";
 
 /** One Loan as a Member reads it: `LOAN_SELECT` gives these columns. */
@@ -40,10 +41,16 @@ export interface RenewalPolicy extends FinePolicy {
 /**
  * A Loan as the Member reads it. Overdue, whether it can be renewed and the
  * Fine so far are worked out at `now`, by the API's clock; `holdWaiting` says
- * whether another Member's Hold on the Book is waiting. A returned Loan has the
- * Fine fixed at its return, whatever the policy says now.
+ * whether another Member's Hold on the Book is waiting, and `notInGoodStanding`
+ * why the Member is not in Good standing (null when they are). A returned Loan
+ * has the Fine fixed at its return, whatever the policy says now.
  */
-export function toLoan(row: LoanRow, policy: RenewalPolicy, holdWaiting: boolean, now: Date): Loan {
+export function toLoan(
+  row: LoanRow,
+  policy: RenewalPolicy,
+  facts: { holdWaiting: boolean; notInGoodStanding: GoodStandingRefusal | null },
+  now: Date,
+): Loan {
   const current = row.returned_at === null;
   return {
     id: row.id,
@@ -63,7 +70,7 @@ export function toLoan(row: LoanRow, policy: RenewalPolicy, holdWaiting: boolean
             renewalCount: row.renewal_count,
             renewalLimit: policy.renewal_limit,
             loanPeriodDays: policy.loan_period_days,
-            holdWaiting,
+            ...facts,
           },
           now,
         )
@@ -81,13 +88,13 @@ interface PolicyRow extends RenewalPolicy {
  * then past ones, the latest return first. Read as the Member, so row-level
  * security shows nobody else's (their Fines too). Overdue is worked out from
  * the due date by the API's clock, and so are whether each current Loan can be
- * renewed (`renewalOf`) and its Fine so far (`fineAt`): the app shows them and
+ * renewed (`renewalOf`, with the Member's Good standing) and its Fine so far (`fineAt`): the app shows them and
  * holds no rules of its own. With them comes the loan limit of the Member's
  * Loan Policy.
  */
 export async function listLoans(deps: AppDeps, identity: Identity): Promise<MyLoansResponse> {
   const now = deps.clock.now();
-  const { rows, policy } = await withIdentity(deps.db, identity, async (scope) => {
+  const { rows, policy, notInGoodStanding } = await withIdentity(deps.db, identity, async (scope) => {
     const result = await scope.query<LoanRow>(
       `${LOAN_SELECT}
         where l.member_id = $1
@@ -106,7 +113,8 @@ export async function listLoans(deps: AppDeps, identity: Identity): Promise<MyLo
     );
     // A signed-in Member always has a profile, and every Account Type has a policy.
     if (!policy.rows[0]) throw new Error(`No Member or Loan Policy for ${identity.userId}`);
-    return { rows: result.rows, policy: policy.rows[0] };
+    // As the Member: row-level security shows their own Loans and Fines, which is all Good standing reads.
+    return { rows: result.rows, policy: policy.rows[0], notInGoodStanding: await goodStandingRefusal(scope, identity.userId, now) };
   });
   const waiting = await booksWithWaitingHolds(
     deps.db,
@@ -114,7 +122,7 @@ export async function listLoans(deps: AppDeps, identity: Identity): Promise<MyLo
     rows.filter((row) => row.returned_at === null).map((row) => row.book_id),
   );
   return {
-    loans: rows.map((row) => toLoan(row, policy, waiting.has(row.book_id), now)),
+    loans: rows.map((row) => toLoan(row, policy, { holdWaiting: waiting.has(row.book_id), notInGoodStanding }, now)),
     loanLimit: policy.loan_limit,
     loanPeriodDays: policy.loan_period_days,
   };

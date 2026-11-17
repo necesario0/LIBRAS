@@ -3,6 +3,8 @@ import { deskSessionTokenSchema } from "./desk.ts";
 import type { DeskMember } from "./desk.ts";
 import type { LoanFine } from "./fines.ts";
 import { SCAN_INPUT_PATTERN } from "./scan.ts";
+import { GOOD_STANDING_REFUSALS } from "./standing.ts";
+import type { GoodStandingRefusal } from "./standing.ts";
 
 /**
  * Loans: a Loan links one Member to one Copy, with a checkout time, a due date
@@ -93,10 +95,14 @@ export interface Loan {
 
 /**
  * Why the API refuses a Renewal, in the order it checks them: the Loan is past
- * its due date, it has used the renewal limit of the Member's Loan Policy, or
- * another Member's Hold on the Book is waiting (a ready Hold does not block).
+ * its due date, it has used the renewal limit of the Member's Loan Policy,
+ * another Member's Hold on the Book is waiting (a ready Hold does not block),
+ * or the Member is not in Good standing, named by its reason
+ * (`GOOD_STANDING_REFUSALS`): another of their Loans is overdue
+ * (`overdue_loan`; when it is this Loan, `loan_overdue` comes first) or they
+ * have an unsettled Fine.
  */
-export const RENEWAL_REFUSALS = ["loan_overdue", "renewal_limit_reached", "hold_waiting"] as const;
+export const RENEWAL_REFUSALS = ["loan_overdue", "renewal_limit_reached", "hold_waiting", ...GOOD_STANDING_REFUSALS] as const;
 export type RenewalRefusal = (typeof RENEWAL_REFUSALS)[number];
 
 /**
@@ -112,6 +118,8 @@ export const RENEWAL_REASONS: Readonly<Record<RenewalRefusal, string>> = {
   loan_overdue: "Overdue Loans cannot be renewed. Please return it to the library desk.",
   renewal_limit_reached: "Already renewed. It cannot be renewed again.",
   hold_waiting: "Another Member is waiting for this Book, so it cannot be renewed.",
+  overdue_loan: "You have another Loan that is overdue. Renewals can be made again once it is returned and its Fine is settled.",
+  unsettled_fine: "You have an unsettled Fine. Renewals can be made again once it is settled at the library desk.",
 };
 
 /** The words the API returns and the app shows when a Renewal is refused. */
@@ -124,6 +132,9 @@ export const RENEWAL_MESSAGES = {
     loan_overdue: "Your Loan was not renewed: it is now past its due date. Please return the Copy to the library desk.",
     renewal_limit_reached: "Your Loan was not renewed: it has already been renewed, and it cannot be renewed again.",
     hold_waiting: "Your Loan was not renewed: another Member is now waiting for this Book. Please return the Copy by its due date.",
+    overdue_loan:
+      "Your Loan was not renewed: another of your Loans is now overdue. Return it to the library desk, and renew once its Fine is settled.",
+    unsettled_fine: "Your Loan was not renewed: you have an unsettled Fine. Settle it at the library desk, then renew.",
   } satisfies Record<RenewalRefusal, string>,
 } as const;
 
@@ -193,6 +204,12 @@ export const LOAN_MESSAGES = {
     "This Copy is already on Loan, so no Loan was recorded. If it has come back, choose Done with this Member and scan it again to record its return.",
   copySetAside: "This Copy is set aside for another Member's Hold, so no Loan was recorded. Put it back on the hold shelf.",
   changed: "This Copy's Hold changed while the Loan was being recorded, so no Loan was recorded. Scan the Copy again.",
+  /** The Member is not in Good standing (ADR 0010). The refusal's code is the reason. */
+  notInGoodStanding: {
+    overdue_loan:
+      "This Member has an overdue Loan, so no Loan was recorded. They can borrow again once it is returned and its Fine is settled.",
+    unsettled_fine: "This Member has an unsettled Fine, so no Loan was recorded. Settle it in the Member panel, then scan the Copy again.",
+  } satisfies Record<GoodStandingRefusal, string>,
 } as const;
 
 /** The body of `POST /desk/returns`: the Copy's barcode or accession number, as scanned or typed. */

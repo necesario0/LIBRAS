@@ -93,6 +93,34 @@ export function loansHarness() {
     return { id, title, copies };
   };
 
+  /**
+   * A Member borrows a new Copy for each entry on 12 Nov at 10:00 in Manila, in one visit to the desk (due the end
+   * of 19 Nov), and the Librarian records their returns, each that many days after the due date at 15:00 Manila time:
+   * late returns with a Fine each, in the order given. All are lent first: a Member with an unsettled Fine is not in
+   * Good standing and cannot borrow.
+   */
+  const lateReturns = async (librarian: TestLibrarian, member: TestMember, daysLate: readonly number[]): Promise<ReturnedLoan[]> => {
+    api().clock.set("2026-11-12T02:00:00.000Z");
+    const deskSession = await deskSessionFor(member, librarian);
+    const lent: { copy: TestCopy; loanId: string }[] = [];
+    for (let index = 0; index < daysLate.length; index += 1) {
+      const copy = (await addBook("Settle Me")).copies[0] as TestCopy;
+      const response = await lendWith(librarian, deskSession, copy.barcode);
+      assert.equal(response.status, 201, await response.clone().text());
+      lent.push({ copy, loanId: ((await response.json()) as ConfirmLoanResponse).loan.id });
+    }
+    const returned: ReturnedLoan[] = [];
+    for (const [index, { copy, loanId }] of lent.entries()) {
+      at(`2026-11-${19 + (daysLate[index] as number)} 15:00`);
+      const response = await send("POST", "/desk/returns", librarian.accessToken, { copy: copy.barcode });
+      assert.equal(response.status, 200, await response.clone().text());
+      const loan = ((await response.json()) as RecordReturnResponse).loan;
+      assert.equal(loan.id, loanId);
+      returned.push(loan);
+    }
+    return returned;
+  };
+
   return {
     api,
     addBook,
@@ -113,19 +141,9 @@ export function loansHarness() {
      * A Member borrows a new Copy on 12 Nov at 10:00 in Manila (due the end of 19 Nov), and the Librarian records
      * its return `daysLate` days after the due date, at 15:00 Manila time: a late return with a Fine.
      */
-    lateReturn: async (librarian: TestLibrarian, member: TestMember, daysLate = 2): Promise<ReturnedLoan> => {
-      const copy = (await addBook("Settle Me")).copies[0] as TestCopy;
-      api().clock.set("2026-11-12T02:00:00.000Z");
-      const lent = await lendWith(librarian, await deskSessionFor(member, librarian), copy.barcode);
-      assert.equal(lent.status, 201);
-      const { loan } = (await lent.json()) as ConfirmLoanResponse;
-      at(`2026-11-${19 + daysLate} 15:00`);
-      const response = await send("POST", "/desk/returns", librarian.accessToken, { copy: copy.barcode });
-      assert.equal(response.status, 200, await response.clone().text());
-      const returned = ((await response.json()) as RecordReturnResponse).loan;
-      assert.equal(returned.id, loan.id);
-      return returned;
-    },
+    lateReturn: async (librarian: TestLibrarian, member: TestMember, daysLate = 2): Promise<ReturnedLoan> =>
+      (await lateReturns(librarian, member, [daysLate]))[0] as ReturnedLoan,
+    lateReturns,
     start: async (options: Parameters<typeof startTestApi>[0] = {}) => {
       state.api = await startTestApi(options);
     },

@@ -1,5 +1,5 @@
 import { isLoanOverdue } from "@libras/shared";
-import type { LoanRenewal } from "@libras/shared";
+import type { GoodStandingRefusal, LoanRenewal } from "@libras/shared";
 import type { Database, Tx } from "../db.ts";
 
 const DAY_MS = 24 * 3_600_000;
@@ -24,6 +24,8 @@ export interface RenewalFacts {
   loanPeriodDays: number | null;
   /** Another Member's Hold on the Book is waiting. */
   holdWaiting: boolean;
+  /** Why the Member is not in Good standing (`goodStandingRefusal`), or null when they are. */
+  notInGoodStanding: GoodStandingRefusal | null;
 }
 
 /**
@@ -39,6 +41,7 @@ export function renewalOf(facts: RenewalFacts, now: Date): LoanRenewal {
     return { renewable: false, reason: "renewal_limit_reached" };
   }
   if (facts.holdWaiting) return { renewable: false, reason: "hold_waiting" };
+  if (facts.notInGoodStanding !== null) return { renewable: false, reason: facts.notInGoodStanding };
   return {
     renewable: true,
     dueAt: renewedDueAt(facts.dueAt, facts.loanPeriodDays).toISOString(),

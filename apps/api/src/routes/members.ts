@@ -18,7 +18,7 @@ import { AppError } from "../errors.ts";
 import { changeMemberPassword, verifyCurrentPassword } from "../members/change-password.ts";
 import { signInMember } from "../members/sign-in.ts";
 import { resendSignUpCode, startSignUp, verifySignUp } from "../members/sign-up.ts";
-import { clearanceOf, readStanding } from "../standing/index.ts";
+import { clearanceOf, goodStandingOf, readStanding } from "../standing/index.ts";
 import { parseBody, passwordRuleRefusal } from "../validation.ts";
 
 const KNOWN_MESSAGES: ReadonlySet<string> = new Set(Object.values(SIGN_UP_MESSAGES));
@@ -78,7 +78,7 @@ export function membersRouter(deps: AppDeps, limiter: AttemptLimiter): Router {
   router.get("/members/me/clearance", ...requireMember(deps), async (_req, res) => {
     const identity = identityOf(res);
     const standing = await withIdentity(deps.db, identity, (scope) => readStanding(scope, identity.userId, deps.clock.now()));
-    const body: ClearanceResponse = { clearance: clearanceOf(standing) };
+    const body: ClearanceResponse = { clearance: clearanceOf(standing), goodStanding: goodStandingOf(standing) };
     res.json(body);
   });
 

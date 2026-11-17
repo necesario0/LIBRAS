@@ -50,9 +50,14 @@ export function totalOwedCentavos({ unsettledFines }: Pick<Clearance, "unsettled
   return unsettledFines.reduce((total, fine) => total + fine.amountCentavos, 0);
 }
 
-/** The body of `GET /members/me/clearance`. */
+/**
+ * The body of `GET /members/me/clearance`: what the Profile account screen
+ * shows about the Member's standing. Both come from the same Loans and Fines.
+ */
 export interface ClearanceResponse {
   clearance: Clearance;
+  /** Whether the Member may borrow, place a Hold and renew, and if not, every reason. */
+  goodStanding: GoodStanding;
 }
 
 /**
@@ -65,3 +70,27 @@ export type GoodStandingRefusal = (typeof GOOD_STANDING_REFUSALS)[number];
 
 /** Whether a Member is in Good standing; when not, every reason, in the order of `GOOD_STANDING_REFUSALS`. */
 export type GoodStanding = { inGoodStanding: true } | { inGoodStanding: false; reasons: GoodStandingRefusal[] };
+
+/** What stands in the way, as the app names it in a sentence. */
+const GOOD_STANDING_NAMES: Readonly<Record<GoodStandingRefusal, string>> = {
+  overdue_loan: "an overdue Loan",
+  unsettled_fine: "an unsettled Fine",
+};
+
+/**
+ * What the Profile account screen tells a Member who is not in Good standing:
+ * what they cannot do, every reason (`reasons` as the API gives them), and
+ * what to do at the library desk.
+ */
+export function goodStandingNotice(reasons: readonly GoodStandingRefusal[]): string {
+  const overdue = reasons.includes("overdue_loan");
+  const owing = reasons.includes("unsettled_fine");
+  const names = reasons.map((reason) => GOOD_STANDING_NAMES[reason]).join(" and ");
+  const todo =
+    overdue && owing
+      ? "Return the overdue Loan and settle what you owe at the library desk."
+      : overdue
+        ? "Return it to the library desk and settle its Fine there."
+        : "Settle it at the library desk.";
+  return `You cannot borrow, place a Hold or renew a Loan while you have ${names}. ${todo}`;
+}

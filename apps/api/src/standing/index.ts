@@ -1,6 +1,7 @@
 import { GOOD_STANDING_REFUSALS, isLoanOverdue } from "@libras/shared";
 import type { Clearance, ClearanceLoan, GoodStanding, GoodStandingRefusal, UnsettledFine } from "@libras/shared";
 import type { IdentityScope } from "../auth/identity.ts";
+import { AppError } from "../errors.ts";
 
 /**
  * Clearance and Good standing (ADR 0010). This file is the one place that says
@@ -99,4 +100,32 @@ export function goodStandingOf(standing: Standing): GoodStanding {
   };
   const reasons = GOOD_STANDING_REFUSALS.filter((reason) => present[reason]);
   return reasons.length === 0 ? { inGoodStanding: true } : { inGoodStanding: false, reasons };
+}
+
+/**
+ * Why the Member is not in Good standing at `now`, or null when they are. With
+ * both an overdue Loan and an unsettled Fine, the overdue Loan is named: it
+ * comes first in `GOOD_STANDING_REFUSALS`, and returning it is the first thing
+ * to do. A writer calls this inside its transaction, after `lockMember`.
+ */
+export async function goodStandingRefusal(scope: IdentityScope, memberId: string, now: Date): Promise<GoodStandingRefusal | null> {
+  const standing = goodStandingOf(await readStanding(scope, memberId, now));
+  return standing.inGoodStanding ? null : (standing.reasons[0] ?? null);
+}
+
+/**
+ * Refuses an action of a Member who is not in Good standing: `409`, with the
+ * reason as the code and the action's own words for it. Confirming a Loan and
+ * placing a Hold call it inside their transaction, after `lockMember`: a return
+ * fixes a Fine, and a settle changes one, with that same lock held, so the
+ * answer is never older than the action it guards.
+ */
+export async function requireGoodStanding(
+  scope: IdentityScope,
+  memberId: string,
+  now: Date,
+  messages: Readonly<Record<GoodStandingRefusal, string>>,
+): Promise<void> {
+  const reason = await goodStandingRefusal(scope, memberId, now);
+  if (reason !== null) throw new AppError(409, reason, messages[reason]);
 }

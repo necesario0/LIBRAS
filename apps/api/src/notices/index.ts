@@ -4,6 +4,7 @@ import { withTransaction } from "../db.ts";
 import { fineAt } from "../fines/index.ts";
 import type { FinePolicy } from "../fines/index.ts";
 import { booksWithWaitingHolds, renewalOf } from "../loans/renewability.ts";
+import { goodStandingRefusal } from "../standing/index.ts";
 import { loanNoticeEmail } from "./email.ts";
 import type { NoticeLoan } from "./email.ts";
 import { libraryDate, libraryDayOf, noticeDue, noticeWindow } from "./schedule.ts";
@@ -121,6 +122,8 @@ async function notifyMember(deps: AppDeps, memberId: string): Promise<boolean> {
       memberId,
       due.filter((loan) => loan.slot.kind === "due_tomorrow").map((loan) => loan.book_id),
     );
+    // What My Loans would say at this moment. Read without the Member's lock: a notice changes nothing.
+    const notInGoodStanding = await goodStandingRefusal(tx, memberId, now);
     const loans: NoticeLoan[] = due.map((loan) => ({
       slot: loan.slot,
       title: loan.title,
@@ -135,6 +138,7 @@ async function notifyMember(deps: AppDeps, memberId: string): Promise<boolean> {
                 renewalLimit: row.renewal_limit,
                 loanPeriodDays: row.loan_period_days,
                 holdWaiting: waiting.has(loan.book_id),
+                notInGoodStanding,
               },
               now,
             )

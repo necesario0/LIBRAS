@@ -134,8 +134,11 @@ describe("Loan notices", () => {
     assert.equal(ninas.length, 1);
     assert.equal(ninas[0]?.subject, "You have overdue LIBRAS Loans");
     const text = ninas[0]?.text ?? "";
-    // Overdue Loans first, then the one due tomorrow, with whether it can be renewed.
-    assert.match(text, /"First Of Three" [^\n]* is overdue[\s\S]*"Second Of Three" [^\n]* is overdue[\s\S]*"Due A Day Later" [^\n]* is due tomorrow, Nov 20, 2026\.\nYou can renew it/);
+    // Overdue Loans first, then the one due tomorrow, with whether it can be renewed: not while the others are overdue.
+    assert.match(
+      text,
+      /"First Of Three" [^\n]* is overdue[\s\S]*"Second Of Three" [^\n]* is overdue[\s\S]*"Due A Day Later" [^\n]* is due tomorrow, Nov 20, 2026\.\nIt cannot be renewed: You have another Loan that is overdue\./,
+    );
     assert.equal(omars.length, 1);
     assert.equal(omars[0]?.subject, "Your LIBRAS Loan is due tomorrow");
     assert.doesNotMatch(omars[0]?.text ?? "", /Of Three/);
@@ -162,6 +165,23 @@ describe("Loan notices", () => {
     assert.match(
       email?.text ?? "",
       /is due tomorrow, Nov 19, 2026\.\nIt cannot be renewed: Another Member is waiting for this Book, so it cannot be renewed\. Please return it to the library desk by then\./,
+    );
+  });
+
+  it("says in the due-tomorrow notice why the Loan cannot be renewed: the Member has an unsettled Fine", async () => {
+    // Lent on 9 Nov, due the end of 16 Nov, returned a day late: a Fine nobody has settled.
+    h.at("2026-11-09 10:00");
+    const { member, books } = await memberWithLoans(["Back A Day Late"]);
+    h.at("2026-11-12 10:00");
+    await memberWithLoans(["Due On Thursday Too"], member);
+    h.at("2026-11-17 10:00");
+    await h.giveBack(((books[0] as TestBook).copies[0] as TestCopy).barcode);
+
+    const [email] = await tickAt("2026-11-18 08:00", member);
+
+    assert.match(
+      email?.text ?? "",
+      /is due tomorrow, Nov 19, 2026\.\nIt cannot be renewed: You have an unsettled Fine\. Renewals can be made again once it is settled at the library desk\. Please return it to the library desk by then\./,
     );
   });
 

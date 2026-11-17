@@ -14,6 +14,7 @@ import { announceDispatch, dispatchCopy } from "../holds/dispatch.ts";
 import type { HoldDispatch } from "../holds/dispatch.ts";
 import { expireHold } from "../holds/expiry.ts";
 import { MEMBER_NAME_SQL } from "../members/profile.ts";
+import { requireGoodStanding } from "../standing/index.ts";
 import { lockMember } from "./policy.ts";
 import type { MemberPolicyRow } from "./policy.ts";
 
@@ -82,9 +83,13 @@ export interface ConfirmedLoan {
  * desk page shows, when the desk session has ended (`desk_session_ended`: scan
  * the Digital ID again), when no Copy
  * has that barcode or accession number, when the Member's Account Type cannot
- * borrow, when the Member is at their loan limit, and when the Copy is already
- * on Loan or set aside for another Member's Hold. A Copy set aside for this
- * Member's ready Hold goes out to them, and the Hold becomes fulfilled.
+ * borrow, when the Member is not in Good standing (`overdue_loan` or
+ * `unsettled_fine`, ADR 0010), when the Member is at their loan limit, and when
+ * the Copy is already on Loan or set aside for another Member's Hold. A Copy set
+ * aside for this Member's ready Hold goes out to them, and the Hold becomes
+ * fulfilled, but only in Good standing: a Member with an unsettled Fine is
+ * refused it until a Librarian settles the Fine, in the same desk session if
+ * need be, and the Hold stays ready meanwhile.
  *
  * One transaction locks the Member, then the Copy, checks both, writes the
  * Loan, marks the Copy `on_loan` (so the live count of available Copies falls)
@@ -124,6 +129,8 @@ async function confirmOnce(deps: AppDeps, librarian: Identity, memberId: string,
       if (member.loan_limit === 0 || member.loan_period_days === null) {
         throw new AppError(403, "cannot_borrow", LOAN_MESSAGES.cannotBorrow);
       }
+      // Under the Member's lock: a return fixing a Fine, or a settle, is wholly before or after this.
+      await requireGoodStanding(tx, member.user_id, checkedOutAt, LOAN_MESSAGES.notInGoodStanding);
       const open = await tx.query<{ count: number }>(
         "select count(*)::int as count from public.loans where member_id = $1 and returned_at is null",
         [member.user_id],
