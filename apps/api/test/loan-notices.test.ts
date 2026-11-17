@@ -19,9 +19,9 @@ function noticeHarness() {
 
   /** A new Member with one Copy of each title out, all lent in one visit to the desk at the clock's time. */
   const memberWithLoans = async (titles: string[], member?: TestMember) => {
-    const borrower = member ?? (await createTestMember(h.api(), { firstName: "Nina", lastName: "Notice" }));
+    const loanMember = member ?? (await createTestMember(h.api(), { firstName: "Nina", lastName: "Notice" }));
     const books: TestBook[] = [];
-    const deskSession = await h.deskSessionFor(borrower, h.lita());
+    const deskSession = await h.deskSessionFor(loanMember, h.lita());
     for (const title of titles) {
       const book = await h.addBook(title, Array<CopyStatus>(1).fill("available"));
       const response = await h.lendWith(h.lita(), deskSession, (book.copies[0] as TestCopy).barcode);
@@ -29,7 +29,7 @@ function noticeHarness() {
       books.push(book);
     }
     await h.endDeskSession(h.lita(), deskSession);
-    return { member: borrower, books, loans: await h.loansOf(borrower) };
+    return { member: loanMember, books, loans: await h.loansOf(loanMember) };
   };
 
   /** Sets the clock to this library time ("2026-11-18 08:00"). */
