@@ -1,12 +1,15 @@
 # A Member opens the Profile screen from the Home header and sees the name,
 # email and Account Type the API holds for them. The "My account" row opens My
 # Account, which shows the same three as read-only fields. Sign out is on Profile
-# and Home has none. Needs the end-to-end API on port 3000 (npm run e2e starts it).
+# and Home has none. Profile also shows the Member's Clearance: cleared with no
+# Loan out and no Fine; not cleared with a Loan out and on time; with an overdue
+# Loan that comes back late, the Fine stands in the way after the Loan is back.
+# Needs the end-to-end API on port 3000 (npm run e2e starts it).
 appId: ph.edu.umak.libras
 ---
 - launchApp:
     clearState: true
-- runScript: scripts/create-members.js
+- runScript: scripts/create-loans.js
 
 - extendedWaitUntil:
     visible: "SIGN  UP"
@@ -40,7 +43,85 @@ appId: ph.edu.umak.libras
 - assertVisible: "COBBY BALDONADO"
 - assertVisible: ${output.email}
 - assertVisible: "UMAK Student"
+
+# Clearance: nothing out and nothing owed.
+- extendedWaitUntil:
+    visible:
+      id: profile-clearance-status
+    timeout: 10000
+- assertVisible:
+    id: profile-clearance-status
+    text: "Cleared"
+- assertVisible: "You have no Loans out and no unsettled Fines."
 - takeScreenshot: profile
+
+# A Loan that is out and on time (the Librarian confirms it while My account is
+# open): Profile asks again on coming back, and the Member is not cleared.
+- tapOn:
+    id: profile-my-account
+- extendedWaitUntil:
+    visible:
+      id: my-account-name
+    timeout: 10000
+- runScript: scripts/confirm-loan.js
+- tapOn:
+    id: my-account-back
+- extendedWaitUntil:
+    visible:
+      id: profile-clearance-loans
+    timeout: 10000
+- assertVisible:
+    id: profile-clearance-status
+    text: "Not cleared"
+- assertVisible: "Loan still out"
+- assertVisible: ${output.borrowTitle}
+- assertNotVisible: "Overdue"
+- takeScreenshot: profile-clearance-loan-out
+
+# A second Loan goes overdue and comes back three days late: its Fine of PHP 15
+# is unsettled, and the on-time Loan is still out.
+- tapOn:
+    id: profile-my-account
+- extendedWaitUntil:
+    visible:
+      id: my-account-name
+    timeout: 10000
+- runScript: scripts/overdue-loan.js
+- runScript: scripts/return-late-loan.js
+- tapOn:
+    id: my-account-back
+- extendedWaitUntil:
+    visible:
+      id: profile-clearance-fines
+    timeout: 10000
+- assertVisible: "Unsettled Fine"
+- assertVisible: ${output.lateTitle}
+- assertVisible: "PHP 15"
+- assertVisible: ".*3 days late, returned.*"
+- assertVisible: ${output.borrowTitle}
+- takeScreenshot: profile-clearance-fine
+
+# The on-time Loan comes back: only the Fine is left in the way.
+- tapOn:
+    id: profile-my-account
+- extendedWaitUntil:
+    visible:
+      id: my-account-name
+    timeout: 10000
+- runScript: scripts/return-borrowed-loan.js
+- tapOn:
+    id: my-account-back
+- extendedWaitUntil:
+    visible:
+      id: profile-clearance-fines
+    timeout: 10000
+- assertVisible:
+    id: profile-clearance-status
+    text: "Not cleared"
+- assertNotVisible:
+    id: profile-clearance-loans
+- assertVisible: "PHP 15"
+- takeScreenshot: profile-clearance-fine-only
 
 # My account opens the read-only account fields, and Back returns to Profile.
 - tapOn:

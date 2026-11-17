@@ -5,6 +5,7 @@ import type {
   CatalogSearchResponse,
   ChangePasswordRequest,
   CheckPasswordResetCodeRequest,
+  ClearanceResponse,
   CompletePasswordResetRequest,
   DigitalIdResponse,
   HealthResponse,
@@ -128,6 +129,8 @@ export function createApiClient({ baseUrl, fetch: fetchImpl = fetch, timeoutMs =
      */
     renewLoan: (accessToken: string, loanId: string) =>
       request<RenewLoanResponse>(`/loans/${encodeURIComponent(loanId)}/renew`, { method: "POST", headers: bearer(accessToken) }),
+    /** Whether the Member is cleared, with the Loans still out and the unsettled Fines that stand in the way. */
+    getClearance: (accessToken: string) => request<ClearanceResponse>("/members/me/clearance", { headers: bearer(accessToken) }),
     /** Starts a sign-up: the API emails a verification code. */
     signUp: (body: SignUpRequest) => post<SignUpCodeSentResponse>("/members/sign-up", body),
     /** Accepts the emailed code: the account is active from here on. */

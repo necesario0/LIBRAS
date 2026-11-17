@@ -5,6 +5,8 @@ import { ACCOUNT_TYPE_LABELS, memberFullName } from "@libras/shared";
 import { BackButton } from "../../src/account/BackButton";
 import { MenuRow } from "../../src/account/MenuRow";
 import { useAuth, useMember } from "../../src/auth/AuthContext";
+import { ClearancePanel } from "../../src/clearance/ClearancePanel";
+import { useClearance } from "../../src/clearance/useClearance";
 import { Avatar } from "../../src/components/Avatar";
 import { PersonIcon } from "../../src/components/icons";
 import { useGoBack } from "../../src/hooks/useGoBack";
@@ -20,10 +22,11 @@ const AVATAR = 84;
  * then the menu, which has one row, "My account" (opens `my-account.tsx`), and
  * Sign out, which is only here.
  *
- * Not built, so left out of the menu: Saved books, Borrowing history, Fines and
- * Help, the barcode panel (the Digital ID has its own screen) and the menu
- * button beside the back button. The Clearance status (ticket #38) goes in the
- * menu where the design has its Fines row.
+ * Not built, so left out of the menu: Saved books, Borrowing history and Help,
+ * the barcode panel (the Digital ID has its own screen) and the menu button
+ * beside the back button. Where the design has its Fines row the menu shows the
+ * Clearance panel (`ClearancePanel`): whether the Member is cleared, the Loans
+ * still out and the unsettled Fines.
  *
  * The design's button says "Log out" and its rows are 30 pt from the left edge
  * and 26 from the right; this screen says "Sign out", as the rest of the app
@@ -32,7 +35,8 @@ const AVATAR = 84;
 export default function ProfileScreen() {
   const router = useRouter();
   const member = useMember();
-  const { signOut } = useAuth();
+  const { request, signOut } = useAuth();
+  const { state: clearance, reload: reloadClearance } = useClearance(request);
   const insets = useSafeAreaInsets();
   const screenTop = useScreenTop();
   const back = useGoBack();
@@ -66,6 +70,7 @@ export default function ProfileScreen() {
 
         <View style={styles.menu}>
           <MenuRow icon={<PersonIcon />} label="My account" onPress={() => router.push("/my-account")} testID="profile-my-account" />
+          <ClearancePanel state={clearance} onRetry={() => void reloadClearance()} />
         </View>
 
         <Pressable accessibilityRole="button" onPress={() => void signOut()} style={styles.signOut} testID="profile-sign-out">
@@ -86,7 +91,7 @@ const styles = StyleSheet.create({
   name: { fontFamily: fontFamily.regular, fontSize: fontSize.large, letterSpacing: -1.44, lineHeight: 30, color: colors.black },
   facts: { gap: spacing.sm },
   fact: { fontFamily: fontFamily.regular, fontSize: fontSize.small, letterSpacing: -0.78, lineHeight: 16, color: colors.textMuted },
-  menu: { marginHorizontal: spacing.screen, marginTop: spacing.sm },
+  menu: { marginHorizontal: spacing.screen, marginTop: spacing.sm, gap: spacing.lg },
   signOut: {
     marginHorizontal: spacing.screen,
     padding: spacing.inset,

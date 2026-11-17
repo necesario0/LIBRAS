@@ -1,0 +1,155 @@
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { formatLibraryDate, formatPesos } from "@libras/shared";
+import type { Clearance, ClearanceLoan, UnsettledFine } from "@libras/shared";
+import { DollarSignIcon } from "../components/icons";
+import { colors, fontFamily, fontSize, menuRowShadow, radii, spacing } from "../theme/tokens";
+import type { ClearanceState } from "./useClearance";
+
+interface ClearancePanelProps {
+  state: ClearanceState;
+  onRetry: () => void;
+}
+
+const days = (count: number) => `${count} ${count === 1 ? "day" : "days"}`;
+
+function LoanLine({ loan }: { loan: ClearanceLoan }) {
+  return (
+    <View style={styles.line} testID={`profile-clearance-loan-${loan.loanId}`}>
+      <View style={styles.lineText}>
+        <Text style={styles.lineTitle} numberOfLines={2}>
+          {loan.bookTitle}
+        </Text>
+        <Text style={[styles.lineNote, loan.overdue && styles.overdue]}>
+          {`Copy ${loan.accessionNumber} - ${loan.overdue ? "overdue, was due" : "due"} ${formatLibraryDate(loan.dueAt)}`}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+function FineLine({ fine }: { fine: UnsettledFine }) {
+  return (
+    <View style={styles.line} testID={`profile-clearance-fine-${fine.loanId}`}>
+      <View style={styles.lineText}>
+        <Text style={styles.lineTitle} numberOfLines={2}>
+          {fine.bookTitle}
+        </Text>
+        <Text style={styles.lineNote}>{`Copy ${fine.accessionNumber} - ${days(fine.daysLate)} late, returned ${formatLibraryDate(fine.returnedAt)}`}</Text>
+      </View>
+      <Text style={styles.amount}>{formatPesos(fine.amountCentavos)}</Text>
+    </View>
+  );
+}
+
+function Blockers({ clearance }: { clearance: Clearance }) {
+  return (
+    <View style={styles.details}>
+      <Text style={styles.note}>To be cleared, return your Loans and settle your Fines at the library desk.</Text>
+      {clearance.loansOut.length > 0 ? (
+        <View style={styles.group} testID="profile-clearance-loans">
+          <Text style={styles.groupTitle}>{clearance.loansOut.length === 1 ? "Loan still out" : "Loans still out"}</Text>
+          {clearance.loansOut.map((loan) => (
+            <LoanLine key={loan.loanId} loan={loan} />
+          ))}
+        </View>
+      ) : null}
+      {clearance.unsettledFines.length > 0 ? (
+        <View style={styles.group} testID="profile-clearance-fines">
+          <Text style={styles.groupTitle}>{clearance.unsettledFines.length === 1 ? "Unsettled Fine" : "Unsettled Fines"}</Text>
+          {clearance.unsettledFines.map((fine) => (
+            <FineLine key={fine.loanId} fine={fine} />
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+/**
+ * Clearance on Profile: whether the Member is cleared, and when not, the Loans
+ * still out and the unsettled Fines in the way. It sits where the Figma
+ * Profile frame has its "Fines" row (node 921:14028): the same white pill with
+ * the dollar sign and a 16 pt label, with the status where the design has the
+ * chevron, and the details below inside the same card. The API works Clearance
+ * out; this only shows it.
+ */
+export function ClearancePanel({ state, onRetry }: ClearancePanelProps) {
+  const clearance = state.status === "loaded" ? state.clearance : undefined;
+  const pill =
+    clearance === undefined
+      ? undefined
+      : clearance.cleared
+        ? { label: "Cleared", surface: colors.availableSurface, text: colors.availableText }
+        : { label: "Not cleared", surface: colors.dangerSurface, text: colors.danger };
+
+  return (
+    <View style={styles.card} testID="profile-clearance">
+      <View style={styles.header}>
+        <View style={styles.title}>
+          <DollarSignIcon />
+          <Text style={styles.label}>Clearance</Text>
+        </View>
+        {pill === undefined ? null : (
+          <View style={[styles.pill, { backgroundColor: pill.surface }]}>
+            <Text style={[styles.pillText, { color: pill.text }]} testID="profile-clearance-status">
+              {pill.label}
+            </Text>
+          </View>
+        )}
+      </View>
+
+      {state.status === "loading" ? <ActivityIndicator color={colors.primary} style={styles.spinner} testID="profile-clearance-loading" /> : null}
+
+      {state.status === "error" ? (
+        <View style={styles.details} testID="profile-clearance-error">
+          <Text style={styles.note} accessibilityRole="alert">
+            {state.message}
+          </Text>
+          <Pressable accessibilityRole="button" onPress={onRetry} style={styles.retry} testID="profile-clearance-retry">
+            <Text style={styles.retryLabel}>Try again</Text>
+          </Pressable>
+        </View>
+      ) : null}
+
+      {clearance === undefined ? null : clearance.cleared ? (
+        <View style={styles.details}>
+          <Text style={styles.note} testID="profile-clearance-note">
+            You have no Loans out and no unsettled Fines.
+          </Text>
+        </View>
+      ) : (
+        <Blockers clearance={clearance} />
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  card: { borderRadius: radii.card, backgroundColor: colors.white, boxShadow: menuRowShadow, padding: spacing.inset, gap: spacing.md },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  title: { flexDirection: "row", alignItems: "center" },
+  label: { fontFamily: fontFamily.regular, fontSize: fontSize.body, letterSpacing: -0.96, lineHeight: 16, color: colors.black },
+  pill: { borderRadius: radii.panel, paddingHorizontal: spacing.sm, paddingVertical: 3, marginRight: spacing.xs },
+  pillText: { fontFamily: fontFamily.medium, fontSize: fontSize.caption },
+  spinner: { alignSelf: "center", paddingBottom: spacing.sm },
+  details: { gap: spacing.md, paddingHorizontal: spacing.xs, paddingBottom: spacing.xs },
+  note: { fontFamily: fontFamily.regular, fontSize: fontSize.caption, lineHeight: 18, color: colors.textSecondary },
+  group: { gap: spacing.sm },
+  groupTitle: { fontFamily: fontFamily.semiBold, fontSize: fontSize.caption, letterSpacing: 0.6, textTransform: "uppercase", color: colors.textMuted },
+  line: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  lineText: { flex: 1, gap: 2 },
+  lineTitle: { fontFamily: fontFamily.medium, fontSize: fontSize.label, color: colors.black },
+  lineNote: { fontFamily: fontFamily.regular, fontSize: fontSize.caption, color: colors.textMuted },
+  overdue: { fontFamily: fontFamily.semiBold, color: colors.danger },
+  amount: { fontFamily: fontFamily.semiBold, fontSize: fontSize.label, color: colors.danger },
+  retry: {
+    alignSelf: "flex-start",
+    height: 36,
+    borderRadius: radii.button,
+    paddingHorizontal: spacing.lg,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.surface,
+  },
+  retryLabel: { fontFamily: fontFamily.medium, fontSize: fontSize.caption, color: colors.black },
+});
