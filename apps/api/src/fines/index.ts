@@ -1,5 +1,5 @@
 import { isLoanOverdue, libraryDaysBetween } from "@libras/shared";
-import type { LoanFine } from "@libras/shared";
+import type { FineOutcome, LoanFine } from "@libras/shared";
 import type { AuditEvent } from "../audit/index.ts";
 import type { Tx } from "../db.ts";
 
@@ -35,6 +35,7 @@ export function fineAt(dueAt: Date, policy: FinePolicy, at: Date): LoanFine | nu
     dailyRateCentavos: policy.fine_daily_rate_centavos,
     capCentavos: policy.fine_cap_centavos,
     final: false,
+    settlement: null,
   };
 }
 
@@ -44,13 +45,16 @@ export interface FineColumns {
   fine_daily_rate_centavos: number | null;
   fine_cap_centavos: number | null;
   fine_amount_centavos: number | null;
+  fine_settled_outcome: FineOutcome | null;
+  fine_settled_at: Date | null;
 }
 
 /** The columns of `FineColumns`, from `public.fines` joined as `f`. */
 export const FINE_COLUMNS = `f.days_late as fine_days_late, f.daily_rate_centavos as fine_daily_rate_centavos,
-         f.cap_centavos as fine_cap_centavos, f.amount_centavos as fine_amount_centavos`;
+         f.cap_centavos as fine_cap_centavos, f.amount_centavos as fine_amount_centavos,
+         f.settled_outcome as fine_settled_outcome, f.settled_at as fine_settled_at`;
 
-/** The Fine fixed at a Loan's return, or null when it has none. */
+/** The Fine fixed at a Loan's return, with how it was settled (null while unsettled), or null when it has none. */
 export function storedFine(row: FineColumns): LoanFine | null {
   if (row.fine_amount_centavos === null) return null;
   return {
@@ -59,6 +63,10 @@ export function storedFine(row: FineColumns): LoanFine | null {
     dailyRateCentavos: row.fine_daily_rate_centavos as number,
     capCentavos: row.fine_cap_centavos as number,
     final: true,
+    settlement:
+      row.fine_settled_outcome === null || row.fine_settled_at === null
+        ? null
+        : { outcome: row.fine_settled_outcome, settledAt: row.fine_settled_at.toISOString() },
   };
 }
 
@@ -75,7 +83,7 @@ export interface ReturningLoan {
  * the Member's current Loan Policy is stored and never changes again. Returns
  * the Fine with its audit entry (`fine_fixed`, recorded by the caller with the
  * return's own entries), or null when the Copy came back on time or nothing is
- * owed.
+ * owed. The Librarian is kept on the Fine: only they can settle it on this return.
  */
 export async function fixFine(
   tx: Tx,
@@ -87,9 +95,9 @@ export async function fixFine(
   const owed = fineAt(loan.due_at, policy, returnedAt);
   if (!owed) return null;
   await tx.query(
-    `insert into public.fines (loan_id, member_id, days_late, daily_rate_centavos, cap_centavos, amount_centavos, fixed_at)
-     values ($1, $2, $3, $4, $5, $6, $7)`,
-    [loan.id, loan.member_id, owed.daysLate, owed.dailyRateCentavos, owed.capCentavos, owed.amountCentavos, returnedAt],
+    `insert into public.fines (loan_id, member_id, days_late, daily_rate_centavos, cap_centavos, amount_centavos, fixed_at, fixed_by)
+     values ($1, $2, $3, $4, $5, $6, $7, $8)`,
+    [loan.id, loan.member_id, owed.daysLate, owed.dailyRateCentavos, owed.capCentavos, owed.amountCentavos, returnedAt, librarianId],
   );
   return {
     fine: { ...owed, final: true },

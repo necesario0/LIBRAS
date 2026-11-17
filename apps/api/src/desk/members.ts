@@ -1,5 +1,5 @@
 import { memberFullName } from "@libras/shared";
-import type { AccountType, DeskMember } from "@libras/shared";
+import type { AccountType, DeskFine, DeskMember } from "@libras/shared";
 import type { Identity } from "../auth/auth-provider.ts";
 import { withIdentity } from "../auth/identity.ts";
 import type { IdentityScope as Scope } from "../auth/identity.ts";
@@ -24,9 +24,41 @@ async function currentLoanCount(scope: Scope, memberId: string): Promise<number>
   return rows[0]?.count ?? 0;
 }
 
+interface DeskFineRow {
+  loan_id: string;
+  title: string;
+  accession_number: string;
+  amount_centavos: number;
+  days_late: number;
+  fixed_at: Date;
+}
+
+/** The Member's Fines that no Librarian has settled, the earliest return first, as the Member panel lists them. */
+async function unsettledFines(scope: Scope, memberId: string): Promise<DeskFine[]> {
+  const { rows } = await scope.query<DeskFineRow>(
+    `select f.loan_id, b.title, c.accession_number, f.amount_centavos, f.days_late, f.fixed_at
+       from public.fines f
+       join public.loans l on l.id = f.loan_id
+       join public.copies c on c.id = l.copy_id
+       join public.books b on b.id = c.book_id
+      where f.member_id = $1 and f.settled_at is null
+      order by f.fixed_at, f.loan_id`,
+    [memberId],
+  );
+  return rows.map((row) => ({
+    loanId: row.loan_id,
+    bookTitle: row.title,
+    accessionNumber: row.accession_number,
+    amountCentavos: row.amount_centavos,
+    daysLate: row.days_late,
+    returnedAt: row.fixed_at.toISOString(),
+  }));
+}
+
 /**
- * What the desk shows about a Member: name, Account Type and Loans against the
- * Loan Policy limit. Read as the Librarian, so row-level security applies.
+ * What the desk shows about a Member: name, Account Type, Loans against the
+ * Loan Policy limit and unsettled Fines. Read as the Librarian, so row-level
+ * security applies.
  */
 export async function deskMember(db: Database, librarian: Identity, memberId: string): Promise<DeskMember> {
   return withIdentity(db, librarian, async (scope) => {
@@ -49,6 +81,7 @@ export async function deskMember(db: Database, librarian: Identity, memberId: st
         limit: row.loan_limit,
         loanPeriodDays: row.loan_period_days,
       },
+      unsettledFines: await unsettledFines(scope, row.user_id),
     };
   });
 }

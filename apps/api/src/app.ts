@@ -15,6 +15,7 @@ import { ScannerHub } from "./scanner/hub.ts";
 import type { ScannerOptions } from "./scanner/hub.ts";
 import { catalogRouter } from "./routes/catalog.ts";
 import { digitalIdRouter } from "./routes/digital-id.ts";
+import { finesRouter } from "./routes/fines.ts";
 import { healthRouter } from "./routes/health.ts";
 import { holdsRouter } from "./routes/holds.ts";
 import { loansRouter } from "./routes/loans.ts";
@@ -100,6 +101,7 @@ export function createApp(deps: AppDeps, options: AppOptions = {}): LibrasApp {
   app.use(digitalIdRouter(deps));
   app.use(holdsRouter(deps));
   app.use(loansRouter(deps));
+  app.use(finesRouter(deps));
   if (options.sweepSecret) app.use(sweepsRouter(deps, options.sweepSecret));
   const catalog = new CatalogSearch(deps.db, deps.logger);
   app.use(scannerRouter(deps, scannerHub, pairingLimiter));

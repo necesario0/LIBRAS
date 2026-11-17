@@ -177,8 +177,8 @@ export type {
   RenewalRefusal,
   ReturnedLoan,
 } from "./loans.ts";
-export { formatPesos } from "./fines.ts";
-export type { LoanFine } from "./fines.ts";
+export { FINE_MESSAGES, FINE_OUTCOMES, SETTLE_AT_RETURN_MINUTES, formatPesos, settleFineRequestSchema } from "./fines.ts";
+export type { DeskFine, FineOutcome, FineSettlement, LoanFine, SettleFineRequest, SettleFineResponse } from "./fines.ts";
 export { readEventStream } from "./event-stream.ts";
 export type { StreamEvent } from "./event-stream.ts";
 export {

@@ -100,6 +100,7 @@ describe("Fines on late Loans", () => {
       dailyRateCentavos: RATE,
       capCentavos: CAP,
       final: false,
+      settlement: null,
     });
 
     at("2026-11-20 23:59");
@@ -116,11 +117,11 @@ describe("Fines on late Loans", () => {
 
     // 18 Jan 2027 is the 60th day after 19 Nov 2026.
     at("2027-01-17 12:00");
-    assert.deepEqual((await loanOf(member, loanId)).fine, { amountCentavos: 29_500, daysLate: 59, dailyRateCentavos: RATE, capCentavos: CAP, final: false });
+    assert.deepEqual((await loanOf(member, loanId)).fine, { amountCentavos: 29_500, daysLate: 59, dailyRateCentavos: RATE, capCentavos: CAP, final: false, settlement: null });
     at("2027-01-18 12:00");
     assert.equal((await loanOf(member, loanId)).fine?.amountCentavos, CAP);
     at("2027-06-30 12:00");
-    assert.deepEqual((await loanOf(member, loanId)).fine, { amountCentavos: CAP, daysLate: 223, dailyRateCentavos: RATE, capCentavos: CAP, final: false });
+    assert.deepEqual((await loanOf(member, loanId)).fine, { amountCentavos: CAP, daysLate: 223, dailyRateCentavos: RATE, capCentavos: CAP, final: false, settlement: null });
   });
 
   it("fixes the Fine at the return, counting the day of the return, and tells the desk with the Member's name", async () => {
@@ -132,7 +133,7 @@ describe("Fines on late Loans", () => {
 
     assert.equal(returned.memberName, "Ana Santos");
     assert.equal(returned.late, true);
-    const fixed = { amountCentavos: 3 * RATE, daysLate: 3, dailyRateCentavos: RATE, capCentavos: CAP, final: true };
+    const fixed = { amountCentavos: 3 * RATE, daysLate: 3, dailyRateCentavos: RATE, capCentavos: CAP, final: true, settlement: null };
     assert.deepEqual(returned.fine, fixed);
     // Days go by: the returned Loan no longer grows.
     at("2026-12-25 12:00");
@@ -148,13 +149,14 @@ describe("Fines on late Loans", () => {
 
     await withStudentPolicy(1_000, 2_000, async () => {
       const fixed = (await loanOf(ana, returned.loanId)).fine;
-      assert.deepEqual(fixed, { amountCentavos: 5 * RATE, daysLate: 5, dailyRateCentavos: RATE, capCentavos: CAP, final: true });
+      assert.deepEqual(fixed, { amountCentavos: 5 * RATE, daysLate: 5, dailyRateCentavos: RATE, capCentavos: CAP, final: true, settlement: null });
       assert.deepEqual((await loanOf(ana, out.loanId)).fine, {
         amountCentavos: 2_000,
         daysLate: 5,
         dailyRateCentavos: 1_000,
         capCentavos: 2_000,
         final: false,
+        settlement: null,
       });
     });
   });

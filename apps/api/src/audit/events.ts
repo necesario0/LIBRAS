@@ -127,6 +127,23 @@ export const AUDIT_EVENTS = {
     }),
   },
   /**
+   * A Librarian settled a Fine as paid or waived (ADR 0010), at the return of
+   * the late Copy or in the Member's desk session. It is recorded once: a
+   * settled Fine is never settled again. `actorId` is the Librarian.
+   */
+  fine_settled: {
+    /** The id of the Loan the Fine is on. */
+    subject: z.uuid(),
+    data: z.strictObject({
+      memberId: z.uuid(),
+      outcome: z.enum(["paid", "waived"]),
+      /** The Fine's amount in centavos: what was paid or forgiven. LIBRAS keeps no other money figure. */
+      amountCentavos: z.number().int().positive(),
+      /** Where the Librarian settled it. */
+      place: z.enum(["return", "desk_session"]),
+    }),
+  },
+  /**
    * A Hold was chosen by the dispatcher: it became ready and a Copy was set aside
    * for its Member. `actorId` is whoever freed the Copy: the Librarian who
    * recorded its return, or the Member who cancelled the ready Hold it was set aside for.

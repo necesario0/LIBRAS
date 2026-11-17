@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { AccountType } from "./accounts.ts";
+import type { DeskFine } from "./fines.ts";
 
 /**
  * The Digital ID: 12 digits, drawn as a Code 128 subset C barcode (ADR 0004).
@@ -65,6 +66,8 @@ export interface DeskMember {
   fullName: string;
   accountType: AccountType;
   loans: LoanStanding;
+  /** The Member's Fines that were fixed at a return and not yet settled, the earliest return first. Each can be settled here. */
+  unsettledFines: DeskFine[];
 }
 
 /**
