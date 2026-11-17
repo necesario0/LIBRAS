@@ -1,4 +1,122 @@
-# Tier 1 verification on the hosted system: measurements
+# Verification on the hosted system
+
+Two parts. **Tier 2** (issue #40) is the rollout and verification checklist for Renewals, Forgot and Change password, Loan notices, Fines, Clearance and Good standing. The developer works through it in order. **Tier 1** (issue #20) holds the measurements taken on 2026-11-13.
+
+# Tier 2: rollout and verification checklist
+
+Work in Git Bash from an up-to-date checkout of `main`, with `.env.hosted` in the repository root. Never paste a key into a chat or an issue. Each step says how to tell it worked. Write the results in the run record at the end of this part.
+
+Already confirmed on 2026-11-18: Brevo's free plan sends 300 emails a day, Supabase "Secure password change" is off, `SWEEP_SECRET` is set on Render, and the `libras-pickup-expiry` schedule is installed and running.
+
+## 1. Before you start
+
+1. `.env.hosted` has a `SWEEP_SECRET=` line with the value set on Render. `npm run schedule:hosted` saved it there; if you ran that from another folder, copy the line. It worked if `npm run schedule:hosted` says the API accepts the secret.
+2. Brevo > Transactional > Statistics (or Logs): note how many emails went out today. Section 6 says how many this checklist adds.
+3. Loan notices go out only from 08:00 Manila time. Do sections 4 and 5 after 08:00, or the notice emails come the next morning.
+
+## 2. Migrations (once, before the merge)
+
+1. `npm run db:migrate:hosted -- --dry-run`. It worked if it lists these and no error: `20261117100000_renewals`, `20261117120000_password_resets`, `20261117140000_password_change_audit`, `20261117160000_loan_notices`, `20261117180000_fines`, `20261117200000_fine_settlement` (plus `20261114100000_desk_sessions` if it was never applied).
+2. `npm run db:migrate:hosted`, then type `apply`. It worked if it ends without an error and a second `--dry-run` lists nothing pending.
+
+The migrations only add tables, columns, grants and audit event types, so the running Tier 1 API keeps working on the new schema. Loans that are out and overdue at this moment start showing a Fine counted from their due date (ADR 0010). Loans returned earlier get none.
+
+## 3. Deploy: the API, then the desk page, then the APK
+
+Both Render services deploy on every commit to `main`, at the same time. A new desk page against the old API crashes the Member panel, and so does the old desk page against the new API. Control the order:
+
+1. Render > `libras-desk` > Settings > Build & Deploy > Auto-Deploy: **Off**.
+2. Merge PR #41 into `main`.
+3. Render > `libras-api` > Events: the deploy of the merge commit says **Live**. If nothing starts within a minute, use Manual Deploy > Deploy latest commit (README, "Auto-deploy").
+4. `npm run check:hosted`, then `curl -s -o /dev/null -w "%{http_code}\n" https://libras-api-g8sj.onrender.com/members/me/clearance`. It worked if it prints `401`. The old API answers `404`.
+5. Render > `libras-desk` > Manual Deploy > Deploy latest commit. Wait for **Live**, then set Auto-Deploy back to **On Commit**.
+6. Desk computer: reload the desk page, sign in, scan any Member's Digital ID. It worked if the Member panel shows a **Clearance** line ("Cleared" or "Not cleared").
+7. `npm run build:apk:hosted -w @libras/mobile` (about 25 minutes; it checks `/health` first). Install `apps/mobile/build/libras.apk` on every Member phone (`adb install -r apps/mobile/build/libras.apk`). It worked if Profile (tap the avatar on Home) shows a **Clearance** card.
+8. Tell the Librarians: from now on a Member with an overdue Loan or an unsettled Fine is refused Loans, Holds and Renewals until the Loan is returned and the Fine settled. Fines are settled in the Member panel: scan the Digital ID, then Paid or Waived.
+
+## 4. Automatic check: `npm run verify:hosted -- tier2`
+
+One command walks every Tier 2 path through the hosted API (`checkTier2` in `apps/api/scripts/hosted-checks.ts`). It signs up one test UMAK Student through the real sign-up code (no verification email is sent). It adds the test Book "ZZ Hosted Check Book (delete me) tier 2" with four Copies whose barcodes start `99` (real ones start `31`). Then it checks, in order:
+
+1. Three Copies are lent at the desk.
+2. My Loans gives each Loan `renewal`, `renewalCount` and `fine`.
+3. A Renewal moves the due date by one loan period, and the one after the renewal limit is refused.
+4. A Loan moved three days past its due date shows a Fine so far of three days at the daily rate.
+5. Clearance and Good standing name the overdue Loan.
+6. A Hold, a Renewal and a Loan are each refused with `overdue_loan`.
+7. The sweep endpoint answers `{ expired, noticeEmails }`.
+8. The late return fixes the Fine (PHP 15 for a UMAK Student).
+9. Clearance and Good standing name the unsettled Fine.
+10. A Loan is refused with `unsettled_fine`. The Fine is settled as paid in the same desk session, and the same Copy is then lent.
+11. The Member is cleared and in Good standing again, and My Loans shows the Fine as paid.
+12. A password reset request for an address with no account gets the same reply a Member gets.
+13. The audit log has the Renewal, the Fine and the settlement, and the whole chain is intact.
+
+Then it deletes the test Member, the test Book, its Copies, Loans and Fine, and the reset request. The audit entries stay, as they must. If a step fails, it prints the step and why, and still cleans up. `npm run verify:hosted -- cleanup` removes anything an interrupted run left behind.
+
+Run it now. It worked if it prints 13 `ok` lines and "All 13 Tier 2 checks passed". It is safe to run on production data, before and after the demo.
+
+The test Member's address is changed to a +alias of `SEED_LIBRARIAN_EMAIL` (`<you>+libras-hosted-check-tier2@...`), so the overdue notice the sweep sends it lands in your inbox as "You have an overdue LIBRAS Loan". That is the first real Loan notice through Brevo (section 5, email 1). The sweep it calls is the same one the schedule calls every 5 minutes, so it sends nothing that was not due anyway.
+
+## 5. Real phones and real emails
+
+Walk Parts 8 to 11 of `docs/demo-script.md` on real phones: renew a Loan, receive a due-tomorrow and an overdue notice, see the Fine so far, return a Copy late, meet the Good standing refusals, settle the Fine at the desk and see Clearance change, then reset a password and change it. Loan dates are moved with `npm run verify:hosted -- backdate <Copy barcode> <days>`, which moves one open Loan back by whole days (both when it was lent and when it is due), so nobody waits a week.
+
+Read each email in the Member's inbox, and look in spam too (see Known limits in Tier 1). Tick each row:
+
+| # | Subject | Sent when | The text says |
+| --- | --- | --- | --- |
+| 1 | You have an overdue LIBRAS Loan | Section 4, to your +alias | The test Book, "3 days ago", "The Fine so far is PHP 15.", "Please return it to the library desk." |
+| 2 | You have an overdue LIBRAS Loan (one email for both Loans) | Demo Part 9, within 5 minutes of the backdate | The overdue Loan with its Fine so far, and the Loan due tomorrow with "If it is returned late, the Fine is PHP 5 a day, up to PHP 300." and why it cannot be renewed |
+| 3 | Your LIBRAS password reset code | Demo Part 11, Forgot password | A 6-digit code, which works once |
+| 4 | Your LIBRAS password was changed | Right after the reset | The password was reset and every device is signed out |
+| 5 | Your LIBRAS password was changed | After Change password in the app | It was changed in the app and other devices are signed out. No password appears |
+
+A Member gets at most one Loan notice email a day. If email 2 does not come, check in Brevo > Logs that the Member did not already get one today, and that it is after 08:00 Manila.
+
+## 6. Brevo budget
+
+Brevo's free plan sends **300 emails a day** (confirmed in the Brevo dashboard on 2026-11-18). A Member gets at most one Loan notice email per library day, so the busiest day sends one per Member with a Loan due tomorrow or overdue, plus sign-up codes, reset codes, password-changed and Hold-ready emails.
+
+| Source | This checklist | A pilot day |
+| --- | --- | --- |
+| Loan notices | 2 (section 4, demo Part 9) | at most one per Member with a Loan due tomorrow or overdue |
+| Reset code and "password was changed" | 3 (demo Part 11) | a few |
+| Sign-up codes | 0 to 2 (only if new demo Members are made) | a few |
+| Hold ready | 0 to 1 | one per return that sets a Copy aside |
+| **Total** | **about 5 to 8** | far below 300 while fewer than about 250 Members have a Loan due or overdue on the same day |
+
+Write the number Brevo shows for the demo day in the run record. If Brevo refuses a send because the limit is reached, the notice is not recorded and the next tick tries again: notices come late, never get lost.
+
+## 7. Visual checks the emulator could not do
+
+The test AVD runs Android 8, which draws no `boxShadow` (React Native needs Android 9 or newer). On a real phone with Android 9 or newer, compare with Figma (`docs/design/figma-screen-inventory.md`):
+
+- [ ] Profile: the "My account" row and the Clearance card have a soft shadow (Figma 572:1468, Fines row 921:14028).
+- [ ] My Account: the "Change password" row has a tight shadow (Figma 580:1832).
+- [ ] Digital ID: the card has its shadow.
+- [ ] My Loans, the overdue Loan: the red line "Fine so far: PHP 15 (3 days late)" sits under "Was due ..." and is not cut off.
+- [ ] Nothing else looks misaligned or cut off on the Tier 2 screens: the Renew confirmation, Change password, Forgot password, the Clearance card, and the reasons shown in place of Renew, Borrow and Place a Hold.
+
+## 8. Proof afterwards
+
+1. `npm run audit:verify:hosted -w @libras/api`. It worked if it prints "Audit log intact: N entries checked". Note N and the head.
+2. Fill in the run record.
+
+## Tier 2 run record
+
+| Date | Step | Result | Notes |
+| --- | --- | --- | --- |
+| | Migrations applied | | |
+| | API, desk page and APK deployed in that order | | |
+| | `verify:hosted -- tier2` | | |
+| | Demo Parts 8 to 11 on real phones | | |
+| | Emails 1 to 5 read | | |
+| | Brevo emails sent that day | | |
+| | Visual checks on Android 9 or newer | | |
+| | Audit chain intact (entries) | | |
+
+# Tier 1: measurements
 
 Issue #20. Measured on 2026-11-13 against the hosted system (Render free web service `libras-api` in Singapore, Supabase free project in Singapore, the 45,460 Book / 86,679 Copy sample catalog from `npm run seed:hosted`). The client was the developer's computer on its normal connection, which adds the network time shown below. Reproduce with `npm run verify:hosted -- search` and `npm run verify:hosted -- dispatch` (`apps/api/scripts/verify-hosted.ts`); both read `.env.hosted` and print no secret.
 
