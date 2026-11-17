@@ -72,8 +72,7 @@ appId: ph.edu.umak.libras
     timeout: 30000
 
 # Signing out leaves the protected screen at once.
-- tapOn:
-    id: home-sign-out
+- runFlow: subflows/sign-out.yaml
 - extendedWaitUntil:
     visible: "SIGN  UP"
     timeout: 20000

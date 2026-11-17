@@ -12,7 +12,7 @@ import { BookResultRow } from "../../src/home/BookResultRow";
 import { HomeHeader } from "../../src/home/HomeHeader";
 import { SearchBar } from "../../src/home/SearchBar";
 import { NoResults, SearchFailed } from "../../src/home/SearchMessage";
-import { colors, fontFamily, fontSize, radii, spacing } from "../../src/theme/tokens";
+import { colors, fontFamily, fontSize, spacing } from "../../src/theme/tokens";
 
 /**
  * Home for a signed-in Member: the Figma "Home dashboard" layout (node
@@ -21,13 +21,14 @@ import { colors, fontFamily, fontSize, radii, spacing } from "../../src/theme/to
  * Member's Loans and Holds; the recommendation sections are left out of Tier 1.
  * The results replace those sections under the search bar.
  *
- * Signing out stays reachable from here (a small button where the design has
- * the notification and menu buttons, which lead nowhere yet).
+ * The avatar and greeting open the Profile account screen, which is also where
+ * the Member signs out. The design reaches Profile from its menu drawer and tab
+ * bar, neither of which is built, so the header is the way in.
  */
 export default function HomeScreen() {
   const router = useRouter();
   const member = useMember();
-  const { request, signOut } = useAuth();
+  const { request } = useAuth();
   const insets = useSafeAreaInsets();
   const screenTop = useScreenTop();
   const search = useCatalogSearch(request);
@@ -38,14 +39,13 @@ export default function HomeScreen() {
   return (
     <View style={[styles.screen, { paddingTop: screenTop + 2 }]}>
       <View style={styles.header}>
-        <HomeHeader firstName={member.firstName} />
         <Pressable
           accessibilityRole="button"
-          onPress={() => void signOut()}
-          style={styles.signOut}
-          testID="home-sign-out"
+          accessibilityHint="Opens your profile"
+          onPress={() => router.push("/profile")}
+          testID="home-profile"
         >
-          <Text style={styles.signOutLabel}>Sign out</Text>
+          <HomeHeader firstName={member.firstName} />
         </Pressable>
       </View>
       <View style={styles.search}>
@@ -110,14 +110,7 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.white },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: spacing.home,
-  },
-  signOut: { backgroundColor: colors.accent, borderRadius: radii.button, paddingHorizontal: spacing.md, height: 36, justifyContent: "center" },
-  signOutLabel: { fontFamily: fontFamily.regular, fontSize: fontSize.caption, color: colors.black },
+  header: { flexDirection: "row", alignItems: "center", paddingHorizontal: spacing.home },
   search: { paddingHorizontal: spacing.home, marginTop: 10 },
   body: { flex: 1, marginTop: spacing.lg },
   bodyContent: { paddingHorizontal: spacing.home, gap: spacing.md },

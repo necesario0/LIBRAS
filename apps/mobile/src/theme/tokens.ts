@@ -159,6 +159,8 @@ export const radii = {
   tag: 39,
   /** The grabber at the top of the Book page's sheet (Figma 609:1159). */
   grabber: 58,
+  /** The outlined "Sign out" button of the Profile account screen (Figma 580:1741). */
+  accountButton: 25,
   /** The round logo of the wordmark (31 pt). */
   logo: 16,
   /** The terms checkbox of sign-up. */

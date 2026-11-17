@@ -1,0 +1,60 @@
+# A Member opens the Profile account screen from the Home header and sees the
+# name, email and Account Type the API holds for them, then signs out from it.
+# Home has no Sign out of its own any more. Needs the end-to-end API on port 3000
+# (npm run e2e starts it).
+appId: ph.edu.umak.libras
+---
+- launchApp:
+    clearState: true
+- runScript: scripts/create-members.js
+
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 30000
+- tapOn:
+    id: welcome-sign-in
+- tapOn:
+    id: sign-in-email
+- inputText: ${output.email}
+- tapOn:
+    id: sign-in-password
+- inputText: ${output.password}
+- hideKeyboard
+- tapOn:
+    id: sign-in-continue
+
+# Home: the header opens the profile, and Sign out is no longer on Home.
+- extendedWaitUntil:
+    visible: "Hi, Cobby"
+    timeout: 20000
+- assertNotVisible:
+    id: home-sign-out
+- tapOn:
+    id: home-profile
+
+# The Profile account screen shows who is signed in, as the API says.
+- extendedWaitUntil:
+    visible:
+      id: profile-name
+    timeout: 10000
+- assertVisible: "COBBY BALDONADO"
+- assertVisible: ${output.email}
+- assertVisible: "UMAK Student"
+- takeScreenshot: profile
+
+# Back returns to Home.
+- tapOn:
+    id: profile-back
+- extendedWaitUntil:
+    visible: "Hi, Cobby"
+    timeout: 10000
+
+# Signing out from the profile leaves every protected screen.
+- tapOn:
+    id: home-profile
+- tapOn:
+    id: profile-sign-out
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 20000
+- assertNotVisible: "Hi, Cobby"

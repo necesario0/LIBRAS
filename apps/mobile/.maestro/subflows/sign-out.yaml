@@ -1,0 +1,7 @@
+# Signs the Member out from Home: the profile in the header, then Sign out.
+appId: ph.edu.umak.libras
+---
+- tapOn:
+    id: home-profile
+- tapOn:
+    id: profile-sign-out

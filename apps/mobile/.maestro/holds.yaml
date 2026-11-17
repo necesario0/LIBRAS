@@ -150,8 +150,7 @@ appId: ph.edu.umak.libras
 - extendedWaitUntil:
     visible: "No active Holds"
     timeout: 15000
-- tapOn:
-    id: home-sign-out
+- runFlow: subflows/sign-out.yaml
 - extendedWaitUntil:
     visible: "SIGN  UP"
     timeout: 20000
