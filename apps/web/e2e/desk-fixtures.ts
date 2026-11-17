@@ -128,6 +128,16 @@ export function createDeskFixtures() {
       const response = await fetch(`${API_URL}/loans/${loanId}/renew`, { method: "POST", headers: { authorization: `Bearer ${member.accessToken}` } });
       expect(response.status).toBe(200);
     },
+    /** A Copy the Member borrowed long enough ago that it is `daysLate` calendar days past due now (the loan period is seven days). */
+    lendLate: async (member: DeskTestMember, copy: DeskTestCopy, daysLate: number): Promise<void> => {
+      await db.query(
+        `insert into public.loans (copy_id, member_id, confirmed_by, checked_out_at, due_at)
+         select c.id, $2, s.user_id, now() - make_interval(days => $3 + 7), now() - make_interval(days => $3)
+           from public.copies c, public.staff s where c.barcode = $1 and s.role = 'librarian' limit 1`,
+        [copy.barcode, member.userId, daysLate],
+      );
+      await db.query("update public.copies set status = 'on_loan' where barcode = $1", [copy.barcode]);
+    },
     copyStatus: async (barcode: string): Promise<string> =>
       ((await db.query("select status from public.copies where barcode = $1", [barcode])).rows[0] as { status: string }).status,
   };

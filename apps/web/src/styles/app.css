@@ -74,6 +74,14 @@ input {
 .button--quiet:hover:not(:disabled) {
   background: var(--color-border);
 }
+/* For the one action that cannot be undone and forgives money: waiving a Fine. */
+.button--danger {
+  background: var(--color-danger);
+}
+.button--danger:hover:not(:disabled) {
+  background: var(--color-danger);
+  filter: brightness(0.9);
+}
 
 .field {
   display: flex;
@@ -447,6 +455,7 @@ input {
 }
 .return-panel {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-4);
   padding: var(--space-4) var(--space-5);
@@ -512,18 +521,86 @@ input {
   font-size: var(--text-md);
   font-weight: 600;
 }
+/* Under the panel's own row: what the Librarian can do about it. */
+.return-panel__actions {
+  display: flex;
+  flex: 1 0 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+.return-panel__settled {
+  color: var(--return-panel-accent);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.fine-actions {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+.fine-actions__text {
+  flex: 1;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+.fine-actions__text strong {
+  color: var(--color-text);
+}
+.fine-actions__text--ask {
+  color: var(--color-text);
+}
+.fine-actions__text--error {
+  color: var(--color-danger);
+}
+.fine-actions__buttons {
+  display: flex;
+  flex: none;
+  gap: var(--space-2);
+  margin-left: auto;
+}
 
 /* The Member a scanned Digital ID belongs to */
 .member-card {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
   gap: var(--space-5);
   align-self: stretch;
   padding: var(--space-5);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-notice);
   text-align: left;
+}
+.member-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+}
+.member-card__fines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.member-card__fines-title {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.member-card__fine-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 .member-card__who {
   display: flex;

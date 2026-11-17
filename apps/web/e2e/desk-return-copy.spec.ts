@@ -4,7 +4,7 @@ import { createDeskFixtures, scan, signInAtTheDesk } from "./desk-fixtures.ts";
 import type { DeskTestCopy } from "./desk-fixtures.ts";
 
 const desk = createDeskFixtures();
-const { addBook, bookOf, codeOnThePhoneOf, copyStatus, createMember, holdsOf, loansOf, placeHold, renew } = desk;
+const { addBook, bookOf, codeOnThePhoneOf, copyStatus, createMember, holdsOf, lendLate, loansOf, placeHold, renew } = desk;
 
 test.beforeAll(desk.setUp);
 test.afterAll(desk.cleanUp);
@@ -132,6 +132,7 @@ test("a Copy that came back late says so and shows its Fine with the Member's na
     dailyRateCentavos: 500,
     capCentavos: 30_000,
     final: true,
+    settlement: null,
   });
   await page.screenshot({ path: test.info().outputPath("desk-return-late.png") });
 
@@ -139,6 +140,82 @@ test("a Copy that came back late says so and shows its Fine with the Member's na
   await expect(page.getByRole("alert")).toHaveText(RETURN_MESSAGES.copyNotOnLoan);
   await expect(notice).toHaveCount(0);
   expect((await loansOf(ben)).filter((loan) => loan.returnedAt !== null)).toHaveLength(1);
+});
+
+test("a late return is settled right there: Paid at once, Waived only after a confirmation, and a settled Fine has no buttons left", async ({ page }) => {
+  const ben = await createMember("umak_student", "Ben", "Reyes");
+  const carla = await createMember("umak_student", "Carla", "Diaz");
+  const [bens, carlas] = (await addBook("Settled On Return", 2)) as [DeskTestCopy, DeskTestCopy];
+  await lendLate(ben, bens, 2);
+  await lendLate(carla, carlas, 1);
+  await signInAtTheDesk(page);
+  const fine = page.getByTestId("desk-return-fine");
+  const settlementOf = async (member: typeof ben) => (await loansOf(member)).find((loan) => loan.returnedAt !== null)?.fine?.settlement ?? null;
+
+  // Ben's Fine: waiving asks first, and "Keep it" settles nothing.
+  await scan(page, bens.barcode);
+  await expect(fine.getByTestId("desk-return-fine-amount")).toHaveText("PHP 10");
+  await expect(fine.getByTestId("desk-return-fine-paid")).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath("desk-return-fine-unsettled.png") });
+  await fine.getByTestId("desk-return-fine-waive").click();
+  await expect(fine).toContainText("Waive PHP 10 for Ben Reyes? A waived Fine cannot be reopened.");
+  await page.screenshot({ path: test.info().outputPath("desk-return-fine-confirm-waive.png") });
+  await fine.getByTestId("desk-return-fine-keep").click();
+  await expect(fine.getByTestId("desk-return-fine-paid")).toBeVisible();
+  expect(await settlementOf(ben)).toBeNull();
+  await fine.getByTestId("desk-return-fine-waive").click();
+  await fine.getByTestId("desk-return-fine-confirm").click();
+  await expect(fine.getByTestId("desk-return-fine-settled")).toHaveText("Settled: waived");
+  await expect(fine.getByTestId("desk-return-fine-paid")).toHaveCount(0);
+  await expect(fine.getByTestId("desk-return-fine-waive")).toHaveCount(0);
+  await page.screenshot({ path: test.info().outputPath("desk-return-fine-waived.png") });
+  expect((await settlementOf(ben))?.outcome).toBe("waived");
+
+  // Carla's Fine: Paid settles with one click.
+  await scan(page, carlas.barcode);
+  await expect(fine.getByTestId("desk-return-fine-member")).toHaveText("Carla Diaz");
+  await fine.getByTestId("desk-return-fine-paid").click();
+  await expect(fine.getByTestId("desk-return-fine-settled")).toHaveText("Settled: paid");
+  expect((await settlementOf(carla))?.outcome).toBe("paid");
+});
+
+test("a Fine left unsettled at the return is listed when the Member's Digital ID is scanned, and settled there", async ({ page }) => {
+  const dana = await createMember("umak_student", "Dana", "Lim");
+  const [first, second] = (await addBook("Left For Later", 2)) as [DeskTestCopy, DeskTestCopy];
+  await lendLate(dana, first, 1);
+  await lendLate(dana, second, 3);
+  await signInAtTheDesk(page);
+
+  // Dana is not at the desk for either return: the Librarian leaves both Fines unsettled.
+  await scan(page, first.barcode);
+  await expect(page.getByTestId("desk-return-fine-amount")).toHaveText("PHP 5");
+  await scan(page, second.barcode);
+  await expect(page.getByTestId("desk-return-fine-amount")).toHaveText("PHP 15");
+  expect((await loansOf(dana)).every((loan) => loan.fine?.settlement === null)).toBe(true);
+
+  // Dana comes later: her Digital ID lists both Fines, the earlier return first.
+  await scan(page, await codeOnThePhoneOf(dana));
+  const member = page.getByRole("region", { name: "Dana Lim" });
+  const rows = member.getByTestId("desk-member-fine");
+  await expect(rows).toHaveCount(2);
+  await expect(rows.nth(0)).toContainText("Left For Later");
+  await expect(rows.nth(0).getByTestId("desk-member-fine-amount")).toHaveText("PHP 5");
+  await expect(rows.nth(1).getByTestId("desk-member-fine-amount")).toHaveText("PHP 15");
+  await page.screenshot({ path: test.info().outputPath("desk-member-unsettled-fines.png") });
+
+  // Waived asks first; then the row goes and the other Fine stays.
+  await rows.nth(0).getByTestId("desk-member-fine-waive").click();
+  await expect(rows.nth(0)).toContainText("Waive PHP 5 for Dana Lim?");
+  await page.screenshot({ path: test.info().outputPath("desk-member-fine-confirm-waive.png") });
+  await rows.nth(0).getByTestId("desk-member-fine-confirm").click();
+  await expect(rows).toHaveCount(1);
+  await expect(rows.nth(0).getByTestId("desk-member-fine-amount")).toHaveText("PHP 15");
+  await rows.nth(0).getByTestId("desk-member-fine-paid").click();
+  await expect(member.getByTestId("desk-member-fines")).toHaveCount(0);
+  await page.screenshot({ path: test.info().outputPath("desk-member-fines-settled.png") });
+
+  const outcomes = (await loansOf(dana)).map((loan) => [loan.fine?.amountCentavos, loan.fine?.settlement?.outcome]);
+  expect(outcomes).toEqual(expect.arrayContaining([[500, "waived"], [1500, "paid"]]));
 });
 
 test("a returned Copy with a waiting Hold is set aside: the desk says for which Member, and only that Member can borrow it", async ({ page }) => {
