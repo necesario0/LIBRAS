@@ -48,18 +48,20 @@ export async function expireHold(deps: AppDeps, holdId: string): Promise<ExpiryO
       at: now,
       cause: "pickup_window_expired",
       actorId: null,
-      causeEntry: {
-        type: "hold_expired",
-        subject: holdId,
-        data: {
-          memberId: hold.member_id,
-          copyId: copy.id,
-          bookId: copy.book_id,
-          accessionNumber: copy.accession_number,
-          pickupEndsAt: hold.pickup_ends_at.toISOString(),
-          expiredAt: now.toISOString(),
+      causeEntries: [
+        {
+          type: "hold_expired",
+          subject: holdId,
+          data: {
+            memberId: hold.member_id,
+            copyId: copy.id,
+            bookId: copy.book_id,
+            accessionNumber: copy.accession_number,
+            pickupEndsAt: hold.pickup_ends_at.toISOString(),
+            expiredAt: now.toISOString(),
+          },
         },
-      },
+      ],
     });
     return "expired";
   });

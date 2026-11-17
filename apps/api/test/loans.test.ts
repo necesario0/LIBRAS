@@ -75,6 +75,7 @@ describe("Confirming a Loan at the desk", () => {
         overdue: false,
         renewalCount: 0,
         renewal: { renewable: true, dueAt: "2026-11-26T15:59:59.999Z", last: true },
+        fine: null,
       },
     ]);
   });

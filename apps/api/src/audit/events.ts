@@ -108,6 +108,25 @@ export const AUDIT_EVENTS = {
     }),
   },
   /**
+   * A Librarian recorded the return of a late Copy and the API fixed its Fine
+   * (ADR 0010): the amount never changes after this. `actorId` is the Librarian.
+   * It follows the return's `copy_returned` entry.
+   */
+  fine_fixed: {
+    /** The id of the Loan the Fine is on. */
+    subject: z.uuid(),
+    data: z.strictObject({
+      memberId: z.uuid(),
+      /** Calendar days after the due date, the day of the return included. */
+      daysLate: z.number().int().positive(),
+      /** The Loan Policy it was worked out with, in centavos. */
+      dailyRateCentavos: z.number().int().positive(),
+      capCentavos: z.number().int().nonnegative(),
+      /** The Fine, in centavos: the daily rate for every day late, up to the cap. */
+      amountCentavos: z.number().int().positive(),
+    }),
+  },
+  /**
    * A Hold was chosen by the dispatcher: it became ready and a Copy was set aside
    * for its Member. `actorId` is whoever freed the Copy: the Librarian who
    * recorded its return, or the Member who cancelled the ready Hold it was set aside for.

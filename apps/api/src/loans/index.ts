@@ -9,6 +9,7 @@ import { isUniqueViolation, retryOnConflict, withTransaction } from "../db.ts";
 import type { Tx } from "../db.ts";
 import { useDeskSession } from "../desk/sessions.ts";
 import { AppError } from "../errors.ts";
+import { fixFine } from "../fines/index.ts";
 import { announceDispatch, dispatchCopy } from "../holds/dispatch.ts";
 import type { HoldDispatch } from "../holds/dispatch.ts";
 import { expireHold } from "../holds/expiry.ts";
@@ -196,9 +197,10 @@ interface OpenLoanRow {
 /**
  * A Librarian records the return of a Copy: its barcode or accession number as
  * scanned or typed, with no Member involved. The Copy's open Loan is closed,
- * the Copy is placed by Hold dispatch (`dispatchCopy`: set aside for the Book's
- * next waiting Hold, or available when none waits) and the audit log gets a
- * `copy_returned` entry, all in one transaction. The Member whose Hold became
+ * a late Copy's Fine is fixed (`fixFine`, ADR 0010), the Copy is placed by Hold
+ * dispatch (`dispatchCopy`: set aside for the Book's next waiting Hold, or
+ * available when none waits) and the audit log gets a `copy_returned` entry
+ * (and `fine_fixed` for a Fine), all in one transaction. The Member whose Hold became
  * ready is emailed once the transaction has committed. It is refused, with a reason
  * the desk page shows, when no Copy has that code and when the Copy is not on
  * Loan (including a Copy that was returned a moment ago).
@@ -233,7 +235,7 @@ export async function recordReturn(deps: AppDeps, librarian: Identity, request: 
         const lendingMemberId = lending.rows[0].member_id;
         if (lendingMemberId === null) throw new AppError(409, "copy_not_on_loan", RETURN_MESSAGES.copyNotOnLoan);
 
-        await lockMember(tx, lendingMemberId);
+        const member = await lockMember(tx, lendingMemberId);
         const copy = await lockCopy(tx, { code: request.copy });
         if (!copy) throw new AppError(404, "copy_not_found", RETURN_MESSAGES.copyNotFound);
         const open = await tx.query<OpenLoanRow>(
@@ -253,25 +255,30 @@ export async function recordReturn(deps: AppDeps, librarian: Identity, request: 
         if (closed.rowCount !== 1) throw new AppError(409, "copy_not_on_loan", RETURN_MESSAGES.copyNotOnLoan);
 
         const late = isLoanOverdue(loan.due_at, returnedAt);
+        // A late Copy's Fine is fixed now, under the Member's Loan Policy as it stands (their row is locked).
+        const fixed = await fixFine(tx, loan, member, returnedAt, librarian.userId);
         // Last, as `dispatchCopy` asks. The Copy's row is locked and its Loan is closed: the Book's next Hold
-        // gets it, or it is available. The return's own audit entry goes in just before the dispatch's.
+        // gets it, or it is available. The return's own audit entries go in just before the dispatch's.
         dispatch = await dispatchCopy(deps, tx, copy, {
           at: returnedAt,
           cause: "copy_returned",
           actorId: librarian.userId,
-          causeEntry: {
-            type: "copy_returned",
-            actorId: librarian.userId,
-            subject: loan.id,
-            data: {
-              memberId: loan.member_id,
-              copyId: copy.id,
-              bookId: copy.book_id,
-              accessionNumber: copy.accession_number,
-              returnedAt: returnedAt.toISOString(),
-              late,
+          causeEntries: [
+            {
+              type: "copy_returned",
+              actorId: librarian.userId,
+              subject: loan.id,
+              data: {
+                memberId: loan.member_id,
+                copyId: copy.id,
+                bookId: copy.book_id,
+                accessionNumber: copy.accession_number,
+                returnedAt: returnedAt.toISOString(),
+                late,
+              },
             },
-          },
+            ...(fixed ? [fixed.entry] : []),
+          ],
         });
 
         return {
@@ -283,6 +290,7 @@ export async function recordReturn(deps: AppDeps, librarian: Identity, request: 
           dueAt: loan.due_at.toISOString(),
           returnedAt: returnedAt.toISOString(),
           late,
+          fine: fixed?.fine ?? null,
           heldFor: dispatch && { memberName: dispatch.memberName, pickupEndsAt: dispatch.pickupEndsAt.toISOString() },
         };
       });

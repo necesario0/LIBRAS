@@ -177,6 +177,8 @@ export type {
   RenewalRefusal,
   ReturnedLoan,
 } from "./loans.ts";
+export { formatPesos } from "./fines.ts";
+export type { LoanFine } from "./fines.ts";
 export { readEventStream } from "./event-stream.ts";
 export type { StreamEvent } from "./event-stream.ts";
 export {

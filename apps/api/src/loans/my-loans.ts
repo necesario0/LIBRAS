@@ -3,10 +3,12 @@ import type { Loan, MyLoansResponse } from "@libras/shared";
 import type { AppDeps } from "../app.ts";
 import type { Identity } from "../auth/auth-provider.ts";
 import { withIdentity } from "../auth/identity.ts";
+import { FINE_COLUMNS, fineAt, storedFine } from "../fines/index.ts";
+import type { FineColumns, FinePolicy } from "../fines/index.ts";
 import { booksWithWaitingHolds, renewalOf } from "./renewability.ts";
 
 /** One Loan as a Member reads it: `LOAN_SELECT` gives these columns. */
-export interface LoanRow {
+export interface LoanRow extends FineColumns {
   id: string;
   copy_id: string;
   book_id: string;
@@ -19,24 +21,27 @@ export interface LoanRow {
   renewal_count: number;
 }
 
-/** Loans with their Copy and Book, as `LoanRow`s: `l` is the Loan. Add a `where`. */
+/** Loans with their Copy, Book and fixed Fine, as `LoanRow`s: `l` is the Loan. Add a `where`. */
 export const LOAN_SELECT = `
   select l.id, l.copy_id, c.book_id, b.title, b.authors, c.accession_number,
-         l.checked_out_at, l.due_at, l.returned_at, l.renewal_count
+         l.checked_out_at, l.due_at, l.returned_at, l.renewal_count,
+         ${FINE_COLUMNS}
     from public.loans l
     join public.copies c on c.id = l.copy_id
-    join public.books b on b.id = c.book_id`;
+    join public.books b on b.id = c.book_id
+    left join public.fines f on f.loan_id = l.id`;
 
-/** The parts of the Member's Loan Policy that a Renewal depends on. */
-export interface RenewalPolicy {
+/** The parts of the Member's Loan Policy that a Loan as the Member reads it depends on: Renewals and Fines. */
+export interface RenewalPolicy extends FinePolicy {
   loan_period_days: number | null;
   renewal_limit: number;
 }
 
 /**
- * A Loan as the Member reads it. Overdue and whether it can be renewed are
- * worked out at `now`, by the API's clock; `holdWaiting` says whether another
- * Member's Hold on the Book is waiting.
+ * A Loan as the Member reads it. Overdue, whether it can be renewed and the
+ * Fine so far are worked out at `now`, by the API's clock; `holdWaiting` says
+ * whether another Member's Hold on the Book is waiting. A returned Loan has the
+ * Fine fixed at its return, whatever the policy says now.
  */
 export function toLoan(row: LoanRow, policy: RenewalPolicy, holdWaiting: boolean, now: Date): Loan {
   const current = row.returned_at === null;
@@ -63,6 +68,7 @@ export function toLoan(row: LoanRow, policy: RenewalPolicy, holdWaiting: boolean
           now,
         )
       : null,
+    fine: current ? fineAt(row.due_at, policy, now) : storedFine(row),
   };
 }
 
@@ -73,10 +79,11 @@ interface PolicyRow extends RenewalPolicy {
 /**
  * The Member's own Loans: current ones first, the one due soonest at the top,
  * then past ones, the latest return first. Read as the Member, so row-level
- * security shows nobody else's. Overdue is worked out from the due date by the
- * API's clock, and so is whether each current Loan can be renewed (`renewalOf`):
- * the app shows it and holds no rules of its own. With them comes the loan
- * limit of the Member's Loan Policy.
+ * security shows nobody else's (their Fines too). Overdue is worked out from
+ * the due date by the API's clock, and so are whether each current Loan can be
+ * renewed (`renewalOf`) and its Fine so far (`fineAt`): the app shows them and
+ * holds no rules of its own. With them comes the loan limit of the Member's
+ * Loan Policy.
  */
 export async function listLoans(deps: AppDeps, identity: Identity): Promise<MyLoansResponse> {
   const now = deps.clock.now();
@@ -91,7 +98,7 @@ export async function listLoans(deps: AppDeps, identity: Identity): Promise<MyLo
       [identity.userId],
     );
     const policy = await scope.query<PolicyRow>(
-      `select p.loan_limit, p.loan_period_days, p.renewal_limit
+      `select p.loan_limit, p.loan_period_days, p.renewal_limit, p.fine_daily_rate_centavos, p.fine_cap_centavos
          from public.members m
          join public.loan_policies p on p.account_type = m.account_type
         where m.user_id = $1`,

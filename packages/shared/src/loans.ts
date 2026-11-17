@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { DeskMember } from "./digital-id.ts";
+import type { LoanFine } from "./fines.ts";
 import { SCAN_INPUT_PATTERN } from "./scan.ts";
 
 /**
@@ -81,6 +82,12 @@ export interface Loan {
   renewalCount: number;
   /** Whether a Renewal is possible now, by the API's rules and clock. Null for a Loan whose Copy has been returned. */
   renewal: LoanRenewal | null;
+  /**
+   * The Fine: so far (by the API's clock and the current Loan Policy) while the
+   * Loan is out and overdue, or the amount fixed at a late return. Null for a
+   * Loan that is not overdue or came back on time.
+   */
+  fine: LoanFine | null;
 }
 
 /**
@@ -206,8 +213,10 @@ export interface ReturnedLoan {
   dueAt: string;
   /** When the return was recorded, ISO 8601, by the API's clock. */
   returnedAt: string;
-  /** The Copy came back after the end of its due day. Tier 1 charges nothing for it. */
+  /** The Copy came back after the end of its due day. */
   late: boolean;
+  /** The Fine fixed by this return (`final` is true), or null when the Copy came back on time or the rate is zero. */
+  fine: LoanFine | null;
   /**
    * The Member whose Hold the returned Copy is now set aside for, and the end of
    * their Pickup Window: the Copy goes on the hold shelf. Null when no Hold was

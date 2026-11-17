@@ -24,11 +24,12 @@ export interface DispatchContext {
   /** The signed-in person whose action freed the Copy: the Librarian of a return, the Member of a cancel, nobody for an expiry. */
   actorId: string | null;
   /**
-   * The audit entry of what freed the Copy (`copy_returned`, `hold_expired`), if it has one. It is
-   * recorded here, just before the dispatch's own `hold_dispatched`, so the audit log reads cause,
-   * then effect, and every audit write of the transaction comes after all its other work.
+   * The audit entries of what freed the Copy (`copy_returned` and a return's `fine_fixed`,
+   * `hold_expired`), in order, if it has any. They are recorded here, just before the dispatch's own
+   * `hold_dispatched`, so the audit log reads cause, then effect, and every audit write of the
+   * transaction comes after all its other work.
    */
-  causeEntry?: AuditEvent;
+  causeEntries?: readonly AuditEvent[];
 }
 
 /** A Hold that was just chosen: its Copy is set aside for its Member until `pickupEndsAt`. */
@@ -94,10 +95,10 @@ export const DISPATCH_SQL = `
  *   and in which the Copy no longer belongs to anyone (its Loan is closed, or
  *   its ready Hold is cancelled or expired). The lock order of every writer is
  *   the Member's row, then the Copy's row, then a Hold's row.
- * - Call it last: it records the audit entries (the cause's `causeEntry`, then
+ * - Call it last: it records the audit entries (the cause's `causeEntries`, then
  *   `hold_dispatched`), and other writers of the audit log wait until the
  *   transaction ends. Record nothing in the audit log before it: pass the
- *   cause's entry as `causeEntry` instead.
+ *   cause's entries as `causeEntries` instead.
  * - After the transaction commits, pass the result to `announceDispatch`.
  */
 export async function dispatchCopy(
@@ -111,7 +112,7 @@ export async function dispatchCopy(
   await tx.query("update public.copies set status = $2 where id = $1", [copy.id, chosen ? "set_aside" : "available"]);
 
   const audit = createAuditLog(deps);
-  if (context.causeEntry) await audit.record(context.causeEntry, tx);
+  for (const entry of context.causeEntries ?? []) await audit.record(entry, tx);
   if (!chosen) return null;
   await audit.record(
     {

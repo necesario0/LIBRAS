@@ -1,8 +1,9 @@
 import type { AccountType } from "@libras/shared";
 import type { Tx } from "../db.ts";
+import type { FinePolicy } from "../fines/index.ts";
 
 /** A Member and the Loan Policy of their Account Type. */
-export interface MemberPolicyRow {
+export interface MemberPolicyRow extends FinePolicy {
   user_id: string;
   account_type: AccountType;
   loan_limit: number;
@@ -20,7 +21,8 @@ export interface MemberPolicyRow {
  */
 export async function lockMember(tx: Tx, memberId: string): Promise<MemberPolicyRow> {
   const { rows } = await tx.query<MemberPolicyRow>(
-    `select m.user_id, m.account_type, p.loan_limit, p.loan_period_days, p.renewal_limit
+    `select m.user_id, m.account_type, p.loan_limit, p.loan_period_days, p.renewal_limit,
+            p.fine_daily_rate_centavos, p.fine_cap_centavos
        from public.members m
        join public.loan_policies p on p.account_type = m.account_type
       where m.user_id = $1
