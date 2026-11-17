@@ -201,8 +201,7 @@ export async function checkTier2(deps: Tier2CheckDeps): Promise<Tier2Report> {
   await step("An overdue Loan shows its Fine so far", async () => {
     // Lent today and due at the end of the day one loan period away: moved back, as if lent one loan period
     // and DAYS_LATE days ago, so it was due at the end of the day DAYS_LATE days ago and today is its DAYS_LATE-th day late.
-    await db.query(
-      "update public.loans set checked_out_at = checked_out_at - make_interval(days => $2), due_at = due_at - make_interval(days => $2) where id = $1", [loanIds[overdueCopy], period + DAYS_LATE]);
+    await backdateLoan(db, overdueCopy, period + DAYS_LATE);
     const loan = loanOf(await myLoans(), overdueCopy);
     expect(loan.overdue, "the Loan is not overdue");
     expect(
@@ -308,6 +307,27 @@ export async function checkTier2(deps: Tier2CheckDeps): Promise<Tier2Report> {
   });
 
   return { passed, fineCentavos: expectedFine };
+}
+
+/**
+ * For the demo on real phones: moves the open Loan of the Copy with this barcode `days` whole days back, both when
+ * it was lent and when it is due, as if the Librarian had lent it that many days earlier. A seven-day Loan moved back
+ * 6 days is due tomorrow (the due-tomorrow notice), moved back 10 days it is three days late (a Fine of three days).
+ * Only the Loan's row changes: its `loan_confirmed` audit entry keeps the real time.
+ */
+export async function backdateLoan(db: Database, barcode: string, days: number): Promise<{ dueAt: string }> {
+  if (!Number.isInteger(days) || days < 1 || days > 60) throw new Error("Give a whole number of days from 1 to 60.");
+  const moved = await db.query<{ due_at: Date }>(
+    `update public.loans l
+        set checked_out_at = l.checked_out_at - make_interval(days => $2), due_at = l.due_at - make_interval(days => $2)
+       from public.copies c
+      where c.id = l.copy_id and c.barcode = $1 and l.returned_at is null
+      returning l.due_at`,
+    [barcode, days],
+  );
+  const row = moved.rows[0];
+  if (!row) throw new Error(`No Loan is open for the Copy with barcode ${barcode}.`);
+  return { dueAt: row.due_at.toISOString() };
 }
 
 /** Deletes every test Member, test Book, Copy, Loan, Fine, Hold, notice and reset request the hosted checks made. The audit log keeps its entries. */

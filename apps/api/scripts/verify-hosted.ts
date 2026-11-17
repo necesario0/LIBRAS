@@ -7,6 +7,8 @@
 //   tier2      walk the Tier 2 paths through the hosted API with one test UMAK Student and a test Book (issue #40):
 //              Renewal, the Loans list, a Fine and its settlement, Clearance, the Good standing refusals, the neutral
 //              password reset reply, the sweep endpoint and the audit chain (`checkTier2` in hosted-checks.ts), then clean up
+//   backdate   <barcode> <days>: move the open Loan of that Copy back by whole days, for the demo on real phones
+//              (a seven-day Loan: 6 = due tomorrow, 10 = three days late)
 //   cleanup    delete every test Member, Book, Copy, Loan, Fine and Hold the dispatch and tier2 commands made
 //
 // Everything reads .env.hosted (DATABASE_URL, SUPABASE_*, SEED_LIBRARIAN_*, EXPO_PUBLIC_API_URL). Nothing secret is printed.
@@ -19,7 +21,7 @@ import type { Server } from "node:http";
 import { closeSync, fstatSync, openSync, readSync, writeSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { PoolClient } from "pg";
-import { counted, formatPesos, tokenize } from "@libras/shared";
+import { counted, formatLibraryDate, formatPesos, tokenize } from "@libras/shared";
 import { createApp } from "../src/app.ts";
 import { SupabaseAuth } from "../src/auth/supabase-auth.ts";
 import { SupabaseAuthAdmin } from "../src/auth/supabase-auth-admin.ts";
@@ -31,7 +33,7 @@ import { DISPATCH_SQL } from "../src/holds/dispatch.ts";
 import { consoleLogger } from "../src/logger.ts";
 import { generateCatalog } from "../src/seed/catalog-generator.ts";
 import { CapturingEmailSender } from "../src/testing/capturing-email-sender.ts";
-import { TEST_BOOK_TITLE, TEST_EMAIL_PREFIX, checkTier2, cleanupHostedChecks } from "./hosted-checks.ts";
+import { TEST_BOOK_TITLE, TEST_EMAIL_PREFIX, backdateLoan, checkTier2, cleanupHostedChecks } from "./hosted-checks.ts";
 import { codeFromEmail, ntpEmployeeSignUpBody, facultySignUpBody, signInDirect, studentSignUpBody, visitorSignUpBody } from "../src/testing/members.ts";
 
 const envFile = fileURLToPath(new URL("../../../.env.hosted", import.meta.url));
@@ -439,6 +441,13 @@ async function tier2Command(db: Database): Promise<void> {
   }
 }
 
+async function backdateCommand(db: Database, barcode: string | undefined, days: string | undefined): Promise<void> {
+  if (!barcode || !days) throw new Error("Usage: npm run verify:hosted -- backdate <Copy barcode> <days>");
+  const { dueAt } = await backdateLoan(db, barcode, Number(days));
+  const overdue = new Date(dueAt).getTime() < Date.now();
+  console.log(`The Loan of Copy ${barcode} is now due ${formatLibraryDate(dueAt)} (end of that day, Manila)${overdue ? ": it is overdue" : ""}.`);
+}
+
 const command = process.argv[2];
 const db = createDatabase(config.databaseUrl, consoleLogger, config.databaseCaCertificate);
 try {
@@ -446,8 +455,9 @@ try {
   else if (command === "search") await searchCommand();
   else if (command === "dispatch") await dispatchCommand(db);
   else if (command === "tier2") await tier2Command(db);
+  else if (command === "backdate") await backdateCommand(db, process.argv[3], process.argv[4]);
   else if (command === "cleanup") await cleanup(db, true);
-  else throw new Error("Usage: npm run verify:hosted -- member | search | dispatch | tier2 | cleanup");
+  else throw new Error("Usage: npm run verify:hosted -- member | search | dispatch | tier2 | backdate <barcode> <days> | cleanup");
 } catch (error) {
   console.error(error instanceof Error ? error.message : error);
   process.exitCode = 1;
