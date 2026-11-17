@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { RENEWAL_REASONS, formatLibraryDate } from "@libras/shared";
+import { RENEWAL_REASONS, formatLibraryDate, formatPesos } from "@libras/shared";
 import type { Loan } from "@libras/shared";
 import { BookCover } from "../components/BookCover";
 import { colors, fontFamily, fontSize, radii, spacing } from "../theme/tokens";
@@ -21,8 +21,9 @@ interface LoanRowProps {
 
 /**
  * One of the Member's Loans: the Book, the Copy, the day it was checked out and
- * the day it is due (or came back). An overdue Loan has a red pill and a red due
- * date, a renewed one a "Renewed" pill. A current Loan that the API says can be
+ * the day it is due (or came back). An overdue Loan has a red pill, a red due
+ * date and the Fine so far, as the API worked it out; a renewed one a "Renewed"
+ * pill. A current Loan that the API says can be
  * renewed has a Renew button that asks once more, with the due date the Renewal
  * gives; one that cannot be renewed says why in its place. The app holds no
  * Renewal rules: it shows what the Loans list says.
@@ -60,9 +61,16 @@ export function LoanRow({ loan, onRenew }: LoanRowProps) {
           </Text>
           <Text style={styles.dates} testID="loan-checked-out">{`Borrowed on ${formatLibraryDate(loan.checkedOutAt)}`}</Text>
           {loan.returnedAt === null ? (
-            <Text style={[styles.dates, styles.due, loan.overdue && styles.overdue]} testID="loan-due">
-              {`${loan.overdue ? "Was due" : "Return by"} ${formatLibraryDate(loan.dueAt)}`}
-            </Text>
+            <>
+              <Text style={[styles.dates, styles.due, loan.overdue && styles.overdue]} testID="loan-due">
+                {`${loan.overdue ? "Was due" : "Return by"} ${formatLibraryDate(loan.dueAt)}`}
+              </Text>
+              {loan.fine === null ? null : (
+                <Text style={[styles.dates, styles.fine]} testID="loan-fine">
+                  {`Fine so far: ${formatPesos(loan.fine.amountCentavos)} (${loan.fine.daysLate} ${loan.fine.daysLate === 1 ? "day" : "days"} late)`}
+                </Text>
+              )}
+            </>
           ) : (
             <Text style={styles.dates} testID="loan-returned">{`Returned on ${formatLibraryDate(loan.returnedAt)}`}</Text>
           )}
@@ -136,6 +144,7 @@ const styles = StyleSheet.create({
   dates: { fontFamily: fontFamily.regular, fontSize: fontSize.caption, color: colors.textMuted },
   due: { color: colors.primary },
   overdue: { fontFamily: fontFamily.semiBold, color: colors.danger },
+  fine: { fontFamily: fontFamily.medium, color: colors.danger },
   pill: { borderRadius: radii.panel, paddingHorizontal: spacing.sm, paddingVertical: 3 },
   pillText: { fontFamily: fontFamily.medium, fontSize: fontSize.micro },
   reason: { fontFamily: fontFamily.regular, fontSize: fontSize.caption, lineHeight: 18, color: colors.textMuted },

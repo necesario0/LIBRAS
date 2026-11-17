@@ -3,7 +3,8 @@
 # (the end-to-end API does it, with the code on the Member's phone), the app shows
 # "Successfully Borrowed", My Loans lists the Loan with its dates, and Home counts
 # it. The Member renews the Loan from My Loans after a confirmation that shows
-# the new due date. An overdue Loan is marked on Home and in My Loans, each Loan
+# the new due date. An overdue Loan is marked on Home and in My Loans with its
+# Fine so far, each Loan
 # that cannot be renewed says why, a Renewal refused because another Member's
 # Hold arrived after the list loaded says so, and a Hold on a Book the Member has
 # on Loan is refused with the reason.
@@ -141,7 +142,7 @@ appId: ph.edu.umak.libras
 - assertVisible:
     id: borrowed-count
     text: "1 of 3"
-- assertVisible: "Please return it by .*"
+- assertVisible: "Please return it by [A-Z][a-z]{2} [0-9]{1,2} to avoid a fine\\."
 - takeScreenshot: loans-successfully-borrowed
 
 # My Loans lists it with its checkout and due dates.
@@ -227,6 +228,10 @@ appId: ph.edu.umak.libras
 - assertVisible: ${output.lateTitle}
 - assertVisible: "Overdue"
 - assertVisible: "Was due [A-Z][a-z]{2} [0-9]{1,2}, 20[0-9]{2}"
+# It was due three days ago: three days at PHP 5 a day.
+- assertVisible:
+    id: loan-fine
+    text: "Fine so far: PHP 15 \\(3 days late\\)"
 - assertVisible: "Overdue Loans cannot be renewed. Please return it to the library desk."
 - scrollUntilVisible:
     element:
