@@ -2,6 +2,7 @@ import type {
   ApiErrorBody,
   BookDetailResponse,
   CancelHoldResponse,
+  ChangePasswordRequest,
   CatalogSearchResponse,
   CheckPasswordResetCodeRequest,
   CompletePasswordResetRequest,
@@ -146,6 +147,17 @@ export function createApiClient({ baseUrl, fetch: fetchImpl = fetch, timeoutMs =
      * and `invalid_password` when the password breaks the sign-up rules.
      */
     completePasswordReset: (body: CompletePasswordResetRequest) => post<null>("/members/password-reset/complete", body),
+    /**
+     * Changes the signed-in Member's password. Every other session of the account ends; this one stays. Failures:
+     * `current_password_incorrect` (403), `invalid_password` (400: the sign-up rules, or the same password) and
+     * `too_many_attempts` (429, shared with sign-in).
+     */
+    changePassword: (accessToken: string, body: ChangePasswordRequest) =>
+      request<null>("/members/me/password", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...bearer(accessToken) },
+        body: JSON.stringify(body),
+      }),
     /** Signs a Member in. Failures: `invalid_credentials`, `email_not_verified`, `too_many_attempts`. */
     signIn: (body: SignInRequest) => post<MemberSignInResponse>("/members/sign-in", body),
     /** Swaps a refresh token for a new session. A refresh token works once. */
