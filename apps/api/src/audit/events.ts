@@ -92,6 +92,27 @@ export const AUDIT_EVENTS = {
       renewalCount: z.number().int().positive(),
     }),
   },
+  /**
+   * The developer moved a test Member's open Loan back by whole days with
+   * `npm run verify:hosted -- backdate`, for the demo on real phones. Only Loans
+   * of test Members can be moved. There is no actor: the script connects to the
+   * database directly, with no signed-in person.
+   */
+  loan_backdated: {
+    /** The Loan's id. */
+    subject: z.uuid(),
+    data: z.strictObject({
+      memberId: z.uuid(),
+      /** The barcode of the Copy on Loan, as typed on the command line. */
+      barcode: z.string().max(64),
+      /** How many days both the lending time and the due date moved back. */
+      days: z.number().int().positive(),
+      /** The due date before the move, ISO 8601. */
+      previousDueAt: z.iso.datetime(),
+      /** The due date after the move, ISO 8601. */
+      dueAt: z.iso.datetime(),
+    }),
+  },
   /** A Librarian recorded the return of a Copy at the desk. `actorId` is the Librarian. */
   copy_returned: {
     /** The id of the Loan that was closed. */

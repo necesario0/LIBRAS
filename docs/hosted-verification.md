@@ -60,7 +60,7 @@ The test Member's address is changed to a +alias of `SEED_LIBRARIAN_EMAIL` (`<yo
 
 ## 5. Real phones and real emails
 
-Walk Parts 8 to 11 of `docs/demo-script.md` on real phones: renew a Loan, receive a due-tomorrow and an overdue notice, see the Fine so far, return a Copy late, meet the Good standing refusals, settle the Fine at the desk and see Clearance change, then reset a password and change it. Loan dates are moved with `npm run verify:hosted -- backdate <Copy barcode> <days>`, which moves one open Loan back by whole days (both when it was lent and when it is due), so nobody waits a week.
+Walk Parts 8 to 11 of `docs/demo-script.md` on real phones: renew a Loan, receive a due-tomorrow and an overdue notice, see the Fine so far, return a Copy late, meet the Good standing refusals, settle the Fine at the desk and see Clearance change, then reset a password and change it. Loan dates are moved with `npm run verify:hosted -- backdate <Copy barcode> <days>`, which moves one open Loan back by whole days (both when it was lent and when it is due), so nobody waits a week. It moves only a Loan of a test Member (an address that starts with `libras-hosted-check-`, or a +alias with it), refuses any other Loan without changing it, and records each move in the audit log as `loan_backdated`. So Member A for these Parts signs up with a +alias such as `<you>+libras-hosted-check-demo@umak.edu.ph`, after `verify:hosted -- tier2` has run (it deletes every test Member first).
 
 Read each email in the Member's inbox, and look in spam too (see Known limits in Tier 1). Tick each row:
 

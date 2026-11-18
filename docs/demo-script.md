@@ -17,6 +17,7 @@ Words follow the glossary: Member, Account Type, Librarian, Book, Copy, Loan, Ho
 | Printed Copy labels | At least two Copies of one Book, as Code 128 labels of the Copy's 10-digit barcode (`31` then 8 digits). `npm run labels:hosted -- --title "introduction to algorithms" --copies 3` writes `copy-labels.html`: open it in Chrome and print at 100% scale on white matte paper |
 
 | Presenter's computer (Tier 2) | The repository with `.env.hosted`, to move Loan dates with `npm run verify:hosted -- backdate <Copy barcode> <days>` |
+| Member A for Tier 2 | A test Member: a UMAK Student signed up with a +alias that contains `libras-hosted-check-`, for example `<you>+libras-hosted-check-demo@umak.edu.ph`. The backdate command moves only test Members' Loans and refuses a real Member's. Send one email to the alias first to see that it reaches the inbox. `npm run verify:hosted -- tier2` and `-- cleanup` delete every test Member, so sign this one up after them |
 | Three more Copy labels (Tier 2) | Three available Copies, X, Y and Z (any Books), for the Renewal, the late return and the Loan after the settle |
 
 Pick one Book before the demo and note its title (the labels command prints the title and the barcodes it used), so that the demo does not depend on searching blind.
@@ -114,7 +115,7 @@ The window is 24 hours (`library_settings.pickup_window_hours`), so this is show
 
 ## Part 8: renew a Loan (Tier 2; spec #29 user stories 1 to 5 and 8)
 
-Run Parts 8 to 11 after 08:00 Manila time, when Loan notices go out. Member A must start with no overdue Loan and no unsettled Fine.
+Run Parts 8 to 11 after 08:00 Manila time, when Loan notices go out. Member A here is the test Member from "What you need" (the +alias with `libras-hosted-check-`), signed in on phone A, and must start with no overdue Loan and no unsettled Fine.
 
 1. Desk: Member A shows the Digital ID (Home, Digital ID). The Librarian scans it, then Copies X and Y. Two Loans confirmed, due in 7 days. **Done with this Member**.
 2. Phone A, My Loans: both Loans under Current, each with **Renew**.
@@ -128,7 +129,7 @@ Checks:
 
 ## Part 9: Loan notices and the Fine so far (user stories 9 to 18, 29 to 30)
 
-1. Presenter's computer: `npm run verify:hosted -- backdate <X barcode> 13` (X was renewed, so it was due in 14 days: now due tomorrow), then `npm run verify:hosted -- backdate <Y barcode> 10` (Y is now three days late). Each prints the new due date.
+1. Presenter's computer: `npm run verify:hosted -- backdate <X barcode> 13` (X was renewed, so it was due in 14 days: now due tomorrow), then `npm run verify:hosted -- backdate <Y barcode> 10` (Y is now three days late). Each prints the new due date, and the audit log records the move. A Copy lent to a real Member is refused and nothing changes.
 2. Within 5 minutes the schedule wakes the API and Member A's inbox gets one email, "You have an overdue LIBRAS Loan". It names Y, overdue since 3 days ago, "The Fine so far is PHP 15.", and X, due tomorrow, with the daily Fine rate and why it cannot be renewed. One email a day covers all of a Member's Loans.
 3. Phone A, My Loans (open it again so it reloads): Y shows **Overdue** and the red line "Fine so far: PHP 15 (3 days late)" under "Was due ...". X says why it cannot be renewed.
 4. Phone A, Profile (tap the avatar on Home): the Clearance card says **Not cleared**, lists both Loans still out, and the red note "You cannot borrow, place a Hold or renew a Loan while you have an overdue Loan. ..."
@@ -192,6 +193,7 @@ Checks:
 | No email arrives | Look in the spam folder first. Brevo's log (Transactional, Logs) shows whether it was sent |
 | Camera blocked | Site settings for the scanner address, allow the camera, reload |
 | No Loan notice within 5 minutes of the backdate | It must be after 08:00 Manila, and the Member gets one notice email a day: Brevo > Logs shows whether one went out earlier. `npm run schedule:hosted` checks that the schedule reaches the API |
+| The backdate says the Loan "belongs to a Member who is not a test Member" | Member A signed up with a real address. Sign up a test Member as in "What you need", lend X and Y to them, and start Part 8 again |
 | Member A is refused a Loan at the start of Part 8 | They still have an overdue Loan or an unsettled Fine from an earlier run: return it, and settle the Fine in the Member panel |
 
 ## Run record

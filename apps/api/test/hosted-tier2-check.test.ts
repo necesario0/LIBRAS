@@ -121,8 +121,9 @@ describe("Backdating a Loan for the demo on the hosted system", () => {
     await api.close();
   });
 
-  it("moves the open Loan of a Copy back by whole days, so that a seven-day Loan lent ten days ago is three days late with its Fine so far", async () => {
-    const member = await createTestMember(api, { email: `${TEST_EMAIL_PREFIX}backdate-${randomUUID().slice(0, 8)}@umak.edu.ph` });
+  /** Lends a fresh test Copy, on 12 Nov 2026 in Manila, to a new Member with this address. */
+  const lendToMember = async (email: string) => {
+    const member = await createTestMember(api, { email });
     const librarian = await createTestAccount(api, { staff: { role: "librarian", fullName: "Lita Reyes" } });
     const signedIn = await fetch(`${api.baseUrl}/staff/sign-in`, {
       method: "POST",
@@ -131,14 +132,21 @@ describe("Backdating a Loan for the demo on the hosted system", () => {
     });
     const librarianToken = ((await signedIn.json()) as { session: { accessToken: string } }).session.accessToken;
     const book = await api.db.query<{ id: string }>("insert into public.books (title, authors) values ($1, '{}') returning id", [`${TEST_BOOK_TITLE} backdate`]);
-    const barcode = `99${String(Date.now()).slice(-8)}`;
+    const barcode = `99${randomUUID().replace(/\D/g, "").slice(0, 8).padEnd(8, "0")}`;
     await api.db.query("insert into public.copies (book_id, accession_number, barcode) values ($1, $2, $3)", [book.rows[0]?.id, `HC-BD-${randomUUID().slice(0, 8)}`, barcode]);
     api.clock.set("2026-11-12T02:00:00.000Z");
     const code = ((await (await send("GET", "/members/me/digital-id", member.accessToken)).json()) as { code: string }).code;
     const identified = (await (await send("POST", "/desk/members/identify", librarianToken, { code })).json()) as { deskSession: { token: string } };
     assert.equal((await send("POST", "/desk/loans", librarianToken, { deskSession: identified.deskSession.token, copy: barcode })).status, 201);
+    return { member, barcode };
+  };
+  const backdateEntries = async (memberId: string) =>
+    (await createAuditLog(api).entries({ limit: 100_000 })).filter((entry) => entry.type === "loan_backdated" && entry.data.memberId === memberId);
 
-    const moved = await backdateLoan(api.db, barcode, 10);
+  it("moves the open Loan of a Copy back by whole days, so that a seven-day Loan lent ten days ago is three days late with its Fine so far", async () => {
+    const { member, barcode } = await lendToMember(`${TEST_EMAIL_PREFIX}backdate-${randomUUID().slice(0, 8)}@umak.edu.ph`);
+
+    const moved = await backdateLoan({ ...api, barcode, days: 10 });
 
     // Lent on 12 Nov in Manila and due at the end of 19 Nov; ten days back, due at the end of 9 Nov.
     assert.equal(moved.dueAt, "2026-11-09T15:59:59.999Z");
@@ -148,8 +156,48 @@ describe("Backdating a Loan for the demo on the hosted system", () => {
     assert.equal(loans[0]?.fine?.amountCentavos, 1500);
   });
 
+  it("records each move in the audit log, with the due date before and after", async () => {
+    const { member, barcode } = await lendToMember(`${TEST_EMAIL_PREFIX}backdate-${randomUUID().slice(0, 8)}@umak.edu.ph`);
+
+    await backdateLoan({ ...api, barcode, days: 6 });
+
+    const { loans } = (await (await send("GET", "/members/me/loans", member.accessToken)).json()) as MyLoansResponse;
+    const entries = await backdateEntries(member.member.id);
+    assert.deepEqual(
+      entries.map((entry) => ({ actorId: entry.actorId, subject: entry.subject, data: entry.data })),
+      [
+        {
+          actorId: null,
+          subject: loans[0]?.id,
+          data: { memberId: member.member.id, barcode, days: 6, previousDueAt: "2026-11-19T15:59:59.999Z", dueAt: "2026-11-13T15:59:59.999Z" },
+        },
+      ],
+    );
+    assert.equal((await createAuditLog(api).verify()).intact, true);
+  });
+
+  it("moves a Loan of a test Member whose address is the developer's +alias", async () => {
+    const { barcode } = await lendToMember(`developer+${TEST_EMAIL_PREFIX}demo-${randomUUID().slice(0, 8)}@umak.edu.ph`);
+
+    assert.equal((await backdateLoan({ ...api, barcode, days: 6 })).dueAt, "2026-11-13T15:59:59.999Z");
+  });
+
+  it("refuses the Loan of a real Member: it changes nothing and records nothing", async () => {
+    const { member, barcode } = await lendToMember(`real-${randomUUID().slice(0, 8)}@umak.edu.ph`);
+
+    await assert.rejects(
+      backdateLoan({ ...api, barcode, days: 10 }),
+      new RegExp(`The Loan of Copy ${barcode} belongs to a Member who is not a test Member`),
+    );
+
+    const { loans } = (await (await send("GET", "/members/me/loans", member.accessToken)).json()) as MyLoansResponse;
+    assert.equal(loans[0]?.dueAt, "2026-11-19T15:59:59.999Z");
+    assert.deepEqual(await backdateEntries(member.member.id), []);
+    await api.db.query("delete from public.loans where member_id = $1", [member.member.id]);
+  });
+
   it("refuses a barcode with no open Loan and a number of days that is not a whole number from 1 to 60", async () => {
-    await assert.rejects(backdateLoan(api.db, "9999999999", 3), /No Loan is open for the Copy with barcode 9999999999/);
-    for (const days of [0, -1, 1.5, 61]) await assert.rejects(backdateLoan(api.db, "9999999999", days), /whole number of days from 1 to 60/);
+    await assert.rejects(backdateLoan({ ...api, barcode: "9999999999", days: 3 }), /No Loan is open for the Copy with barcode 9999999999/);
+    for (const days of [0, -1, 1.5, 61]) await assert.rejects(backdateLoan({ ...api, barcode: "9999999999", days }), /whole number of days from 1 to 60/);
   });
 });

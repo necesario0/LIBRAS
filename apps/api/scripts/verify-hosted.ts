@@ -443,7 +443,7 @@ async function tier2Command(db: Database): Promise<void> {
 
 async function backdateCommand(db: Database, barcode: string | undefined, days: string | undefined): Promise<void> {
   if (!barcode || !days) throw new Error("Usage: npm run verify:hosted -- backdate <Copy barcode> <days>");
-  const { dueAt } = await backdateLoan(db, barcode, Number(days));
+  const { dueAt } = await backdateLoan({ db, clock: systemClock, barcode, days: Number(days) });
   const overdue = new Date(dueAt).getTime() < Date.now();
   console.log(`The Loan of Copy ${barcode} is now due ${formatLibraryDate(dueAt)} (end of that day, Manila)${overdue ? ": it is overdue" : ""}.`);
 }
