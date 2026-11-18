@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { CatalogSuggestion } from "./search/suggestions.ts";
 
 export const CATALOG_SEARCH_MAX_QUERY_LENGTH = 100;
 export const CATALOG_SEARCH_DEFAULT_LIMIT = 20;
@@ -96,4 +97,35 @@ export function contentsChapters(contents: string): string[] {
 /** The body of `GET /catalog/books/:id`. Availability is read live from the Copies. */
 export interface BookDetailResponse {
   book: BookDetail;
+}
+
+/** Suggestions start at this many characters. */
+export const CATALOG_SUGGEST_MIN_LENGTH = 2;
+/** The most suggestions one answer holds. */
+export const CATALOG_SUGGEST_LIMIT = 5;
+
+export const CATALOG_SUGGEST_MESSAGES = {
+  tooShort: `Type at least ${CATALOG_SUGGEST_MIN_LENGTH} characters to get suggestions.`,
+  invalid: CATALOG_SEARCH_MESSAGES.invalid,
+} as const;
+
+/** The query string of `GET /catalog/suggestions`. */
+export const catalogSuggestQuerySchema = z.object({
+  q: z
+    .string({ error: CATALOG_SUGGEST_MESSAGES.tooShort })
+    .trim()
+    .min(CATALOG_SUGGEST_MIN_LENGTH, CATALOG_SUGGEST_MESSAGES.tooShort)
+    .max(CATALOG_SEARCH_MAX_QUERY_LENGTH, CATALOG_SEARCH_MESSAGES.queryTooLong),
+});
+
+/**
+ * The body of `GET /catalog/suggestions`: up to `CATALOG_SUGGEST_LIMIT` titles
+ * (each with the Book it opens) and author names, best first. A title opens its
+ * Book; an author runs a search for that author. Only titles and author names:
+ * never an accession number, barcode or ISBN.
+ */
+export interface CatalogSuggestionsResponse {
+  /** The query as the API understood it (trimmed). */
+  query: string;
+  suggestions: CatalogSuggestion[];
 }

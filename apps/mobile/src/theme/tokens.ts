@@ -71,6 +71,8 @@ export const colors = {
   scrim: "rgba(0,0,0,0.55)",
   /** The hairline around the floating tab bar (black at 6%). */
   hairline: "rgba(0,0,0,0.06)",
+  /** The circled cross that empties the search field. */
+  clearField: "#B9B9B9",
   /** The lighter spine drawn over a placeholder Book cover. */
   coverSpine: "rgba(255,255,255,0.35)",
 } as const;
@@ -112,6 +114,11 @@ export const fontSize = {
   label: 14,
   small: 13,
   caption: 12,
+  /** Search mode (approved Tier 3 preview): the list label, the text link, a list row and the empty state heading. */
+  listLabel: 10.5,
+  action: 12.5,
+  listRow: 14.5,
+  emptyTitle: 17,
   /** The line under the greeting on Home. */
   micro: 10,
 } as const;
@@ -192,6 +199,8 @@ export const radii = {
   roundAction: 23,
   /** The success dialog of the password screens (Figma 928:14987). */
   dialog: 28,
+  /** The round icon behind an empty state message (64 pt). */
+  iconRing: 32,
   /** The round logo of the wordmark (31 pt). */
   logo: 16,
   /** The terms checkbox of sign-up. */

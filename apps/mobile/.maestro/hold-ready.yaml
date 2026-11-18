@@ -37,11 +37,12 @@ appId: ph.edu.umak.libras
 # The Book's only Copy is out: the Member places a Hold.
 - extendedWaitUntil:
     visible:
-      id: search-input
+      id: search-(open|input)
     timeout: 20000
-- tapOn:
-    id: search-input
-- inputText: ${output.heldWord}
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: ${output.heldWord}
 - extendedWaitUntil:
     visible: ${output.heldTitle}
     timeout: 15000
@@ -70,6 +71,7 @@ appId: ph.edu.umak.libras
       id: search-results
     timeout: 10000
 # A waiting Hold earns no dot.
+- runFlow: subflows/leave-search.yaml
 - assertNotVisible:
     id: tab-my-books-dot
 
@@ -78,6 +80,7 @@ appId: ph.edu.umak.libras
 
 # My Books opens on Holds: the Hold is ready, with the end of the Pickup Window.
 # The tab and the Holds segment have a dot; Loans does not.
+- runFlow: subflows/leave-search.yaml
 - tapOn:
     id: tab-my-books
 - extendedWaitUntil:
@@ -86,6 +89,7 @@ appId: ph.edu.umak.libras
     timeout: 15000
 - assertVisible:
     id: holds-segment
+- runFlow: subflows/leave-search.yaml
 - assertVisible:
     id: tab-my-books-dot
 - assertVisible:
@@ -119,8 +123,13 @@ appId: ph.edu.umak.libras
 - assertVisible: "Show this to the librarian"
 
 # The Book page says until when the Copy is set aside, and leads to the Holds segment and to the Digital ID.
+- runFlow: subflows/leave-search.yaml
 - tapOn:
     id: tab-home
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: ${output.heldWord}
 - extendedWaitUntil:
     visible: ${output.heldTitle}
     timeout: 15000
@@ -148,8 +157,13 @@ appId: ph.edu.umak.libras
     id: holds-segment
 - assertNotVisible:
     id: book-sheet
+- runFlow: subflows/leave-search.yaml
 - tapOn:
     id: tab-home
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: ${output.heldWord}
 - extendedWaitUntil:
     visible: ${output.heldTitle}
     timeout: 15000
@@ -186,8 +200,9 @@ appId: ph.edu.umak.libras
     id: borrowed-home
 - extendedWaitUntil:
     visible:
-      id: search-input
+      id: search-(open|input)
     timeout: 15000
+- runFlow: subflows/leave-search.yaml
 - tapOn:
     id: tab-my-books
 - extendedWaitUntil:
@@ -195,6 +210,7 @@ appId: ph.edu.umak.libras
       id: loans-current
     timeout: 15000
 - assertVisible: "Current - 1 of 3"
+- runFlow: subflows/leave-search.yaml
 - assertNotVisible:
     id: tab-my-books-dot
 - tapOn:

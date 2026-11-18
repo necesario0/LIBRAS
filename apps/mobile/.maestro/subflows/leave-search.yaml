@@ -1,0 +1,10 @@
+# Leaves search mode when it is open (Cancel), so the tab bar is back. Does nothing otherwise.
+appId: ph.edu.umak.libras
+---
+- runFlow:
+    when:
+      visible:
+        id: search-cancel
+    commands:
+      - tapOn:
+          id: search-cancel
