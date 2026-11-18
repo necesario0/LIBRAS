@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { HOLD_STATUS_LABELS, formatLibraryDate, formatLibraryDateTime } from "@libras/shared";
 import type { Hold, HoldStatus } from "@libras/shared";
 import { BookCover } from "../components/BookCover";
+import { RowAction, RowConfirmation } from "../components/RowConfirmation";
 import { StatusPill } from "../components/StatusPill";
 import type { PillTone } from "../components/StatusPill";
 import { colors, fontFamily, fontSize, radii, spacing } from "../theme/tokens";
@@ -82,40 +83,16 @@ export function HoldRow({ hold, onCancel }: HoldRowProps) {
       )}
 
       {hold.status !== "waiting" && hold.status !== "ready" ? null : confirming ? (
-        <View style={styles.confirm}>
-          <Text style={styles.confirmText}>
-            {hold.status === "ready" ? "Give up the Copy that is set aside for you?" : "Leave the queue for this Book?"}
-          </Text>
-          <View style={styles.actions}>
-            <Pressable
-              accessibilityRole="button"
-              disabled={busy}
-              onPress={() => void cancel()}
-              style={[styles.action, styles.actionDanger, busy && styles.busy]}
-              testID="hold-cancel-confirm"
-            >
-              <Text style={[styles.actionLabel, styles.actionDangerLabel]}>{busy ? "Cancelling..." : "Yes, cancel"}</Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              disabled={busy}
-              onPress={() => setConfirming(false)}
-              style={[styles.action, styles.actionMuted]}
-              testID="hold-cancel-keep"
-            >
-              <Text style={styles.actionLabel}>Keep Hold</Text>
-            </Pressable>
-          </View>
-        </View>
+        <RowConfirmation
+          question={hold.status === "ready" ? "Give up the Copy that is set aside for you?" : "Leave the queue for this Book?"}
+          confirm={{ label: "Yes, cancel", busyLabel: "Cancelling...", tone: "danger", testID: "hold-cancel-confirm" }}
+          keep={{ label: "Keep Hold", testID: "hold-cancel-keep" }}
+          busy={busy}
+          onConfirm={() => void cancel()}
+          onKeep={() => setConfirming(false)}
+        />
       ) : (
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => setConfirming(true)}
-          style={[styles.action, styles.actionMuted, styles.cancel]}
-          testID="hold-cancel"
-        >
-          <Text style={styles.actionLabel}>Cancel Hold</Text>
-        </Pressable>
+        <RowAction label="Cancel Hold" onPress={() => setConfirming(true)} testID="hold-cancel" />
       )}
     </View>
   );
@@ -132,15 +109,5 @@ const styles = StyleSheet.create({
   pickupTitle: { fontFamily: fontFamily.semiBold, fontSize: fontSize.small, color: colors.availableText },
   pickupBody: { fontFamily: fontFamily.regular, fontSize: fontSize.caption, lineHeight: 18, color: colors.textSecondary },
   pickupUntil: { fontFamily: fontFamily.semiBold, color: colors.black },
-  failure: { fontFamily: fontFamily.regular, fontSize: fontSize.caption, color: colors.danger },
-  confirm: { gap: spacing.sm },
-  confirmText: { fontFamily: fontFamily.regular, fontSize: fontSize.caption, color: colors.textSecondary },
-  actions: { flexDirection: "row", gap: spacing.sm },
-  action: { height: 36, borderRadius: radii.button, paddingHorizontal: spacing.lg, alignItems: "center", justifyContent: "center" },
-  cancel: { alignSelf: "flex-start" },
-  actionMuted: { backgroundColor: colors.surface },
-  actionDanger: { backgroundColor: colors.danger },
-  actionLabel: { fontFamily: fontFamily.medium, fontSize: fontSize.caption, color: colors.black },
-  actionDangerLabel: { color: colors.white },
-  busy: { opacity: 0.6 },
+  failure: { fontFamily: fontFamily.regular, fontSize: fontSize.caption, lineHeight: 18, color: colors.danger },
 });

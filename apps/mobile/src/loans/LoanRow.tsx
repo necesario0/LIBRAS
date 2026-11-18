@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { RENEWAL_REASONS, counted, formatLibraryDate, formatPesos } from "@libras/shared";
 import type { Loan } from "@libras/shared";
 import { BookCover } from "../components/BookCover";
+import { RowAction, RowConfirmation, RowConfirmationEmphasis } from "../components/RowConfirmation";
 import { StatusPill } from "../components/StatusPill";
 import type { PillTone } from "../components/StatusPill";
 import { colors, fontFamily, fontSize, radii, spacing } from "../theme/tokens";
@@ -91,45 +92,31 @@ export function LoanRow({ loan, onRenew }: LoanRowProps) {
           {RENEWAL_REASONS[renewal.reason]}
         </Text>
       ) : confirming ? (
-        <View style={styles.confirm} testID="loan-renew-confirmation">
-          <Text style={styles.confirmText} testID="loan-renew-question">
-            {"Renew this Loan? The new due date is "}
-            <Text style={styles.confirmDate}>{formatLibraryDate(renewal.dueAt)}</Text>
-            {renewal.last ? ". After this, it cannot be renewed again." : "."}
-          </Text>
-          <View style={styles.actions}>
-            <Pressable
-              accessibilityRole="button"
-              disabled={busy}
-              onPress={() => void renew()}
-              style={[styles.action, styles.actionPrimary, busy && styles.busy]}
-              testID="loan-renew-confirm"
-            >
-              <Text style={[styles.actionLabel, styles.actionPrimaryLabel]}>{busy ? "Renewing..." : "Yes, renew"}</Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              disabled={busy}
-              onPress={() => setConfirming(false)}
-              style={[styles.action, styles.actionMuted]}
-              testID="loan-renew-keep"
-            >
-              <Text style={styles.actionLabel}>Not now</Text>
-            </Pressable>
-          </View>
-        </View>
+        <RowConfirmation
+          question={
+            <>
+              {"Renew this Loan? The new due date is "}
+              <RowConfirmationEmphasis>{formatLibraryDate(renewal.dueAt)}</RowConfirmationEmphasis>
+              {renewal.last ? ". After this, it cannot be renewed again." : "."}
+            </>
+          }
+          confirm={{ label: "Yes, renew", busyLabel: "Renewing...", tone: "primary", testID: "loan-renew-confirm" }}
+          keep={{ label: "Not now", testID: "loan-renew-keep" }}
+          busy={busy}
+          onConfirm={() => void renew()}
+          onKeep={() => setConfirming(false)}
+          testID="loan-renew-confirmation"
+          questionTestID="loan-renew-question"
+        />
       ) : (
-        <Pressable
-          accessibilityRole="button"
+        <RowAction
+          label="Renew"
           onPress={() => {
             setFailure(undefined);
             setConfirming(true);
           }}
-          style={[styles.action, styles.actionMuted, styles.renew]}
           testID="loan-renew"
-        >
-          <Text style={styles.actionLabel}>Renew</Text>
-        </Pressable>
+        />
       )}
     </View>
   );
@@ -147,15 +134,4 @@ const styles = StyleSheet.create({
   fine: { fontFamily: fontFamily.medium, color: colors.danger },
   reason: { fontFamily: fontFamily.regular, fontSize: fontSize.caption, lineHeight: 18, color: colors.textMuted },
   failure: { fontFamily: fontFamily.regular, fontSize: fontSize.caption, lineHeight: 18, color: colors.danger },
-  confirm: { gap: spacing.sm },
-  confirmText: { fontFamily: fontFamily.regular, fontSize: fontSize.caption, lineHeight: 18, color: colors.textSecondary },
-  confirmDate: { fontFamily: fontFamily.semiBold, color: colors.black },
-  actions: { flexDirection: "row", gap: spacing.sm },
-  action: { height: 36, borderRadius: radii.button, paddingHorizontal: spacing.lg, alignItems: "center", justifyContent: "center" },
-  renew: { alignSelf: "flex-start" },
-  actionMuted: { backgroundColor: colors.surface },
-  actionPrimary: { backgroundColor: colors.primary },
-  actionLabel: { fontFamily: fontFamily.medium, fontSize: fontSize.caption, color: colors.black },
-  actionPrimaryLabel: { color: colors.white },
-  busy: { opacity: 0.6 },
 });
