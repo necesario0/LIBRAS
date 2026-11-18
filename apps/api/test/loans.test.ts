@@ -692,4 +692,45 @@ describe("My Loans", () => {
       assert.deepEqual(outcomes, ["refused", "refused", "refused", "refused", "refused"], identity.email);
     }
   });
+
+  it("lets a Member read their own Loan straight from the database, but not which Librarian confirmed it", async () => {
+    h.api().clock.set("2026-11-12T05:00:00.000Z");
+    const book = await h.addBook("Private Librarian");
+    const anas = await lend(ana, book.copies[0] as TestCopy);
+
+    for (const identity of [
+      { userId: ana.member.id, email: ana.email },
+      { userId: lita.userId, email: "librarian@example.com" },
+    ]) {
+      const read = async (columns: string) =>
+        withIdentity(h.api().db, identity, async (scope) => {
+          await scope.query("savepoint attempt");
+          try {
+            return (await scope.query(`select ${columns} from public.loans where id = $1`, [anas.id])).rows;
+          } catch (error) {
+            return (error as Error).message;
+          } finally {
+            await scope.query("rollback to savepoint attempt");
+          }
+        });
+      assert.deepEqual(
+        await read("id, copy_id, member_id, checked_out_at, due_at, returned_at, renewal_count"),
+        [
+          {
+            id: anas.id,
+            copy_id: (book.copies[0] as TestCopy).id,
+            member_id: ana.member.id,
+            checked_out_at: new Date("2026-11-12T05:00:00.000Z"),
+            due_at: new Date("2026-11-19T15:59:59.999Z"),
+            returned_at: null,
+            renewal_count: 0,
+          },
+        ],
+        identity.email,
+      );
+      for (const columns of ["confirmed_by", "*"]) {
+        assert.match(String(await read(columns)), /permission denied for table loans/, `${identity.email}: ${columns}`);
+      }
+    }
+  });
 });
