@@ -108,13 +108,19 @@ export interface ReturningLoan {
  * return's own entries), or null when the Copy came back on time or nothing is
  * owed. The Librarian is kept on the Fine: only they can settle it on this return.
  */
-export async function fixFine(
-  tx: Tx,
-  loan: ReturningLoan,
-  policy: FinePolicy,
-  returnedAt: Date,
-  librarianId: string,
-): Promise<{ fine: LoanFine; entry: AuditEvent } | null> {
+export async function fixFine({
+  tx,
+  loan,
+  policy,
+  returnedAt,
+  librarianId,
+}: {
+  tx: Tx;
+  loan: ReturningLoan;
+  policy: FinePolicy;
+  returnedAt: Date;
+  librarianId: string;
+}): Promise<{ fine: LoanFine; entry: AuditEvent } | null> {
   const owed = fineAt(loan.due_at, policy, returnedAt);
   if (!owed) return null;
   await tx.query(

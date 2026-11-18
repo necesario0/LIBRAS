@@ -120,12 +120,17 @@ export async function goodStandingRefusal(scope: IdentityScope, memberId: string
  * fixes a Fine, and a settle changes one, with that same lock held, so the
  * answer is never older than the action it guards.
  */
-export async function requireGoodStanding(
-  scope: IdentityScope,
-  memberId: string,
-  now: Date,
-  messages: Readonly<Record<GoodStandingRefusal, string>>,
-): Promise<void> {
+export async function requireGoodStanding({
+  scope,
+  memberId,
+  now,
+  messages,
+}: {
+  scope: IdentityScope;
+  memberId: string;
+  now: Date;
+  messages: Readonly<Record<GoodStandingRefusal, string>>;
+}): Promise<void> {
   const reason = await goodStandingRefusal(scope, memberId, now);
   if (reason !== null) throw new AppError(409, reason, messages[reason]);
 }

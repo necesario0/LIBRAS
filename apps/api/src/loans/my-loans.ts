@@ -46,12 +46,19 @@ export interface RenewalPolicy extends FinePolicy {
  * why the Member is not in Good standing (null when they are). A returned Loan
  * has the Fine fixed at its return, whatever the policy says now.
  */
-export function toLoan(
-  row: LoanRow,
-  policy: RenewalPolicy,
-  facts: { holdWaiting: boolean; notInGoodStanding: GoodStandingRefusal | null },
-  now: Date,
-): Loan {
+export function toLoan({
+  row,
+  policy,
+  holdWaiting,
+  notInGoodStanding,
+  now,
+}: {
+  row: LoanRow;
+  policy: RenewalPolicy;
+  holdWaiting: boolean;
+  notInGoodStanding: GoodStandingRefusal | null;
+  now: Date;
+}): Loan {
   const current = row.returned_at === null;
   return {
     id: row.id,
@@ -65,7 +72,7 @@ export function toLoan(
     overdue: current && isLoanOverdue(row.due_at, now),
     renewalCount: row.renewal_count,
     renewal: current
-      ? renewalOf({ loan: row, policy, ...facts, now })
+      ? renewalOf({ loan: row, policy, holdWaiting, notInGoodStanding, now })
       : null,
     fine: current ? fineAt(row.due_at, policy, now) : storedFine(row),
   };
@@ -102,7 +109,7 @@ export async function listLoans(deps: AppDeps, identity: Identity): Promise<MyLo
     rows.filter((row) => row.returned_at === null).map((row) => row.book_id),
   );
   return {
-    loans: rows.map((row) => toLoan(row, policy, { holdWaiting: waiting.has(row.book_id), notInGoodStanding }, now)),
+    loans: rows.map((row) => toLoan({ row, policy, holdWaiting: waiting.has(row.book_id), notInGoodStanding, now })),
     loanLimit: policy.loan_limit,
     loanPeriodDays: policy.loan_period_days,
   };

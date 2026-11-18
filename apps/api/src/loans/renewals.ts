@@ -87,6 +87,6 @@ export async function renewLoan(deps: AppDeps, member: Identity, loanId: string)
       tx,
     );
     // Renewed: no Hold was waiting and the Member is in Good standing.
-    return toLoan(renewed, policy, { holdWaiting: false, notInGoodStanding: null }, now);
+    return toLoan({ row: renewed, policy, holdWaiting: false, notInGoodStanding: null, now });
   });
 }

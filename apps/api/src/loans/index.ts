@@ -130,7 +130,7 @@ async function confirmOnce(deps: AppDeps, librarian: Identity, memberId: string,
         throw new AppError(403, "cannot_borrow", LOAN_MESSAGES.cannotBorrow);
       }
       // Under the Member's lock: a return fixing a Fine, or a settle, is wholly before or after this.
-      await requireGoodStanding(tx, member.user_id, checkedOutAt, LOAN_MESSAGES.notInGoodStanding);
+      await requireGoodStanding({ scope: tx, memberId: member.user_id, now: checkedOutAt, messages: LOAN_MESSAGES.notInGoodStanding });
       const open = await tx.query<{ count: number }>(
         "select count(*)::int as count from public.loans where member_id = $1 and returned_at is null",
         [member.user_id],
@@ -263,7 +263,7 @@ export async function recordReturn(deps: AppDeps, librarian: Identity, request: 
 
         const late = isLoanOverdue(loan.due_at, returnedAt);
         // A late Copy's Fine is fixed now, under the Member's Loan Policy as it stands (their row is locked).
-        const fixed = await fixFine(tx, loan, member, returnedAt, librarian.userId);
+        const fixed = await fixFine({ tx, loan, policy: member, returnedAt, librarianId: librarian.userId });
         // Last, as `dispatchCopy` asks. The Copy's row is locked and its Loan is closed: the Book's next Hold
         // gets it, or it is available. The return's own audit entries go in just before the dispatch's.
         dispatch = await dispatchCopy(deps, tx, copy, {
