@@ -105,3 +105,11 @@ apps/mobile/expo-env.d.ts
 apps/web/test-results/
 apps/web/playwright-report/
 copy-labels.html
+
+# The library's accession list (private: costs, sources of funds, cataloguer names) and
+# anything made from it. `npm run seed` reads it from data/library-catalog.xlsx.
+/data/
+*.xlsx
+*.xls
+*.csv
+!apps/api/test/fixtures/library-workbook.xlsx

@@ -72,8 +72,13 @@ export const BOOK_MESSAGES = {
 /** A Book id as it appears in `GET /catalog/books/:id`. */
 export const bookIdSchema = z.uuid(BOOK_MESSAGES.invalidId);
 
-/** One Book with its details and Copy counts: the same fields a search result carries. */
-export type BookDetail = BookSearchResult;
+/** One Book with its details and Copy counts: the fields a search result carries, plus the Book's own texts. */
+export interface BookDetail extends BookSearchResult {
+  /** What the Book is about, plain text as the library wrote it (line breaks kept). Null when the catalog has none. Search does not use it. */
+  summary: string | null;
+  /** The Book's table of contents, plain text as the library wrote it. Null when the catalog has none. Search does not use it. */
+  contents: string | null;
+}
 
 /** The body of `GET /catalog/books/:id`. Availability is read live from the Copies. */
 export interface BookDetailResponse {
