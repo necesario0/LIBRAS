@@ -60,7 +60,7 @@ export function toLoan(
     accessionNumber: row.accession_number,
     checkedOutAt: row.checked_out_at.toISOString(),
     dueAt: row.due_at.toISOString(),
-    returnedAt: current ? null : (row.returned_at as Date).toISOString(),
+    returnedAt: row.returned_at?.toISOString() ?? null,
     overdue: current && isLoanOverdue(row.due_at, now),
     renewalCount: row.renewal_count,
     renewal: current

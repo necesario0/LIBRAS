@@ -98,8 +98,8 @@ export function goodStandingOf(standing: Standing): GoodStanding {
     overdue_loan: standing.loansOut.some((loan) => loan.overdue),
     unsettled_fine: standing.unsettledFines.length > 0,
   };
-  const reasons = GOOD_STANDING_REFUSALS.filter((reason) => present[reason]);
-  return reasons.length === 0 ? { inGoodStanding: true } : { inGoodStanding: false, reasons };
+  const [first, ...rest] = GOOD_STANDING_REFUSALS.filter((reason) => present[reason]);
+  return first === undefined ? { inGoodStanding: true } : { inGoodStanding: false, reasons: [first, ...rest] };
 }
 
 /**
@@ -110,7 +110,7 @@ export function goodStandingOf(standing: Standing): GoodStanding {
  */
 export async function goodStandingRefusal(scope: IdentityScope, memberId: string, now: Date): Promise<GoodStandingRefusal | null> {
   const standing = goodStandingOf(await readStanding(scope, memberId, now));
-  return standing.inGoodStanding ? null : (standing.reasons[0] ?? null);
+  return standing.inGoodStanding ? null : standing.reasons[0];
 }
 
 /**

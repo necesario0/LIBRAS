@@ -54,14 +54,24 @@ export const FINE_COLUMNS = `f.days_late as fine_days_late, f.daily_rate_centavo
          f.cap_centavos as fine_cap_centavos, f.amount_centavos as fine_amount_centavos,
          f.settled_outcome as fine_settled_outcome, f.settled_at as fine_settled_at`;
 
-/** The Fine fixed at a Loan's return, with how it was settled (null while unsettled), or null when it has none. */
+/**
+ * The Fine fixed at a Loan's return, with how it was settled (null while
+ * unsettled), or null when it has none. A stored Fine has every amount column
+ * (they are `not null` in `public.fines`), so one without them is a broken read
+ * and throws.
+ */
 export function storedFine(row: FineColumns): LoanFine | null {
-  if (row.fine_amount_centavos === null) return null;
+  const { fine_amount_centavos: amountCentavos, fine_days_late: daysLate } = row;
+  const { fine_daily_rate_centavos: dailyRateCentavos, fine_cap_centavos: capCentavos } = row;
+  if (amountCentavos === null) return null;
+  if (daysLate === null || dailyRateCentavos === null || capCentavos === null) {
+    throw new Error("A stored Fine was read without its days late, daily rate or cap");
+  }
   return {
-    amountCentavos: row.fine_amount_centavos,
-    daysLate: row.fine_days_late as number,
-    dailyRateCentavos: row.fine_daily_rate_centavos as number,
-    capCentavos: row.fine_cap_centavos as number,
+    amountCentavos,
+    daysLate,
+    dailyRateCentavos,
+    capCentavos,
     final: true,
     settlement:
       row.fine_settled_outcome === null || row.fine_settled_at === null

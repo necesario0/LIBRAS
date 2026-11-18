@@ -60,7 +60,7 @@ export function HoldAction({
   }
 
   if (goodStanding && !goodStanding.inGoodStanding) {
-    const [reason = "overdue_loan"] = goodStanding.reasons;
+    const [reason] = goodStanding.reasons;
     return (
       <View style={styles.panel} testID="hold-not-in-good-standing">
         <Text style={styles.title} accessibilityRole="header">

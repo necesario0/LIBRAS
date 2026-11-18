@@ -68,8 +68,14 @@ export interface ClearanceResponse {
 export const GOOD_STANDING_REFUSALS = ["overdue_loan", "unsettled_fine"] as const;
 export type GoodStandingRefusal = (typeof GOOD_STANDING_REFUSALS)[number];
 
-/** Whether a Member is in Good standing; when not, every reason, in the order of `GOOD_STANDING_REFUSALS`. */
-export type GoodStanding = { inGoodStanding: true } | { inGoodStanding: false; reasons: GoodStandingRefusal[] };
+/** A list with at least one item. */
+export type NonEmpty<T> = [T, ...T[]];
+
+/**
+ * Whether a Member is in Good standing; when not, every reason (at least one),
+ * in the order of `GOOD_STANDING_REFUSALS`.
+ */
+export type GoodStanding = { inGoodStanding: true } | { inGoodStanding: false; reasons: NonEmpty<GoodStandingRefusal> };
 
 /** What stands in the way, as the app names it in a sentence. */
 const GOOD_STANDING_NAMES: Readonly<Record<GoodStandingRefusal, string>> = {
