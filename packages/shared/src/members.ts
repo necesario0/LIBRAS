@@ -55,3 +55,11 @@ export interface MemberSignInResponse {
   session: Session;
   member: MemberProfile;
 }
+
+/**
+ * A Member's name as the app and the desk write it: first, middle and last,
+ * with a missing or empty middle name left out.
+ */
+export function memberFullName(name: { firstName: string; middleName?: string | null; lastName: string }): string {
+  return [name.firstName, name.middleName, name.lastName].filter((part) => part !== undefined && part !== null && part !== "").join(" ");
+}

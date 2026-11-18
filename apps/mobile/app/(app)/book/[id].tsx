@@ -1,11 +1,13 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth, useMember } from "../../../src/auth/AuthContext";
 import { BookInfo } from "../../../src/book/BookInfo";
 import { useBook } from "../../../src/catalog/useBook";
+import { useClearance } from "../../../src/clearance/useClearance";
 import { Button } from "../../../src/components/Button";
 import { CloseIcon } from "../../../src/components/icons";
+import { useGoBack } from "../../../src/hooks/useGoBack";
 import { HoldAction } from "../../../src/holds/HoldAction";
 import { BorrowAction } from "../../../src/loans/BorrowAction";
 import { colors, fontFamily, fontSize, radii, spacing } from "../../../src/theme/tokens";
@@ -17,17 +19,20 @@ const SHEET_TOP = 200 / 874;
  * A Book, opened from a search result: the Figma "Book detail" sheet (node
  * 609:1066) over the screen that opened it. Its details and how many Copies
  * exist and are available come from the API. Borrow shows when a Copy is
- * available and opens the Digital ID; the Hold action shows when none is.
+ * available and opens the Digital ID; the Hold action shows when none is. A
+ * Member who is not in Good standing is told why in place of either.
  */
 export default function BookScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const router = useRouter();
   const member = useMember();
   const { request } = useAuth();
   const { height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { state, retry } = useBook(request, id);
-  const close = () => (router.canGoBack() ? router.back() : router.replace("/home"));
+  // Whether the Member may borrow or place a Hold now; until it loads (or if it fails) the actions show as usual.
+  const { state: standing } = useClearance(request);
+  const goodStanding = standing.status === "loaded" ? standing.goodStanding : undefined;
+  const close = useGoBack();
 
   return (
     <View style={styles.screen}>
@@ -47,8 +52,8 @@ export default function BookScreen() {
           {state.status === "loaded" ? (
             <>
               <BookInfo book={state.book} accountType={member.accountType} />
-              <BorrowAction book={state.book} accountType={member.accountType} />
-              <HoldAction book={state.book} accountType={member.accountType} />
+              <BorrowAction book={state.book} accountType={member.accountType} goodStanding={goodStanding} />
+              <HoldAction book={state.book} accountType={member.accountType} goodStanding={goodStanding} />
             </>
           ) : null}
           {state.status === "missing" ? (

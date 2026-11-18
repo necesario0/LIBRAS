@@ -1,21 +1,26 @@
 import { Router } from "express";
 import {
+  PASSWORD_CHANGE_MESSAGES,
   SIGN_UP_MESSAGES,
+  changePasswordSchema,
   resendSignUpCodeRequestSchema,
   signInRequestSchema,
   signUpRequestSchema,
   verifySignUpRequestSchema,
 } from "@libras/shared";
-import type { MemberMeResponse, VerifySignUpResponse } from "@libras/shared";
+import type { ClearanceResponse, MemberMeResponse, VerifySignUpResponse } from "@libras/shared";
 import type { z } from "zod";
 import type { AppDeps } from "../app.ts";
 import { createAuditLog, recordingSignInFailures } from "../audit/index.ts";
-import { memberOf, requireMember } from "../auth/guards.ts";
+import { accessTokenOf, identityOf, memberOf, requireMember } from "../auth/guards.ts";
+import { withIdentity } from "../auth/identity.ts";
 import type { AttemptLimiter } from "../auth/attempt-limit.ts";
 import { AppError } from "../errors.ts";
+import { changeMemberPassword, verifyCurrentPassword } from "../members/change-password.ts";
 import { signInMember } from "../members/sign-in.ts";
 import { resendSignUpCode, startSignUp, verifySignUp } from "../members/sign-up.ts";
-import { parseBody } from "../validation.ts";
+import { clearanceOf, goodStandingOf, readStanding } from "../standing/index.ts";
+import { parseBody, passwordRuleRefusal } from "../validation.ts";
 
 const KNOWN_MESSAGES: ReadonlySet<string> = new Set(Object.values(SIGN_UP_MESSAGES));
 
@@ -32,7 +37,7 @@ function signUpRefusal(error: z.ZodError): AppError {
   return new AppError(400, "invalid_request", message ?? "Check what you entered and try again.");
 }
 
-/** Sign-up, sign-in and the Member's own profile. */
+/** Sign-up, sign-in, the Member's own profile and their Clearance. */
 export function membersRouter(deps: AppDeps, limiter: AttemptLimiter): Router {
   const router = Router();
   const audit = createAuditLog(deps);
@@ -68,6 +73,38 @@ export function membersRouter(deps: AppDeps, limiter: AttemptLimiter): Router {
   router.get("/members/me", ...requireMember(deps), (_req, res) => {
     const body: MemberMeResponse = { member: memberOf(res) };
     res.json(body);
+  });
+
+  // Read as the Member, so row-level security shows only their own Loans and Fines.
+  router.get("/members/me/clearance", ...requireMember(deps), async (_req, res) => {
+    const identity = identityOf(res);
+    const standing = await withIdentity(deps.db, identity, (scope) => readStanding(scope, identity.userId, deps.clock.now()));
+    const body: ClearanceResponse = { clearance: clearanceOf(standing), goodStanding: goodStandingOf(standing) };
+    res.json(body);
+  });
+
+  router.put("/members/me/password", ...requireMember(deps), async (req, res) => {
+    const parsed = changePasswordSchema.safeParse(req.body);
+    if (!parsed.success) {
+      // A new password that breaks the sign-up rules gets the rule; anything else is a bad request.
+      throw (
+        passwordRuleRefusal(parsed.error, "newPassword") ??
+        new AppError(400, "invalid_request", PASSWORD_CHANGE_MESSAGES.invalidRequest)
+      );
+    }
+    const change = {
+      member: memberOf(res),
+      accessToken: accessTokenOf(res),
+      currentPassword: parsed.data.currentPassword,
+      newPassword: parsed.data.newPassword,
+      clientAddress: req.ip,
+    };
+    // Only a wrong current password counts like a failed sign-in, and through the same limiter, so guessing it
+    // here cannot get around the limit on the sign-in screen. Setting the new password is outside it: a session
+    // that ended meanwhile (401) is not a guess.
+    await limiter.attempt(req.ip, () => verifyCurrentPassword(deps, change));
+    await changeMemberPassword(deps, change);
+    res.status(204).end();
   });
 
   return router;

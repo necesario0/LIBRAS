@@ -13,15 +13,21 @@ export {
   identifyMemberRequestSchema,
   msUntilRefresh,
 } from "./digital-id.ts";
+export type { DeskSession, DigitalIdResponse, IdentifyMemberRequest, IdentifyMemberResponse } from "./digital-id.ts";
+export { deskSessionTokenSchema } from "./desk.ts";
+export type { DeskMember, LoanStanding } from "./desk.ts";
+export { GOOD_STANDING_MESSAGES, GOOD_STANDING_REFUSALS, goodStandingNotice, totalOwedCentavos } from "./standing.ts";
+export { counted, plural } from "./plural.ts";
 export type {
-  DeskMember,
-  DeskSession,
-  DigitalIdResponse,
-  IdentifyMemberRequest,
-  IdentifyMemberResponse,
-  LoanStanding,
-} from "./digital-id.ts";
-export { SCAN_INPUT_MAX_LENGTH, SCAN_INPUT_PATTERN, SCAN_MESSAGES, readScan } from "./scan.ts";
+  Clearance,
+  ClearanceLoan,
+  ClearanceResponse,
+  GoodStanding,
+  GoodStandingRefusal,
+  NonEmpty,
+  UnsettledFine,
+} from "./standing.ts";
+export { SCAN_INPUT_MAX_LENGTH, SCAN_INPUT_PATTERN, SCAN_MESSAGES, isScanKey, readScan } from "./scan.ts";
 export type { ScanReading, ScanRejection } from "./scan.ts";
 export { refreshSessionRequestSchema, signInRequestSchema } from "./auth.ts";
 export type {
@@ -44,6 +50,7 @@ export {
   requiresUmakEmail,
 } from "./accounts.ts";
 export type { AccountType } from "./accounts.ts";
+export { memberFullName } from "./members.ts";
 export type {
   MemberMeResponse,
   MemberProfile,
@@ -97,6 +104,20 @@ export type {
   VisitorIdType,
   YearGraduated,
 } from "./sign-up.ts";
+export {
+  PASSWORD_RESET_MESSAGES,
+  checkPasswordResetCodeSchema,
+  completePasswordResetSchema,
+  requestPasswordResetSchema,
+} from "./password-reset.ts";
+export type {
+  CheckPasswordResetCodeRequest,
+  CompletePasswordResetRequest,
+  PasswordResetRequestedResponse,
+  RequestPasswordResetRequest,
+} from "./password-reset.ts";
+export { PASSWORD_CHANGE_MESSAGES, changePasswordSchema } from "./password-change.ts";
+export type { ChangePasswordRequest } from "./password-change.ts";
 export { buildTrie, searchTrie } from "./search/flat-trie.ts";
 export type { FlatTrie, TrieMatch } from "./search/flat-trie.ts";
 export { buildCatalogIndex, buildCatalogIndexAsync, normalizeText, tokenize, typoBoundFor } from "./search/catalog-index.ts";
@@ -130,10 +151,12 @@ export type { CancelHoldResponse, Hold, HoldStatus, MyHoldsResponse, PlaceHoldRe
 export {
   LIBRARY_UTC_OFFSET_HOURS,
   LOAN_MESSAGES,
+  RENEWAL_MESSAGES,
+  RENEWAL_REASONS,
+  RENEWAL_REFUSALS,
   RETURN_MESSAGES,
   confirmLoanRequestSchema,
   copyCodeSchema,
-  deskSessionTokenSchema,
   endDeskSessionRequestSchema,
   formatLibraryDate,
   formatLibraryDateTime,
@@ -142,6 +165,7 @@ export {
   isCurrentLoan,
   isLoanOverdue,
   loanDueAt,
+  loanIdSchema,
   recordReturnRequestSchema,
 } from "./loans.ts";
 export type {
@@ -150,11 +174,16 @@ export type {
   DeskLoan,
   EndDeskSessionRequest,
   Loan,
+  LoanRenewal,
   MyLoansResponse,
   RecordReturnRequest,
   RecordReturnResponse,
+  RenewLoanResponse,
+  RenewalRefusal,
   ReturnedLoan,
 } from "./loans.ts";
+export { FINE_MESSAGES, FINE_OUTCOMES, SETTLE_AT_RETURN_MINUTES, formatPesos, settleFineRequestSchema } from "./fines.ts";
+export type { FineOutcome, FineSettlement, LoanFine, SettleFineRequest, SettleFineResponse } from "./fines.ts";
 export { readEventStream } from "./event-stream.ts";
 export type { StreamEvent } from "./event-stream.ts";
 export {

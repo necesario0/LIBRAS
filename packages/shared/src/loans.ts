@@ -1,6 +1,10 @@
 import { z } from "zod";
-import type { DeskMember } from "./digital-id.ts";
+import { deskSessionTokenSchema } from "./desk.ts";
+import type { DeskMember } from "./desk.ts";
+import type { LoanFine } from "./fines.ts";
 import { SCAN_INPUT_PATTERN } from "./scan.ts";
+import { GOOD_STANDING_REFUSALS } from "./standing.ts";
+import type { GoodStandingRefusal } from "./standing.ts";
 
 /**
  * Loans: a Loan links one Member to one Copy, with a checkout time, a due date
@@ -77,6 +81,69 @@ export interface Loan {
   returnedAt: string | null;
   /** Still out and past its due date, by the API's clock when it answered. */
   overdue: boolean;
+  /** How many times the Member has renewed this Loan. `dueAt` is already the due date after them. */
+  renewalCount: number;
+  /** Whether a Renewal is possible now, by the API's rules and clock. Null for a Loan whose Copy has been returned. */
+  renewal: LoanRenewal | null;
+  /**
+   * The Fine: so far (by the API's clock and the current Loan Policy) while the
+   * Loan is out and overdue, or the amount fixed at a late return. Null for a
+   * Loan that is not overdue or came back on time.
+   */
+  fine: LoanFine | null;
+}
+
+/**
+ * Why the API refuses a Renewal, in the order it checks them: the Loan is past
+ * its due date, it has used the renewal limit of the Member's Loan Policy,
+ * another Member's Hold on the Book is waiting (a ready Hold does not block),
+ * or the Member is not in Good standing, named by its reason
+ * (`GOOD_STANDING_REFUSALS`): another of their Loans is overdue
+ * (`overdue_loan`; when it is this Loan, `loan_overdue` comes first) or they
+ * have an unsettled Fine.
+ */
+export const RENEWAL_REFUSALS = ["loan_overdue", "renewal_limit_reached", "hold_waiting", ...GOOD_STANDING_REFUSALS] as const;
+export type RenewalRefusal = (typeof RENEWAL_REFUSALS)[number];
+
+/**
+ * Whether a current Loan can be renewed now. When it can: the due date the
+ * Renewal would give (one loan period after the current due date), and whether
+ * that Renewal would use up the renewal limit (`last`). When it cannot: the
+ * reason. The API works this out; the app only shows it.
+ */
+export type LoanRenewal = { renewable: true; dueAt: string; last: boolean } | { renewable: false; reason: RenewalRefusal };
+
+/** What My Loans shows in place of the Renew button of a Loan that cannot be renewed. */
+export const RENEWAL_REASONS: Readonly<Record<RenewalRefusal, string>> = {
+  loan_overdue: "Overdue Loans cannot be renewed. Please return it to the library desk.",
+  renewal_limit_reached: "Already renewed. It cannot be renewed again.",
+  hold_waiting: "Another Member is waiting for this Book, so it cannot be renewed.",
+  overdue_loan: "You have another Loan that is overdue. Renewals can be made again once it is returned and its Fine is settled.",
+  unsettled_fine: "You have an unsettled Fine. Renewals can be made again once it is settled at the library desk.",
+};
+
+/** The words the API returns and the app shows when a Renewal is refused. */
+export const RENEWAL_MESSAGES = {
+  /** For a Loan id that is not one at all, and for one that is not the Member's: the same words, so neither says more. */
+  loanNotFound: "This Loan could not be found. Open My Loans and try again.",
+  loanReturned: "This Copy has been returned, so there is no Loan to renew.",
+  /** A refusal of the Renewal itself. The Loans list said it could be renewed, so something changed since. */
+  refused: {
+    loan_overdue: "Your Loan was not renewed: it is now past its due date. Please return the Copy to the library desk.",
+    renewal_limit_reached: "Your Loan was not renewed: it has already been renewed, and it cannot be renewed again.",
+    hold_waiting: "Your Loan was not renewed: another Member is now waiting for this Book. Please return the Copy by its due date.",
+    // Good standing: the same words My Loans shows for the Loan (`RENEWAL_REASONS`).
+    overdue_loan: RENEWAL_REASONS.overdue_loan,
+    unsettled_fine: RENEWAL_REASONS.unsettled_fine,
+  } satisfies Record<RenewalRefusal, string>,
+} as const;
+
+/** A Loan's id, as `POST /loans/:id/renew` takes it. */
+export const loanIdSchema = z.uuid(RENEWAL_MESSAGES.loanNotFound);
+
+/** The body of `POST /loans/:id/renew`: the renewed Loan, with its new due date. */
+export interface RenewLoanResponse {
+  loan: Loan;
 }
 
 /** A Loan is current until its Copy is returned. */
@@ -99,9 +166,6 @@ export interface MyLoansResponse {
 
 /** A Copy as the desk names it: its barcode or its accession number, already through the scan whitelist. */
 export const copyCodeSchema = z.string().regex(SCAN_INPUT_PATTERN);
-
-/** A desk session's token, as `POST /desk/members/identify` gave it: 32 random bytes, base64url. */
-export const deskSessionTokenSchema = z.string().regex(/^[A-Za-z0-9_-]{43}$/);
 
 /** The body of `POST /desk/loans`: the desk session of the Member at the desk, and the Copy's barcode or accession number. */
 export const confirmLoanRequestSchema = z.object({ deskSession: deskSessionTokenSchema, copy: copyCodeSchema }).strict();
@@ -140,6 +204,12 @@ export const LOAN_MESSAGES = {
     "This Copy is already on Loan, so no Loan was recorded. If it has come back, choose Done with this Member and scan it again to record its return.",
   copySetAside: "This Copy is set aside for another Member's Hold, so no Loan was recorded. Put it back on the hold shelf.",
   changed: "This Copy's Hold changed while the Loan was being recorded, so no Loan was recorded. Scan the Copy again.",
+  /** The Member is not in Good standing (ADR 0010). The refusal's code is the reason. */
+  notInGoodStanding: {
+    overdue_loan:
+      "This Member has an overdue Loan, so no Loan was recorded. They can borrow again once it is returned and its Fine is settled.",
+    unsettled_fine: "This Member has an unsettled Fine, so no Loan was recorded. Settle it in the Member panel, then scan the Copy again.",
+  } satisfies Record<GoodStandingRefusal, string>,
 } as const;
 
 /** The body of `POST /desk/returns`: the Copy's barcode or accession number, as scanned or typed. */
@@ -158,8 +228,10 @@ export interface ReturnedLoan {
   dueAt: string;
   /** When the return was recorded, ISO 8601, by the API's clock. */
   returnedAt: string;
-  /** The Copy came back after the end of its due day. Tier 1 charges nothing for it. */
+  /** The Copy came back after the end of its due day. */
   late: boolean;
+  /** The Fine fixed by this return (`final` is true), or null when the Copy came back on time or the rate is zero. */
+  fine: LoanFine | null;
   /**
    * The Member whose Hold the returned Copy is now set aside for, and the end of
    * their Pickup Window: the Copy goes on the hold shelf. Null when no Hold was

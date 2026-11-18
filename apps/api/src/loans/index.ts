@@ -1,47 +1,25 @@
 import { LOAN_MESSAGES, RETURN_MESSAGES, isLoanOverdue, loanDueAt } from "@libras/shared";
-import type { AccountType, DeskLoan, Loan, MyLoansResponse, ReturnedLoan } from "@libras/shared";
+import type { DeskLoan, ReturnedLoan } from "@libras/shared";
 import type { AppDeps } from "../app.ts";
 import { createAuditLog } from "../audit/index.ts";
 import type { Identity } from "../auth/auth-provider.ts";
-import { withIdentity } from "../auth/identity.ts";
 import { COPY_MATCH, COPY_ORDER, lockCopy } from "../copies/index.ts";
 import type { CopyRow } from "../copies/index.ts";
 import { isUniqueViolation, retryOnConflict, withTransaction } from "../db.ts";
 import type { Tx } from "../db.ts";
 import { useDeskSession } from "../desk/sessions.ts";
 import { AppError } from "../errors.ts";
+import { fixFine } from "../fines/index.ts";
 import { announceDispatch, dispatchCopy } from "../holds/dispatch.ts";
 import type { HoldDispatch } from "../holds/dispatch.ts";
 import { expireHold } from "../holds/expiry.ts";
 import { MEMBER_NAME_SQL } from "../members/profile.ts";
+import { requireGoodStanding } from "../standing/index.ts";
+import { lockMember } from "./policy.ts";
+import type { MemberPolicyRow } from "./policy.ts";
 
-/** A Member and the Loan Policy of their Account Type. */
-interface MemberPolicyRow {
-  user_id: string;
-  account_type: AccountType;
-  loan_limit: number;
-  loan_period_days: number | null;
-}
-
-/**
- * The Member and their Loan Policy, with the Member's row locked until the
- * transaction ends: confirmations for one Member run one after another, so two
- * at once cannot both pass the limit. The lock does not block anything that
- * only refers to the Member (a Hold being placed, for example).
- */
-async function lockMember(tx: Tx, memberId: string): Promise<MemberPolicyRow> {
-  const { rows } = await tx.query<MemberPolicyRow>(
-    `select m.user_id, m.account_type, p.loan_limit, p.loan_period_days
-       from public.members m
-       join public.loan_policies p on p.account_type = m.account_type
-      where m.user_id = $1
-        for no key update of m`,
-    [memberId],
-  );
-  // A desk session always names an existing Member, and every Account Type has a policy.
-  if (!rows[0]) throw new Error(`No Member or Loan Policy for ${memberId}`);
-  return rows[0];
-}
+export { listLoans } from "./my-loans.ts";
+export { renewLoan } from "./renewals.ts";
 
 /**
  * Thrown by `takeCopy` when the Copy is set aside for a Hold whose Pickup Window
@@ -105,9 +83,13 @@ export interface ConfirmedLoan {
  * desk page shows, when the desk session has ended (`desk_session_ended`: scan
  * the Digital ID again), when no Copy
  * has that barcode or accession number, when the Member's Account Type cannot
- * borrow, when the Member is at their loan limit, and when the Copy is already
- * on Loan or set aside for another Member's Hold. A Copy set aside for this
- * Member's ready Hold goes out to them, and the Hold becomes fulfilled.
+ * borrow, when the Member is not in Good standing (`overdue_loan` or
+ * `unsettled_fine`, ADR 0010), when the Member is at their loan limit, and when
+ * the Copy is already on Loan or set aside for another Member's Hold. A Copy set
+ * aside for this Member's ready Hold goes out to them, and the Hold becomes
+ * fulfilled, but only in Good standing: a Member with an unsettled Fine is
+ * refused it until a Librarian settles the Fine, in the same desk session if
+ * need be, and the Hold stays ready meanwhile.
  *
  * One transaction locks the Member, then the Copy, checks both, writes the
  * Loan, marks the Copy `on_loan` (so the live count of available Copies falls)
@@ -147,6 +129,8 @@ async function confirmOnce(deps: AppDeps, librarian: Identity, memberId: string,
       if (member.loan_limit === 0 || member.loan_period_days === null) {
         throw new AppError(403, "cannot_borrow", LOAN_MESSAGES.cannotBorrow);
       }
+      // Under the Member's lock: a return fixing a Fine, or a settle, is wholly before or after this.
+      await requireGoodStanding({ scope: tx, memberId: member.user_id, now: checkedOutAt, messages: LOAN_MESSAGES.notInGoodStanding });
       const open = await tx.query<{ count: number }>(
         "select count(*)::int as count from public.loans where member_id = $1 and returned_at is null",
         [member.user_id],
@@ -220,9 +204,10 @@ interface OpenLoanRow {
 /**
  * A Librarian records the return of a Copy: its barcode or accession number as
  * scanned or typed, with no Member involved. The Copy's open Loan is closed,
- * the Copy is placed by Hold dispatch (`dispatchCopy`: set aside for the Book's
- * next waiting Hold, or available when none waits) and the audit log gets a
- * `copy_returned` entry, all in one transaction. The Member whose Hold became
+ * a late Copy's Fine is fixed (`fixFine`, ADR 0010), the Copy is placed by Hold
+ * dispatch (`dispatchCopy`: set aside for the Book's next waiting Hold, or
+ * available when none waits) and the audit log gets a `copy_returned` entry
+ * (and `fine_fixed` for a Fine), all in one transaction. The Member whose Hold became
  * ready is emailed once the transaction has committed. It is refused, with a reason
  * the desk page shows, when no Copy has that code and when the Copy is not on
  * Loan (including a Copy that was returned a moment ago).
@@ -257,7 +242,7 @@ export async function recordReturn(deps: AppDeps, librarian: Identity, request: 
         const lendingMemberId = lending.rows[0].member_id;
         if (lendingMemberId === null) throw new AppError(409, "copy_not_on_loan", RETURN_MESSAGES.copyNotOnLoan);
 
-        await lockMember(tx, lendingMemberId);
+        const member = await lockMember(tx, lendingMemberId);
         const copy = await lockCopy(tx, { code: request.copy });
         if (!copy) throw new AppError(404, "copy_not_found", RETURN_MESSAGES.copyNotFound);
         const open = await tx.query<OpenLoanRow>(
@@ -277,25 +262,30 @@ export async function recordReturn(deps: AppDeps, librarian: Identity, request: 
         if (closed.rowCount !== 1) throw new AppError(409, "copy_not_on_loan", RETURN_MESSAGES.copyNotOnLoan);
 
         const late = isLoanOverdue(loan.due_at, returnedAt);
+        // A late Copy's Fine is fixed now, under the Member's Loan Policy as it stands (their row is locked).
+        const fixed = await fixFine({ tx, loan, policy: member, returnedAt, librarianId: librarian.userId });
         // Last, as `dispatchCopy` asks. The Copy's row is locked and its Loan is closed: the Book's next Hold
-        // gets it, or it is available. The return's own audit entry goes in just before the dispatch's.
+        // gets it, or it is available. The return's own audit entries go in just before the dispatch's.
         dispatch = await dispatchCopy(deps, tx, copy, {
           at: returnedAt,
           cause: "copy_returned",
           actorId: librarian.userId,
-          causeEntry: {
-            type: "copy_returned",
-            actorId: librarian.userId,
-            subject: loan.id,
-            data: {
-              memberId: loan.member_id,
-              copyId: copy.id,
-              bookId: copy.book_id,
-              accessionNumber: copy.accession_number,
-              returnedAt: returnedAt.toISOString(),
-              late,
+          causeEntries: [
+            {
+              type: "copy_returned",
+              actorId: librarian.userId,
+              subject: loan.id,
+              data: {
+                memberId: loan.member_id,
+                copyId: copy.id,
+                bookId: copy.book_id,
+                accessionNumber: copy.accession_number,
+                returnedAt: returnedAt.toISOString(),
+                late,
+              },
             },
-          },
+            ...(fixed ? [fixed.entry] : []),
+          ],
         });
 
         return {
@@ -307,6 +297,7 @@ export async function recordReturn(deps: AppDeps, librarian: Identity, request: 
           dueAt: loan.due_at.toISOString(),
           returnedAt: returnedAt.toISOString(),
           late,
+          fine: fixed?.fine ?? null,
           heldFor: dispatch && { memberName: dispatch.memberName, pickupEndsAt: dispatch.pickupEndsAt.toISOString() },
         };
       });
@@ -314,59 +305,4 @@ export async function recordReturn(deps: AppDeps, librarian: Identity, request: 
       return returned;
     },
   );
-}
-
-interface LoanRow {
-  id: string;
-  book_id: string;
-  title: string;
-  authors: string[];
-  accession_number: string;
-  checked_out_at: Date;
-  due_at: Date;
-  returned_at: Date | null;
-}
-
-/**
- * The Member's own Loans: current ones first, the one due soonest at the top,
- * then past ones, the latest return first. Read as the Member, so row-level
- * security shows nobody else's. Overdue is worked out from the due date by the
- * API's clock. With them comes the loan limit of the Member's Loan Policy.
- */
-export async function listLoans(deps: AppDeps, identity: Identity): Promise<MyLoansResponse> {
-  const now = deps.clock.now();
-  const { rows, policy } = await withIdentity(deps.db, identity, async (scope) => {
-    const result = await scope.query<LoanRow>(
-      `select l.id, c.book_id, b.title, b.authors, c.accession_number, l.checked_out_at, l.due_at, l.returned_at
-         from public.loans l
-         join public.copies c on c.id = l.copy_id
-         join public.books b on b.id = c.book_id
-        where l.member_id = $1
-        order by (l.returned_at is null) desc,
-                 case when l.returned_at is null then l.due_at end,
-                 l.returned_at desc,
-                 l.checked_out_at desc`,
-      [identity.userId],
-    );
-    const policy = await scope.query<{ loan_limit: number; loan_period_days: number | null }>(
-      `select p.loan_limit, p.loan_period_days
-         from public.members m
-         join public.loan_policies p on p.account_type = m.account_type
-        where m.user_id = $1`,
-      [identity.userId],
-    );
-    return { rows: result.rows, policy: policy.rows[0] };
-  });
-  const loans: Loan[] = rows.map((row) => ({
-    id: row.id,
-    bookId: row.book_id,
-    bookTitle: row.title,
-    bookAuthors: row.authors,
-    accessionNumber: row.accession_number,
-    checkedOutAt: row.checked_out_at.toISOString(),
-    dueAt: row.due_at.toISOString(),
-    returnedAt: row.returned_at === null ? null : row.returned_at.toISOString(),
-    overdue: row.returned_at === null && isLoanOverdue(row.due_at, now),
-  }));
-  return { loans, loanLimit: policy?.loan_limit ?? 0, loanPeriodDays: policy?.loan_period_days ?? null };
 }

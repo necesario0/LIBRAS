@@ -58,6 +58,7 @@ describe("Recording a return at the desk", () => {
       dueAt: "2026-11-19T15:59:59.999Z",
       returnedAt: "2026-11-15T07:30:00.000Z",
       late: false,
+      fine: null,
       heldFor: null,
     });
     assert.equal(await statusOf(copy.id), "available");
@@ -133,9 +134,11 @@ describe("Recording a return at the desk", () => {
   });
 
   it("says when a Copy came back after its due day, and still takes it back", async () => {
+    // A Member of their own: the late return leaves them a Fine, and out of Good standing for the next tests.
+    const late = await createTestMember(h.api());
     const book = await h.addBook("Overdue Book");
     const copy = book.copies[0] as TestCopy;
-    await lend(ana, copy.barcode);
+    await lend(late, copy.barcode);
 
     // Due on 19 Nov (the end of the day in Manila); the Copy comes back on 21 Nov.
     h.api().clock.set("2026-11-21T02:00:00.000Z");
@@ -143,7 +146,7 @@ describe("Recording a return at the desk", () => {
 
     assert.equal(response.status, 200);
     assert.equal(((await response.json()) as RecordReturnResponse).loan.late, true);
-    const mine = (await h.loansOf(ana)).find((loan) => loan.accessionNumber === copy.accessionNumber);
+    const mine = (await h.loansOf(late)).find((loan) => loan.accessionNumber === copy.accessionNumber);
     assert.equal(mine?.returnedAt, "2026-11-21T02:00:00.000Z");
     assert.equal(mine?.overdue, false);
   });

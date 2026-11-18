@@ -1,17 +1,20 @@
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { HOLD_STATUS_LABELS, formatLibraryDate, formatLibraryDateTime } from "@libras/shared";
 import type { Hold, HoldStatus } from "@libras/shared";
 import { BookCover } from "../components/BookCover";
+import { RowAction, RowConfirmation } from "../components/RowConfirmation";
+import { StatusPill } from "../components/StatusPill";
+import type { PillTone } from "../components/StatusPill";
 import { colors, fontFamily, fontSize, radii, spacing } from "../theme/tokens";
 
-/** Fill and text of the status pill, from the pills the Book page already uses. */
-const PILL: Record<HoldStatus, { surface: string; text: string }> = {
-  waiting: { surface: colors.selected, text: colors.primary },
-  ready: { surface: colors.availableSurface, text: colors.availableText },
-  fulfilled: { surface: colors.successSurface, text: colors.success },
-  expired: { surface: colors.pill, text: colors.textMuted },
-  cancelled: { surface: colors.pill, text: colors.textMuted },
+/** What each status says, for its pill. */
+const PILL_TONES: Readonly<Record<HoldStatus, PillTone>> = {
+  waiting: "info",
+  ready: "available",
+  fulfilled: "success",
+  expired: "neutral",
+  cancelled: "neutral",
 };
 
 interface HoldRowProps {
@@ -30,7 +33,6 @@ export function HoldRow({ hold, onCancel }: HoldRowProps) {
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | undefined>(undefined);
-  const pill = PILL[hold.status];
 
   const cancel = async () => {
     setBusy(true);
@@ -58,9 +60,7 @@ export function HoldRow({ hold, onCancel }: HoldRowProps) {
           </Text>
           <Text style={styles.placed}>{`Placed ${formatLibraryDate(hold.placedAt)}`}</Text>
         </View>
-        <View style={[styles.pill, { backgroundColor: pill.surface }]} testID="hold-status">
-          <Text style={[styles.pillText, { color: pill.text }]}>{HOLD_STATUS_LABELS[hold.status]}</Text>
-        </View>
+        <StatusPill label={HOLD_STATUS_LABELS[hold.status]} tone={PILL_TONES[hold.status]} testID="hold-status" />
       </View>
 
       {hold.status === "ready" && hold.pickupEndsAt !== null ? (
@@ -83,40 +83,16 @@ export function HoldRow({ hold, onCancel }: HoldRowProps) {
       )}
 
       {hold.status !== "waiting" && hold.status !== "ready" ? null : confirming ? (
-        <View style={styles.confirm}>
-          <Text style={styles.confirmText}>
-            {hold.status === "ready" ? "Give up the Copy that is set aside for you?" : "Leave the queue for this Book?"}
-          </Text>
-          <View style={styles.actions}>
-            <Pressable
-              accessibilityRole="button"
-              disabled={busy}
-              onPress={() => void cancel()}
-              style={[styles.action, styles.actionDanger, busy && styles.busy]}
-              testID="hold-cancel-confirm"
-            >
-              <Text style={[styles.actionLabel, styles.actionDangerLabel]}>{busy ? "Cancelling..." : "Yes, cancel"}</Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              disabled={busy}
-              onPress={() => setConfirming(false)}
-              style={[styles.action, styles.actionMuted]}
-              testID="hold-cancel-keep"
-            >
-              <Text style={styles.actionLabel}>Keep Hold</Text>
-            </Pressable>
-          </View>
-        </View>
+        <RowConfirmation
+          question={hold.status === "ready" ? "Give up the Copy that is set aside for you?" : "Leave the queue for this Book?"}
+          confirm={{ label: "Yes, cancel", busyLabel: "Cancelling...", tone: "danger", testID: "hold-cancel-confirm" }}
+          keep={{ label: "Keep Hold", testID: "hold-cancel-keep" }}
+          busy={busy}
+          onConfirm={() => void cancel()}
+          onKeep={() => setConfirming(false)}
+        />
       ) : (
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => setConfirming(true)}
-          style={[styles.action, styles.actionMuted, styles.cancel]}
-          testID="hold-cancel"
-        >
-          <Text style={styles.actionLabel}>Cancel Hold</Text>
-        </Pressable>
+        <RowAction label="Cancel Hold" onPress={() => setConfirming(true)} testID="hold-cancel" />
       )}
     </View>
   );
@@ -129,21 +105,9 @@ const styles = StyleSheet.create({
   title: { fontFamily: fontFamily.medium, fontSize: fontSize.label, color: colors.black },
   authors: { fontFamily: fontFamily.regular, fontSize: fontSize.caption, color: colors.textMuted },
   placed: { fontFamily: fontFamily.regular, fontSize: fontSize.micro, color: colors.textFaint },
-  pill: { borderRadius: radii.panel, paddingHorizontal: spacing.sm, paddingVertical: 3 },
-  pillText: { fontFamily: fontFamily.medium, fontSize: fontSize.micro },
   pickup: { borderRadius: radii.panel, backgroundColor: colors.successSurface, paddingVertical: spacing.md, paddingHorizontal: spacing.lg, gap: 2 },
   pickupTitle: { fontFamily: fontFamily.semiBold, fontSize: fontSize.small, color: colors.availableText },
   pickupBody: { fontFamily: fontFamily.regular, fontSize: fontSize.caption, lineHeight: 18, color: colors.textSecondary },
   pickupUntil: { fontFamily: fontFamily.semiBold, color: colors.black },
-  failure: { fontFamily: fontFamily.regular, fontSize: fontSize.caption, color: colors.danger },
-  confirm: { gap: spacing.sm },
-  confirmText: { fontFamily: fontFamily.regular, fontSize: fontSize.caption, color: colors.textSecondary },
-  actions: { flexDirection: "row", gap: spacing.sm },
-  action: { height: 36, borderRadius: radii.button, paddingHorizontal: spacing.lg, alignItems: "center", justifyContent: "center" },
-  cancel: { alignSelf: "flex-start" },
-  actionMuted: { backgroundColor: colors.surface },
-  actionDanger: { backgroundColor: colors.danger },
-  actionLabel: { fontFamily: fontFamily.medium, fontSize: fontSize.caption, color: colors.black },
-  actionDangerLabel: { color: colors.white },
-  busy: { opacity: 0.6 },
+  failure: { fontFamily: fontFamily.regular, fontSize: fontSize.caption, lineHeight: 18, color: colors.danger },
 });

@@ -102,7 +102,7 @@ The hosted system is three services, all on free tiers (ADR 0003):
 | `npm run db:migrate:hosted` | Applies `supabase/migrations` to the hosted database. It first lists the pending migrations and asks you to type `apply`. `-- --dry-run` only lists them. `-- --yes` skips the question. Safe to run again |
 | `npm run seed:hosted` | Creates (or resets) the Librarian from `SEED_LIBRARIAN_EMAIL` and `SEED_LIBRARIAN_PASSWORD` in `.env.hosted`, makes sure the Loan Policy rows and the Pickup Window setting exist (existing values are kept) and writes the sample catalog |
 | `npm run labels:hosted -- --title "text" [--books 1] [--copies 3]` | Writes `copy-labels.html`: printable Code 128 labels (85 x 36 mm, two per row on A4) for available Copies of a Book whose title contains the text, or for given barcodes (`npm run labels:hosted -- 3100078314 3100078315`). Open in Chrome, print at 100% scale. Reads the database only. `npm run labels` does the same on the local database |
-| `npm run verify:hosted -- member | search | dispatch | cleanup` | The Tier 1 measurements on the hosted system (`docs/hosted-verification.md`): search at 50 users, Hold dispatch on the hosted database. `member` makes the measurement Visitor and saves its login in `.env.hosted`; `dispatch` makes and then deletes test Members and sends Hold-ready mail only to a +alias of `SEED_LIBRARIAN_EMAIL` |
+| `npm run verify:hosted -- member | search | dispatch | tier2 | backdate | cleanup` | Checks and measurements on the hosted system (`docs/hosted-verification.md`). Tier 1: search at 50 users, Hold dispatch on the hosted database. `member` makes the measurement Visitor and saves its login in `.env.hosted`; `dispatch` makes and then deletes test Members and sends Hold-ready mail only to a +alias of `SEED_LIBRARIAN_EMAIL`. Tier 2: `tier2` walks Renewal, the Loans list, a Fine and its settlement, Clearance, the Good standing refusals, the password reset reply, the sweep endpoint and the audit chain with one test Member and a test Book, then deletes them (needs `SWEEP_SECRET` in `.env.hosted`). `backdate <barcode> <days>` moves the open Loan of a Copy back by whole days for the demo on real phones (6 = due tomorrow, 10 = three days late, for a seven-day Loan) |
 | `npm run check:hosted` | Asks the hosted API for `/health` until it answers (up to five minutes, to cover Render waking up) |
 | `npm run email:test -- you@example.com` | Sends one real email through Brevo |
 | `npm run build:apk:hosted -w @libras/mobile` | Builds the release APK against the hosted API (about 25 minutes) |
@@ -161,9 +161,9 @@ It goes to sleep after 15 minutes without traffic and takes about a minute to wa
 
 ### Pickup Window expiry while the service sleeps
 
-A Hold's Pickup Window must end on time even when nobody uses the app and Render has put the service to sleep (ADR 0007). The API sweeps every minute while it is awake. To wake it, a schedule in the Supabase database (pg_cron and pg_net) calls it every five minutes with the shared secret. After the deploy:
+A Hold's Pickup Window must end on time, and Loan notices must go out, even when nobody uses the app and Render has put the service to sleep (ADR 0007, ADR 0009). The API sweeps every minute while it is awake. To wake it, a schedule in the Supabase database (pg_cron and pg_net) calls it every five minutes with the shared secret. After the deploy:
 
-1. `npm run db:migrate:hosted` (the expiry migration).
+1. `npm run db:migrate:hosted` (the expiry and Loan notice migrations).
 2. `npm run schedule:hosted`. It makes a `SWEEP_SECRET`, saves it in `.env.hosted` and on the clipboard, and installs the schedule (it enables pg_cron and pg_net itself and keeps the service address and the secret in Supabase Vault). Run it again any time to update; `npm run schedule:hosted -- --remove` removes the schedule.
 3. In the Render dashboard, open `libras-api`, Environment, add `SWEEP_SECRET` with the value from `.env.hosted`, save (Render restarts the service). Run `npm run schedule:hosted` once more: it asks the API whether it accepts the secret and says what is missing if not.
 

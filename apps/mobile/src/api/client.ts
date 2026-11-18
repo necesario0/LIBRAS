@@ -3,14 +3,21 @@ import type {
   BookDetailResponse,
   CancelHoldResponse,
   CatalogSearchResponse,
+  ChangePasswordRequest,
+  CheckPasswordResetCodeRequest,
+  ClearanceResponse,
+  CompletePasswordResetRequest,
   DigitalIdResponse,
   HealthResponse,
   MemberMeResponse,
   MemberSignInResponse,
   MyHoldsResponse,
   MyLoansResponse,
+  PasswordResetRequestedResponse,
   PlaceHoldResponse,
   RefreshSessionResponse,
+  RenewLoanResponse,
+  RequestPasswordResetRequest,
   ResendSignUpCodeRequest,
   SignInRequest,
   SignUpCodeSentResponse,
@@ -116,12 +123,45 @@ export function createApiClient({ baseUrl, fetch: fetchImpl = fetch, timeoutMs =
       request<CancelHoldResponse>(`/holds/${encodeURIComponent(holdId)}/cancel`, { method: "POST", headers: bearer(accessToken) }),
     /** The Member's own Loans, current ones first, with the loan limit and loan period of their Loan Policy. */
     getLoans: (accessToken: string) => request<MyLoansResponse>("/members/me/loans", { headers: bearer(accessToken) }),
+    /**
+     * Renews one of the Member's Loans: its due date moves one loan period later. Failures: `loan_not_found` (404),
+     * `loan_returned`, `loan_overdue`, `renewal_limit_reached`, `hold_waiting`, `overdue_loan` and `unsettled_fine` (409).
+     */
+    renewLoan: (accessToken: string, loanId: string) =>
+      request<RenewLoanResponse>(`/loans/${encodeURIComponent(loanId)}/renew`, { method: "POST", headers: bearer(accessToken) }),
+    /** Whether the Member is cleared, with the Loans still out and the unsettled Fines that stand in the way. */
+    getClearance: (accessToken: string) => request<ClearanceResponse>("/members/me/clearance", { headers: bearer(accessToken) }),
     /** Starts a sign-up: the API emails a verification code. */
     signUp: (body: SignUpRequest) => post<SignUpCodeSentResponse>("/members/sign-up", body),
     /** Accepts the emailed code: the account is active from here on. */
     verifySignUp: (body: VerifySignUpRequest) => post<VerifySignUpResponse>("/members/sign-up/verify", body),
     /** Emails a new code. The old one stops working. */
     resendSignUpCode: (body: ResendSignUpCodeRequest) => post<SignUpCodeSentResponse>("/members/sign-up/resend", body),
+    /**
+     * Forgot password: emails a code when the address belongs to a Member. The reply is the same for any
+     * address. Failure: `too_many_attempts` (429) when too many codes were asked for.
+     */
+    requestPasswordReset: (body: RequestPasswordResetRequest) =>
+      post<PasswordResetRequestedResponse>("/members/password-reset", body),
+    /** Checks the emailed code before the new password is asked for. Failures: `invalid_code`, `code_expired`, `too_many_attempts`. */
+    checkPasswordResetCode: (body: CheckPasswordResetCodeRequest) => post<null>("/members/password-reset/check", body),
+    /**
+     * Sets the new password. Every session of the account ends and nobody is signed in. Failures: the code ones,
+     * `invalid_password` when the password breaks the sign-up rules, and `password_reset_unfinished` (503) when the
+     * password could not be set: the code is spent, so the Member asks for a new one.
+     */
+    completePasswordReset: (body: CompletePasswordResetRequest) => post<null>("/members/password-reset/complete", body),
+    /**
+     * Changes the signed-in Member's password. Every other session of the account ends; this one stays. Failures:
+     * `current_password_incorrect` (403), `invalid_password` (400: the sign-up rules, or the same password) and
+     * `too_many_attempts` (429, shared with sign-in).
+     */
+    changePassword: (accessToken: string, body: ChangePasswordRequest) =>
+      request<null>("/members/me/password", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...bearer(accessToken) },
+        body: JSON.stringify(body),
+      }),
     /** Signs a Member in. Failures: `invalid_credentials`, `email_not_verified`, `too_many_attempts`. */
     signIn: (body: SignInRequest) => post<MemberSignInResponse>("/members/sign-in", body),
     /** Swaps a refresh token for a new session. A refresh token works once. */

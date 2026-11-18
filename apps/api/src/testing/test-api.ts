@@ -2,15 +2,16 @@ import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { createApp } from "../app.ts";
 import type { AppOptions } from "../app.ts";
-import type { AccountAdmin } from "../auth/auth-provider.ts";
+import type { AccountAdmin, AuthProvider } from "../auth/auth-provider.ts";
 import { SupabaseAuthAdmin } from "../auth/supabase-auth-admin.ts";
 import { SupabaseAuth } from "../auth/supabase-auth.ts";
 import { LOCAL_DATABASE_URL, loadConfig } from "../config.ts";
 import { createDatabase } from "../db.ts";
 import { expireDueHolds } from "../holds/expiry.ts";
-import { startPickupSweeper } from "../holds/sweeper.ts";
 import type { Database } from "../db.ts";
 import type { Logger } from "../logger.ts";
+import { runSweep, startSweeper } from "../sweep.ts";
+import type { SweepResult } from "../sweep.ts";
 import { CapturingEmailSender } from "./capturing-email-sender.ts";
 import { FakeClock } from "./fake-clock.ts";
 
@@ -28,6 +29,11 @@ export interface TestApi {
    * Holds it expired. The product runs the same sweep on its own timer and on the database's schedule.
    */
   sweepPickupWindows(): Promise<number>;
+  /**
+   * Runs one tick of the whole sweep now, on the test clock: Pickup Window expiry, then Loan
+   * notices. The product runs the same tick on its own timer and on the database's schedule.
+   */
+  sweep(): Promise<SweepResult>;
   /** Stops the server and closes the database connections. Call it in `after`. */
   close(): Promise<void>;
 }
@@ -36,8 +42,8 @@ export interface TestApiOptions extends AppOptions {
   /** Defaults to `TEST_DATABASE_URL`, then to the local Supabase PostgreSQL. */
   databaseUrl?: string;
   /**
-   * Run the Pickup Window sweep on a timer of this many milliseconds, as the real server does
-   * (every minute). Default: no timer, so a test decides when the sweep runs (`sweepPickupWindows`).
+   * Run the sweep on a timer of this many milliseconds, as the real server does (every minute).
+   * Default: no timer, so a test decides when the sweep runs (`sweep`, `sweepPickupWindows`).
    */
   sweepIntervalMs?: number;
   /**
@@ -45,6 +51,13 @@ export interface TestApiOptions extends AppOptions {
    * fail or do something more. Default: the real one, untouched.
    */
   wrapAccounts?: (accounts: AccountAdmin) => AccountAdmin;
+  /**
+   * Wraps the real Supabase Auth, for a test that makes one of its calls fail or answer differently
+   * (a session that ended while a request was running, for example). Default: the real one, untouched.
+   */
+  wrapAuth?: (auth: AuthProvider) => AuthProvider;
+  /** Where the API logs, for a test that checks what is logged. Default: nowhere. */
+  logger?: Logger;
 }
 
 const silentLogger: Logger = {
@@ -57,18 +70,19 @@ const silentLogger: Logger = {
  * PostgreSQL and the real local Supabase Auth. Tests talk to it over HTTP only.
  */
 export async function startTestApi(options: TestApiOptions = {}): Promise<TestApi> {
-  const logger = silentLogger;
+  const logger = options.logger ?? silentLogger;
   const db = createDatabase(options.databaseUrl ?? process.env.TEST_DATABASE_URL ?? LOCAL_DATABASE_URL, logger);
   const clock = new FakeClock();
   const emails = new CapturingEmailSender();
   const config = loadConfig();
-  const auth = new SupabaseAuth({ url: config.supabaseUrl, publishableKey: config.supabasePublishableKey });
+  const realAuth = new SupabaseAuth({ url: config.supabaseUrl, publishableKey: config.supabasePublishableKey });
+  const auth = options.wrapAuth ? options.wrapAuth(realAuth) : realAuth;
   const realAccounts = new SupabaseAuthAdmin({ url: config.supabaseUrl, secretKey: config.supabaseSecretKey });
   const accounts = options.wrapAccounts ? options.wrapAccounts(realAccounts) : realAccounts;
   const deps = { db, auth, accounts, clock, email: emails, logger };
   const { app, stop } = createApp(deps, options);
 
-  const sweeper = options.sweepIntervalMs === undefined ? undefined : startPickupSweeper(deps, options.sweepIntervalMs);
+  const sweeper = options.sweepIntervalMs === undefined ? undefined : startSweeper(deps, options.sweepIntervalMs);
 
   const server = await new Promise<Server>((resolve, reject) => {
     const listening = app.listen(0, "127.0.0.1", () => resolve(listening));
@@ -82,6 +96,7 @@ export async function startTestApi(options: TestApiOptions = {}): Promise<TestAp
     emails,
     db,
     sweepPickupWindows: () => expireDueHolds(deps),
+    sweep: () => runSweep(deps),
     async close() {
       sweeper?.stop();
       stop();

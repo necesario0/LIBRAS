@@ -48,18 +48,20 @@ export async function expireHold(deps: AppDeps, holdId: string): Promise<ExpiryO
       at: now,
       cause: "pickup_window_expired",
       actorId: null,
-      causeEntry: {
-        type: "hold_expired",
-        subject: holdId,
-        data: {
-          memberId: hold.member_id,
-          copyId: copy.id,
-          bookId: copy.book_id,
-          accessionNumber: copy.accession_number,
-          pickupEndsAt: hold.pickup_ends_at.toISOString(),
-          expiredAt: now.toISOString(),
+      causeEntries: [
+        {
+          type: "hold_expired",
+          subject: holdId,
+          data: {
+            memberId: hold.member_id,
+            copyId: copy.id,
+            bookId: copy.book_id,
+            accessionNumber: copy.accession_number,
+            pickupEndsAt: hold.pickup_ends_at.toISOString(),
+            expiredAt: now.toISOString(),
+          },
         },
-      },
+      ],
     });
     return "expired";
   });
@@ -77,7 +79,7 @@ const BATCH_SIZE = 100;
  * next run, and does not stop the others. Running it twice at once, or while a
  * Member borrows, is safe: `expireHold` re-checks the Hold under its locks.
  *
- * This is the sweep. It runs on its own (`startPickupSweeper`, and the
+ * This is the sweep. It runs on its own (`startSweeper` in `sweep.ts`, and the
  * database's schedule through `POST /internal/sweeps/pickup-expiry`), and it
  * also runs where a Member would otherwise see an expired window as still
  * running (their list of Holds).

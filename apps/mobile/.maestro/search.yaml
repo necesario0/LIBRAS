@@ -85,9 +85,8 @@ appId: ph.edu.umak.libras
       id: search-hint
     timeout: 10000
 
-# Sign out stays reachable from Home.
-- tapOn:
-    id: home-sign-out
+# Sign out is reached from the profile in the Home header.
+- runFlow: subflows/sign-out.yaml
 - extendedWaitUntil:
     visible: "SIGN  UP"
     timeout: 20000

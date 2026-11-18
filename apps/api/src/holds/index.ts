@@ -1,4 +1,4 @@
-import { HOLD_MESSAGES, canBorrow } from "@libras/shared";
+import { GOOD_STANDING_MESSAGES, HOLD_MESSAGES, canBorrow } from "@libras/shared";
 import type { CopyStatus, Hold, HoldStatus, MemberProfile } from "@libras/shared";
 import type { AppDeps } from "../app.ts";
 import type { Identity } from "../auth/auth-provider.ts";
@@ -6,6 +6,8 @@ import { withIdentity } from "../auth/identity.ts";
 import { lockCopy } from "../copies/index.ts";
 import { isUniqueViolation, retryOnConflict, withTransaction } from "../db.ts";
 import { AppError } from "../errors.ts";
+import { lockMember } from "../loans/policy.ts";
+import { requireGoodStanding } from "../standing/index.ts";
 import { announceDispatch, dispatchCopy } from "./dispatch.ts";
 import type { HoldDispatch } from "./dispatch.ts";
 import { expireDueHolds, expireHold } from "./expiry.ts";
@@ -35,27 +37,35 @@ function toHold(row: HoldRow): Hold {
 
 /**
  * Puts the Member in the queue of a Book that has no available Copy. Refused when the
- * Member's Account Type cannot borrow, when the Book does not exist, when a Copy is
+ * Member's Account Type cannot borrow, when the Book does not exist, when the Member
+ * is not in Good standing (`overdue_loan` or `unsettled_fine`, ADR 0010), when a Copy is
  * available (borrow it instead), when the Member has a Copy of the Book on Loan, and
  * when the Member already has an active Hold on the
  * Book (the database's unique index decides that, so two requests at once cannot both pass).
+ *
+ * The Member's row is locked first (`lockMember`, the order every writer keeps), so
+ * Good standing is read with no return or settle of theirs half done.
  *
  * The Book's Copies are read with a shared row lock (`for share`, in id order),
  * which waits for any return, Loan or dispatch that holds a Copy's row and
  * makes those wait for this Hold. Without it a Hold placed while a Copy is
  * being returned could miss both: the return finds no Hold and frees the Copy,
  * the Hold sees the Copy still out, and it is left waiting beside an available
- * Copy. It cannot deadlock: shared locks do not block each other, this takes
- * no other lock that a holder of a Copy's row waits for, and those holders
- * each lock one Copy only.
+ * Copy. It cannot deadlock: shared locks do not block each other, the only
+ * other lock this takes is the Member's, before the Copies (a holder of a
+ * Copy's row took its Member's lock before the Copy, never after), and those
+ * holders each lock one Copy only.
  */
 export async function placeHold(deps: AppDeps, member: MemberProfile, bookId: string): Promise<Hold> {
   if (!canBorrow(member.accountType)) throw new AppError(403, "cannot_borrow", HOLD_MESSAGES.cannotBorrow);
   const placedAt = deps.clock.now();
   try {
     return await withTransaction(deps.db, async (tx) => {
+      // First, as every writer does: a return fixing this Member's Fine, or a settle, is wholly before or after this.
+      await lockMember(tx, member.id);
       const book = await tx.query("select 1 from public.books where id = $1", [bookId]);
       if (!book.rows[0]) throw new AppError(404, "book_not_found", "We could not find this Book. It may have been removed from the catalog.");
+      await requireGoodStanding({ scope: tx, memberId: member.id, now: placedAt, messages: GOOD_STANDING_MESSAGES });
       const copies = await tx.query<{ status: CopyStatus }>(
         "select c.status from public.copies c where c.book_id = $1 order by c.id for share of c",
         [bookId],

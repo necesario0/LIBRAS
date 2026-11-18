@@ -1,6 +1,7 @@
 # A Member signs in, stays signed in after the app is closed and reopened, and
 # signs out; protected screens are then unreachable. Also: wrong credentials
-# give one clear message, and an unverified account is sent to verification.
+# give one clear message, a forgotten password is reset with an emailed code and
+# the new one signs in, and an unverified account is sent to verification.
 # Needs the end-to-end API on port 3000 (npm run e2e starts it).
 appId: ph.edu.umak.libras
 ---
@@ -72,8 +73,7 @@ appId: ph.edu.umak.libras
     timeout: 30000
 
 # Signing out leaves the protected screen at once.
-- tapOn:
-    id: home-sign-out
+- runFlow: subflows/sign-out.yaml
 - extendedWaitUntil:
     visible: "SIGN  UP"
     timeout: 20000
@@ -91,6 +91,144 @@ appId: ph.edu.umak.libras
     visible: "SIGN  UP"
     timeout: 30000
 - assertNotVisible: "Hi, Cobby"
+
+# Forgot password: "Forgot password?" on sign-in, the email, a wrong code and
+# then the emailed one, a new password, and the success dialog back to sign-in.
+# The old password no longer works and the new one signs the Member in.
+- tapOn:
+    id: welcome-sign-in
+- tapOn:
+    id: sign-in-email
+- retry:
+    maxRetries: 3
+    commands:
+      - eraseText: 80
+      - inputText: ${output.email}
+      - assertVisible: ${output.email}
+- hideKeyboard
+- tapOn:
+    id: sign-in-forgot-password
+- assertVisible: "Forgot your password?"
+- assertVisible: ${output.email}
+- takeScreenshot: forgot-password-email
+- tapOn:
+    id: forgot-password-continue
+- extendedWaitUntil:
+    visible: "Check your email to reset your password"
+    timeout: 20000
+- assertVisible: ${output.email}
+- tapOn:
+    id: verify-code
+- inputText: "000000"
+- assertVisible: "That code is not right.*"
+- takeScreenshot: forgot-password-wrong-code
+- eraseText: 6
+- runScript:
+    file: scripts/read-code.js
+    env:
+      EMAIL: ${output.email}
+- inputText: ${output.code}
+- extendedWaitUntil:
+    visible:
+      id: new-password
+    timeout: 20000
+- assertVisible: "At least 8 characters"
+- takeScreenshot: forgot-password-new-password
+- tapOn:
+    id: new-password-toggle
+- retry:
+    maxRetries: 3
+    commands:
+      - tapOn:
+          id: new-password
+      - eraseText: 80
+      - inputText: ${output.password}-new
+      - assertVisible: ${output.password}-new
+- tapOn:
+    id: confirm-password-toggle
+- retry:
+    maxRetries: 3
+    commands:
+      - tapOn:
+          id: confirm-password
+      - eraseText: 80
+      - inputText: ${output.password}-new
+      - assertVisible:
+          id: confirm-password
+          text: ${output.password}-new
+- hideKeyboard
+- takeScreenshot: forgot-password-new-password-filled
+- tapOn:
+    id: password-save
+- extendedWaitUntil:
+    visible: "Password updated"
+    timeout: 20000
+- takeScreenshot: forgot-password-updated
+- tapOn:
+    id: password-updated-action
+- assertVisible: "The library for problem solver"
+- assertNotVisible: "Hi, Cobby"
+
+# Sign-in still holds the email, and the new password signs the Member in.
+- assertVisible:
+    id: sign-in-email
+    text: ${output.email}
+- tapOn:
+    id: sign-in-password-toggle
+- retry:
+    maxRetries: 3
+    commands:
+      - tapOn:
+          id: sign-in-password
+      - eraseText: 80
+      - inputText: ${output.password}-new
+      - assertVisible:
+          id: sign-in-password
+          text: ${output.password}-new
+- hideKeyboard
+- tapOn:
+    id: sign-in-continue
+- extendedWaitUntil:
+    visible: "Hi, Cobby"
+    timeout: 20000
+- runFlow: subflows/sign-out.yaml
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 20000
+
+# The old password no longer works.
+- tapOn:
+    id: welcome-sign-in
+- tapOn:
+    id: sign-in-email
+- retry:
+    maxRetries: 3
+    commands:
+      - eraseText: 80
+      - inputText: ${output.email}
+      - assertVisible:
+          id: sign-in-email
+          text: ${output.email}
+- tapOn:
+    id: sign-in-password
+- tapOn:
+    id: sign-in-password-toggle
+- retry:
+    maxRetries: 3
+    commands:
+      - tapOn:
+          id: sign-in-password
+      - eraseText: 80
+      - inputText: ${output.password}
+      - assertVisible:
+          id: sign-in-password
+          text: ${output.password}
+- hideKeyboard
+- tapOn:
+    id: sign-in-continue
+- assertVisible: "The email or password is incorrect."
+- assertNotVisible: "Hi, Cobby"
+- back
 
 # An account that never finished verification is guided to the code step.
 - tapOn:

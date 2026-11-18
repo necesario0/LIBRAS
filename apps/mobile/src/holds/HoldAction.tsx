@@ -1,8 +1,8 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { HOLD_STATUS_LABELS, canBorrow, formatLibraryDateTime } from "@libras/shared";
-import type { AccountType, BookDetail } from "@libras/shared";
+import { HOLD_STATUS_LABELS, canBorrow, formatLibraryDateTime, goodStandingNotice } from "@libras/shared";
+import type { AccountType, BookDetail, GoodStanding } from "@libras/shared";
 import { useAuth } from "../auth/AuthContext";
 import { Button } from "../components/Button";
 import { colors, fontFamily, fontSize, radii, spacing } from "../theme/tokens";
@@ -13,9 +13,20 @@ import { activeHolds, holdFailureMessage, placeHold, useHolds } from "./useHolds
  * borrow and only when the Book has no available Copy. With a Hold already
  * active it shows where the Member stands instead of a second button: for a
  * ready Hold, until when the Copy is set aside and the way to the Digital ID.
- * There is no Figma frame for it: it uses the page's own panel style.
+ * A Member who is not in Good standing (`goodStanding`, from the API; undefined
+ * until it loads) reads why in place of the button: the same sentence the
+ * Borrow action and Profile show (`goodStandingNotice`). There is no Figma frame for it: it uses the page's own
+ * panel style.
  */
-export function HoldAction({ book, accountType }: { book: BookDetail; accountType: AccountType }) {
+export function HoldAction({
+  book,
+  accountType,
+  goodStanding,
+}: {
+  book: BookDetail;
+  accountType: AccountType;
+  goodStanding: GoodStanding | undefined;
+}) {
   const router = useRouter();
   const { request } = useAuth();
   const { state, reload } = useHolds(request);
@@ -44,6 +55,19 @@ export function HoldAction({ book, accountType }: { book: BookDetail; accountTyp
           <Button label="Show my Digital ID" radius={radii.formButton} onPress={() => router.push("/digital-id")} testID="hold-digital-id" />
         ) : null}
         <Button label="See my Holds" tone="muted" radius={radii.formButton} onPress={() => router.push("/holds")} testID="hold-see-all" />
+      </View>
+    );
+  }
+
+  if (goodStanding && !goodStanding.inGoodStanding) {
+    return (
+      <View style={styles.panel} testID="hold-not-in-good-standing">
+        <Text style={styles.title} accessibilityRole="header">
+          No Copy is available right now
+        </Text>
+        <Text style={styles.refusal} testID="hold-not-in-good-standing-reason">
+          {goodStandingNotice(goodStanding.reasons)}
+        </Text>
       </View>
     );
   }
@@ -81,5 +105,6 @@ const styles = StyleSheet.create({
   panel: { borderWidth: 1, borderColor: colors.panelBorder, borderRadius: radii.panel, padding: spacing.lg, gap: spacing.sm },
   title: { fontFamily: fontFamily.semiBold, fontSize: fontSize.body, color: colors.black },
   body: { fontFamily: fontFamily.regular, fontSize: fontSize.label, color: colors.textSecondary, marginBottom: spacing.sm },
+  refusal: { fontFamily: fontFamily.regular, fontSize: fontSize.label, color: colors.danger },
   failure: { fontFamily: fontFamily.regular, fontSize: fontSize.label, color: colors.danger, marginBottom: spacing.xs },
 });

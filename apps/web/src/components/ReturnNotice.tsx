@@ -1,14 +1,21 @@
-import { formatLibraryDate, formatLibraryDateTime } from "@libras/shared";
-import type { ReturnedLoan } from "@libras/shared";
+import { useState } from "react";
+import { counted, formatLibraryDate, formatLibraryDateTime, formatPesos } from "@libras/shared";
+import type { FineOutcome, FineSettlement, LoanFine, ReturnedLoan, SettleFineResponse } from "@libras/shared";
+import { FineActions } from "./FineActions.tsx";
+import { FinePanel } from "./FinePanel.tsx";
 
 /**
  * The return the desk has just recorded: which Book and Copy came back, who had
- * it, and the day it was returned. A Copy that came back after its due day says
- * so; Tier 1 charges nothing for it. When the Copy is now set aside for a Hold,
- * a second panel tells the Librarian for which Member and until when, so the
- * Copy goes on the hold shelf and not back on the stacks.
+ * it, the day it was returned, and whether that was on time or late against its
+ * due date (the current one, after any Renewal: the date the Member saw). A
+ * late Copy's Fine, fixed by this return, gets a panel with the Member's name,
+ * how late it was and the amount, so the Librarian can tell the Member. When the
+ * Copy is now set aside for a Hold, a panel tells the Librarian for which Member
+ * and until when, so the Copy goes on the hold shelf and not back on the stacks.
+ * The Fine can be settled right here as paid or waived, or left for later when
+ * the Member is not at the desk.
  */
-export function ReturnNotice({ loan }: { loan: ReturnedLoan }) {
+export function ReturnNotice({ loan, settleFine }: { loan: ReturnedLoan; settleFine: SettleReturnFine }) {
   return (
     <section className="return-notice" aria-label="Return recorded" data-testid="desk-return">
       <div className="loan-notice">
@@ -24,9 +31,13 @@ export function ReturnNotice({ loan }: { loan: ReturnedLoan }) {
               {loan.memberName}
             </strong>
           </span>
-          {loan.late && (
+          {loan.late ? (
             <span className="loan-notice__late" data-testid="desk-return-late">
               {`Returned late - was due ${formatLibraryDate(loan.dueAt)}`}
+            </span>
+          ) : (
+            <span className="loan-notice__copy" data-testid="desk-return-due">
+              {`Returned on time - due ${formatLibraryDate(loan.dueAt)}`}
             </span>
           )}
         </div>
@@ -37,28 +48,88 @@ export function ReturnNotice({ loan }: { loan: ReturnedLoan }) {
           </span>
         </div>
       </div>
+      {loan.fine && <ReturnFine key={loan.id} fine={loan.fine} memberName={loan.memberName} settle={(outcome) => settleFine(loan, outcome)} />}
       {loan.heldFor && (
-        <div className="hold-shelf" data-testid="desk-return-held">
-          <svg className="hold-shelf__icon" viewBox="0 0 24 24" aria-hidden="true">
+        <div className="notice-panel notice-panel--hold" data-testid="desk-return-held">
+          <svg className="notice-panel__icon" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M6 2h12a1 1 0 0 1 1 1v19l-7-4.4L5 22V3a1 1 0 0 1 1-1z" />
           </svg>
-          <div className="hold-shelf__text">
-            <h3 className="hold-shelf__title">
+          <div className="notice-panel__text">
+            <h3 className="notice-panel__title">
               {"Set aside for "}
-              <strong className="hold-shelf__member" data-testid="desk-return-held-member">
+              <strong className="notice-panel__name" data-testid="desk-return-held-member">
                 {loan.heldFor.memberName}
               </strong>
             </h3>
-            <span className="hold-shelf__body">Put this Copy on the hold shelf, not back on the stacks. Only this Member can borrow it.</span>
+            <span className="notice-panel__body">Put this Copy on the hold shelf, not back on the stacks. Only this Member can borrow it.</span>
           </div>
-          <div className="hold-shelf__until">
-            <span className="hold-shelf__until-label">Pickup Window ends</span>
-            <span className="hold-shelf__until-date" data-testid="desk-return-held-until">
+          <div className="notice-panel__side">
+            <span className="notice-panel__side-label">Pickup Window ends</span>
+            <span className="notice-panel__side-value" data-testid="desk-return-held-until">
               {formatLibraryDateTime(loan.heldFor.pickupEndsAt)}
             </span>
           </div>
         </div>
       )}
     </section>
+  );
+}
+
+/** "3 days late, at PHP 5 a day." or, once it reached the cap, "75 days late, at PHP 5 a day, up to the cap of PHP 300." */
+function fineReason(fine: LoanFine): string {
+  const days = `${counted(fine.daysLate, "day")} late, at ${formatPesos(fine.dailyRateCentavos)} a day`;
+  const capped = fine.amountCentavos < fine.daysLate * fine.dailyRateCentavos;
+  return capped ? `${days}, up to the cap of ${formatPesos(fine.capCentavos)}.` : `${days}.`;
+}
+
+/**
+ * Settles the Fine of a return as the Librarian chose, in the place of that
+ * return. Resolves with the settlement (undefined when the Librarian's session
+ * is gone) and rejects with the reason to show.
+ */
+export type SettleReturnFine = (loan: ReturnedLoan, outcome: FineOutcome) => Promise<SettleFineResponse | undefined>;
+
+interface ReturnFineProps {
+  fine: LoanFine;
+  memberName: string;
+  settle: (outcome: FineOutcome) => Promise<SettleFineResponse | undefined>;
+}
+
+/** The Fine a late return fixed: whose it is, why, how much, and Paid and Waived (or how it was settled). */
+function ReturnFine({ fine, memberName, settle }: ReturnFineProps) {
+  const [settlement, setSettlement] = useState<FineSettlement | null>(fine.settlement);
+  return (
+    <FinePanel
+      testId="desk-return-fine"
+      heading="h3"
+      title={
+        <>
+          {"Fine for "}
+          <strong className="notice-panel__name" data-testid="desk-return-fine-member">
+            {memberName}
+          </strong>
+        </>
+      }
+      reason={fineReason(fine)}
+      amountCentavos={fine.amountCentavos}
+      actions={
+        settlement ? (
+          <span className="notice-panel__settled" data-testid="desk-return-fine-settled">
+            {`Settled: ${settlement.outcome}`}
+          </span>
+        ) : (
+          <FineActions
+            amountCentavos={fine.amountCentavos}
+            memberName={memberName}
+            hint="Member not here? Leave it. Scan their Digital ID later to settle it."
+            testId="desk-return-fine"
+            settle={async (outcome) => {
+              const settled = await settle(outcome);
+              if (settled) setSettlement(settled.settlement);
+            }}
+          />
+        )
+      }
+    />
   );
 }

@@ -40,6 +40,7 @@ export function requireIdentity({ auth }: AppDeps): RequestHandler {
     const identity = accessToken === undefined ? undefined : await auth.identify(accessToken);
     if (!identity) throw notSignedIn();
     res.locals.identity = identity;
+    res.locals.accessToken = accessToken;
     next();
   };
 }
@@ -83,6 +84,17 @@ export function identityOf(res: Response): Identity {
   const identity = res.locals.identity as Identity | undefined;
   if (!identity) throw new Error("identityOf was called on a route that has no sign-in guard");
   return identity;
+}
+
+/**
+ * The access token the request was signed in with, already checked by
+ * `requireIdentity`. For the few actions that need it to speak for the person
+ * to Supabase Auth (Change password). Only valid after `requireIdentity` or a guard built on it.
+ */
+export function accessTokenOf(res: Response): string {
+  const accessToken = res.locals.accessToken as string | undefined;
+  if (!accessToken) throw new Error("accessTokenOf was called on a route that has no sign-in guard");
+  return accessToken;
 }
 
 /** The signed-in Librarian. Only valid after `requireLibrarian`. */

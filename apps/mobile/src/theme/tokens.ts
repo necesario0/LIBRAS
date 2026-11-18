@@ -59,12 +59,27 @@ export const colors = {
   dangerSurface: "#FDECEC",
   /** The sheet that holds a Book page (Figma 609:1159 grabber). */
   grabber: "#D9D9D9",
+  /** Password screens (Figma 926:14226): headings and typed text. */
+  ink: "#1A1A1F",
+  /** Password screens: the intro line, unmet requirements and the success message. */
+  textSubtle: "#737885",
+  /** An outlined action that backs out without saving: its border and label (Cancel of the password screens, Figma 926:14378). */
+  dismiss: "#D93025",
+  /** The filled action that saves or confirms (Save of the password screens and the success dialog's button, Figma 926:14380, 928:14993). */
+  confirm: "#F9B233",
+  /** The dimmed screen behind a dialog (Figma 928:14986). */
+  scrim: "rgba(0,0,0,0.55)",
   /** The lighter spine drawn over a placeholder Book cover. */
   coverSpine: "rgba(255,255,255,0.35)",
 } as const;
 
 /** Raised cards (Figma 617:3265: x 0, y 7, blur 17.9, black 25%). */
 export const cardShadow = "0px 7px 17.9px rgba(0, 0, 0, 0.25)";
+
+/** The rows of the Profile menu (Figma 921:13989: x 0, y 4, blur 6.5, black 25%). */
+export const menuRowShadow = "0px 4px 6.5px rgba(0, 0, 0, 0.25)";
+/** The action row of My Account, "Change password" (Figma 580:1832): a tighter shadow than the Profile menu rows. */
+export const actionRowShadow = "0px 4px 2px rgba(0, 0, 0, 0.25)";
 
 /** Montserrat is the only family. Keys are the names registered with `useFonts`. */
 export const fontFamily = {
@@ -120,6 +135,8 @@ export const spacing = {
   xl: 24,
   xxl: 32,
   screen: 25,
+  /** The 10 pt inside a pill (menu row, read-only field, Sign out) and between the avatar and the name on Profile. */
+  inset: 10,
   /** The side gutter of the Home frame, whose content is 366 pt wide on a 402 pt screen. */
   home: 18,
 } as const;
@@ -159,6 +176,12 @@ export const radii = {
   tag: 39,
   /** The grabber at the top of the Book page's sheet (Figma 609:1159). */
   grabber: 58,
+  /** The rounded rectangle buttons of the account frames: Log out (Figma 580:1741), Cancel and Save changes (580:1842, 580:1845). */
+  actionButton: 25,
+  /** A fully rounded action of `actionHeight` (Cancel and Save of the password screens, Figma 926:14377). */
+  roundAction: 23,
+  /** The success dialog of the password screens (Figma 928:14987). */
+  dialog: 28,
   /** The round logo of the wordmark (31 pt). */
   logo: 16,
   /** The terms checkbox of sign-up. */
@@ -171,6 +194,16 @@ export const radii = {
 
 /** Height of text fields and buttons. */
 export const controlHeight = 44;
+
+/** Height of a password field (Figma 926:14350). */
+export const passwordFieldHeight = 48;
+
+/**
+ * Height of the actions of the account screens: the action row of My Account
+ * (Figma 580:1832), Cancel and Save of the password screens and the success
+ * dialog's button (926:14377).
+ */
+export const actionHeight = 46;
 
 /** Height of the outlined button of the borrow flow (Figma 617:3265). */
 export const outlineButtonHeight = 61;

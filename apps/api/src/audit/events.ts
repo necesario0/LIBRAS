@@ -25,6 +25,43 @@ export const AUDIT_EVENTS = {
       clientAddress: z.string().max(64).nullable(),
     }),
   },
+  /**
+   * A Member set a new password with a code from a Forgot password email. Every
+   * session of the account was ended. `actorId` is the Member.
+   */
+  password_reset: {
+    /** The Member's account id. */
+    subject: z.uuid(),
+    data: z.strictObject({
+      /** The client address that completed the reset, when known. */
+      clientAddress: z.string().max(64).nullable(),
+    }),
+  },
+  /**
+   * A signed-in Member changed their password. Every other session of the
+   * account was ended; the one that made the change stays. `actorId` is the Member.
+   */
+  password_changed: {
+    /** The Member's account id. */
+    subject: z.uuid(),
+    data: z.strictObject({
+      /** The client address that made the change, when known. */
+      clientAddress: z.string().max(64).nullable(),
+    }),
+  },
+  /**
+   * A signed-in Member gave a wrong current password in Change password (the
+   * same refusal the sign-in limiter counts). `actorId` is the Member. Whoever
+   * holds an unlocked phone is guessing here, so the address is kept.
+   */
+  password_change_failed: {
+    /** The Member's account id. */
+    subject: z.uuid(),
+    data: z.strictObject({
+      /** The client address the sign-in limiter counts, when known. */
+      clientAddress: z.string().max(64).nullable(),
+    }),
+  },
   /** A Librarian confirmed a Loan at the desk. `actorId` is the Librarian. */
   loan_confirmed: {
     /** The Loan's id. */
@@ -35,6 +72,44 @@ export const AUDIT_EVENTS = {
       bookId: z.uuid(),
       accessionNumber: z.string().max(64),
       /** The end of the day the Copy is due, ISO 8601. */
+      dueAt: z.iso.datetime(),
+    }),
+  },
+  /** A Member renewed one of their Loans in the app. `actorId` is the Member. */
+  loan_renewed: {
+    /** The Loan's id. */
+    subject: z.uuid(),
+    data: z.strictObject({
+      memberId: z.uuid(),
+      copyId: z.uuid(),
+      bookId: z.uuid(),
+      accessionNumber: z.string().max(64),
+      /** The due date before the Renewal, ISO 8601. */
+      previousDueAt: z.iso.datetime(),
+      /** The due date the Renewal gave, ISO 8601. */
+      dueAt: z.iso.datetime(),
+      /** How many times the Loan has been renewed, this Renewal included. */
+      renewalCount: z.number().int().positive(),
+    }),
+  },
+  /**
+   * The developer moved a test Member's open Loan back by whole days with
+   * `npm run verify:hosted -- backdate`, for the demo on real phones. Only Loans
+   * of test Members can be moved. There is no actor: the script connects to the
+   * database directly, with no signed-in person.
+   */
+  loan_backdated: {
+    /** The Loan's id. */
+    subject: z.uuid(),
+    data: z.strictObject({
+      memberId: z.uuid(),
+      /** The barcode of the Copy on Loan, as typed on the command line. */
+      barcode: z.string().max(64),
+      /** How many days both the lending time and the due date moved back. */
+      days: z.number().int().positive(),
+      /** The due date before the move, ISO 8601. */
+      previousDueAt: z.iso.datetime(),
+      /** The due date after the move, ISO 8601. */
       dueAt: z.iso.datetime(),
     }),
   },
@@ -51,6 +126,42 @@ export const AUDIT_EVENTS = {
       returnedAt: z.iso.datetime(),
       /** The Copy came back after the end of its due day. */
       late: z.boolean(),
+    }),
+  },
+  /**
+   * A Librarian recorded the return of a late Copy and the API fixed its Fine
+   * (ADR 0010): the amount never changes after this. `actorId` is the Librarian.
+   * It follows the return's `copy_returned` entry.
+   */
+  fine_fixed: {
+    /** The id of the Loan the Fine is on. */
+    subject: z.uuid(),
+    data: z.strictObject({
+      memberId: z.uuid(),
+      /** Calendar days after the due date, the day of the return included. */
+      daysLate: z.number().int().positive(),
+      /** The Loan Policy it was worked out with, in centavos. */
+      dailyRateCentavos: z.number().int().positive(),
+      capCentavos: z.number().int().nonnegative(),
+      /** The Fine, in centavos: the daily rate for every day late, up to the cap. */
+      amountCentavos: z.number().int().positive(),
+    }),
+  },
+  /**
+   * A Librarian settled a Fine as paid or waived (ADR 0010), at the return of
+   * the late Copy or in the Member's desk session. It is recorded once: a
+   * settled Fine is never settled again. `actorId` is the Librarian.
+   */
+  fine_settled: {
+    /** The id of the Loan the Fine is on. */
+    subject: z.uuid(),
+    data: z.strictObject({
+      memberId: z.uuid(),
+      outcome: z.enum(["paid", "waived"]),
+      /** The Fine's amount in centavos: what was paid or forgiven. LIBRAS keeps no other money figure. */
+      amountCentavos: z.number().int().positive(),
+      /** Where the Librarian settled it. */
+      place: z.enum(["return", "desk_session"]),
     }),
   },
   /**

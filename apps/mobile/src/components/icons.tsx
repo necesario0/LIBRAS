@@ -2,8 +2,13 @@ import { SvgXml } from "react-native-svg";
 import checkXml from "../../assets/icons/check.svg";
 import chevronBackXml from "../../assets/icons/chevron-back.svg";
 import closeXml from "../../assets/icons/close.svg";
+import dollarSignXml from "../../assets/icons/dollar-sign.svg";
 import homeSearchXml from "../../assets/icons/home-search.svg";
 import loaderXml from "../../assets/icons/loader.svg";
+import personXml from "../../assets/icons/person.svg";
+import requirementMetXml from "../../assets/icons/requirement-met.svg";
+import requirementUnmetXml from "../../assets/icons/requirement-unmet.svg";
+import successCheckXml from "../../assets/icons/success-check.svg";
 import visibilityOffXml from "../../assets/icons/visibility-off.svg";
 import visibilityXml from "../../assets/icons/visibility.svg";
 
@@ -38,3 +43,13 @@ export const LoaderIcon = icon(loaderXml, 24, 24);
 export const SearchIcon = icon(homeSearchXml, 24, 24);
 /** The round close button of a sheet (37 pt, grey disc with a dark cross). */
 export const CloseIcon = icon(closeXml, 37, 37);
+/** The outline of a person: the "My account" row of Profile (Figma 652:2531, 18 by 19 pt with its 1 pt stroke overflow). */
+export const PersonIcon = icon(personXml, 18, 19);
+/** The dollar sign of the Profile "Fines" row, the first element of the Clearance panel (Figma 652:2564, 24 pt). */
+export const DollarSignIcon = icon(dollarSignXml, 24, 24);
+/** A password requirement that is met: green disc with a white tick (Figma 926:14679, 16 pt). */
+export const RequirementMetIcon = icon(requirementMetXml, 16, 16);
+/** A password requirement not met yet: grey ring (Figma 926:14366, 16 pt). */
+export const RequirementUnmetIcon = icon(requirementUnmetXml, 16, 16);
+/** The green tick of the "Password updated" dialog (Figma 928:14989, 36 pt). */
+export const SuccessCheckIcon = icon(successCheckXml, 36, 36);

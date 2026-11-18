@@ -4,6 +4,8 @@ import type {
   RecordReturnResponse,
   RefreshSessionResponse,
   ReturnedLoan,
+  SettleFineRequest,
+  SettleFineResponse,
   Session,
   StaffMeResponse,
   StaffProfile,
@@ -13,6 +15,9 @@ import { clearSession, loadSession, saveSession } from "./session.ts";
 
 /** Where the API is. `/api` is proxied to the API by Vite in development and by the host in production. */
 const API_BASE = import.meta.env.VITE_API_URL ?? "/api";
+
+/** What the person is told when the API's own error has no words to show. */
+export const GENERIC_ERROR_MESSAGE = "Something went wrong. Please try again.";
 
 /** An error response from the API: a stable `code` and a `message` that is safe to show. */
 export class ApiError extends Error {
@@ -48,7 +53,7 @@ export async function failure(response: Response): Promise<ApiError> {
   if (typeof error?.code === "string" && typeof error.message === "string") {
     return new ApiError(response.status, error.code, error.message);
   }
-  return new ApiError(response.status, "unexpected", "Something went wrong. Please try again.");
+  return new ApiError(response.status, "unexpected", GENERIC_ERROR_MESSAGE);
 }
 
 /** Signs a Librarian in. Throws ApiError: `invalid_credentials`, `not_staff`, `invalid_request` or `unreachable`. */
@@ -173,6 +178,21 @@ export async function recordReturn(copy: string): Promise<ReturnedLoan | undefin
   if (!response) return undefined;
   if (!response.ok) throw await failure(response);
   return ((await response.json()) as RecordReturnResponse).loan;
+}
+
+/**
+ * Settles a Fine as paid or waived, in the place the request names: `return`
+ * (the Fine on the return just recorded) or `desk_session` (a Fine of the Member
+ * at the desk). Resolves with the settlement and the Member as the desk now shows
+ * them, or undefined when the Librarian's session is gone. Throws ApiError with
+ * the reason to show: `fine_not_found`, `fine_already_settled`,
+ * `settle_at_return_ended`, `desk_session_ended`, `invalid_request` or `unreachable`.
+ */
+export async function settleFine(request: SettleFineRequest): Promise<SettleFineResponse | undefined> {
+  const response = await authorized("/desk/fines/settle", { method: "POST", body: JSON.stringify(request) });
+  if (!response) return undefined;
+  if (!response.ok) throw await failure(response);
+  return (await response.json()) as SettleFineResponse;
 }
 
 /**

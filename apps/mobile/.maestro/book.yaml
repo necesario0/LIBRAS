@@ -89,8 +89,7 @@ appId: ph.edu.umak.libras
 - takeScreenshot: book-none-available
 - tapOn:
     id: book-close
-- tapOn:
-    id: home-sign-out
+- runFlow: subflows/sign-out.yaml
 - extendedWaitUntil:
     visible: "SIGN  UP"
     timeout: 20000

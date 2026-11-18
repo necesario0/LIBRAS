@@ -1,4 +1,3 @@
-import { useRouter } from "expo-router";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { isActiveHold } from "@libras/shared";
@@ -8,6 +7,7 @@ import { Button } from "../../src/components/Button";
 import { ChevronBackIcon } from "../../src/components/icons";
 import { holdFailureMessage, cancelHold, useHolds } from "../../src/holds/useHolds";
 import { HoldRow } from "../../src/holds/HoldRow";
+import { useGoBack } from "../../src/hooks/useGoBack";
 import { useScreenTop } from "../../src/hooks/useScreenTop";
 import { colors, fontFamily, fontSize, radii, spacing } from "../../src/theme/tokens";
 
@@ -18,12 +18,11 @@ import { colors, fontFamily, fontSize, radii, spacing } from "../../src/theme/to
  * There is no Figma frame for it: it uses the style of Home and the Book page.
  */
 export default function HoldsScreen() {
-  const router = useRouter();
   const insets = useSafeAreaInsets();
   const screenTop = useScreenTop();
   const { request } = useAuth();
   const { state, reload } = useHolds(request);
-  const back = () => (router.canGoBack() ? router.back() : router.replace("/home"));
+  const back = useGoBack();
 
   const cancel = async (hold: Hold) => {
     try {

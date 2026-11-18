@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { ComponentRef, Ref } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import type { KeyboardTypeOptions, ReturnKeyTypeOptions, TextInputProps } from "react-native";
+import type { KeyboardTypeOptions, ReturnKeyTypeOptions, StyleProp, TextInputProps, ViewStyle } from "react-native";
 import { colors, controlHeight, fontFamily, fontSize, radii, spacing } from "../theme/tokens";
 import { VisibilityIcon, VisibilityOffIcon } from "./icons";
 
@@ -31,6 +31,36 @@ export function FieldError({ message, testID }: { message: string | undefined; t
     <Text style={styles.error} accessibilityRole="alert" testID={testID}>
       {message}
     </Text>
+  );
+}
+
+/**
+ * The eye at the end of a password field that shows or hides the password. Its
+ * test id is the field's with `-toggle`. Used by `TextField` (sign-in and
+ * sign-up) and `PasswordField` (the password screens).
+ */
+export function RevealToggle({
+  revealed,
+  onToggle,
+  fieldTestID,
+  style,
+}: {
+  revealed: boolean;
+  onToggle: () => void;
+  fieldTestID: string;
+  style?: StyleProp<ViewStyle>;
+}) {
+  return (
+    <Pressable
+      onPress={onToggle}
+      accessibilityRole="button"
+      accessibilityLabel={revealed ? "Hide password" : "Show password"}
+      hitSlop={12}
+      style={[styles.eye, style]}
+      testID={`${fieldTestID}-toggle`}
+    >
+      {revealed ? <VisibilityIcon /> : <VisibilityOffIcon />}
+    </Pressable>
   );
 }
 
@@ -127,16 +157,7 @@ export function TextField({
           style={[styles.input, bare ? styles.inputBare : filled ? styles.inputFilled : styles.inputEmpty]}
         />
         {showEye ? (
-          <Pressable
-            onPress={() => setRevealed((shown) => !shown)}
-            accessibilityRole="button"
-            accessibilityLabel={revealed ? "Hide password" : "Show password"}
-            hitSlop={12}
-            style={styles.eye}
-            testID={`${testID}-toggle`}
-          >
-            {revealed ? <VisibilityIcon /> : <VisibilityOffIcon />}
-          </Pressable>
+          <RevealToggle revealed={revealed} onToggle={() => setRevealed((shown) => !shown)} fieldTestID={testID} style={styles.eyeAtEnd} />
         ) : null}
       </View>
       <FieldError message={error} testID={`${testID}-error`} />
@@ -164,6 +185,7 @@ const styles = StyleSheet.create({
   inputEmpty: { fontSize: fontSize.body, paddingLeft: spacing.sm + 1, paddingRight: spacing.sm + 1 },
   inputFilled: { fontSize: fontSize.label, paddingLeft: 18, paddingRight: spacing.sm + 1 },
   inputBare: { fontSize: fontSize.body, paddingLeft: 18, paddingRight: spacing.sm + 1 },
-  eye: { paddingRight: spacing.md, alignItems: "center", justifyContent: "center" },
+  eye: { alignItems: "center", justifyContent: "center" },
+  eyeAtEnd: { paddingRight: spacing.md },
   error: { fontFamily: fontFamily.regular, fontSize: fontSize.small, color: colors.error },
 });

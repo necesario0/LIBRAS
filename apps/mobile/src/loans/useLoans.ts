@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { isCurrentLoan } from "@libras/shared";
 import type { Loan, MyLoansResponse } from "@libras/shared";
 import { api } from "../api";
+import { ApiError } from "../api/client";
 import type { AuthorizedRequest } from "../auth/authorized-request";
 import { useFocusedFetch } from "../hooks/useFocusedFetch";
 import type { FetchState } from "../hooks/useFocusedFetch";
@@ -21,6 +22,16 @@ export function currentLoans(loans: readonly Loan[]): Loan[] {
  */
 export function useLoans(request: AuthorizedRequest) {
   return useFocusedFetch(request, api.getLoans, "Your Loans could not be loaded. Please try again.");
+}
+
+/** A refusal or failure as words the Member can read. */
+export function loanFailureMessage(error: unknown, fallback: string): string {
+  return error instanceof ApiError ? error.message : fallback;
+}
+
+/** Renews one of the Member's Loans. Resolves with the renewed Loan; rejects with an `ApiError` carrying the refusal. */
+export function renewLoan(request: AuthorizedRequest, loanId: string): Promise<Loan> {
+  return request((token) => api.renewLoan(token, loanId)).then(({ loan }) => loan);
 }
 
 /** How often the Digital ID screen asks whether the Librarian has confirmed a Loan. */

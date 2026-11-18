@@ -5,9 +5,31 @@ export interface EmailMessage {
   html?: string;
 }
 
-/** The only way the API sends email. Tests swap in a sender that captures messages. */
+/**
+ * The only way the API sends email. Tests swap in a sender that captures messages.
+ *
+ * `send` resolves once the provider accepted the message. It rejects with
+ * `EmailOutcomeUnknownError` when the provider may have accepted it but did not
+ * say so in time, and with any other error when the message surely was not sent.
+ */
 export interface EmailSender {
   send(message: EmailMessage): Promise<void>;
+}
+
+/**
+ * The email service did not answer in time: it may have accepted the message
+ * or not. A caller that would send again on failure (the Loan notices) must not
+ * do so at once, or a slow service gets the same email again on every try.
+ */
+export class EmailOutcomeUnknownError extends Error {
+  constructor(options?: ErrorOptions) {
+    super("The email service did not answer in time: the message may have been sent", options);
+    this.name = "EmailOutcomeUnknownError";
+  }
+}
+
+function isTimeout(error: unknown): boolean {
+  return error instanceof Error && error.name === "TimeoutError";
 }
 
 /**
@@ -43,7 +65,8 @@ function htmlFromText(text: string): string {
  * Production sender: Brevo's transactional email API over HTTPS. Render's free
  * tier blocks SMTP ports, so an HTTP API is the only way out. Every failure
  * throws an Error whose message holds the status and Brevo's error code but
- * never the API key or the message body.
+ * never the API key or the message body. No answer within `timeoutMs` is
+ * `EmailOutcomeUnknownError`: the request may have reached Brevo.
  */
 export class BrevoEmailSender implements EmailSender {
   readonly #apiKey: string;
@@ -74,6 +97,7 @@ export class BrevoEmailSender implements EmailSender {
         signal: AbortSignal.timeout(this.#timeoutMs),
       });
     } catch (error) {
+      if (isTimeout(error)) throw new EmailOutcomeUnknownError({ cause: error });
       throw new Error("The email service could not be reached", { cause: error });
     }
     if (response.ok) return;

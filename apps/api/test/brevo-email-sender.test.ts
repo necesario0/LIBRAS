@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { BrevoEmailSender } from "../src/email.ts";
+import { BrevoEmailSender, EmailOutcomeUnknownError } from "../src/email.ts";
 
 const API_KEY = "xkeysib-test-key-0000";
 
@@ -102,6 +102,38 @@ describe("BrevoEmailSender", () => {
         return true;
       },
     );
+  });
+
+  it("says the outcome is unknown when the service does not answer in time: it may have accepted the message", async () => {
+    const neverAnswers = (async (_input: URL | RequestInfo, init?: RequestInit) =>
+      new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () => reject(init.signal?.reason));
+      })) as typeof fetch;
+    const slow = new BrevoEmailSender({ apiKey: API_KEY, from: { address: "library@example.com", name: "LIBRAS" }, fetch: neverAnswers, timeoutMs: 20 });
+
+    await assert.rejects(
+      () => slow.send({ to: "a@example.com", subject: "Hi", text: "Hello" }),
+      (error: Error) => {
+        assert.ok(error instanceof EmailOutcomeUnknownError);
+        assert.match(error.message, /did not answer in time/i);
+        assert.ok(!error.message.includes(API_KEY));
+        return true;
+      },
+    );
+  });
+
+  it("says a send that could not reach the service, or was refused, failed for sure: it is not an unknown outcome", async () => {
+    for (const respond of [
+      () => {
+        throw new TypeError("fetch failed");
+      },
+      () => new Response(JSON.stringify({ code: "unauthorized" }), { status: 401 }),
+    ]) {
+      await assert.rejects(
+        () => sender(fakeFetch(respond).fetch).send({ to: "a@example.com", subject: "Hi", text: "Hello" }),
+        (error: Error) => !(error instanceof EmailOutcomeUnknownError),
+      );
+    }
   });
 
   it("fails when the service answers with something that is not JSON", async () => {

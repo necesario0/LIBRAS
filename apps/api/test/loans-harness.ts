@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
 import { randomInt, randomUUID } from "node:crypto";
-import type { CopyStatus, DigitalIdResponse, IdentifyMemberResponse, MyLoansResponse } from "@libras/shared";
+import type {
+  ConfirmLoanResponse,
+  CopyStatus,
+  DigitalIdResponse,
+  IdentifyMemberResponse,
+  MyLoansResponse,
+  RecordReturnResponse,
+  ReturnedLoan,
+} from "@libras/shared";
 import { createTestAccount, startTestApi } from "../src/testing/index.ts";
 import type { TestApi, TestMember } from "../src/testing/index.ts";
 
@@ -55,16 +63,73 @@ export function loansHarness() {
     assert.equal(response.status, 200, await response.clone().text());
     return ((await response.json()) as IdentifyMemberResponse).deskSession.token;
   };
+  /** The Librarian scans the Member's Digital ID: the Member as the desk shows them, and the desk session that lends to them. */
+  const identifyAtDesk = async (librarian: TestLibrarian, member: TestMember): Promise<IdentifyMemberResponse> => {
+    const response = await identify(librarian, await digitalIdOf(member));
+    assert.equal(response.status, 200, await response.clone().text());
+    return (await response.json()) as IdentifyMemberResponse;
+  };
+  /** A moment in Manila, "2026-11-20 00:00", as the API's clock takes it. */
+  const at = (manila: string) => api().clock.set(new Date(`${manila.replace(" ", "T")}:00.000+08:00`).toISOString());
   /** The Librarian scans a Copy for the Member of a desk session. */
   const lendWith = (librarian: TestLibrarian, deskSession: string, copy: string) =>
     send("POST", "/desk/loans", librarian.accessToken, { deskSession, copy });
 
+  /** A Book whose Copies have these statuses, with a ten-digit barcode and an accession number each. */
+  const addBook = async (title: string, copyStatuses: CopyStatus[] = ["available"]): Promise<TestBook> => {
+    const { rows } = await api().db.query("insert into public.books (title, authors) values ($1, $2) returning id", [title, ["Reyes, Ana"]]);
+    const id: string = rows[0].id;
+    bookIds.push(id);
+    const copies: TestCopy[] = [];
+    for (const status of copyStatuses) {
+      const barcode = `39${String(randomInt(0, 100_000_000)).padStart(8, "0")}`;
+      const accessionNumber = `LT-${randomUUID().slice(0, 13).toUpperCase()}`;
+      const inserted = await api().db.query(
+        "insert into public.copies (book_id, accession_number, barcode, status) values ($1, $2, $3, $4) returning id",
+        [id, accessionNumber, barcode, status],
+      );
+      copies.push({ id: inserted.rows[0].id, barcode, accessionNumber });
+    }
+    return { id, title, copies };
+  };
+
+  /**
+   * A Member borrows a new Copy for each entry on 12 Nov at 10:00 in Manila, in one visit to the desk (due the end
+   * of 19 Nov), and the Librarian records their returns, each that many days after the due date at 15:00 Manila time:
+   * late returns with a Fine each, in the order given. All are lent first: a Member with an unsettled Fine is not in
+   * Good standing and cannot borrow.
+   */
+  const lateReturns = async (librarian: TestLibrarian, member: TestMember, daysLate: readonly number[]): Promise<ReturnedLoan[]> => {
+    api().clock.set("2026-11-12T02:00:00.000Z");
+    const deskSession = await deskSessionFor(member, librarian);
+    const lent: { copy: TestCopy; loanId: string }[] = [];
+    for (let index = 0; index < daysLate.length; index += 1) {
+      const copy = (await addBook("Settle Me")).copies[0] as TestCopy;
+      const response = await lendWith(librarian, deskSession, copy.barcode);
+      assert.equal(response.status, 201, await response.clone().text());
+      lent.push({ copy, loanId: ((await response.json()) as ConfirmLoanResponse).loan.id });
+    }
+    const returned: ReturnedLoan[] = [];
+    for (const [index, { copy, loanId }] of lent.entries()) {
+      at(`2026-11-${19 + (daysLate[index] as number)} 15:00`);
+      const response = await send("POST", "/desk/returns", librarian.accessToken, { copy: copy.barcode });
+      assert.equal(response.status, 200, await response.clone().text());
+      const loan = ((await response.json()) as RecordReturnResponse).loan;
+      assert.equal(loan.id, loanId);
+      returned.push(loan);
+    }
+    return returned;
+  };
+
   return {
     api,
+    addBook,
     send,
     digitalIdOf,
     identify,
     deskSessionFor,
+    identifyAtDesk,
+    at,
     lendWith,
     /** The Librarian scans the Member's Digital ID, then the Copy: one visit to the desk. */
     lendAtDesk: async (librarian: TestLibrarian, member: TestMember, copy: string) =>
@@ -72,6 +137,13 @@ export function loansHarness() {
     /** "Done with this Member": the desk session ends. */
     endDeskSession: (librarian: TestLibrarian, deskSession: string) =>
       send("POST", "/desk/sessions/end", librarian.accessToken, { deskSession }),
+    /**
+     * A Member borrows a new Copy on 12 Nov at 10:00 in Manila (due the end of 19 Nov), and the Librarian records
+     * its return `daysLate` days after the due date, at 15:00 Manila time: a late return with a Fine.
+     */
+    lateReturn: async (librarian: TestLibrarian, member: TestMember, daysLate = 2): Promise<ReturnedLoan> =>
+      (await lateReturns(librarian, member, [daysLate]))[0] as ReturnedLoan,
+    lateReturns,
     start: async (options: Parameters<typeof startTestApi>[0] = {}) => {
       state.api = await startTestApi(options);
     },
@@ -87,23 +159,6 @@ export function loansHarness() {
       } finally {
         await api().close();
       }
-    },
-    /** A Book whose Copies have these statuses, with a ten-digit barcode and an accession number each. */
-    addBook: async (title: string, copyStatuses: CopyStatus[] = ["available"]): Promise<TestBook> => {
-      const { rows } = await api().db.query("insert into public.books (title, authors) values ($1, $2) returning id", [title, ["Reyes, Ana"]]);
-      const id: string = rows[0].id;
-      bookIds.push(id);
-      const copies: TestCopy[] = [];
-      for (const status of copyStatuses) {
-        const barcode = `39${String(randomInt(0, 100_000_000)).padStart(8, "0")}`;
-        const accessionNumber = `LT-${randomUUID().slice(0, 13).toUpperCase()}`;
-        const inserted = await api().db.query(
-          "insert into public.copies (book_id, accession_number, barcode, status) values ($1, $2, $3, $4) returning id",
-          [id, accessionNumber, barcode, status],
-        );
-        copies.push({ id: inserted.rows[0].id, barcode, accessionNumber });
-      }
-      return { id, title, copies };
     },
     librarian: async (fullName = "Lita Reyes"): Promise<TestLibrarian> => {
       const account = await createTestAccount(api(), { staff: { role: "librarian", fullName } });

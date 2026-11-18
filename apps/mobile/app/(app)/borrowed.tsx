@@ -53,8 +53,7 @@ function LoanCard({ loan, out, limit }: { loan: Loan; out: number; limit: number
 /**
  * "Successfully Borrowed" (Figma 617:3485): shown once the Librarian has
  * confirmed the Loan at the desk. The Digital ID screen opens it with the id of
- * the new Loan, and the details come from the API. The design's "to avoid a
- * fine" is left out: Tier 1 charges nothing.
+ * the new Loan, and the details come from the API.
  */
 export default function BorrowedScreen() {
   const { loanId } = useLocalSearchParams<{ loanId: string }>();
@@ -96,7 +95,7 @@ export default function BorrowedScreen() {
           <Text style={styles.reminder} testID="borrowed-reminder">
             {"Please return it by "}
             <Text style={styles.reminderDate}>{formatLibraryDay(loan.dueAt)}</Text>
-            {"."}
+            {" to avoid a fine."}
           </Text>
         ) : state.status !== "loading" ? (
           <Text style={styles.reminder} testID="borrowed-reminder">

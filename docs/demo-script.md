@@ -1,8 +1,8 @@
-# LIBRAS Tier 1 demo script
+# LIBRAS demo script
 
-The demo path of spec #2, run on the hosted system with real phones. About 15 minutes. The same script is the acceptance run for issue #20: tick each check as it is done, and note the date and the people present at the end.
+The demo path of spec #2 (Tier 1, Parts 1 to 7) and spec #29 (Tier 2, Parts 8 to 11), run on the hosted system with real phones. About 15 minutes for Tier 1 and 15 more for Tier 2. The script is also the acceptance run for issues #20 and #40: tick each check as it is done, and note the date and the people present at the end.
 
-Words follow the glossary: Member, Account Type, Librarian, Book, Copy, Loan, Hold, Pickup Window, Digital ID.
+Words follow the glossary: Member, Account Type, Librarian, Book, Copy, Loan, Hold, Pickup Window, Digital ID, Renewal, Loan notice, Fine, Clearance, Good standing.
 
 ## What you need
 
@@ -15,6 +15,10 @@ Words follow the glossary: Member, Account Type, Librarian, Book, Copy, Loan, Ho
 | Member phone B | The hosted APK installed (or the same phone after signing out). A second borrowing Member, for the Hold. Faculty or NTP / Employee shows the role-weighted order best |
 | Mailboxes | Two `@umak.edu.ph` inboxes the presenter can open (the borrowing Account Types need one), plus any inbox for a Visitor |
 | Printed Copy labels | At least two Copies of one Book, as Code 128 labels of the Copy's 10-digit barcode (`31` then 8 digits). `npm run labels:hosted -- --title "introduction to algorithms" --copies 3` writes `copy-labels.html`: open it in Chrome and print at 100% scale on white matte paper |
+
+| Presenter's computer (Tier 2) | The repository with `.env.hosted`, to move Loan dates with `npm run verify:hosted -- backdate <Copy barcode> <days>` |
+| Member A for Tier 2 | A test Member: a UMAK Student signed up with a +alias that contains `libras-hosted-check-`, for example `<you>+libras-hosted-check-demo@umak.edu.ph`. The backdate command moves only test Members' Loans and refuses a real Member's. Send one email to the alias first to see that it reaches the inbox. `npm run verify:hosted -- tier2` and `-- cleanup` delete every test Member, so sign this one up after them |
+| Three more Copy labels (Tier 2) | Three available Copies, X, Y and Z (any Books), for the Renewal, the late return and the Loan after the settle |
 
 Pick one Book before the demo and note its title (the labels command prints the title and the barcodes it used), so that the demo does not depend on searching blind.
 
@@ -109,10 +113,71 @@ Checks:
 
 The window is 24 hours (`library_settings.pickup_window_hours`), so this is shown on stage only if it was set to 1 hour beforehand (the setting is whole hours and affects only later dispatches), and is otherwise shown from the audit log instead. With a ready Hold that nobody collects, within five minutes after the window ends the database schedule wakes the API, the Hold becomes Expired and the Copy passes to the next waiting Hold or becomes available. Set the value back to 24 afterwards.
 
-## Part 8: proof afterwards
+## Part 8: renew a Loan (Tier 2; spec #29 user stories 1 to 5 and 8)
 
-1. `npm run audit:verify:hosted -w @libras/api`: prints that the audit chain is intact. It covers the sign-in failures, Loans, the return, the Hold dispatch and the pickup of the run.
-2. The recorded measurements (search under 50 concurrent users, Hold dispatch on the hosted database) are in `docs/hosted-verification.md`; quote them if asked.
+Run Parts 8 to 11 after 08:00 Manila time, when Loan notices go out. Member A here is the test Member from "What you need" (the +alias with `libras-hosted-check-`), signed in on phone A, and must start with no overdue Loan and no unsettled Fine.
+
+1. Desk: Member A shows the Digital ID (Home, Digital ID). The Librarian scans it, then Copies X and Y. Two Loans confirmed, due in 7 days. **Done with this Member**.
+2. Phone A, My Loans: both Loans under Current, each with **Renew**.
+3. Tap **Renew** on X. The row asks "Renew this Loan? The new due date is ..." with the date 7 days later. Tap **Yes, renew**. The due date moves and the row shows a **Renewed** pill.
+4. X now says why it cannot be renewed again (the renewal limit) in place of Renew.
+
+Checks:
+
+- [ ] The Renewal moves the due date by one loan period and is shown at once
+- [ ] A second Renewal is not offered, with the reason shown
+
+## Part 9: Loan notices and the Fine so far (user stories 9 to 18, 29 to 30)
+
+1. Presenter's computer: `npm run verify:hosted -- backdate <X barcode> 13` (X was renewed, so it was due in 14 days: now due tomorrow), then `npm run verify:hosted -- backdate <Y barcode> 10` (Y is now three days late). Each prints the new due date, and the audit log records the move. A Copy lent to a real Member is refused and nothing changes.
+2. Within 5 minutes the schedule wakes the API and Member A's inbox gets one email, "You have an overdue LIBRAS Loan". It names Y, overdue since 3 days ago, "The Fine so far is PHP 15.", and X, due tomorrow, with the daily Fine rate and why it cannot be renewed. One email a day covers all of a Member's Loans.
+3. Phone A, My Loans (open it again so it reloads): Y shows **Overdue** and the red line "Fine so far: PHP 15 (3 days late)" under "Was due ...". X says why it cannot be renewed.
+4. Phone A, Profile (tap the avatar on Home): the Clearance card says **Not cleared**, lists both Loans still out, and the red note "You cannot borrow, place a Hold or renew a Loan while you have an overdue Loan. ..."
+5. Phone A, any Book with an available Copy: the Book page shows the same reason in place of Borrow. A Book with no Copy on the shelf shows it in place of Place a Hold.
+
+Checks:
+
+- [ ] The Loan notice email arrives through Brevo with the right Loans, dates and Fine amounts
+- [ ] My Loans shows the Fine so far on the overdue Loan
+- [ ] Profile and the Book page say why Member A cannot borrow, renew or place a Hold
+
+## Part 10: return late, settle the Fine, Clearance changes (user stories 19 to 33)
+
+1. Desk, with no Member at the desk: scan Y. The notice says "Returned late - was due ..." and a red panel shows the Fine, PHP 15, with Paid and Waived. Leave it unsettled for now. Scan X: "Returned on time - due ...".
+2. Phone A, Profile: Clearance is still **Not cleared**. No Loan is out, one Fine of PHP 15 is unsettled, and the note now names the unsettled Fine.
+3. Desk: Member A shows the Digital ID again. The Member panel says **Not cleared** with "1 unsettled Fine, PHP 15" and lists the Fine with Paid and Waived.
+4. Scan Copy Z. The desk refuses: "This Member has an unsettled Fine, so no Loan was recorded. Settle it in the Member panel, then scan the Copy again."
+5. Press **Paid** (Waived asks first: show it, then choose Keep it). The Fine leaves the panel and Clearance turns **Cleared**.
+6. Scan Z again: the Loan is confirmed in the same visit. **Done with this Member**.
+7. Phone A, Profile: **Not cleared** with one Loan out (Z) and no red note, because Member A is in Good standing again. My Loans shows Y under Past Loans with its Fine paid.
+8. Desk: scan Z to return it. Phone A, Profile: **Cleared**.
+
+Checks:
+
+- [ ] The late return fixes the Fine and the desk shows it
+- [ ] The unsettled Fine blocks the Loan, and settling it lets the same scan through in the same visit
+- [ ] Clearance on Profile and on the desk follows each step
+
+## Part 11: forgot and change a password (user stories 34 to 47)
+
+1. Phone A, Profile: **Sign out**. On the sign-in screen tap **Forgot password?**, enter the email, **Send code**.
+2. The inbox gets "Your LIBRAS password reset code". Enter a wrong code first (clear error), then the right one.
+3. Type a new password twice (the requirements tick as they are met), **Save password**, then **Back to sign in**. The inbox gets "Your LIBRAS password was changed", saying it was reset with an emailed code.
+4. Sign in with the old password: refused. Sign in with the new one: Home.
+5. Profile > **My account** > **Change password**. Type a wrong current password and a new one, **Save changes**: the Current Password field turns red, "Current password is incorrect." Type the right one, **Save changes**: the "Password updated" dialog, then **Back to My Account**. The phone stays signed in.
+6. The inbox gets a second "Your LIBRAS password was changed", saying it was changed in the app. Neither email contains a password.
+7. Optional: if the same account was signed in on phone B, phone B is signed out on its next request.
+
+Checks:
+
+- [ ] The reset code email arrives through Brevo and the reset works once
+- [ ] Change password keeps this phone signed in and signs other devices out
+- [ ] Both "password was changed" emails arrive
+
+## Proof afterwards
+
+1. `npm run audit:verify:hosted -w @libras/api`: prints that the audit chain is intact. It covers the sign-in failures, Loans, returns, the Hold dispatch and pickup, the Renewal, the Fine, its settlement and the password changes of the run.
+2. The recorded measurements (search under 50 concurrent users, Hold dispatch on the hosted database) and the Tier 2 checklist with its run record are in `docs/hosted-verification.md`.
 
 Checks:
 
@@ -127,6 +192,9 @@ Checks:
 | A barcode will not read | Type the number in the "Barcode damaged?" field on the phone, or into the desk page's field |
 | No email arrives | Look in the spam folder first. Brevo's log (Transactional, Logs) shows whether it was sent |
 | Camera blocked | Site settings for the scanner address, allow the camera, reload |
+| No Loan notice within 5 minutes of the backdate | It must be after 08:00 Manila, and the Member gets one notice email a day: Brevo > Logs shows whether one went out earlier. `npm run schedule:hosted` checks that the schedule reaches the API |
+| The backdate says the Loan "belongs to a Member who is not a test Member" | Member A signed up with a real address. Sign up a test Member as in "What you need", lend X and Y to them, and start Part 8 again |
+| Member A is refused a Loan at the start of Part 8 | They still have an overdue Loan or an unsettled Fine from an earlier run: return it, and settle the Fine in the Member panel |
 
 ## Run record
 

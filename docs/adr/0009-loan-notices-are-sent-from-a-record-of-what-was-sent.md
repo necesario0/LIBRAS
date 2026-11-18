@@ -14,6 +14,7 @@ Render's free plan stops the service when it is idle and takes about a minute to
 ## Rules that follow
 
 - A failed send writes no record, so the next tick tries again.
+- A send whose outcome is unknown (Brevo did not answer within the timeout, so it may have accepted the email) is not tried again that day. The API keeps the Member's email row for the day, marked `unknown`, and writes no notice record, so the next day's run sends the notices that are still due. Trying again on every tick would mail the Member every few minutes while Brevo stays slow. A Member may then get a notice twice, a day apart, or a due-tomorrow notice not at all (it is out of date the next day). We accept that over a flood of copies.
 - A notice that is out of date is skipped, never sent late. The job drops a due-tomorrow notice once the Loan is overdue or the Copy is returned. It sends a missed repeat once, not once for each week missed.
 - A Renewal moves the due date, so the Loan gets a new due-tomorrow notice for the new date.
 - If the API stops after Brevo accepts an email and before the record is written, the Member gets that notice twice. We accept a rare duplicate over a notice that never arrives.
