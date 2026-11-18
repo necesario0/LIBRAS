@@ -1,6 +1,7 @@
 import { RENEWAL_REASONS, formatLibraryDate, formatPesos } from "@libras/shared";
 import type { LoanRenewal } from "@libras/shared";
 import type { EmailMessage } from "../email.ts";
+import type { FineRate } from "../fines/index.ts";
 import { libraryDayOf } from "./schedule.ts";
 import type { LoanNoticeSlot } from "./schedule.ts";
 
@@ -13,7 +14,7 @@ export interface NoticeLoan {
   /** Whether the Loan can be renewed now (`renewalOf`): for a due-tomorrow notice only, null otherwise. */
   renewal: LoanRenewal | null;
   /** The Member's daily Fine rate and Fine cap, in centavos: for a due-tomorrow notice, null otherwise or when nothing would be owed. */
-  fineRate: { dailyRateCentavos: number; capCentavos: number } | null;
+  fineRate: FineRate | null;
   /** The Fine so far, in centavos (`fineAt`, as My Loans shows it): for an overdue notice, null otherwise. */
   fineSoFar: number | null;
 }

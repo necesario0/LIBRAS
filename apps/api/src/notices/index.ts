@@ -2,7 +2,7 @@ import type { AppDeps } from "../app.ts";
 import type { Database, Tx } from "../db.ts";
 import { EmailOutcomeUnknownError } from "../email.ts";
 import { withTransaction } from "../db.ts";
-import { fineAt } from "../fines/index.ts";
+import { fineAt, fineRateOf } from "../fines/index.ts";
 import { memberPolicy } from "../loans/policy.ts";
 import { booksWithWaitingHolds, renewalOf } from "../loans/renewability.ts";
 import { goodStandingRefusal } from "../standing/index.ts";
@@ -137,10 +137,7 @@ async function notifyMember(deps: AppDeps, memberId: string): Promise<boolean> {
         loan.slot.kind === "due_tomorrow"
           ? renewalOf({ loan, policy, holdWaiting: waiting.has(loan.book_id), notInGoodStanding, now })
           : null,
-      fineRate:
-        loan.slot.kind === "due_tomorrow" && policy.fine_daily_rate_centavos > 0 && policy.fine_cap_centavos > 0
-          ? { dailyRateCentavos: policy.fine_daily_rate_centavos, capCentavos: policy.fine_cap_centavos }
-          : null,
+      fineRate: loan.slot.kind === "due_tomorrow" ? fineRateOf(policy) : null,
       // The same Fine so far that My Loans shows at this moment.
       fineSoFar: loan.slot.kind === "due_tomorrow" ? null : (fineAt(loan.due_at, policy, now)?.amountCentavos ?? null),
     }));

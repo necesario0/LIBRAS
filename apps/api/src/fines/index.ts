@@ -16,24 +16,37 @@ export interface FinePolicy {
   fine_cap_centavos: number;
 }
 
+/** What a late Loan is charged under a Loan Policy: the daily rate and the cap, in centavos. */
+export interface FineRate {
+  dailyRateCentavos: number;
+  capCentavos: number;
+}
+
+/**
+ * The rate a late Loan is charged under this policy, or null when the policy
+ * charges nothing: a daily rate or a cap of zero means no Fine at all.
+ */
+export function fineRateOf(policy: FinePolicy): FineRate | null {
+  if (policy.fine_daily_rate_centavos <= 0 || policy.fine_cap_centavos <= 0) return null;
+  return { dailyRateCentavos: policy.fine_daily_rate_centavos, capCentavos: policy.fine_cap_centavos };
+}
+
 /**
  * The Fine of a Loan due at `dueAt` that is still out (or comes back) at `at`:
  * the daily rate for every calendar day of the library after the due date, the
  * day of `at` included, up to the cap. No grace period: the first moment after
  * the due date is one day late. Null when the Loan is not overdue at `at`, or
- * when the policy's rate (or cap) is zero, so nothing is owed.
+ * when the policy charges nothing (`fineRateOf`).
  */
 export function fineAt(dueAt: Date, policy: FinePolicy, at: Date): LoanFine | null {
-  if (!isLoanOverdue(dueAt, at)) return null;
+  const rate = fineRateOf(policy);
+  if (rate === null || !isLoanOverdue(dueAt, at)) return null;
   // Every due date is the last moment of a library day, so overdue means at least one day later.
   const daysLate = Math.max(1, libraryDaysBetween(dueAt.toISOString(), at.toISOString()));
-  const amountCentavos = Math.min(daysLate * policy.fine_daily_rate_centavos, policy.fine_cap_centavos);
-  if (amountCentavos <= 0) return null;
   return {
-    amountCentavos,
+    amountCentavos: Math.min(daysLate * rate.dailyRateCentavos, rate.capCentavos),
     daysLate,
-    dailyRateCentavos: policy.fine_daily_rate_centavos,
-    capCentavos: policy.fine_cap_centavos,
+    ...rate,
     final: false,
     settlement: null,
   };
