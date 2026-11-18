@@ -4,15 +4,16 @@ import { HOLD_STATUS_LABELS, formatLibraryDate, formatLibraryDateTime } from "@l
 import type { Hold, HoldStatus } from "@libras/shared";
 import { BookCover } from "../components/BookCover";
 import { StatusPill } from "../components/StatusPill";
+import type { PillTone } from "../components/StatusPill";
 import { colors, fontFamily, fontSize, radii, spacing } from "../theme/tokens";
 
-/** Fill and text of the status pill, from the pills the Book page already uses. */
-const PILL: Record<HoldStatus, { surface: string; text: string }> = {
-  waiting: { surface: colors.selected, text: colors.primary },
-  ready: { surface: colors.availableSurface, text: colors.availableText },
-  fulfilled: { surface: colors.successSurface, text: colors.success },
-  expired: { surface: colors.pill, text: colors.textMuted },
-  cancelled: { surface: colors.pill, text: colors.textMuted },
+/** What each status says, for its pill. */
+const PILL_TONES: Readonly<Record<HoldStatus, PillTone>> = {
+  waiting: "info",
+  ready: "available",
+  fulfilled: "success",
+  expired: "neutral",
+  cancelled: "neutral",
 };
 
 interface HoldRowProps {
@@ -31,7 +32,6 @@ export function HoldRow({ hold, onCancel }: HoldRowProps) {
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | undefined>(undefined);
-  const pill = PILL[hold.status];
 
   const cancel = async () => {
     setBusy(true);
@@ -59,7 +59,7 @@ export function HoldRow({ hold, onCancel }: HoldRowProps) {
           </Text>
           <Text style={styles.placed}>{`Placed ${formatLibraryDate(hold.placedAt)}`}</Text>
         </View>
-        <StatusPill label={HOLD_STATUS_LABELS[hold.status]} surface={pill.surface} text={pill.text} testID="hold-status" />
+        <StatusPill label={HOLD_STATUS_LABELS[hold.status]} tone={PILL_TONES[hold.status]} testID="hold-status" />
       </View>
 
       {hold.status === "ready" && hold.pickupEndsAt !== null ? (

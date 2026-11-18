@@ -3,6 +3,7 @@ import { counted, formatLibraryDate, formatPesos, goodStandingNotice, plural } f
 import type { Clearance, GoodStanding } from "@libras/shared";
 import { DollarSignIcon } from "../components/icons";
 import { StatusPill } from "../components/StatusPill";
+import type { PillTone } from "../components/StatusPill";
 import { colors, fontFamily, fontSize, menuRowShadow, radii, spacing } from "../theme/tokens";
 import type { ClearanceState } from "./useClearance";
 
@@ -91,12 +92,12 @@ function Blockers({ clearance, goodStanding }: { clearance: Clearance; goodStand
 export function ClearancePanel({ state, onRetry }: ClearancePanelProps) {
   const loaded = state.status === "loaded" ? state : undefined;
   const clearance = loaded?.clearance;
-  const pill =
+  const pill: { label: string; tone: PillTone } | undefined =
     clearance === undefined
       ? undefined
       : clearance.cleared
-        ? { label: "Cleared", surface: colors.availableSurface, text: colors.availableText }
-        : { label: "Not cleared", surface: colors.dangerSurface, text: colors.danger };
+        ? { label: "Cleared", tone: "available" }
+        : { label: "Not cleared", tone: "danger" };
 
   return (
     <View style={styles.card} testID="profile-clearance">
@@ -108,8 +109,7 @@ export function ClearancePanel({ state, onRetry }: ClearancePanelProps) {
         {pill === undefined ? null : (
           <StatusPill
             label={pill.label}
-            surface={pill.surface}
-            text={pill.text}
+            tone={pill.tone}
             size={fontSize.caption}
             style={styles.pill}
             testID="profile-clearance-status"

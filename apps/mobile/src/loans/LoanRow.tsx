@@ -4,14 +4,15 @@ import { RENEWAL_REASONS, counted, formatLibraryDate, formatPesos } from "@libra
 import type { Loan } from "@libras/shared";
 import { BookCover } from "../components/BookCover";
 import { StatusPill } from "../components/StatusPill";
+import type { PillTone } from "../components/StatusPill";
 import { colors, fontFamily, fontSize, radii, spacing } from "../theme/tokens";
 
 /** The status pill of a Loan: overdue stands out, a renewed Loan says so, a Loan in time is calm, a returned one is muted. */
-function pillOf(loan: Loan): { label: string; surface: string; text: string } {
-  if (loan.returnedAt !== null) return { label: "Returned", surface: colors.pill, text: colors.textMuted };
-  if (loan.overdue) return { label: "Overdue", surface: colors.dangerSurface, text: colors.danger };
-  if (loan.renewalCount > 0) return { label: "Renewed", surface: colors.selected, text: colors.primary };
-  return { label: "On loan", surface: colors.availableSurface, text: colors.availableText };
+function pillOf(loan: Loan): { label: string; tone: PillTone } {
+  if (loan.returnedAt !== null) return { label: "Returned", tone: "neutral" };
+  if (loan.overdue) return { label: "Overdue", tone: "danger" };
+  if (loan.renewalCount > 0) return { label: "Renewed", tone: "info" };
+  return { label: "On loan", tone: "available" };
 }
 
 interface LoanRowProps {
@@ -76,7 +77,7 @@ export function LoanRow({ loan, onRenew }: LoanRowProps) {
             <Text style={styles.dates} testID="loan-returned">{`Returned on ${formatLibraryDate(loan.returnedAt)}`}</Text>
           )}
         </View>
-        <StatusPill label={pill.label} surface={pill.surface} text={pill.text} testID="loan-status" />
+        <StatusPill label={pill.label} tone={pill.tone} testID="loan-status" />
       </View>
 
       {failure === undefined ? null : (
