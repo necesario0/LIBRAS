@@ -102,3 +102,17 @@ _Avoid_: Borrowing rules, limits
 
 **Reservation**:
 Not a concept in LIBRAS. The team decided not to build it.
+
+### Discovery
+
+**Subject**:
+The academic field of a Book, read from the class letters of its LC call number. A Book has at most one Subject; one without an LC call number has none.
+_Avoid_: Category, genre, department, college (when you mean the field)
+
+**Saved book**:
+A Book a Member keeps on their own private list to find again. Saving sets no Copy aside and puts the Member in no queue, so any Account Type may save.
+_Avoid_: Bookmark, wishlist, favorite, reservation
+
+**Announcement**:
+A notice a Librarian publishes to every Member as a poster image, shown on Home from its start date to its end date. No two Announcements run at the same time.
+_Avoid_: News, post, article, broadcast, bulletin, book of the month
