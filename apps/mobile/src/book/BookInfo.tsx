@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { ACCOUNT_TYPE_LABELS, canBorrow } from "@libras/shared";
 import type { AccountType, BookDetail } from "@libras/shared";
 import { BookCover } from "../components/BookCover";
+import { BookTexts } from "./BookTexts";
 import { colors, fontFamily, fontSize, radii, spacing } from "../theme/tokens";
 
 /** The pill under the author: whether a Copy can be borrowed now. */
@@ -86,6 +87,8 @@ export function BookInfo({ book, accountType }: { book: BookDetail; accountType:
           <Text style={styles.detailsBody}>{book.isbn}</Text>
         </View>
       )}
+
+      <BookTexts book={book} />
 
       {canBorrow(accountType) ? null : (
         <View style={styles.note} testID="cannot-borrow-note">

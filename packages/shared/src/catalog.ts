@@ -80,6 +80,19 @@ export interface BookDetail extends BookSearchResult {
   contents: string | null;
 }
 
+/**
+ * The chapters of a Book's table of contents, one per entry: the catalog writes
+ * them in one run separated by `--` (MARC style). Each is trimmed and empty ones
+ * (a trailing or doubled separator) are dropped. Contents with no separator come
+ * back as one entry, line breaks kept; blank contents give none.
+ */
+export function contentsChapters(contents: string): string[] {
+  return contents
+    .split("--")
+    .map((chapter) => chapter.trim())
+    .filter((chapter) => chapter !== "");
+}
+
 /** The body of `GET /catalog/books/:id`. Availability is read live from the Copies. */
 export interface BookDetailResponse {
   book: BookDetail;
