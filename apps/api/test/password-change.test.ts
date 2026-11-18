@@ -161,11 +161,17 @@ describe("Change password", () => {
     assert.equal(api.emails.sent.length, 0);
   });
 
-  it("answers a missing current password with invalid_request", async () => {
-    const response = await send(api, "PUT", "/members/me/password", { newPassword: `new-${randomUUID()}` }, member.accessToken);
+  it("answers a missing current password, or a new password that is missing or not text, with invalid_request", async () => {
+    for (const body of [
+      { newPassword: `new-${randomUUID()}` },
+      { currentPassword: member.password },
+      { currentPassword: member.password, newPassword: 123456789 },
+    ]) {
+      const response = await send(api, "PUT", "/members/me/password", body, member.accessToken);
 
-    assert.equal(response.status, 400);
-    assert.equal((await errorOf(response)).code, "invalid_request");
+      assert.equal(response.status, 400, JSON.stringify(body));
+      assert.equal((await errorOf(response)).code, "invalid_request", JSON.stringify(body));
+    }
   });
 
   it("needs a signed-in Member: no session is 401, a Librarian is 403", async () => {
