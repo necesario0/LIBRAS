@@ -134,6 +134,7 @@ export {
   CATALOG_SEARCH_MAX_LIMIT,
   CATALOG_SEARCH_MAX_QUERY_LENGTH,
   CATALOG_SEARCH_MESSAGES,
+  bookAvailabilityLabel,
   bookIdSchema,
   COPY_STATUSES,
   catalogSearchQuerySchema,

@@ -19,12 +19,30 @@ appId: ph.edu.umak.libras
 - hideKeyboard
 - tapOn:
     id: faculty-college
-# ION is the last entry of the list, so it also proves the new colleges can be reached.
-- scrollUntilVisible:
-    element:
-      id: faculty-college-option-ION
+# The list opens over the form at a fixed height, so the step footer stays put,
+# and scrolls inside itself: the last colleges (SOL, IOPsy, ION) are below its fold.
+- assertVisible:
+    id: faculty-college-list
+- assertVisible: "Step 2 of 4"
+- assertNotVisible:
+    id: faculty-college-option-ION
+- takeScreenshot: sign-up-college-open
+- swipe:
+    from:
+      id: faculty-college-list
+    direction: UP
+- assertVisible:
+    id: faculty-college-option-SOL
+- assertVisible:
+    id: faculty-college-option-IOPsy
+- assertVisible:
+    id: faculty-college-option-ION
+- takeScreenshot: sign-up-college-scrolled
 - tapOn:
     id: faculty-college-option-ION
+- assertNotVisible:
+    id: faculty-college-list
+- assertVisible: "ION"
 - tapOn:
     id: faculty-continue
 

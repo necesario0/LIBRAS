@@ -4,7 +4,7 @@ import { Animated, Easing, Pressable, ScrollView, StyleSheet, Text, TextInput, V
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { VERIFICATION_CODE_LENGTH as CODE_LENGTH } from "@libras/shared";
 import { useScreenTop } from "../hooks/useScreenTop";
-import { colors, controlHeight, fontFamily, fontSize, radii, spacing } from "../theme/tokens";
+import { colors, controlHeight, fontFamily, fontSize, lineHeightFor, radii, spacing } from "../theme/tokens";
 import { ConsentText } from "./ConsentText";
 import { KeyboardAvoiding } from "./KeyboardAvoiding";
 import { LoaderIcon } from "./icons";
@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.subheading,
-    lineHeight: fontSize.subheading + 3,
+    lineHeight: lineHeightFor(fontSize.subheading),
     color: colors.black,
     textAlign: "center",
     marginTop: 83,

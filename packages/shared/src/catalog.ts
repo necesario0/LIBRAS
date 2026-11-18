@@ -93,6 +93,17 @@ export function contentsChapters(contents: string): string[] {
     .filter((chapter) => chapter !== "");
 }
 
+/**
+ * The availability tag of the Book page (approved Tier 3 preview): how many
+ * Copies are on the shelf out of all of them, "None available" when every Copy
+ * is out or set aside, and "No copies" for a Book the library has none of.
+ */
+export function bookAvailabilityLabel(book: Pick<BookDetail, "availableCopies" | "totalCopies">): string {
+  if (book.totalCopies === 0) return "No copies";
+  if (book.availableCopies === 0) return "None available";
+  return `${book.availableCopies} of ${book.totalCopies} available`;
+}
+
 /** The body of `GET /catalog/books/:id`. Availability is read live from the Copies. */
 export interface BookDetailResponse {
   book: BookDetail;

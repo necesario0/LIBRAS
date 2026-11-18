@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Pressable, StyleSheet, Text } from "react-native";
 import { ChevronRightIcon } from "../components/OutlineIcons";
-import { colors, fontFamily, fontSize, menuRowShadow, spacing } from "../theme/tokens";
+import { colors, fontFamily, fontSize, lineHeightFor, menuRowShadow, spacing } from "../theme/tokens";
 
 /** The corner radius of a Profile row (approved Tier 3 preview). */
 const ROW_RADIUS = 25;
@@ -42,5 +42,5 @@ const styles = StyleSheet.create({
     boxShadow: menuRowShadow,
   },
   pressed: { backgroundColor: colors.surface },
-  label: { flex: 1, fontFamily: fontFamily.regular, fontSize: fontSize.note, lineHeight: 19, color: colors.black },
+  label: { flex: 1, fontFamily: fontFamily.regular, fontSize: fontSize.note, lineHeight: lineHeightFor(fontSize.note), color: colors.black },
 });

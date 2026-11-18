@@ -130,7 +130,7 @@ appId: ph.edu.umak.libras
     visible:
       id: book-sheet
     timeout: 15000
-- assertVisible: "Available"
+- assertVisible: "[0-9]+ of [0-9]+ available"
 - assertNotVisible:
     id: hold-placed
 - assertNotVisible:

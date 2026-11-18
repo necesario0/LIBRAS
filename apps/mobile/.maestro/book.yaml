@@ -1,5 +1,6 @@
 # A Member opens a Book from the search results and sees its details and how many
-# Copies exist and are available. A Visitor sees the same page with a note that
+# of its Copies are available. A long title with three authors wraps above the
+# edition, year and availability tags (laid out as the approved Tier 3 preview). A Visitor sees the same page with a note that
 # their Account Type cannot borrow.
 # Needs the end-to-end API on port 3000 (npm run e2e starts it).
 appId: ph.edu.umak.libras
@@ -46,15 +47,13 @@ appId: ph.edu.umak.libras
     visible:
       id: book-sheet
     timeout: 15000
-- assertVisible: "Call number"
+- assertVisible: "CALL NO."
 - assertVisible: ${output.callNumber}
 - assertVisible: ${output.title}
 - assertVisible: ${output.authors}
 - assertVisible: ${output.edition}
-- assertVisible: "Available"
 - assertVisible: "1960"
-- assertVisible: "3 copies"
-- assertVisible: "in the library"
+- assertVisible: "2 of 3 available"
 - assertVisible: ${output.isbn}
 # A Book with no summary and no contents shows neither heading.
 - assertNotVisible: "About this book"
@@ -88,8 +87,39 @@ appId: ph.edu.umak.libras
       id: book-sheet
     timeout: 15000
 - assertVisible: "None available"
-- assertVisible: "1 copy"
 - takeScreenshot: book-none-available
+- tapOn:
+    id: book-close
+- extendedWaitUntil:
+    visible:
+      id: search-results
+    timeout: 10000
+
+# A real catalog title that wraps over several lines, with three authors: every
+# line shows, and the tags sit below the authors (the screenshot shows nothing
+# overlaps; Maestro cannot see an overlap).
+- tapOn:
+    id: search-input
+- eraseText: 40
+- inputText: ${output.longWord}
+- extendedWaitUntil:
+    visible: ${output.longTitle}.*
+    timeout: 15000
+- tapOn: ${output.longTitle}.*
+- extendedWaitUntil:
+    visible:
+      id: book-sheet
+    timeout: 15000
+- assertVisible:
+    id: book-detail-title
+    text: ${output.longTitle}
+- assertVisible:
+    id: book-detail-authors
+    text: ${output.longAuthors}
+- assertVisible: ${output.longEdition}
+- assertVisible: "2021"
+- assertVisible: "2 of 3 available"
+- takeScreenshot: book-long-title
 - tapOn:
     id: book-close
 - runFlow: subflows/sign-out.yaml
@@ -129,7 +159,7 @@ appId: ph.edu.umak.libras
     visible:
       id: book-sheet
     timeout: 15000
-- assertVisible: "3 copies"
+- assertVisible: "2 of 3 available"
 - assertVisible:
     id: cannot-borrow-note
 - assertVisible: "Visitor accounts cannot borrow"

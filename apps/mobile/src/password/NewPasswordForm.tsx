@@ -11,7 +11,7 @@ import { RequirementMetIcon, RequirementUnmetIcon } from "../components/icons";
 import { useScreenTop } from "../hooks/useScreenTop";
 import { PasswordField } from "./PasswordField";
 import { check } from "../sign-up/validate";
-import { colors, fontFamily, fontSize, actionHeight, radii, spacing } from "../theme/tokens";
+import { colors, fontFamily, fontSize, actionHeight, lineHeightFor, radii, spacing } from "../theme/tokens";
 
 /** One line of the requirements list under the fields (Figma 926:14364). */
 export interface PasswordRequirement {
@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
   content: { flexGrow: 1, paddingHorizontal: spacing.xl },
   heading: { gap: 18 },
   titleRow: { flexDirection: "row", alignItems: "center", gap: 7 },
-  title: { flexShrink: 1, fontFamily: fontFamily.semiBold, fontSize: fontSize.headline, lineHeight: 38, color: colors.ink },
+  title: { flexShrink: 1, fontFamily: fontFamily.semiBold, fontSize: fontSize.headline, lineHeight: lineHeightFor(fontSize.headline), color: colors.ink },
   intro: { fontFamily: fontFamily.regular, fontSize: fontSize.caption, lineHeight: 17, color: colors.textSubtle, maxWidth: 288 },
   form: { marginTop: 31, gap: 16 },
   fields: { gap: 14 },

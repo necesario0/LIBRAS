@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from "react-native";
 import { BackButton } from "../account/BackButton";
 import { useGoBack } from "../hooks/useGoBack";
-import { colors, fontFamily, fontSize, spacing } from "../theme/tokens";
+import { colors, fontFamily, fontSize, lineHeightFor, spacing } from "../theme/tokens";
 
 /**
  * The top of a screen pushed over the tabs (approved Tier 3 preview): the
@@ -22,5 +22,5 @@ export function PushedHeader({ title, testID }: { title: string; testID: string 
 
 const styles = StyleSheet.create({
   header: { flexDirection: "row", alignItems: "center", gap: spacing.md, paddingHorizontal: spacing.home, marginTop: 6 },
-  title: { flex: 1, fontFamily: fontFamily.semiBold, fontSize: fontSize.title, letterSpacing: -1.4, lineHeight: 33, color: colors.black },
+  title: { flex: 1, fontFamily: fontFamily.semiBold, fontSize: fontSize.title, letterSpacing: -1.4, lineHeight: lineHeightFor(fontSize.title), color: colors.black },
 });
