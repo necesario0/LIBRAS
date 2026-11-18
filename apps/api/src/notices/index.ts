@@ -1,5 +1,6 @@
 import type { AppDeps } from "../app.ts";
 import type { Database, Tx } from "../db.ts";
+import { EmailOutcomeUnknownError } from "../email.ts";
 import { withTransaction } from "../db.ts";
 import { fineAt } from "../fines/index.ts";
 import type { FinePolicy } from "../fines/index.ts";
@@ -80,6 +81,12 @@ interface MemberRow extends FinePolicy {
  * The notices' rows are written in the same transaction, which commits only
  * after the email sender accepted the email; a refused send rolls everything
  * back, so the next tick tries again.
+ *
+ * A send whose outcome is unknown (the provider did not answer in time, and may
+ * have accepted the email) keeps the email's row, marked `unknown`, and drops
+ * the notices' rows. The row stops every later tick of this library day, so a
+ * slow provider does not get the same email on every tick; the next library
+ * day's run finds the notices still unsent and sends those still due once.
  */
 async function notifyMember(deps: AppDeps, memberId: string): Promise<boolean> {
   return withTransaction(deps.db, async (tx) => {
@@ -96,6 +103,8 @@ async function notifyMember(deps: AppDeps, memberId: string): Promise<boolean> {
     // Read again under the email's row: a notice another tick sent meanwhile is no longer due.
     const due = pending(await candidates(tx, now, { memberId, emailId }), now);
     if (due.length === 0) throw new NothingToSend();
+
+    await tx.query("savepoint notices");
 
     for (const loan of due) {
       await tx.query("insert into public.loan_notices (loan_id, kind, due_at, repeat, email_id) values ($1, $2, $3, $4, $5)", [
@@ -151,7 +160,18 @@ async function notifyMember(deps: AppDeps, memberId: string): Promise<boolean> {
       fineSoFar: loan.slot.kind === "due_tomorrow" ? null : (fineAt(loan.due_at, row, now)?.amountCentavos ?? null),
     }));
 
-    await deps.email.send({ to: row.email, ...loanNoticeEmail({ firstName: row.first_name, loans, now }) });
+    try {
+      await deps.email.send({ to: row.email, ...loanNoticeEmail({ firstName: row.first_name, loans, now }) });
+    } catch (error) {
+      if (!(error instanceof EmailOutcomeUnknownError)) throw error;
+      await tx.query("rollback to savepoint notices");
+      await tx.query("update public.loan_notice_emails set outcome = 'unknown' where id = $1", [emailId]);
+      deps.logger.error(
+        `The Loan notice email for Member ${memberId} may not have been sent: the email service did not answer in time. It is not sent again before the next library day.`,
+        error,
+      );
+      return false;
+    }
     return true;
   }).catch((error: unknown) => {
     if (error instanceof NothingToSend) return false;
@@ -166,7 +186,8 @@ class NothingToSend extends Error {}
  * The Loan notice job of the sweep tick (ADR 0009): every Member with a Loan
  * notice due and not yet sent gets one email covering all of them, at most one
  * a library day. Returns how many emails went out. A Member whose email fails
- * is logged and tried again on the next tick, and does not stop the others.
+ * is logged and tried again on the next tick, and does not stop the others;
+ * one whose email has an unknown outcome is tried again on the next library day.
  */
 export async function sendLoanNotices(deps: AppDeps): Promise<number> {
   const now = deps.clock.now();

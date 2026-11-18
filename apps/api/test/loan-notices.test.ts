@@ -240,6 +240,27 @@ describe("Loan notices", () => {
     assert.deepEqual(await tickAt("2026-11-18 08:10", member), []);
   });
 
+  it("does not send again that day when the email's outcome is unknown, and sends the notice on the next day's run", async () => {
+    const { member } = await memberWithLoans(["Answered Too Late"]);
+    // The provider accepts the email but answers after the sender gave up waiting.
+    h.api().emails.answeringLate = true;
+    try {
+      const first = await tickAt("2026-11-20 08:00", member);
+      assert.equal(first.length, 1, "the email did reach the Member");
+      for (const time of ["2026-11-20 08:05", "2026-11-20 12:00", "2026-11-20 23:59"]) {
+        assert.deepEqual(await tickAt(time, member), [], `${time}: no second email the same day`);
+      }
+    } finally {
+      h.api().emails.answeringLate = false;
+    }
+
+    const nextDay = await tickAt("2026-11-21 08:00", member);
+
+    assert.equal(nextDay.length, 1, "the notice is still due, and goes out once the next day");
+    assert.match(nextDay[0]?.text ?? "", /Answered Too Late/);
+    assert.deepEqual(await tickAt("2026-11-21 08:05", member), []);
+  });
+
   it("skips a due-tomorrow notice that is out of date: the first tick after the due date sends only the overdue one", async () => {
     const { member } = await memberWithLoans(["Missed The Day Before"]);
 
