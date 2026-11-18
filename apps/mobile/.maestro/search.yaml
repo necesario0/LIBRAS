@@ -85,7 +85,9 @@ appId: ph.edu.umak.libras
       id: search-hint
     timeout: 10000
 
-# Sign out is reached from the profile in the Home header.
+# Sign out is reached from the Profile tab. The tab bar steps aside while the
+# keyboard is up, so the keyboard goes first.
+- hideKeyboard
 - runFlow: subflows/sign-out.yaml
 - extendedWaitUntil:
     visible: "SIGN  UP"
