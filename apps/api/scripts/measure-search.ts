@@ -1,5 +1,5 @@
-// Measures catalog search through the real API over HTTP on the seeded catalog
-// (`npm run seed` first). Run: `npm run measure:search -w @libras/api`.
+// Measures catalog search through the real API over HTTP on the generated sample
+// catalog (`npm run seed -- --sample-catalog` first). Run: `npm run measure:search -w @libras/api`.
 //
 // It signs a Member up, then sends searches built from the sample catalog's own
 // titles and authors: exact words, words with one or two typos, and nonsense
@@ -51,7 +51,7 @@ const api = await startTestApi();
 try {
   const books = generateCatalog().books;
   const count = (await api.db.query("select count(*)::int as n from public.books")).rows[0].n as number;
-  if (count < books.length) throw new Error(`The database has ${count} Books, the sample catalog has ${books.length}. Run npm run seed first.`);
+  if (count < books.length) throw new Error(`The database has ${count} Books, the sample catalog has ${books.length}. Run npm run seed -- --sample-catalog first.`);
   const member = await createTestMember(api);
   const headers = { authorization: `Bearer ${member.accessToken}` };
 

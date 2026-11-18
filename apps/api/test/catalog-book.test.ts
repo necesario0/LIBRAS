@@ -70,6 +70,8 @@ describe("GET /catalog/books/:id", () => {
       lcCallNumber: "PS3562.E353 T6 1960",
       availableCopies: 1,
       totalCopies: 1,
+      summary: null,
+      contents: null,
     });
   });
 
@@ -101,6 +103,8 @@ describe("GET /catalog/books/:id", () => {
       lcCallNumber: null,
       availableCopies: 0,
       totalCopies: 0,
+      summary: null,
+      contents: null,
     });
   });
 
