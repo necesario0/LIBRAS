@@ -11,7 +11,7 @@ import type {
   UnsettledFine,
 } from "@libras/shared";
 import { ApiError, confirmLoan, endDeskSession, identifyMember, recordReturn, settleFine } from "../api.ts";
-import { Brand } from "../components/Brand.tsx";
+import { DeskBar } from "../components/DeskBar.tsx";
 import { LoanNotice } from "../components/LoanNotice.tsx";
 import { MemberCard } from "../components/MemberCard.tsx";
 import { PairingPanel } from "../components/PairingPanel.tsx";
@@ -191,18 +191,7 @@ export function DeskPage({ staff, onSignOut }: Props) {
 
   return (
     <div className="desk">
-      <header className="desk__bar">
-        <Brand />
-        <div className="desk__who">
-          <div className="desk__name">
-            <span>{staff.fullName}</span>
-            <span className="desk__role">Librarian</span>
-          </div>
-          <button className="button button--quiet" type="button" onClick={onSignOut}>
-            Sign out
-          </button>
-        </div>
-      </header>
+      <DeskBar staff={staff} current="desk" onSignOut={onSignOut} />
       <main className="desk__main">
         <div className="desk__layout">
           <section className="desk__ready" aria-labelledby="desk-title">

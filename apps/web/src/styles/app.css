@@ -1,4 +1,5 @@
 @import "./tokens.css";
+@import "./announcements.css";
 
 *,
 *::before,
@@ -1001,4 +1002,151 @@ input {
   .scanner__sent {
     animation: none;
   }
+}
+
+/* Librarian pages: the bar's page links */
+.desk__start {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+}
+.desk__nav {
+  display: flex;
+  gap: var(--space-1);
+}
+.desk__nav-link {
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-pill);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  text-decoration: none;
+}
+.desk__nav-link:hover {
+  color: var(--color-text);
+}
+.desk__nav-link[aria-current="page"] {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+/* Small controls of the form pages */
+.button--small {
+  height: var(--control-height-small);
+  padding: 0 var(--space-4);
+  font-size: var(--text-sm);
+}
+.link-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-primary);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+}
+.chip-button {
+  padding: 3px var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.chip-button:hover:not(:disabled) {
+  background: var(--color-field);
+}
+.chip-button:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+.chip-button--danger {
+  border-color: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+.chip-button--danger.chip-button--solid {
+  border-color: var(--color-danger);
+  background: var(--color-danger);
+  color: var(--color-on-primary);
+}
+.chip-button--danger.chip-button--solid:hover:not(:disabled) {
+  background: var(--color-danger-hover);
+}
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.form-label {
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+.form-help {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-weight: 400;
+  line-height: 1.45;
+}
+.form-help--error {
+  margin: 0;
+  color: var(--color-danger);
+}
+.form-kicker {
+  color: var(--color-text-muted);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.text-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-input);
+  background: var(--color-field);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-sm);
+}
+.text-input:focus-visible {
+  outline: none;
+  border-color: var(--color-primary);
+  background: var(--color-surface);
+}
+.text-input--area {
+  min-height: 72px;
+  resize: vertical;
+}
+.ok-message {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-notice);
+  background: var(--color-success-soft);
+  color: var(--color-success);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+.segmented {
+  display: inline-flex;
+  align-self: flex-start;
+  gap: 3px;
+  padding: 3px;
+  border-radius: var(--radius-input);
+  background: var(--color-field);
+}
+.segmented__option {
+  padding: 6px 14px;
+  border: 0;
+  border-radius: var(--radius-thumb);
+  background: transparent;
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+.segmented__option[aria-checked="true"] {
+  background: var(--color-surface);
+  box-shadow: var(--shadow-raised);
+  font-weight: 500;
 }

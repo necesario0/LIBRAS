@@ -28,11 +28,19 @@
   --color-camera: #101820; /* the camera area of the scanner page before and around the picture */
   --color-viewfinder: rgb(255 255 255 / 0.85); /* the frame to hold a barcode in */
   --color-camera-shade: rgb(0 0 0 / 0.28); /* the picture outside that frame, dimmed */
+  --color-accent: #fcbf49; /* the app's yellow: the crop frame and the link button of an Announcement */
+  --color-panel: #fafbfc; /* the list column beside a form */
+  --color-crop-shade: rgb(0 0 0 / 0.55); /* the poster outside the banner frame, dimmed */
 
   --radius-pill: 999px; /* inputs and buttons are fully rounded in the designs */
   --radius-card: 24px;
   --radius-notice: 16px;
   --radius-key: 6px; /* the small "Enter" key in the scan field */
+  --radius-input: 12px; /* text areas, date and text fields of a form */
+  --radius-thumb: 8px;
+
+  --shadow-raised: 0 1px 3px rgb(0 0 0 / 0.15); /* the chosen option of a segmented control */
+  --shadow-banner: 0 4px 10px rgb(0 0 0 / 0.2); /* the Home banner, as the app draws it */
 
   --space-1: 4px;
   --space-2: 8px;
@@ -43,7 +51,9 @@
   --space-7: 48px;
 
   --control-height: 44px;
+  --control-height-small: 34px;
   --scan-field-height: 56px;
+  --text-2xs: 11px;
   --text-xs: 12px;
   --text-sm: 13px;
   --text-md: 16px;
