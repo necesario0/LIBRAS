@@ -162,7 +162,7 @@ appId: ph.edu.umak.libras
     visible:
       id: hold-not-in-good-standing
     timeout: 15000
-- assertVisible: "You have an unsettled Fine, so you cannot place a Hold. Settle it at the library desk first. You can see it on your Profile."
+- assertVisible: "You cannot borrow, place a Hold or renew a Loan while you have an unsettled Fine. Settle it at the library desk."
 - assertNotVisible:
     id: hold-place
 - takeScreenshot: profile-book-not-in-good-standing

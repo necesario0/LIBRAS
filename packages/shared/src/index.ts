@@ -16,7 +16,7 @@ export {
 export type { DeskSession, DigitalIdResponse, IdentifyMemberRequest, IdentifyMemberResponse } from "./digital-id.ts";
 export { deskSessionTokenSchema } from "./desk.ts";
 export type { DeskMember, LoanStanding } from "./desk.ts";
-export { GOOD_STANDING_REFUSALS, goodStandingNotice, totalOwedCentavos } from "./standing.ts";
+export { GOOD_STANDING_MESSAGES, GOOD_STANDING_REFUSALS, goodStandingNotice, totalOwedCentavos } from "./standing.ts";
 export { counted, plural } from "./plural.ts";
 export type {
   Clearance,

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, beforeEach, describe, it } from "node:test";
-import { HOLD_MESSAGES, LOAN_MESSAGES, RENEWAL_MESSAGES } from "@libras/shared";
+import { GOOD_STANDING_MESSAGES, LOAN_MESSAGES, RENEWAL_MESSAGES } from "@libras/shared";
 import type { ClearanceResponse, ConfirmLoanResponse, FineOutcome, GoodStanding, Loan } from "@libras/shared";
 import { createTestMember } from "../src/testing/index.ts";
 import type { TestMember } from "../src/testing/index.ts";
@@ -134,7 +134,7 @@ describe("Good standing refusals", () => {
       assert.deepEqual(await refusal(await h.placeHoldRequest(ana, book.id)), {
         status: 409,
         code: "overdue_loan",
-        message: HOLD_MESSAGES.notInGoodStanding.overdue_loan,
+        message: GOOD_STANDING_MESSAGES.overdue_loan,
       });
       assert.deepEqual(await h.holdsOf(ana), []);
     });
@@ -148,7 +148,7 @@ describe("Good standing refusals", () => {
       assert.deepEqual(await refusal(await h.placeHoldRequest(ana, book.id)), {
         status: 409,
         code: "unsettled_fine",
-        message: HOLD_MESSAGES.notInGoodStanding.unsettled_fine,
+        message: GOOD_STANDING_MESSAGES.unsettled_fine,
       });
       assert.deepEqual(await h.holdsOf(ana), []);
 

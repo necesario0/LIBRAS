@@ -1,5 +1,4 @@
 import { z } from "zod";
-import type { GoodStandingRefusal } from "./standing.ts";
 
 /**
  * The states of a Hold (ADR 0001, spec #2):
@@ -37,12 +36,6 @@ export const HOLD_MESSAGES = {
   holdNotFound: "This Hold could not be found. Open your Holds and try again.",
   notCancellable: "This Hold can no longer be cancelled.",
   changed: "This Hold changed while it was being cancelled, so nothing was cancelled. Open your Holds and try again.",
-  /** The Member is not in Good standing (ADR 0010). The refusal's code is the reason; the Book page shows these in place of the button. */
-  notInGoodStanding: {
-    overdue_loan: "You have an overdue Loan, so you cannot place a Hold. Return it to the library desk first. You can see it in My Loans.",
-    unsettled_fine:
-      "You have an unsettled Fine, so you cannot place a Hold. Settle it at the library desk first. You can see it on your Profile.",
-  } satisfies Record<GoodStandingRefusal, string>,
 } as const;
 
 /** One of the Member's Holds. */

@@ -77,6 +77,16 @@ export type NonEmpty<T> = [T, ...T[]];
  */
 export type GoodStanding = { inGoodStanding: true } | { inGoodStanding: false; reasons: NonEmpty<GoodStandingRefusal> };
 
+/**
+ * Good standing has one set of words per audience:
+ * - the Member, anywhere the app or the API tells them they cannot borrow, place
+ *   a Hold or renew in general: `goodStandingNotice` (Profile, the Book page's
+ *   Borrow and Hold, and the API's refusal of a Hold, `GOOD_STANDING_MESSAGES`);
+ * - the Member, about renewing one Loan: `RENEWAL_REASONS` (My Loans, the
+ *   due-tomorrow notice, and the API's refusal of that Renewal);
+ * - the Librarian at the desk: `LOAN_MESSAGES.notInGoodStanding`.
+ */
+
 /** What stands in the way, as the app names it in a sentence. */
 const GOOD_STANDING_NAMES: Readonly<Record<GoodStandingRefusal, string>> = {
   overdue_loan: "an overdue Loan",
@@ -100,3 +110,12 @@ export function goodStandingNotice(reasons: readonly GoodStandingRefusal[]): str
         : "Settle it at the library desk.";
   return `You cannot borrow, place a Hold or renew a Loan while you have ${names}. ${todo}`;
 }
+
+/**
+ * The Member's words for one reason: the API refuses a Hold with them, and the
+ * Book page shows the same sentence in place of Place a Hold and Borrow.
+ */
+export const GOOD_STANDING_MESSAGES: Readonly<Record<GoodStandingRefusal, string>> = {
+  overdue_loan: goodStandingNotice(["overdue_loan"]),
+  unsettled_fine: goodStandingNotice(["unsettled_fine"]),
+};

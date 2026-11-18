@@ -1,7 +1,7 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { HOLD_MESSAGES, HOLD_STATUS_LABELS, canBorrow, formatLibraryDateTime } from "@libras/shared";
+import { HOLD_STATUS_LABELS, canBorrow, formatLibraryDateTime, goodStandingNotice } from "@libras/shared";
 import type { AccountType, BookDetail, GoodStanding } from "@libras/shared";
 import { useAuth } from "../auth/AuthContext";
 import { Button } from "../components/Button";
@@ -14,8 +14,8 @@ import { activeHolds, holdFailureMessage, placeHold, useHolds } from "./useHolds
  * active it shows where the Member stands instead of a second button: for a
  * ready Hold, until when the Copy is set aside and the way to the Digital ID.
  * A Member who is not in Good standing (`goodStanding`, from the API; undefined
- * until it loads) reads why in place of the button, the same words the API
- * refuses a Hold with. There is no Figma frame for it: it uses the page's own
+ * until it loads) reads why in place of the button: the same sentence the
+ * Borrow action and Profile show (`goodStandingNotice`). There is no Figma frame for it: it uses the page's own
  * panel style.
  */
 export function HoldAction({
@@ -60,14 +60,13 @@ export function HoldAction({
   }
 
   if (goodStanding && !goodStanding.inGoodStanding) {
-    const [reason] = goodStanding.reasons;
     return (
       <View style={styles.panel} testID="hold-not-in-good-standing">
         <Text style={styles.title} accessibilityRole="header">
           No Copy is available right now
         </Text>
         <Text style={styles.refusal} testID="hold-not-in-good-standing-reason">
-          {HOLD_MESSAGES.notInGoodStanding[reason]}
+          {goodStandingNotice(goodStanding.reasons)}
         </Text>
       </View>
     );

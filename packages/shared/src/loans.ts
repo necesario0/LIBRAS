@@ -132,9 +132,9 @@ export const RENEWAL_MESSAGES = {
     loan_overdue: "Your Loan was not renewed: it is now past its due date. Please return the Copy to the library desk.",
     renewal_limit_reached: "Your Loan was not renewed: it has already been renewed, and it cannot be renewed again.",
     hold_waiting: "Your Loan was not renewed: another Member is now waiting for this Book. Please return the Copy by its due date.",
-    overdue_loan:
-      "Your Loan was not renewed: another of your Loans is now overdue. Return it to the library desk, and renew once its Fine is settled.",
-    unsettled_fine: "Your Loan was not renewed: you have an unsettled Fine. Settle it at the library desk, then renew.",
+    // Good standing: the same words My Loans shows for the Loan (`RENEWAL_REASONS`).
+    overdue_loan: RENEWAL_REASONS.overdue_loan,
+    unsettled_fine: RENEWAL_REASONS.unsettled_fine,
   } satisfies Record<RenewalRefusal, string>,
 } as const;
 

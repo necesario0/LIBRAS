@@ -1,4 +1,4 @@
-import { HOLD_MESSAGES, canBorrow } from "@libras/shared";
+import { GOOD_STANDING_MESSAGES, HOLD_MESSAGES, canBorrow } from "@libras/shared";
 import type { CopyStatus, Hold, HoldStatus, MemberProfile } from "@libras/shared";
 import type { AppDeps } from "../app.ts";
 import type { Identity } from "../auth/auth-provider.ts";
@@ -65,7 +65,7 @@ export async function placeHold(deps: AppDeps, member: MemberProfile, bookId: st
       await lockMember(tx, member.id);
       const book = await tx.query("select 1 from public.books where id = $1", [bookId]);
       if (!book.rows[0]) throw new AppError(404, "book_not_found", "We could not find this Book. It may have been removed from the catalog.");
-      await requireGoodStanding({ scope: tx, memberId: member.id, now: placedAt, messages: HOLD_MESSAGES.notInGoodStanding });
+      await requireGoodStanding({ scope: tx, memberId: member.id, now: placedAt, messages: GOOD_STANDING_MESSAGES });
       const copies = await tx.query<{ status: CopyStatus }>(
         "select c.status from public.copies c where c.book_id = $1 order by c.id for share of c",
         [bookId],

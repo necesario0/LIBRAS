@@ -352,7 +352,7 @@ appId: ph.edu.umak.libras
     visible:
       id: hold-not-in-good-standing
     timeout: 15000
-- assertVisible: "You have an overdue Loan, so you cannot place a Hold. Return it to the library desk first. You can see it in My Loans."
+- assertVisible: "You cannot borrow, place a Hold or renew a Loan while you have an overdue Loan. Return it to the library desk and settle its Fine there."
 - assertNotVisible:
     id: hold-place
 - takeScreenshot: loans-hold-not-in-good-standing
