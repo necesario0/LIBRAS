@@ -66,6 +66,7 @@ const { app, stop } = createApp(deps, {
   passwordResetLimit: {
     perClientAddress: { maxRequests: 1_000, windowMinutes: 15 },
     perEmail: { maxRequests: 1_000, windowMinutes: 15 },
+    wrongCodesPerEmail: { maxFailures: 1_000, windowMinutes: 15 },
   },
 });
 

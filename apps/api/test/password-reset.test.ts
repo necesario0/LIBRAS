@@ -53,6 +53,7 @@ describe("Forgot password", () => {
       passwordResetLimit: {
         perClientAddress: { maxRequests: 1000, windowMinutes: 15 },
         perEmail: { maxRequests: 1000, windowMinutes: 15 },
+        wrongCodesPerEmail: { maxFailures: 1000, windowMinutes: 15 },
       },
     });
   });
@@ -248,6 +249,7 @@ describe("Forgot password when something fails after the code is accepted", () =
       passwordResetLimit: {
         perClientAddress: { maxRequests: 1000, windowMinutes: 15 },
         perEmail: { maxRequests: 1000, windowMinutes: 15 },
+        wrongCodesPerEmail: { maxFailures: 1000, windowMinutes: 15 },
       },
       wrapAccounts: (accounts) => ({
         createUnverifiedAccount: (email, password) => accounts.createUnverifiedAccount(email, password),
@@ -323,16 +325,70 @@ describe("Forgot password when something fails after the code is accepted", () =
 
 describe("Forgot password code request limits", () => {
   let api: TestApi;
+  const limit = {
+    perClientAddress: { maxRequests: 6, windowMinutes: 15 },
+    perEmail: { maxRequests: 2, windowMinutes: 60 },
+    wrongCodesPerEmail: { maxFailures: 6, windowMinutes: 24 * 60 },
+  };
 
   beforeEach(async () => {
-    api = await startTestApi({
-      passwordResetLimit: {
-        perClientAddress: { maxRequests: 6, windowMinutes: 15 },
-        perEmail: { maxRequests: 2, windowMinutes: 60 },
-      },
-    });
+    api = await startTestApi({ passwordResetLimit: limit });
   });
   afterEach(() => api.close());
+
+  it("keeps counting code requests for an email when the API restarts: the count is in the database", async () => {
+    const email = `nobody-${randomUUID()}@umak.edu.ph`;
+    assert.equal((await requestCode(api, email)).status, 200);
+    assert.equal((await requestCode(api, email)).status, 200);
+    await api.close();
+    api = await startTestApi({ passwordResetLimit: limit });
+
+    const refused = await requestCode(api, email);
+
+    assert.equal(refused.status, 429);
+    assert.equal(await errorCode(refused), "too_many_attempts");
+    assert.ok(Number(refused.headers.get("retry-after")) > 0);
+  });
+
+  it("limits wrong codes for one email across new codes, so asking for a new code does not give more guesses", async () => {
+    const member = await createTestMember(api);
+    const first = await emailedCode(api, member.email);
+    for (let guess = 0; guess < 5; guess += 1) {
+      assert.equal(await errorCode(await checkCode(api, member.email, wrongCode(first))), "invalid_code");
+    }
+    const second = await emailedCode(api, member.email);
+    assert.equal(await errorCode(await checkCode(api, member.email, wrongCode(second))), "invalid_code", "the sixth wrong code of the day");
+
+    const blocked = await completeReset(api, member.email, second, `new-${randomUUID()}`);
+
+    assert.equal(blocked.status, 429);
+    assert.deepEqual(((await blocked.json()) as { error: unknown }).error, {
+      code: "too_many_attempts",
+      message: PASSWORD_RESET_MESSAGES.tooManyWrongCodesForEmail,
+    });
+    assert.ok(Number(blocked.headers.get("retry-after")) > 0);
+    assert.ok(await signInDirect(member.email, member.password), "the password did not change");
+    api.clock.advance({ minutes: 60 });
+    const third = await emailedCode(api, member.email);
+    assert.equal(await errorCode(await checkCode(api, member.email, third)), "too_many_attempts", "a new code within the day is refused too");
+
+    api.clock.advance({ hours: 23 });
+    const fourth = await emailedCode(api, member.email);
+    assert.equal((await checkCode(api, member.email, fourth)).status, 204, "the wrong codes leave the window");
+  });
+
+  it("counts wrong codes for an email with no account in the same way", async () => {
+    const unknown = `nobody-${randomUUID()}@umak.edu.ph`;
+    assert.equal((await requestCode(api, unknown)).status, 200);
+    for (let guess = 0; guess < 5; guess += 1) await checkCode(api, unknown, String(100000 + guess));
+    assert.equal((await requestCode(api, unknown)).status, 200);
+    assert.equal(await errorCode(await checkCode(api, unknown, "200000")), "invalid_code");
+
+    const blocked = await checkCode(api, unknown, "200001");
+
+    assert.equal(blocked.status, 429);
+    assert.equal(((await blocked.json()) as { error: { message: string } }).error.message, PASSWORD_RESET_MESSAGES.tooManyWrongCodesForEmail);
+  });
 
   it("limits code requests for one email, whether or not it has an account", async () => {
     const member = await createTestMember(api);

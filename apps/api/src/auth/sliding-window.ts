@@ -51,12 +51,21 @@ export class SlidingWindowLog {
    */
   refusal(key: string, now: number, what: string): AppError {
     const oldest = this.recent(key, now)[0] ?? now;
-    const retryAfterSeconds = Math.max(1, Math.ceil((oldest + this.#windowMs - now) / 1000));
-    return new AppError(
-      429,
-      "too_many_attempts",
-      `Too many ${what}. Please wait ${Math.ceil(retryAfterSeconds / 60)} minute(s) and try again.`,
-      { headers: { "Retry-After": String(retryAfterSeconds) } },
-    );
+    return tooManyAttempts({ what, retryAfterMs: oldest + this.#windowMs - now });
   }
+}
+
+/**
+ * The 429 `too_many_attempts` of every rate limit, with a Retry-After header in
+ * whole seconds (at least 1). `message` replaces the usual "Too many <what>.
+ * Please wait N minute(s) and try again."
+ */
+export function tooManyAttempts(refusal: { what: string; retryAfterMs: number; message?: string }): AppError {
+  const retryAfterSeconds = Math.max(1, Math.ceil(refusal.retryAfterMs / 1000));
+  return new AppError(
+    429,
+    "too_many_attempts",
+    refusal.message ?? `Too many ${refusal.what}. Please wait ${Math.ceil(retryAfterSeconds / 60)} minute(s) and try again.`,
+    { headers: { "Retry-After": String(retryAfterSeconds) } },
+  );
 }

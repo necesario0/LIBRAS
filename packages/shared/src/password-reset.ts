@@ -9,6 +9,8 @@ export const PASSWORD_RESET_MESSAGES = {
   invalidCode: "That code is not right. Check your email and try again.",
   codeExpired: "That code has expired. Ask for a new code.",
   tooManyWrongCodes: "Too many wrong codes. Ask for a new code to try again.",
+  /** Too many wrong codes for the email across codes: a new code does not help until the window passes. */
+  tooManyWrongCodesForEmail: "Too many wrong codes for this email. Please wait and try again later.",
   /** Supabase Auth failed after the code was spent: the code cannot be used again. */
   resetUnfinished: "Your password could not be changed just now. Ask for a new code and try again.",
 } as const;

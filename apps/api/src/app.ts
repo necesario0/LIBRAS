@@ -21,7 +21,7 @@ import { holdsRouter } from "./routes/holds.ts";
 import { loansRouter } from "./routes/loans.ts";
 import { membersRouter } from "./routes/members.ts";
 import { passwordResetRouter } from "./routes/password-reset.ts";
-import type { PasswordResetLimit } from "./routes/password-reset.ts";
+import type { PasswordResetLimit } from "./members/password-reset.ts";
 import { scannerRouter } from "./routes/scanner.ts";
 import { staffRouter } from "./routes/staff.ts";
 import { sweepsRouter } from "./routes/sweeps.ts";
