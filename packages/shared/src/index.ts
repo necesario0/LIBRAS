@@ -137,6 +137,7 @@ export {
   bookIdSchema,
   COPY_STATUSES,
   catalogSearchQuerySchema,
+  contentsChapters,
 } from "./catalog.ts";
 export type { BookDetail, BookDetailResponse, BookSearchResult, CatalogSearchQuery, CatalogSearchResponse, CopyStatus } from "./catalog.ts";
 export {

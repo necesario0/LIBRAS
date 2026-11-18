@@ -56,6 +56,9 @@ appId: ph.edu.umak.libras
 - assertVisible: "3 copies"
 - assertVisible: "in the library"
 - assertVisible: ${output.isbn}
+# A Book with no summary and no contents shows neither heading.
+- assertNotVisible: "About this book"
+- assertNotVisible: "Contents"
 # A UMAK Student can borrow, so there is no cannot-borrow note.
 - assertNotVisible:
     id: cannot-borrow-note
