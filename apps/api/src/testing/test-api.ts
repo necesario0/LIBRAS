@@ -56,6 +56,8 @@ export interface TestApiOptions extends AppOptions {
    * (a session that ended while a request was running, for example). Default: the real one, untouched.
    */
   wrapAuth?: (auth: AuthProvider) => AuthProvider;
+  /** Where the API logs, for a test that checks what is logged. Default: nowhere. */
+  logger?: Logger;
 }
 
 const silentLogger: Logger = {
@@ -68,7 +70,7 @@ const silentLogger: Logger = {
  * PostgreSQL and the real local Supabase Auth. Tests talk to it over HTTP only.
  */
 export async function startTestApi(options: TestApiOptions = {}): Promise<TestApi> {
-  const logger = silentLogger;
+  const logger = options.logger ?? silentLogger;
   const db = createDatabase(options.databaseUrl ?? process.env.TEST_DATABASE_URL ?? LOCAL_DATABASE_URL, logger);
   const clock = new FakeClock();
   const emails = new CapturingEmailSender();

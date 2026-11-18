@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { after, afterEach, before, beforeEach, describe, it } from "node:test";
-import { SIGN_UP_MESSAGES } from "@libras/shared";
+import { PASSWORD_RESET_MESSAGES, SIGN_UP_MESSAGES } from "@libras/shared";
 import { createAuditLog } from "../src/audit/index.ts";
 import { createTestAccount, createTestMember, startTestApi } from "../src/testing/index.ts";
 import type { TestApi, TestMember } from "../src/testing/index.ts";
 import { codeFromEmail, signInDirect } from "../src/testing/members.ts";
+import { capturingLogger, failAuditWrites } from "./failing-audit-writes.ts";
 
 const CODE_LIFETIME_MS = 10 * 60 * 1000;
 
@@ -227,6 +228,96 @@ describe("Forgot password", () => {
     const again = await completeReset(api, member.email, code, `other-${randomUUID()}`);
 
     assert.equal(await errorCode(again), "invalid_code");
+  });
+});
+
+/**
+ * One rule once the code is accepted: the code is spent before Supabase Auth gets the new password, so it can
+ * never set a password twice, and once Supabase Auth has the new password the reset reports success.
+ */
+describe("Forgot password when something fails after the code is accepted", () => {
+  let api: TestApi;
+  let member: TestMember;
+  const logger = capturingLogger();
+  /** While true, Supabase Auth fails to set the password. */
+  let authFails = false;
+
+  before(async () => {
+    api = await startTestApi({
+      logger,
+      passwordResetLimit: {
+        perClientAddress: { maxRequests: 1000, windowMinutes: 15 },
+        perEmail: { maxRequests: 1000, windowMinutes: 15 },
+      },
+      wrapAccounts: (accounts) => ({
+        createUnverifiedAccount: (email, password) => accounts.createUnverifiedAccount(email, password),
+        confirmEmail: (userId) => accounts.confirmEmail(userId),
+        setPassword: (userId, password) =>
+          authFails ? Promise.reject(new Error("Supabase Auth is down for the test")) : accounts.setPassword(userId, password),
+      }),
+    });
+  });
+  after(() => api.close());
+
+  beforeEach(async () => {
+    authFails = false;
+    logger.errors.length = 0;
+    member = await createTestMember(api);
+  });
+
+  it("spends the code even when Supabase Auth fails: the Member is told to ask for a new code, and the old one no longer works", async () => {
+    const code = await emailedCode(api, member.email);
+    authFails = true;
+
+    const failed = await completeReset(api, member.email, code, `new-${randomUUID()}`);
+
+    assert.equal(failed.status, 503);
+    assert.deepEqual(((await failed.json()) as { error: unknown }).error, {
+      code: "password_reset_unfinished",
+      message: PASSWORD_RESET_MESSAGES.resetUnfinished,
+    });
+    assert.ok(await signInDirect(member.email, member.password), "the password did not change");
+    authFails = false;
+    assert.equal(await errorCode(await completeReset(api, member.email, code, `new-${randomUUID()}`)), "invalid_code");
+    const fresh = await emailedCode(api, member.email);
+    const newPassword = `new-${randomUUID()}`;
+    assert.equal((await completeReset(api, member.email, fresh, newPassword)).status, 204);
+    assert.ok(await signInDirect(member.email, newPassword));
+  });
+
+  it("reports success when the audit write fails twice, logs the entry to rebuild it, and the code cannot be used again", async () => {
+    const undo = await failAuditWrites(api.db, "password_reset", "always");
+    const code = await emailedCode(api, member.email);
+    const newPassword = `new-${randomUUID()}`;
+    try {
+      const response = await completeReset(api, member.email, code, newPassword);
+
+      assert.equal(response.status, 204, "the password is set, so the answer is a success");
+    } finally {
+      await undo();
+    }
+    assert.ok(await signInDirect(member.email, newPassword));
+    assert.equal(await errorCode(await completeReset(api, member.email, code, `other-${randomUUID()}`)), "invalid_code");
+    assert.equal(api.emails.lastTo(member.email)?.subject, "Your LIBRAS password was changed", "the Member is still told");
+    const logged = logger.errors.filter((line) => line.includes("password_reset"));
+    assert.equal(logged.length, 1, logger.errors.join("\n"));
+    for (const part of [member.member.id, "127.0.0.1", "audit write refused for the test"]) assert.ok(logged[0]?.includes(part), part);
+    assert.ok(!logged[0]?.includes(newPassword) && !logged[0]?.includes(code), "no secret is logged");
+  });
+
+  it("retries a failed audit write once, so one failure loses nothing", async () => {
+    const audit = createAuditLog(api);
+    const before = (await audit.newest())?.seq ?? 0;
+    const undo = await failAuditWrites(api.db, "password_reset", "once");
+    const code = await emailedCode(api, member.email);
+    try {
+      assert.equal((await completeReset(api, member.email, code, `new-${randomUUID()}`)).status, 204);
+    } finally {
+      await undo();
+    }
+    const entries = (await audit.entries({ afterSeq: before })).filter((entry) => entry.type === "password_reset");
+    assert.deepEqual(entries.map((entry) => entry.subject), [member.member.id]);
+    assert.deepEqual(logger.errors, []);
   });
 });
 

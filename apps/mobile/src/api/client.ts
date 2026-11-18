@@ -147,7 +147,8 @@ export function createApiClient({ baseUrl, fetch: fetchImpl = fetch, timeoutMs =
     checkPasswordResetCode: (body: CheckPasswordResetCodeRequest) => post<null>("/members/password-reset/check", body),
     /**
      * Sets the new password. Every session of the account ends and nobody is signed in. Failures: the code ones,
-     * and `invalid_password` when the password breaks the sign-up rules.
+     * `invalid_password` when the password breaks the sign-up rules, and `password_reset_unfinished` (503) when the
+     * password could not be set: the code is spent, so the Member asks for a new one.
      */
     completePasswordReset: (body: CompletePasswordResetRequest) => post<null>("/members/password-reset/complete", body),
     /**

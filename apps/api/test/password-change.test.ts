@@ -7,6 +7,7 @@ import type { AuthProvider } from "../src/auth/auth-provider.ts";
 import { createTestAccount, createTestMember, startTestApi } from "../src/testing/index.ts";
 import type { TestApi, TestMember } from "../src/testing/index.ts";
 import { signInDirect } from "../src/testing/members.ts";
+import { capturingLogger, failAuditWrites } from "./failing-audit-writes.ts";
 
 function send(api: TestApi, method: string, path: string, body: unknown, accessToken?: string): Promise<Response> {
   return fetch(`${api.baseUrl}${path}`, {
@@ -44,10 +45,11 @@ const me = (api: TestApi, accessToken: string) =>
 describe("Change password", () => {
   let api: TestApi;
   let member: TestMember;
+  const logger = capturingLogger();
 
   before(async () => {
     // The sign-in limit has its own tests below, on their own API.
-    api = await startTestApi({ signInLimit: { maxFailures: 1000, windowMinutes: 15 } });
+    api = await startTestApi({ logger, signInLimit: { maxFailures: 1000, windowMinutes: 15 } });
   });
   after(() => api.close());
 
@@ -179,28 +181,38 @@ describe("Change password", () => {
     assert.ok(await signInDirect(librarian.email, librarian.password), "the Librarian's password is unchanged");
   });
 
-  it("keeps the change when the audit write fails: the Member is told it worked, and the email still goes out", async () => {
-    const trigger = "libras_test_fail_password_changed_audit";
-    await api.db.query(
-      `create or replace function public.${trigger}() returns trigger language plpgsql as $$
-         begin raise exception 'audit write refused for the test'; end $$`,
-    );
-    await api.db.query(
-      `create trigger a_${trigger} before insert on public.audit_log for each row
-         when (new.event_type = 'password_changed') execute function public.${trigger}()`,
-    );
+  it("keeps the change when the audit write fails twice: the Member is told it worked, the email still goes out, and the entry is logged", async () => {
+    logger.errors.length = 0;
+    const undo = await failAuditWrites(api.db, "password_changed", "always");
+    const newPassword = `new-${randomUUID()}`;
     try {
-      const newPassword = `new-${randomUUID()}`;
-
       const response = await changePassword(api, member.accessToken, member.password, newPassword);
 
       assert.equal(response.status, 204, "the password is changed, so the answer is a success");
-      assert.ok(await signInDirect(member.email, newPassword), "the new password works");
-      assert.equal(api.emails.lastTo(member.email)?.subject, "Your LIBRAS password was changed", "the Member is still told");
     } finally {
-      await api.db.query(`drop trigger if exists a_${trigger} on public.audit_log`);
-      await api.db.query(`drop function if exists public.${trigger}()`);
+      await undo();
     }
+    assert.ok(await signInDirect(member.email, newPassword), "the new password works");
+    assert.equal(api.emails.lastTo(member.email)?.subject, "Your LIBRAS password was changed", "the Member is still told");
+    const logged = logger.errors.filter((line) => line.includes("password_changed"));
+    assert.equal(logged.length, 1, logger.errors.join("\n"));
+    for (const part of [member.member.id, "127.0.0.1"]) assert.ok(logged[0]?.includes(part), part);
+    assert.ok(!logged[0]?.includes(newPassword) && !logged[0]?.includes(member.password), "no password is logged");
+  });
+
+  it("retries a failed audit write once, so one failure loses nothing", async () => {
+    logger.errors.length = 0;
+    const audit = createAuditLog(api);
+    const before = (await audit.newest())?.seq ?? 0;
+    const undo = await failAuditWrites(api.db, "password_changed", "once");
+    try {
+      assert.equal((await changePassword(api, member.accessToken, member.password, `new-${randomUUID()}`)).status, 204);
+    } finally {
+      await undo();
+    }
+    const entries = (await audit.entries({ afterSeq: before })).filter((entry) => entry.type === "password_changed");
+    assert.deepEqual(entries.map((entry) => entry.subject), [member.member.id]);
+    assert.deepEqual(logger.errors, []);
   });
 
   it("keeps the change when the email cannot be sent: the Member is told it worked and the audit entry is written", async () => {

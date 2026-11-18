@@ -1,9 +1,9 @@
 import { PASSWORD_CHANGE_MESSAGES } from "@libras/shared";
 import type { MemberProfile } from "@libras/shared";
 import type { AppDeps } from "../app.ts";
-import { createAuditLog } from "../audit/index.ts";
 import { notSignedIn } from "../auth/guards.ts";
 import { AppError } from "../errors.ts";
+import { recordPasswordEvent } from "./password-audit.ts";
 import { passwordChangedEmail } from "./password-emails.ts";
 
 type ChangeDeps = Pick<AppDeps, "db" | "auth" | "clock" | "email" | "logger">;
@@ -18,38 +18,15 @@ export interface PasswordChangeRequest {
   clientAddress: string | undefined;
 }
 
-/**
- * A wrong current password is a 403, not a 401: the app treats a 401 as "your
- * session is gone" and signs the Member out, and the session here is fine. 403
- * is also a refusal the sign-in limiter counts.
- */
-export function currentPasswordIncorrect(): AppError {
-  return new AppError(403, "current_password_incorrect", PASSWORD_CHANGE_MESSAGES.currentPasswordIncorrect);
-}
-
-/**
- * Writes a Change password event to the audit log (the Member is actor and
- * subject; the address is kept, a password never is). A failed write is
- * logged and swallowed: for a wrong password the Member still gets the real
- * refusal, and for a change that already happened the Member still gets the
- * success, because a broken audit write must not undo or hide what was done.
- */
-async function recordAudit(
-  deps: ChangeDeps,
-  type: "password_changed" | "password_change_failed",
-  { member, clientAddress }: PasswordChangeRequest,
-): Promise<void> {
-  try {
-    await createAuditLog(deps).record({
-      type,
-      actorId: member.id,
-      subject: member.id,
-      data: { clientAddress: clientAddress?.slice(0, 64) ?? null },
-    });
-  } catch (error) {
-    deps.logger.error(`Could not record ${type} in the audit log`, error);
-  }
-}
+const errors = {
+  /**
+   * A wrong current password is a 403, not a 401: the app treats a 401 as "your
+   * session is gone" and signs the Member out, and the session here is fine. 403
+   * is also a refusal the sign-in limiter counts.
+   */
+  currentPasswordIncorrect: () => new AppError(403, "current_password_incorrect", PASSWORD_CHANGE_MESSAGES.currentPasswordIncorrect),
+  samePassword: () => new AppError(400, "invalid_password", PASSWORD_CHANGE_MESSAGES.samePassword),
+};
 
 /**
  * Checks the current password, by signing in with it at Supabase Auth. That
@@ -63,8 +40,8 @@ async function recordAudit(
 export async function verifyCurrentPassword(deps: ChangeDeps, request: PasswordChangeRequest): Promise<void> {
   const signedIn = await deps.auth.signInWithPassword(request.member.email, request.currentPassword);
   if (signedIn === undefined) {
-    await recordAudit(deps, "password_change_failed", request);
-    throw currentPasswordIncorrect();
+    await recordPasswordEvent(deps, { type: "password_change_failed", memberId: request.member.id, clientAddress: request.clientAddress });
+    throw errors.currentPasswordIncorrect();
   }
   if (signedIn === "unverified") throw new Error("A signed-in Member's email is not verified");
   await deps.auth.signOut(signedIn.session.accessToken);
@@ -78,17 +55,16 @@ export async function verifyCurrentPassword(deps: ChangeDeps, request: PasswordC
  *
  * Throws 400 `invalid_password` when the new password is the current one, and
  * 401 `not_signed_in` when the session ended meanwhile. Nothing outside the
- * database is called while a transaction is open. Once the password is
- * changed nothing can fail the request: the audit write and the email are each
- * tried, and a failure of either is only logged.
+ * database is called while a transaction is open. Once Supabase Auth has the
+ * new password the request reports success, as Forgot password does: the audit
+ * write (`recordPasswordEvent`) and the email are each tried, and a failure of
+ * either is only logged.
  */
 export async function changeMemberPassword(deps: ChangeDeps, request: PasswordChangeRequest): Promise<void> {
-  if (request.newPassword === request.currentPassword) {
-    throw new AppError(400, "invalid_password", PASSWORD_CHANGE_MESSAGES.samePassword);
-  }
+  if (request.newPassword === request.currentPassword) throw errors.samePassword();
   if (!(await deps.auth.changePassword(request.accessToken, request.newPassword))) throw notSignedIn();
 
-  await recordAudit(deps, "password_changed", request);
+  await recordPasswordEvent(deps, { type: "password_changed", memberId: request.member.id, clientAddress: request.clientAddress });
   try {
     await deps.email.send({ to: request.member.email, ...passwordChangedEmail("changed", deps.clock.now()) });
   } catch (error) {

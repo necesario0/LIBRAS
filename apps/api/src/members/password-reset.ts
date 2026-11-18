@@ -1,9 +1,9 @@
 import { PASSWORD_RESET_MESSAGES } from "@libras/shared";
 import type { PasswordResetRequestedResponse } from "@libras/shared";
 import type { AppDeps } from "../app.ts";
-import { createAuditLog } from "../audit/index.ts";
 import { withTransaction } from "../db.ts";
 import { AppError } from "../errors.ts";
+import { recordPasswordEvent } from "./password-audit.ts";
 import { passwordChangedEmail, passwordResetCodeEmail } from "./password-emails.ts";
 import { CODE_LIFETIME_MS, MAX_FAILED_ATTEMPTS, codeMatches, issueCode } from "./verification-code.ts";
 
@@ -16,13 +16,7 @@ const errors = {
   invalidCode: () => new AppError(400, "invalid_code", PASSWORD_RESET_MESSAGES.invalidCode),
   codeExpired: () => new AppError(400, "code_expired", PASSWORD_RESET_MESSAGES.codeExpired),
   tooManyWrongCodes: () => new AppError(429, "too_many_attempts", PASSWORD_RESET_MESSAGES.tooManyWrongCodes),
-  resetUnfinished: (cause: unknown) =>
-    new AppError(
-      503,
-      "password_reset_unfinished",
-      "Your password could not be changed just now. Please try again in a moment.",
-      { cause },
-    ),
+  resetUnfinished: (cause: unknown) => new AppError(503, "password_reset_unfinished", PASSWORD_RESET_MESSAGES.resetUnfinished, { cause }),
 };
 
 /**
@@ -80,21 +74,20 @@ interface ResetRow {
   failed_attempts: number;
 }
 
-/** The Member the code is for, and the hash it matched, so the code can be spent only if it is still the current one. */
-interface MatchedCode {
-  userId: string;
-  codeHash: string;
-}
-
 /**
  * Checks a code against the current one for the email. A wrong guess is
  * counted, and after `MAX_FAILED_ATTEMPTS` the code stops working. An email
  * with no Member has a row without a code, so every guess is wrong and counted
  * in the same way. The count is committed before the refusal is thrown.
+ *
+ * With `spend`, a matching code is also spent (its row deleted) in the same
+ * transaction, so it is committed before anything else happens: the code can
+ * never be used twice, whatever fails afterwards. Returns the Member's id.
  */
-async function matchCode(deps: ResetDeps, email: string, code: string): Promise<MatchedCode> {
+async function matchCode(deps: ResetDeps, attempt: { email: string; code: string; spend: boolean }): Promise<string> {
+  const { email, code } = attempt;
   const now = deps.clock.now();
-  const outcome = await withTransaction(deps.db, async (client): Promise<MatchedCode | { refusal: AppError }> => {
+  const outcome = await withTransaction(deps.db, async (client): Promise<{ userId: string } | { refusal: AppError }> => {
     const row = (
       await client.query<ResetRow>(
         `select user_id, code_salt, code_hash, code_expires_at, failed_attempts
@@ -109,55 +102,45 @@ async function matchCode(deps: ResetDeps, email: string, code: string): Promise<
       await client.query("update public.password_resets set failed_attempts = failed_attempts + 1 where email = $1", [email]);
       return { refusal: errors.invalidCode() };
     }
-    return { userId: row.user_id, codeHash: row.code_hash };
+    if (attempt.spend) await client.query("delete from public.password_resets where email = $1", [email]);
+    return { userId: row.user_id };
   });
   if ("refusal" in outcome) throw outcome.refusal;
-  return outcome;
+  return outcome.userId;
 }
 
 /** Checks the code before the app asks for the new password. The code stays usable. */
 export async function checkPasswordResetCode(deps: ResetDeps, email: string, code: string): Promise<void> {
-  await matchCode(deps, email, code);
+  await matchCode(deps, { email, code, spend: false });
 }
 
 /**
- * Sets the new password with a correct code. Supabase Auth ends every session
- * of the account when an administrator sets its password, so whoever was
- * signed in is signed out, and the Member is not signed in either: they sign
- * in with the new password. Then the code is spent, the reset is written to
- * the audit log and the Member is told by email.
+ * Sets the new password with a correct code. The code is spent first, and that
+ * is committed before Supabase Auth is asked, so it can never set a password
+ * twice: if Supabase Auth then fails, the Member is told to ask for a new code
+ * (503 `password_reset_unfinished`).
  *
- * Nothing outside the database is called while a transaction is open. If
- * setting the password fails, the code still works and the Member tries again.
+ * Supabase Auth ends every session of the account when an administrator sets
+ * its password, so whoever was signed in is signed out, and the Member is not
+ * signed in either: they sign in with the new password. Once Supabase Auth has
+ * the new password the reset reports success, as Change password does: the
+ * audit write (`recordPasswordEvent`) and the "password changed" email are each
+ * tried, and a failure of either is only logged.
  */
 export async function completePasswordReset(
   deps: ResetDeps,
   request: { email: string; code: string; password: string; clientAddress: string | undefined },
 ): Promise<void> {
   const { email, code, password } = request;
-  const matched = await matchCode(deps, email, code);
+  const userId = await matchCode(deps, { email, code, spend: true });
 
   try {
-    await deps.accounts.setPassword(matched.userId, password);
+    await deps.accounts.setPassword(userId, password);
   } catch (error) {
     throw errors.resetUnfinished(error);
   }
 
-  const audit = createAuditLog(deps);
-  await withTransaction(deps.db, async (client) => {
-    // Spend the code, unless a newer one replaced it meanwhile: that one stays usable.
-    await client.query("delete from public.password_resets where email = $1 and code_hash = $2", [email, matched.codeHash]);
-    await audit.record(
-      {
-        type: "password_reset",
-        actorId: matched.userId,
-        subject: matched.userId,
-        data: { clientAddress: request.clientAddress?.slice(0, 64) ?? null },
-      },
-      client,
-    );
-  });
-
+  await recordPasswordEvent(deps, { type: "password_reset", memberId: userId, clientAddress: request.clientAddress });
   try {
     await deps.email.send({ to: email, ...passwordChangedEmail("reset", deps.clock.now()) });
   } catch (error) {
