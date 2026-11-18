@@ -125,7 +125,7 @@ export function createApiClient({ baseUrl, fetch: fetchImpl = fetch, timeoutMs =
     getLoans: (accessToken: string) => request<MyLoansResponse>("/members/me/loans", { headers: bearer(accessToken) }),
     /**
      * Renews one of the Member's Loans: its due date moves one loan period later. Failures: `loan_not_found` (404),
-     * `loan_returned`, `loan_overdue`, `renewal_limit_reached` and `hold_waiting` (409).
+     * `loan_returned`, `loan_overdue`, `renewal_limit_reached`, `hold_waiting`, `overdue_loan` and `unsettled_fine` (409).
      */
     renewLoan: (accessToken: string, loanId: string) =>
       request<RenewLoanResponse>(`/loans/${encodeURIComponent(loanId)}/renew`, { method: "POST", headers: bearer(accessToken) }),

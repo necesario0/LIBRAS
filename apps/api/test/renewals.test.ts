@@ -166,7 +166,7 @@ describe("Renewing a Loan from My Loans", () => {
     assert.deepEqual(await refusal(await renew(member, "not-a-loan")), {
       status: 400,
       code: "invalid_request",
-      message: RENEWAL_MESSAGES.invalidId,
+      message: RENEWAL_MESSAGES.loanNotFound,
     });
     assert.equal((await h.send("POST", `/loans/${loan.id}/renew`, null)).status, 401);
     assert.equal((await listed(member, loan.id)).renewalCount, 0);

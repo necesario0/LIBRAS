@@ -124,7 +124,7 @@ export const RENEWAL_REASONS: Readonly<Record<RenewalRefusal, string>> = {
 
 /** The words the API returns and the app shows when a Renewal is refused. */
 export const RENEWAL_MESSAGES = {
-  invalidId: "This Loan could not be found. Open My Loans and try again.",
+  /** For a Loan id that is not one at all, and for one that is not the Member's: the same words, so neither says more. */
   loanNotFound: "This Loan could not be found. Open My Loans and try again.",
   loanReturned: "This Copy has been returned, so there is no Loan to renew.",
   /** A refusal of the Renewal itself. The Loans list said it could be renewed, so something changed since. */
@@ -139,7 +139,7 @@ export const RENEWAL_MESSAGES = {
 } as const;
 
 /** A Loan's id, as `POST /loans/:id/renew` takes it. */
-export const loanIdSchema = z.uuid(RENEWAL_MESSAGES.invalidId);
+export const loanIdSchema = z.uuid(RENEWAL_MESSAGES.loanNotFound);
 
 /** The body of `POST /loans/:id/renew`: the renewed Loan, with its new due date. */
 export interface RenewLoanResponse {

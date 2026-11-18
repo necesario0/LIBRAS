@@ -47,7 +47,7 @@ export function loansRouter(deps: AppDeps): Router {
 
   router.post("/loans/:id/renew", ...requireMember(deps), async (req, res) => {
     const id = loanIdSchema.safeParse(req.params.id);
-    if (!id.success) throw new AppError(400, "invalid_request", RENEWAL_MESSAGES.invalidId);
+    if (!id.success) throw new AppError(400, "invalid_request", RENEWAL_MESSAGES.loanNotFound);
     const body: RenewLoanResponse = { loan: await renewLoan(deps, identityOf(res), id.data) };
     res.json(body);
   });
