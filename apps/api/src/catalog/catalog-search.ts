@@ -1,5 +1,5 @@
 import { buildCatalogIndexAsync } from "@libras/shared";
-import type { BookSearchResult, CatalogIndex, IndexedBook } from "@libras/shared";
+import type { BookDetail, BookSearchResult, CatalogIndex, IndexedBook } from "@libras/shared";
 import { withTransaction } from "../db.ts";
 import type { Database } from "../db.ts";
 import type { Logger } from "../logger.ts";
@@ -56,11 +56,15 @@ export class CatalogSearch {
     await this.#startRebuild();
   }
 
-  /** One Book with its Copy counts, read live from the database (not from the index), or undefined when there is no such Book. */
-  async book(id: string): Promise<BookSearchResult | undefined> {
-    const rows = await this.#booksWithCopyCounts([id]);
+  /** One Book with its Copy counts, summary and contents, read live from the database (not from the index), or undefined when there is no such Book. */
+  async book(id: string): Promise<BookDetail | undefined> {
+    const [rows, texts] = await Promise.all([
+      this.#booksWithCopyCounts([id]),
+      this.#db.query<{ summary: string | null; contents: string | null }>("select summary, contents from public.books where id = $1", [id]),
+    ]);
     const row = rows[0];
-    return row ? toResult(row) : undefined;
+    const text = texts.rows[0];
+    return row && text ? { ...toResult(row), summary: text.summary, contents: text.contents } : undefined;
   }
 
   async search(query: string, limit: number): Promise<CatalogSearchOutcome> {

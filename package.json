@@ -18,7 +18,7 @@
     "db:stop": "supabase stop",
     "db:status": "supabase status",
     "db:reset": "supabase db reset",
-    "seed": "npm run seed -w @libras/api",
+    "seed": "npm run seed -w @libras/api --",
     "setup:hosted": "node scripts/run-setup-hosted.mjs",
     "schedule:hosted": "node --env-file-if-exists=.env.hosted apps/api/scripts/schedule-pickup-sweep.ts",
     "db:migrate:hosted": "node --env-file-if-exists=.env.hosted apps/api/scripts/migrate-hosted.ts",
