@@ -3,6 +3,8 @@
 // Copy is identified by its accession number and rows that exist are left
 // alone, so a Copy on loan stays on loan. One transaction: all or nothing.
 import { randomUUID } from "node:crypto";
+import { systemClock } from "../clock.ts";
+import type { Clock } from "../clock.ts";
 import type { Database, Tx } from "../db.ts";
 import { withTransaction } from "../db.ts";
 import { readLibraryWorkbook } from "./library-workbook.ts";
@@ -21,8 +23,13 @@ export interface LibraryCatalogSummary extends WorkbookReport {
 }
 
 /** Reads the workbook at `path`, writes its Books and Copies, and logs a summary line by line. */
-export async function seedLibraryCatalog(db: Database, path: string, log: (line: string) => void): Promise<LibraryCatalogSummary> {
-  const workbook = await readLibraryWorkbook(path);
+export async function seedLibraryCatalog(
+  db: Database,
+  path: string,
+  log: (line: string) => void,
+  clock: Clock = systemClock,
+): Promise<LibraryCatalogSummary> {
+  const workbook = await readLibraryWorkbook(path, clock.now());
   const written = await withTransaction(db, async (tx) => {
     const totals = { booksAdded: 0, copiesAdded: 0, barcodeTaken: [] as string[] };
     for (let start = 0; start < workbook.books.length; start += BATCH_SIZE) {

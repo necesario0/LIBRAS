@@ -100,7 +100,7 @@ const PROFESSIONAL: Row[] = [
   },
   { accession: 90004, date: "06 /11/2024", call: "QH45.2 .M3", title: "Made-up Field Guide", author: "Santos, Pedro", year: "c2018", barcode: "formula" },
   { accession: 90005, call: "QH45.2  .M3", title: "made-up   field guide.", author: "Santos, Pedro", barcode: "formula", fill: "FFB4A7D6" },
-  { accession: 90006, call: "QH45.2 .M4", title: "Made-up Field Guide", author: "Santos, Pedro", barcode: "formula" },
+  { accession: 90006, date: new Date(Date.UTC(22025, 2, 1)), call: "QH45.2 .M4", title: "Made-up Field Guide", author: "Santos, Pedro", barcode: "formula" },
   { accession: 90007, barcode: "formula" },
   { accession: 90008, call: "HHV 4145", title: "Made-up Mistyped Shelf", barcode: "formula", fill: "FF8E7CC3" },
   { accession: 90009, call: "001.4 Gr75r", title: "Made-up Dewey Book", barcode: "formula" },

@@ -116,6 +116,8 @@ describe("seeding the library's catalog from its accession list", () => {
     assert.equal(rows.get("90003")?.received_on, "2024-06-10", "a typed date");
     assert.equal(rows.get("90004")?.received_on, "2024-06-11", "a typed date with a stray space");
     assert.equal(rows.get("90005")?.received_on, null);
+    assert.equal(rows.get("90006")?.received_on, null, "a date typed with a five-digit year");
+    assert.equal(summary.unreadable.dateReceived, 1);
   });
 
   it("tells the two accession series apart and gives every Copy a printable barcode", async () => {

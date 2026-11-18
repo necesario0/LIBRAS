@@ -107,8 +107,9 @@ interface Row {
   fill: string | null;
 }
 
-/** Reads and cleans the workbook. Throws when a sheet or a required column is missing. */
-export async function readLibraryWorkbook(path: string): Promise<LibraryWorkbook> {
+/** Reads and cleans the workbook. `now` bounds the dates received. Throws when a sheet or a required column is missing. */
+export async function readLibraryWorkbook(path: string, now: Date): Promise<LibraryWorkbook> {
+  const latestYear = now.getUTCFullYear() + 1;
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.readFile(path);
   const legend = readLegend(workbook);
@@ -150,7 +151,7 @@ export async function readLibraryWorkbook(path: string): Promise<LibraryWorkbook
       const isbnText = text("isbn");
       const isbn = isbnOf(cell("isbn")?.value, isbnText);
       if (isbnText && !isbn) unreadable.isbn++;
-      const receivedOn = dateOf(cell("received")?.value);
+      const receivedOn = dateOf(cell("received")?.value, latestYear);
       if (receivedOn === undefined) unreadable.dateReceived++;
       const yearText = text("year");
       const year = yearOf(yearText);
@@ -384,12 +385,15 @@ function isbnOf(raw: CellValue | undefined, text: string | null): string | null 
 const EXCEL_EPOCH_DAYS = 25569;
 const DAY_MS = 86_400_000;
 
-/** "YYYY-MM-DD"; null for an empty cell; undefined for a value that cannot be read. */
-function dateOf(raw: CellValue | undefined): string | null | undefined {
+/** The earliest year a date received can have; anything before, or after next year, is a typing slip. */
+const FIRST_RECEIVED_YEAR = 1900;
+
+/** "YYYY-MM-DD"; null for an empty cell; undefined for a value that cannot be read or cannot be right (a year like 22025). */
+function dateOf(raw: CellValue | undefined, latestYear: number): string | null | undefined {
   const value = plain(raw);
   if (value === null || value === undefined) return null;
-  if (value instanceof Date) return Number.isNaN(value.getTime()) ? undefined : value.toISOString().slice(0, 10);
-  if (typeof value === "number") return value > 0 ? new Date(Math.round((value - EXCEL_EPOCH_DAYS) * DAY_MS)).toISOString().slice(0, 10) : undefined;
+  if (value instanceof Date) return dayOf(value, latestYear);
+  if (typeof value === "number") return value > 0 ? dayOf(new Date(Math.round((value - EXCEL_EPOCH_DAYS) * DAY_MS)), latestYear) : undefined;
   if (typeof value !== "string" || !value.trim()) return null;
   const parts = /^([0-9]{1,2})[/.]+([0-9]{1,2})[/.]+([0-9]{4})$/.exec(value.replace(/\s+/g, "").replace(/\/+/g, "/"));
   if (!parts) return undefined;
@@ -399,6 +403,12 @@ function dateOf(raw: CellValue | undefined): string | null | undefined {
   if (month > 12 && day <= 12) [month, day] = [day, month];
   const date = new Date(Date.UTC(year, month - 1, day));
   if (date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return undefined;
+  return dayOf(date, latestYear);
+}
+
+function dayOf(date: Date, latestYear: number): string | undefined {
+  const year = date.getUTCFullYear();
+  if (Number.isNaN(year) || year < FIRST_RECEIVED_YEAR || year > latestYear) return undefined;
   return date.toISOString().slice(0, 10);
 }
 
