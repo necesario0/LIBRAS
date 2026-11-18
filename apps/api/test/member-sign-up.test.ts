@@ -48,6 +48,20 @@ describe("UMAK Student sign-up", () => {
     assert.ok(await signInDirect(body.email, body.password), "the new Member can sign in at once, with no approval step");
   });
 
+  for (const college of ["SOL", "IOPsy", "ION"] as const) {
+    it(`signs up with the college ${college}`, async () => {
+      const original = studentSignUpBody();
+      const body = { ...original, details: { ...original.details, college } };
+
+      const signUp = await postJson(signUpUrl(), body);
+      assert.equal(signUp.status, 201, await signUp.clone().text());
+      const code = codeFromEmail(api.emails.lastTo(body.email));
+      const verify = await postJson(verifyUrl(), { email: body.email, code });
+      assert.equal(verify.status, 200);
+      assert.equal((await verify.json()).member.details.college, college);
+    });
+  }
+
   it("does not let the person sign in before the code is accepted", async () => {
     const body = studentSignUpBody();
 
