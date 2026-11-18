@@ -15,6 +15,7 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { createApp } from "../app.ts";
+import { announcementFiles } from "../announcements/storage.ts";
 import { SupabaseAuthAdmin } from "../auth/supabase-auth-admin.ts";
 import { SupabaseAuth } from "../auth/supabase-auth.ts";
 import { systemClock } from "../clock.ts";
@@ -48,6 +49,7 @@ const deps = {
   clock: systemClock,
   email: emails,
   logger: consoleLogger,
+  files: announcementFiles(config),
 };
 
 const { app, stop } = createApp(deps, {

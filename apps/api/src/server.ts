@@ -5,6 +5,7 @@ import { SupabaseAuthAdmin } from "./auth/supabase-auth-admin.ts";
 import { SupabaseAuth } from "./auth/supabase-auth.ts";
 import { systemClock } from "./clock.ts";
 import { loadConfig } from "./config.ts";
+import { announcementFiles } from "./announcements/storage.ts";
 import { createDatabase } from "./db.ts";
 import { BrevoEmailSender, ConsoleEmailSender } from "./email.ts";
 import { consoleLogger } from "./logger.ts";
@@ -29,6 +30,7 @@ const deps = {
   clock: systemClock,
   email,
   logger,
+  files: announcementFiles(config),
 };
 
 const { app, stop } = createApp(deps, {

@@ -23,6 +23,7 @@ import { fileURLToPath } from "node:url";
 import type { PoolClient } from "pg";
 import { counted, formatLibraryDate, formatPesos, tokenize } from "@libras/shared";
 import { createApp } from "../src/app.ts";
+import { announcementFiles } from "../src/announcements/storage.ts";
 import { SupabaseAuth } from "../src/auth/supabase-auth.ts";
 import { SupabaseAuthAdmin } from "../src/auth/supabase-auth-admin.ts";
 import { systemClock } from "../src/clock.ts";
@@ -111,6 +112,7 @@ async function startSignUpApp(db: Database) {
     clock: systemClock,
     email,
     logger: consoleLogger,
+    files: announcementFiles(config),
   });
   const server = await new Promise<Server>((resolve) => {
     const listening = app.listen(0, "127.0.0.1", () => resolve(listening));
