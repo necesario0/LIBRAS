@@ -16,10 +16,10 @@ Already confirmed on 2026-11-18: Brevo's free plan sends 300 emails a day, Supab
 
 ## 2. Migrations (once, before the merge)
 
-1. `npm run db:migrate:hosted -- --dry-run`. It worked if it lists these and no error: `20261117100000_renewals`, `20261117120000_password_resets`, `20261117140000_password_change_audit`, `20261117160000_loan_notices`, `20261117180000_fines`, `20261117200000_fine_settlement` (plus `20261114100000_desk_sessions` if it was never applied).
+1. `npm run db:migrate:hosted -- --dry-run`. It worked if it lists these and no error: `20261117100000_renewals`, `20261117120000_password_resets`, `20261117140000_password_change_audit`, `20261117160000_loan_notices`, `20261117180000_fines`, `20261117200000_fine_settlement`, `20261118100000_loans_private_librarian`, `20261118120000_loan_backdated_audit`, `20261118140000_password_reset_attempts`, `20261118160000_loan_notice_outcome` (plus `20261114100000_desk_sessions` if it was never applied).
 2. `npm run db:migrate:hosted`, then type `apply`. It worked if it ends without an error and a second `--dry-run` lists nothing pending.
 
-The migrations only add tables, columns, grants and audit event types, so the running Tier 1 API keeps working on the new schema. Loans that are out and overdue at this moment start showing a Fine counted from their due date (ADR 0010). Loans returned earlier get none.
+The migrations add tables, columns, grants and audit event types, and take back the Members' read of `loans.confirmed_by` (the Librarian who confirmed a Loan), which no API query reads as a Member. So the running Tier 1 API keeps working on the new schema. Loans that are out and overdue at this moment start showing a Fine counted from their due date (ADR 0010). Loans returned earlier get none.
 
 ## 3. Deploy: the API, then the desk page, then the APK
 
