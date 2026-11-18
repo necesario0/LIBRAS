@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  PASSWORD_CHANGE_MESSAGES,
   SIGN_UP_MESSAGES,
   changePasswordSchema,
   resendSignUpCodeRequestSchema,
@@ -88,7 +89,7 @@ export function membersRouter(deps: AppDeps, limiter: AttemptLimiter): Router {
       // A new password that breaks the sign-up rules gets the rule; anything else is a bad request.
       throw (
         passwordRuleRefusal(parsed.error, "newPassword") ??
-        new AppError(400, "invalid_request", "Enter your current password and a new one.")
+        new AppError(400, "invalid_request", PASSWORD_CHANGE_MESSAGES.invalidRequest)
       );
     }
     const change = {

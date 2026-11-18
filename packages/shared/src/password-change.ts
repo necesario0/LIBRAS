@@ -6,6 +6,8 @@ export const PASSWORD_CHANGE_MESSAGES = {
   /** Also the text of the red state of Current Password in the Figma frame (926:14542). */
   currentPasswordIncorrect: "Current password is incorrect.",
   samePassword: "Your new password must be different from your current password.",
+  /** A request with a field missing or not text. */
+  invalidRequest: "Enter your current password and a new one.",
 } as const;
 
 /**

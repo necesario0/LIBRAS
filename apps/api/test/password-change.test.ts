@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { after, afterEach, before, beforeEach, describe, it } from "node:test";
-import { SIGN_UP_MESSAGES } from "@libras/shared";
+import { PASSWORD_CHANGE_MESSAGES, SIGN_UP_MESSAGES } from "@libras/shared";
 import { createAuditLog } from "../src/audit/index.ts";
 import type { AuthProvider } from "../src/auth/auth-provider.ts";
 import { createTestAccount, createTestMember, startTestApi } from "../src/testing/index.ts";
@@ -170,7 +170,7 @@ describe("Change password", () => {
       const response = await send(api, "PUT", "/members/me/password", body, member.accessToken);
 
       assert.equal(response.status, 400, JSON.stringify(body));
-      assert.equal((await errorOf(response)).code, "invalid_request", JSON.stringify(body));
+      assert.deepEqual(await errorOf(response), { code: "invalid_request", message: PASSWORD_CHANGE_MESSAGES.invalidRequest }, JSON.stringify(body));
     }
   });
 
