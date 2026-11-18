@@ -50,22 +50,22 @@ export function ReturnNotice({ loan, settleFine }: { loan: ReturnedLoan; settleF
       </div>
       {loan.fine && <ReturnFine key={loan.id} fine={loan.fine} memberName={loan.memberName} settle={(outcome) => settleFine(loan, outcome)} />}
       {loan.heldFor && (
-        <div className="return-panel return-panel--hold" data-testid="desk-return-held">
-          <svg className="return-panel__icon" viewBox="0 0 24 24" aria-hidden="true">
+        <div className="notice-panel notice-panel--hold" data-testid="desk-return-held">
+          <svg className="notice-panel__icon" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M6 2h12a1 1 0 0 1 1 1v19l-7-4.4L5 22V3a1 1 0 0 1 1-1z" />
           </svg>
-          <div className="return-panel__text">
-            <h3 className="return-panel__title">
+          <div className="notice-panel__text">
+            <h3 className="notice-panel__title">
               {"Set aside for "}
-              <strong className="return-panel__name" data-testid="desk-return-held-member">
+              <strong className="notice-panel__name" data-testid="desk-return-held-member">
                 {loan.heldFor.memberName}
               </strong>
             </h3>
-            <span className="return-panel__body">Put this Copy on the hold shelf, not back on the stacks. Only this Member can borrow it.</span>
+            <span className="notice-panel__body">Put this Copy on the hold shelf, not back on the stacks. Only this Member can borrow it.</span>
           </div>
-          <div className="return-panel__side">
-            <span className="return-panel__side-label">Pickup Window ends</span>
-            <span className="return-panel__side-value" data-testid="desk-return-held-until">
+          <div className="notice-panel__side">
+            <span className="notice-panel__side-label">Pickup Window ends</span>
+            <span className="notice-panel__side-value" data-testid="desk-return-held-until">
               {formatLibraryDateTime(loan.heldFor.pickupEndsAt)}
             </span>
           </div>
@@ -105,7 +105,7 @@ function ReturnFine({ fine, memberName, settle }: ReturnFineProps) {
       title={
         <>
           {"Fine for "}
-          <strong className="return-panel__name" data-testid="desk-return-fine-member">
+          <strong className="notice-panel__name" data-testid="desk-return-fine-member">
             {memberName}
           </strong>
         </>
@@ -114,7 +114,7 @@ function ReturnFine({ fine, memberName, settle }: ReturnFineProps) {
       amountCentavos={fine.amountCentavos}
       actions={
         settlement ? (
-          <span className="return-panel__settled" data-testid="desk-return-fine-settled">
+          <span className="notice-panel__settled" data-testid="desk-return-fine-settled">
             {`Settled: ${settlement.outcome}`}
           </span>
         ) : (

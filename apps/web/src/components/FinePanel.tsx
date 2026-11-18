@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { formatPesos } from "@libras/shared";
 
 interface Props {
-  /** The panel's heading, with the name in `<strong className="return-panel__name">` when it names someone. */
+  /** The panel's heading, with the name in `<strong className="notice-panel__name">` when it names someone. */
   title: ReactNode;
   /** The heading level, so the panel fits under its section's own heading. */
   heading: "h3" | "h4";
@@ -22,23 +22,23 @@ interface Props {
  */
 export function FinePanel({ title, heading: Heading, reason, amountCentavos, actions, testId }: Props) {
   return (
-    <div className="return-panel return-panel--fine" data-testid={testId}>
-      <svg className="return-panel__icon" viewBox="0 0 24 24" aria-hidden="true">
+    <div className="notice-panel notice-panel--fine" data-testid={testId}>
+      <svg className="notice-panel__icon" viewBox="0 0 24 24" aria-hidden="true">
         <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
       </svg>
-      <div className="return-panel__text">
-        <Heading className="return-panel__title">{title}</Heading>
-        <span className="return-panel__body" data-testid={`${testId}-reason`}>
+      <div className="notice-panel__text">
+        <Heading className="notice-panel__title">{title}</Heading>
+        <span className="notice-panel__body" data-testid={`${testId}-reason`}>
           {reason}
         </span>
       </div>
-      <div className="return-panel__side">
-        <span className="return-panel__side-label">Fine</span>
-        <span className="return-panel__amount" data-testid={`${testId}-amount`}>
+      <div className="notice-panel__side">
+        <span className="notice-panel__side-label">Fine</span>
+        <span className="notice-panel__amount" data-testid={`${testId}-amount`}>
           {formatPesos(amountCentavos)}
         </span>
       </div>
-      <div className="return-panel__actions">{actions}</div>
+      <div className="notice-panel__actions">{actions}</div>
     </div>
   );
 }

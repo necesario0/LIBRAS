@@ -96,7 +96,7 @@ export function MemberCard({ member, settleFine }: { member: DeskMember; settleF
                 <FinePanel
                   testId="desk-member-fine"
                   heading="h4"
-                  title={<strong className="return-panel__name">{fine.bookTitle}</strong>}
+                  title={<strong className="notice-panel__name">{fine.bookTitle}</strong>}
                   reason={`Copy ${fine.accessionNumber} - ${counted(fine.daysLate, "day")} late, returned ${formatLibraryDate(fine.returnedAt)}`}
                   amountCentavos={fine.amountCentavos}
                   actions={
