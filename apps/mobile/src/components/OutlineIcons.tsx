@@ -1,4 +1,5 @@
 import Svg, { Circle, Path, Rect } from "react-native-svg";
+import { colors } from "../theme/tokens";
 import type { ReactNode } from "react";
 import type { ColorValue } from "react-native";
 
@@ -118,5 +119,44 @@ export function ClockIcon(props: OutlineIconProps) {
       <Circle cx={12} cy={12} r={9} />
       <Path d="M12 7v5l3 2" />
     </Outline>
+  );
+}
+
+/** A cross: removes one recent search. */
+export function CrossIcon(props: OutlineIconProps) {
+  return (
+    <Outline {...props}>
+      <Path d="M6 6l12 12M18 6 6 18" />
+    </Outline>
+  );
+}
+
+/** An open book: a title suggestion. */
+export function BookOutlineIcon(props: OutlineIconProps) {
+  return (
+    <Outline {...props}>
+      <Path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z" />
+      <Path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5" />
+    </Outline>
+  );
+}
+
+/** A magnifier: the search field of search mode. */
+export function MagnifierIcon(props: OutlineIconProps) {
+  return (
+    <Outline {...props}>
+      <Circle cx={11} cy={11} r={7} />
+      <Path d="m20 20-3.6-3.6" />
+    </Outline>
+  );
+}
+
+/** A circled cross: empties the search field. */
+export function ClearFieldIcon({ size, color }: OutlineIconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" accessibilityElementsHidden importantForAccessibility="no">
+      <Circle cx={12} cy={12} r={10} fill={color} />
+      <Path d="M8.5 8.5l7 7M15.5 8.5l-7 7" stroke={colors.white} strokeWidth={2} strokeLinecap="round" />
+    </Svg>
   );
 }

@@ -29,13 +29,14 @@ appId: ph.edu.umak.libras
     id: sign-in-continue
 - extendedWaitUntil:
     visible:
-      id: search-input
+      id: search-(open|input)
     timeout: 20000
 
 # The Book with the long summary and the contents.
-- tapOn:
-    id: search-input
-- inputText: ${output.longWord}
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: ${output.longWord}
 - extendedWaitUntil:
     visible: ${output.longTitle}.*
     timeout: 15000
@@ -76,10 +77,10 @@ appId: ph.edu.umak.libras
     timeout: 10000
 
 # A short summary shows in full with no control, and there is no Contents row.
-- tapOn:
-    id: search-input
-- eraseText: 40
-- inputText: ${output.shortWord}
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: ${output.shortWord}
 - extendedWaitUntil:
     visible: ${output.shortTitle}.*
     timeout: 15000

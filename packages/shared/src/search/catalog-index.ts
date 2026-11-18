@@ -45,6 +45,14 @@ export interface CatalogIndex {
   /** Distinct title and author words in the trie. The benchmark scale is about 50,000. */
   readonly tokenCount: number;
   search(query: string, options?: CatalogSearchOptions): CatalogSearchResult;
+  /**
+   * The Books to suggest while a query is still being typed. Like `search`, each
+   * word may have a typo, but the word being typed (the last one, unless the query
+   * ends in a space) also matches as the start of a longer word: "algo" finds
+   * "Algorithms". Words only: an ISBN, accession number or call number is never
+   * matched here, so a suggestion can never be built from one.
+   */
+  suggest(query: string, options?: CatalogSearchOptions): CatalogSearchResult;
 }
 
 const PLAIN_ASCII = /^[ -~]*$/;
@@ -185,14 +193,37 @@ class TrieCatalogIndex implements CatalogIndex {
     };
   }
 
-  /** Books that match every word of the query (each within its typo bound), with the summed distance. */
-  #matchWords(query: string): Map<number, number> {
+  suggest(query: string, options: CatalogSearchOptions = {}): CatalogSearchResult {
+    const ranked = [...this.#matchWords(query, true)];
+    ranked.sort((a, b) => a[1] - b[1] || a[0] - b[0]);
+    const limit = options.limit ?? ranked.length;
+    return {
+      total: ranked.length,
+      hits: ranked.slice(0, limit).map(([bookIndex, distance]) => ({ bookId: this.#bookIds[bookIndex] ?? "", distance })),
+    };
+  }
+
+  /**
+   * Books that match every word of the query (each within its typo bound), with the summed distance.
+   * With `typing`, the last word may also be the start of a longer word.
+   */
+  #matchWords(query: string, typing = false): Map<number, number> {
     const words = [...new Set(tokenize(query))];
     if (words.length === 0) return new Map();
+    const typed = typing && /[\p{L}\p{N}]$/u.test(query) ? words[words.length - 1] : undefined;
     const perWord: Array<Map<number, number>> = [];
     for (const word of words) {
       const best = new Map<number, number>();
-      for (const match of searchTrie(this.#trie, word, typoBoundForQueryWord(word))) {
+      const matches = searchTrie(this.#trie, word, typoBoundForQueryWord(word));
+      if (word === typed) {
+        const found = new Set(matches.map((match) => match.wordIndex));
+        const lexicon = this.#trie.words;
+        for (let wordIndex = 0; wordIndex < lexicon.length; wordIndex++) {
+          const lexiconWord = lexicon[wordIndex] as string;
+          if (!found.has(wordIndex) && lexiconWord.startsWith(word)) matches.push({ word: lexiconWord, wordIndex, distance: 0 });
+        }
+      }
+      for (const match of matches) {
         const start = this.#postingStart[match.wordIndex] ?? 0;
         const end = this.#postingStart[match.wordIndex + 1] ?? start;
         for (let p = start; p < end; p++) {

@@ -5,6 +5,7 @@ import { api } from "../api";
 import { ApiError } from "../api/client";
 import { SessionManager } from "./SessionManager";
 import type { AuthorizedRequest } from "./authorized-request";
+import { clearRecentSearches } from "../search/recent-searches-store";
 import { secureSessionStore } from "./session-store";
 
 /**
@@ -46,7 +47,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   manager.current ??= new SessionManager({
     store: secureSessionStore,
     api,
-    onEnded: () => setState({ status: "signedOut" }),
+    onEnded: () => {
+      void clearRecentSearches();
+      setState({ status: "signedOut" });
+    },
   });
   const sessions = manager.current;
 
@@ -79,6 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setState({ status: "signedIn", member });
       },
       async signOut() {
+        await clearRecentSearches();
         setState({ status: "signedOut" });
         await sessions.end();
       },

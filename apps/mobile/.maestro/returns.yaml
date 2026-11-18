@@ -36,20 +36,20 @@ appId: ph.edu.umak.libras
 # The Copy is out: search says none is available.
 - extendedWaitUntil:
     visible:
-      id: search-input
+      id: search-(open|input)
     timeout: 20000
-- tapOn:
-    id: search-input
-- inputText: ${output.returnWord}
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: ${output.returnWord}
 - extendedWaitUntil:
     visible: ${output.returnTitle}
     timeout: 15000
 - assertVisible: "None available"
 - takeScreenshot: returns-search-out
-- eraseText: 40
-- hideKeyboard
 
 # The Loans segment of My Books lists it as current, with no past Loans yet.
+- runFlow: subflows/leave-search.yaml
 - tapOn:
     id: tab-my-books
 - extendedWaitUntil:
@@ -65,8 +65,10 @@ appId: ph.edu.umak.libras
 # The Librarian records the return. When the Member comes back to My Books it
 # shows the Loan under Past Loans, with the day it came back.
 - runScript: scripts/return-loan.js
+- runFlow: subflows/leave-search.yaml
 - tapOn:
     id: tab-home
+- runFlow: subflows/leave-search.yaml
 - tapOn:
     id: tab-my-books
 - extendedWaitUntil:
@@ -84,17 +86,19 @@ appId: ph.edu.umak.libras
 - assertNotVisible:
     id: loans-current
 - takeScreenshot: returns-loans-past
+- runFlow: subflows/leave-search.yaml
 - tapOn:
     id: tab-home
 
 # The Book is available again in search and on its page, and Borrow is back.
 - extendedWaitUntil:
     visible:
-      id: search-input
+      id: search-(open|input)
     timeout: 15000
-- tapOn:
-    id: search-input
-- inputText: ${output.returnWord}
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: ${output.returnWord}
 - extendedWaitUntil:
     visible: "1 of 1 available"
     timeout: 15000
