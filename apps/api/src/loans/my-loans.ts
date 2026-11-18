@@ -6,6 +6,7 @@ import { withIdentity } from "../auth/identity.ts";
 import { FINE_COLUMNS, fineAt, storedFine } from "../fines/index.ts";
 import type { FineColumns, FinePolicy } from "../fines/index.ts";
 import { goodStandingRefusal } from "../standing/index.ts";
+import { memberPolicy } from "./policy.ts";
 import { booksWithWaitingHolds, renewalOf } from "./renewability.ts";
 
 /** One Loan as a Member reads it: `LOAN_SELECT` gives these columns. */
@@ -79,10 +80,6 @@ export function toLoan(
   };
 }
 
-interface PolicyRow extends RenewalPolicy {
-  loan_limit: number;
-}
-
 /**
  * The Member's own Loans: current ones first, the one due soonest at the top,
  * then past ones, the latest return first. Read as the Member, so row-level
@@ -104,17 +101,9 @@ export async function listLoans(deps: AppDeps, identity: Identity): Promise<MyLo
                  l.checked_out_at desc`,
       [identity.userId],
     );
-    const policy = await scope.query<PolicyRow>(
-      `select p.loan_limit, p.loan_period_days, p.renewal_limit, p.fine_daily_rate_centavos, p.fine_cap_centavos
-         from public.members m
-         join public.loan_policies p on p.account_type = m.account_type
-        where m.user_id = $1`,
-      [identity.userId],
-    );
-    // A signed-in Member always has a profile, and every Account Type has a policy.
-    if (!policy.rows[0]) throw new Error(`No Member or Loan Policy for ${identity.userId}`);
+    const policy = await memberPolicy(scope, identity.userId, { lock: false });
     // As the Member: row-level security shows their own Loans and Fines, which is all Good standing reads.
-    return { rows: result.rows, policy: policy.rows[0], notInGoodStanding: await goodStandingRefusal(scope, identity.userId, now) };
+    return { rows: result.rows, policy, notInGoodStanding: await goodStandingRefusal(scope, identity.userId, now) };
   });
   const waiting = await booksWithWaitingHolds(
     deps.db,

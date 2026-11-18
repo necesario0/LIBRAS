@@ -3,7 +3,7 @@ import type { Database, Tx } from "../db.ts";
 import { EmailOutcomeUnknownError } from "../email.ts";
 import { withTransaction } from "../db.ts";
 import { fineAt } from "../fines/index.ts";
-import type { FinePolicy } from "../fines/index.ts";
+import { memberPolicy } from "../loans/policy.ts";
 import { booksWithWaitingHolds, renewalOf } from "../loans/renewability.ts";
 import { goodStandingRefusal } from "../standing/index.ts";
 import { loanNoticeEmail } from "./email.ts";
@@ -65,11 +65,9 @@ function pending(rows: readonly CandidateRow[], now: Date): Array<CandidateRow &
   });
 }
 
-interface MemberRow extends FinePolicy {
+interface MemberContactRow {
   email: string;
   first_name: string;
-  loan_period_days: number | null;
-  renewal_limit: number;
 }
 
 /**
@@ -116,16 +114,13 @@ async function notifyMember(deps: AppDeps, memberId: string): Promise<boolean> {
       ]);
     }
 
-    const member = await tx.query<MemberRow>(
-      `select u.email, m.first_name, p.loan_period_days, p.renewal_limit, p.fine_daily_rate_centavos, p.fine_cap_centavos
-         from public.members m
-         join auth.users u on u.id = m.user_id
-         join public.loan_policies p on p.account_type = m.account_type
-        where m.user_id = $1`,
+    const policy = await memberPolicy(tx, memberId, { lock: false });
+    const contact = await tx.query<MemberContactRow>(
+      "select u.email, m.first_name from public.members m join auth.users u on u.id = m.user_id where m.user_id = $1",
       [memberId],
     );
-    const row = member.rows[0];
-    if (!row) throw new Error(`No Member or Loan Policy for ${memberId}`);
+    const row = contact.rows[0];
+    if (!row) throw new Error(`No account for Member ${memberId}`);
     const waiting = await booksWithWaitingHolds(
       tx,
       memberId,
@@ -144,8 +139,8 @@ async function notifyMember(deps: AppDeps, memberId: string): Promise<boolean> {
               {
                 dueAt: loan.due_at,
                 renewalCount: loan.renewal_count,
-                renewalLimit: row.renewal_limit,
-                loanPeriodDays: row.loan_period_days,
+                renewalLimit: policy.renewal_limit,
+                loanPeriodDays: policy.loan_period_days,
                 holdWaiting: waiting.has(loan.book_id),
                 notInGoodStanding,
               },
@@ -153,11 +148,11 @@ async function notifyMember(deps: AppDeps, memberId: string): Promise<boolean> {
             )
           : null,
       fineRate:
-        loan.slot.kind === "due_tomorrow" && row.fine_daily_rate_centavos > 0 && row.fine_cap_centavos > 0
-          ? { dailyRateCentavos: row.fine_daily_rate_centavos, capCentavos: row.fine_cap_centavos }
+        loan.slot.kind === "due_tomorrow" && policy.fine_daily_rate_centavos > 0 && policy.fine_cap_centavos > 0
+          ? { dailyRateCentavos: policy.fine_daily_rate_centavos, capCentavos: policy.fine_cap_centavos }
           : null,
       // The same Fine so far that My Loans shows at this moment.
-      fineSoFar: loan.slot.kind === "due_tomorrow" ? null : (fineAt(loan.due_at, row, now)?.amountCentavos ?? null),
+      fineSoFar: loan.slot.kind === "due_tomorrow" ? null : (fineAt(loan.due_at, policy, now)?.amountCentavos ?? null),
     }));
 
     try {
