@@ -76,7 +76,7 @@ export const verificationCodeSchema = z
   .regex(new RegExp(`^\\d{${VERIFICATION_CODE_LENGTH}}$`), { error: SIGN_UP_MESSAGES.codeInvalid });
 
 /** The colleges in the Figma college list. A data change, not a code change, when UMAK adds one. */
-export const UMAK_COLLEGES = ["CLAS", "CHK", "CBFS", "CCIS", "CITE", "CITE-HSU", "CGPP", "CCSE", "CET"] as const;
+export const UMAK_COLLEGES = ["CLAS", "CHK", "CBFS", "CCIS", "CITE", "CITE-HSU", "CGPP", "CCSE", "CET", "SOL", "IOPsy", "ION"] as const;
 export const umakCollegeSchema = z.enum(UMAK_COLLEGES, { error: SIGN_UP_MESSAGES.collegeRequired });
 export type UmakCollege = z.infer<typeof umakCollegeSchema>;
 

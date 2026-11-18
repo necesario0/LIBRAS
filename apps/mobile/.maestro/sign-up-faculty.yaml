@@ -19,8 +19,12 @@ appId: ph.edu.umak.libras
 - hideKeyboard
 - tapOn:
     id: faculty-college
+# ION is the last entry of the list, so it also proves the new colleges can be reached.
+- scrollUntilVisible:
+    element:
+      id: faculty-college-option-ION
 - tapOn:
-    id: faculty-college-option-CCIS
+    id: faculty-college-option-ION
 - tapOn:
     id: faculty-continue
 
