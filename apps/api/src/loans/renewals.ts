@@ -45,22 +45,20 @@ export async function renewLoan(deps: AppDeps, member: Identity, loanId: string)
     await lockCopy(tx, { id: seen.rows[0].copy_id });
 
     const { rows } = await tx.query<LoanRow>(`${LOAN_SELECT} where l.id = $1`, [loanId]);
-    const loan = rows[0] as LoanRow;
+    const loan = rows[0];
+    // Seen just above, and the API never deletes a Loan.
+    if (!loan) throw new Error(`The Loan ${loanId} was seen and then not found`);
     if (loan.returned_at !== null) throw new AppError(409, "loan_returned", RENEWAL_MESSAGES.loanReturned);
 
     const waiting = await booksWithWaitingHolds(tx, member.userId, [loan.book_id]);
-    const renewal = renewalOf(
-      {
-        dueAt: loan.due_at,
-        renewalCount: loan.renewal_count,
-        renewalLimit: policy.renewal_limit,
-        loanPeriodDays: policy.loan_period_days,
-        holdWaiting: waiting.has(loan.book_id),
-        // Under the Member's lock, like the Loan: a return fixing a Fine, or a settle, is wholly before or after.
-        notInGoodStanding: await goodStandingRefusal(tx, member.userId, now),
-      },
+    const renewal = renewalOf({
+      loan,
+      policy,
+      holdWaiting: waiting.has(loan.book_id),
+      // Under the Member's lock, like the Loan: a return fixing a Fine, or a settle, is wholly before or after.
+      notInGoodStanding: await goodStandingRefusal(tx, member.userId, now),
       now,
-    );
+    });
     if (!renewal.renewable) throw new AppError(409, renewal.reason, RENEWAL_MESSAGES.refused[renewal.reason]);
 
     const renewed: LoanRow = { ...loan, due_at: new Date(renewal.dueAt), renewal_count: loan.renewal_count + 1 };

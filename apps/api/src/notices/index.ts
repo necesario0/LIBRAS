@@ -135,17 +135,7 @@ async function notifyMember(deps: AppDeps, memberId: string): Promise<boolean> {
       dueAt: loan.due_at,
       renewal:
         loan.slot.kind === "due_tomorrow"
-          ? renewalOf(
-              {
-                dueAt: loan.due_at,
-                renewalCount: loan.renewal_count,
-                renewalLimit: policy.renewal_limit,
-                loanPeriodDays: policy.loan_period_days,
-                holdWaiting: waiting.has(loan.book_id),
-                notInGoodStanding,
-              },
-              now,
-            )
+          ? renewalOf({ loan, policy, holdWaiting: waiting.has(loan.book_id), notInGoodStanding, now })
           : null,
       fineRate:
         loan.slot.kind === "due_tomorrow" && policy.fine_daily_rate_centavos > 0 && policy.fine_cap_centavos > 0

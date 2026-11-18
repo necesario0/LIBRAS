@@ -16,16 +16,16 @@ export function renewedDueAt(dueAt: Date, loanPeriodDays: number): Date {
 
 /** What decides whether a current Loan can be renewed. */
 export interface RenewalFacts {
-  dueAt: Date;
-  renewalCount: number;
-  /** The renewal limit of the Member's Loan Policy. */
-  renewalLimit: number;
-  /** The loan period of the Member's Loan Policy; null for an Account Type that cannot borrow. */
-  loanPeriodDays: number | null;
+  /** The Loan, as its row reads: the current due date and how often it was renewed. */
+  loan: { due_at: Date; renewal_count: number };
+  /** The Member's Loan Policy. `loan_period_days` is null for an Account Type that cannot borrow. */
+  policy: { renewal_limit: number; loan_period_days: number | null };
   /** Another Member's Hold on the Book is waiting. */
   holdWaiting: boolean;
   /** Why the Member is not in Good standing (`goodStandingRefusal`), or null when they are. */
   notInGoodStanding: GoodStandingRefusal | null;
+  /** The API's clock. */
+  now: Date;
 }
 
 /**
@@ -35,17 +35,17 @@ export interface RenewalFacts {
  * order of `RENEWAL_REFUSALS`. An Account Type that cannot borrow has no loan
  * period to add, so its Loans (which it cannot have) count as out of Renewals.
  */
-export function renewalOf(facts: RenewalFacts, now: Date): LoanRenewal {
-  if (isLoanOverdue(facts.dueAt, now)) return { renewable: false, reason: "loan_overdue" };
-  if (facts.loanPeriodDays === null || facts.renewalCount >= facts.renewalLimit) {
+export function renewalOf({ loan, policy, holdWaiting, notInGoodStanding, now }: RenewalFacts): LoanRenewal {
+  if (isLoanOverdue(loan.due_at, now)) return { renewable: false, reason: "loan_overdue" };
+  if (policy.loan_period_days === null || loan.renewal_count >= policy.renewal_limit) {
     return { renewable: false, reason: "renewal_limit_reached" };
   }
-  if (facts.holdWaiting) return { renewable: false, reason: "hold_waiting" };
-  if (facts.notInGoodStanding !== null) return { renewable: false, reason: facts.notInGoodStanding };
+  if (holdWaiting) return { renewable: false, reason: "hold_waiting" };
+  if (notInGoodStanding !== null) return { renewable: false, reason: notInGoodStanding };
   return {
     renewable: true,
-    dueAt: renewedDueAt(facts.dueAt, facts.loanPeriodDays).toISOString(),
-    last: facts.renewalCount + 1 >= facts.renewalLimit,
+    dueAt: renewedDueAt(loan.due_at, policy.loan_period_days).toISOString(),
+    last: loan.renewal_count + 1 >= policy.renewal_limit,
   };
 }
 

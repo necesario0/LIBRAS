@@ -65,16 +65,7 @@ export function toLoan(
     overdue: current && isLoanOverdue(row.due_at, now),
     renewalCount: row.renewal_count,
     renewal: current
-      ? renewalOf(
-          {
-            dueAt: row.due_at,
-            renewalCount: row.renewal_count,
-            renewalLimit: policy.renewal_limit,
-            loanPeriodDays: policy.loan_period_days,
-            ...facts,
-          },
-          now,
-        )
+      ? renewalOf({ loan: row, policy, ...facts, now })
       : null,
     fine: current ? fineAt(row.due_at, policy, now) : storedFine(row),
   };
