@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { ChevronBackIcon } from "../components/icons";
-import { actionRowHeight, actionRowShadow, colors, fontFamily, fontSize, menuRowShadow, radii, spacing } from "../theme/tokens";
+import { actionHeight, actionRowShadow, colors, fontFamily, fontSize, menuRowShadow, radii, spacing } from "../theme/tokens";
 
 /**
  * Which design the row follows. `menu` is the Profile menu row (Figma
@@ -48,7 +48,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     boxShadow: menuRowShadow,
   },
-  actionRow: { height: actionRowHeight, paddingHorizontal: spacing.lg, boxShadow: actionRowShadow },
+  actionRow: { height: actionHeight, paddingHorizontal: spacing.lg, boxShadow: actionRowShadow },
   start: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   label: { fontFamily: fontFamily.regular, fontSize: fontSize.body, letterSpacing: -0.96, lineHeight: 16, color: colors.black },
   chevron: { ...CHEVRON, alignItems: "center", justifyContent: "center" },

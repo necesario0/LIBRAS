@@ -63,10 +63,10 @@ export const colors = {
   ink: "#1A1A1F",
   /** Password screens: the intro line, unmet requirements and the success message. */
   textSubtle: "#737885",
-  /** Password screens: the outlined Cancel button (Figma 926:14378). */
-  cancel: "#D93025",
-  /** Password screens: Save and the success dialog's button (Figma 926:14380, 928:14993). */
-  save: "#F9B233",
+  /** An outlined action that backs out without saving: its border and label (Cancel of the password screens, Figma 926:14378). */
+  dismiss: "#D93025",
+  /** The filled action that saves or confirms (Save of the password screens and the success dialog's button, Figma 926:14380, 928:14993). */
+  confirm: "#F9B233",
   /** The dimmed screen behind a dialog (Figma 928:14986). */
   scrim: "rgba(0,0,0,0.55)",
   /** The lighter spine drawn over a placeholder Book cover. */
@@ -80,8 +80,6 @@ export const cardShadow = "0px 7px 17.9px rgba(0, 0, 0, 0.25)";
 export const menuRowShadow = "0px 4px 6.5px rgba(0, 0, 0, 0.25)";
 /** The action row of My Account, "Change password" (Figma 580:1832): a tighter shadow than the Profile menu rows. */
 export const actionRowShadow = "0px 4px 2px rgba(0, 0, 0, 0.25)";
-/** The height of that row. */
-export const actionRowHeight = 46;
 
 /** Montserrat is the only family. Keys are the names registered with `useFonts`. */
 export const fontFamily = {
@@ -180,8 +178,8 @@ export const radii = {
   grabber: 58,
   /** The rounded rectangle buttons of the account frames: Log out (Figma 580:1741), Cancel and Save changes (580:1842, 580:1845). */
   actionButton: 25,
-  /** Cancel and Save of the password screens (Figma 926:14377, 46 pt high). */
-  passwordAction: 23,
+  /** A fully rounded action of `actionHeight` (Cancel and Save of the password screens, Figma 926:14377). */
+  roundAction: 23,
   /** The success dialog of the password screens (Figma 928:14987). */
   dialog: 28,
   /** The round logo of the wordmark (31 pt). */
@@ -200,8 +198,12 @@ export const controlHeight = 44;
 /** Height of a password field (Figma 926:14350). */
 export const passwordFieldHeight = 48;
 
-/** Height of Cancel and Save on the password screens, and of the success dialog's button (Figma 926:14377). */
-export const passwordActionHeight = 46;
+/**
+ * Height of the actions of the account screens: the action row of My Account
+ * (Figma 580:1832), Cancel and Save of the password screens and the success
+ * dialog's button (926:14377).
+ */
+export const actionHeight = 46;
 
 /** Height of the outlined button of the borrow flow (Figma 617:3265). */
 export const outlineButtonHeight = 61;

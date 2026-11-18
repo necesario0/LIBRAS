@@ -1,6 +1,6 @@
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { SuccessCheckIcon } from "../components/icons";
-import { colors, fontFamily, fontSize, passwordActionHeight, radii, spacing } from "../theme/tokens";
+import { colors, fontFamily, fontSize, actionHeight, radii, spacing } from "../theme/tokens";
 
 const BADGE = 76;
 
@@ -64,9 +64,9 @@ const styles = StyleSheet.create({
   message: { fontFamily: fontFamily.regular, fontSize: fontSize.caption, lineHeight: 17, color: colors.textSubtle, textAlign: "center", maxWidth: 282 },
   action: {
     alignSelf: "stretch",
-    height: passwordActionHeight,
-    borderRadius: radii.passwordAction,
-    backgroundColor: colors.save,
+    height: actionHeight,
+    borderRadius: radii.roundAction,
+    backgroundColor: colors.confirm,
     alignItems: "center",
     justifyContent: "center",
   },

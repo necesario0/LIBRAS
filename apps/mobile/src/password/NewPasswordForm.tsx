@@ -11,7 +11,7 @@ import { RequirementMetIcon, RequirementUnmetIcon } from "../components/icons";
 import { useScreenTop } from "../hooks/useScreenTop";
 import { PasswordField } from "./PasswordField";
 import { check } from "../sign-up/validate";
-import { colors, fontFamily, fontSize, passwordActionHeight, radii, spacing } from "../theme/tokens";
+import { colors, fontFamily, fontSize, actionHeight, radii, spacing } from "../theme/tokens";
 
 /** One line of the requirements list under the fields (Figma 926:14364). */
 export interface PasswordRequirement {
@@ -194,10 +194,10 @@ const styles = StyleSheet.create({
   requirementMet: { color: colors.ink },
   // Right under the form, as in Figma 926:14514 (67 pt below the requirements), not pinned to the bottom of the screen.
   actions: { flexDirection: "row", gap: spacing.md, marginTop: 67 },
-  action: { flex: 1, height: passwordActionHeight, borderRadius: radii.passwordAction, alignItems: "center", justifyContent: "center" },
-  cancel: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.cancel },
-  save: { backgroundColor: colors.save },
+  action: { flex: 1, height: actionHeight, borderRadius: radii.roundAction, alignItems: "center", justifyContent: "center" },
+  cancel: { backgroundColor: colors.white, borderWidth: 1, borderColor: colors.dismiss },
+  save: { backgroundColor: colors.confirm },
   saveDisabled: { opacity: 0.45 },
   actionLabel: { fontFamily: fontFamily.regular, fontSize: fontSize.label, color: colors.ink },
-  cancelLabel: { color: colors.cancel },
+  cancelLabel: { color: colors.dismiss },
 });
