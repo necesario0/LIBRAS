@@ -126,6 +126,10 @@ appId: ph.edu.umak.libras
 - runFlow: subflows/leave-search.yaml
 - tapOn:
     id: tab-home
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: ${output.heldWord}
 - extendedWaitUntil:
     visible: ${output.heldTitle}
     timeout: 15000
@@ -156,6 +160,10 @@ appId: ph.edu.umak.libras
 - runFlow: subflows/leave-search.yaml
 - tapOn:
     id: tab-home
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: ${output.heldWord}
 - extendedWaitUntil:
     visible: ${output.heldTitle}
     timeout: 15000

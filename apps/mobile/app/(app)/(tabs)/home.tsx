@@ -1,4 +1,4 @@
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useIsFocused, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { ActivityIndicator, BackHandler, Keyboard, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useAuth, useMember } from "../../../src/auth/AuthContext";
@@ -44,7 +44,9 @@ export default function HomeScreen() {
   const suggestions = useSuggestions(request, search.query, typing);
   const { state } = search;
 
-  useHideTabBar(searchOn);
+  // Search mode can stay open under another screen (Home is left through a Book sheet's links): the bar is hidden only while Home itself is showing.
+  const homeShowing = useIsFocused();
+  useHideTabBar(searchOn && homeShowing);
 
   const closeSearch = useCallback(() => {
     Keyboard.dismiss();
