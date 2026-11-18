@@ -1,6 +1,7 @@
 import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { createApp } from "../app.ts";
+import { announcementFiles } from "../announcements/storage.ts";
 import type { AppOptions } from "../app.ts";
 import type { AccountAdmin, AuthProvider } from "../auth/auth-provider.ts";
 import { SupabaseAuthAdmin } from "../auth/supabase-auth-admin.ts";
@@ -79,7 +80,7 @@ export async function startTestApi(options: TestApiOptions = {}): Promise<TestAp
   const auth = options.wrapAuth ? options.wrapAuth(realAuth) : realAuth;
   const realAccounts = new SupabaseAuthAdmin({ url: config.supabaseUrl, secretKey: config.supabaseSecretKey });
   const accounts = options.wrapAccounts ? options.wrapAccounts(realAccounts) : realAccounts;
-  const deps = { db, auth, accounts, clock, email: emails, logger };
+  const deps = { db, auth, accounts, clock, email: emails, logger, files: announcementFiles(config) };
   const { app, stop } = createApp(deps, options);
 
   const sweeper = options.sweepIntervalMs === undefined ? undefined : startSweeper(deps, options.sweepIntervalMs);

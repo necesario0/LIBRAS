@@ -195,3 +195,35 @@ export {
   sendScanRequestSchema,
 } from "./scanner.ts";
 export type { DeskScannerEventName, DeskScannerEvents, PairScannerResponse, ScannerStatusResponse } from "./scanner.ts";
+export {
+  ANNOUNCEMENT_BANNER_MIN_WIDTH,
+  ANNOUNCEMENT_BODY_MAX_LENGTH,
+  ANNOUNCEMENT_IMAGE_MAX_BYTES,
+  ANNOUNCEMENT_IMAGE_TYPES,
+  ANNOUNCEMENT_MESSAGES,
+  ANNOUNCEMENT_STATUSES,
+  ANNOUNCEMENT_TITLE_MAX_LENGTH,
+  ANNOUNCEMENT_URL_MAX_LENGTH,
+  announcementDetailsSchema,
+  announcementLinkInputSchema,
+  announcementLinkSite,
+  announcementOverlapMessage,
+  formatAnnouncementDay,
+  isAnnouncementWebLink,
+  libraryDayOf,
+  libraryDayStart,
+  nextLibraryDay,
+} from "./announcements.ts";
+export type {
+  Announcement,
+  AnnouncementBooksResponse,
+  AnnouncementDetails,
+  AnnouncementImage,
+  AnnouncementLink,
+  AnnouncementLinkInput,
+  AnnouncementResponse,
+  AnnouncementStatus,
+  DeskAnnouncementsResponse,
+  LibraryDay,
+  ParsedAnnouncementDetails,
+} from "./announcements.ts";

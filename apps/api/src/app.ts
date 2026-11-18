@@ -7,6 +7,8 @@ import type { Clock } from "./clock.ts";
 import { cors } from "./cors.ts";
 import type { Database } from "./db.ts";
 import type { EmailSender } from "./email.ts";
+import type { FileStore } from "./announcements/storage.ts";
+import { announcementsRouter } from "./routes/announcements.ts";
 import { createErrorHandler, notFoundHandler } from "./errors.ts";
 import type { Logger } from "./logger.ts";
 import { CatalogSearch } from "./catalog/catalog-search.ts";
@@ -36,6 +38,8 @@ export interface AppDeps {
   clock: Clock;
   email: EmailSender;
   logger: Logger;
+  /** Public files: Announcement posters (Supabase Storage, the `announcements` bucket). */
+  files: FileStore;
 }
 
 export interface AppOptions {
@@ -106,6 +110,7 @@ export function createApp(deps: AppDeps, options: AppOptions = {}): LibrasApp {
   const catalog = new CatalogSearch(deps.db, deps.logger);
   app.use(scannerRouter(deps, scannerHub, pairingLimiter));
   app.use(catalogRouter(deps, catalog));
+  app.use(announcementsRouter(deps, catalog));
   if (options.warmCatalog) void catalog.warm();
 
   if (options.extraRoutes) {

@@ -1,6 +1,19 @@
 # Verification on the hosted system
 
-Two parts. **Tier 2** (issue #40) is the rollout and verification checklist for Renewals, Forgot and Change password, Loan notices, Fines, Clearance and Good standing. The developer works through it in order. **Tier 1** (issue #20) holds the measurements taken on 2026-11-13.
+Three parts. **Tier 3** (spec #42) gathers the rollout steps of each Tier 3 ticket as it lands. **Tier 2** (issue #40) is the rollout and verification checklist for Renewals, Forgot and Change password, Loan notices, Fines, Clearance and Good standing. The developer works through it in order. **Tier 1** (issue #20) holds the measurements taken on 2026-11-13.
+
+# Tier 3: rollout steps (filled in ticket by ticket)
+
+Work as for Tier 2 below: Git Bash, an up-to-date `main`, `.env.hosted` in the repository root.
+
+## Announcements (#50)
+
+1. `npm run db:migrate:hosted -- --dry-run`. It worked if `20261119120000_announcements` is listed with no error. Then `npm run db:migrate:hosted` and type `apply`. The migration adds the `announcements` table, its four audit event types and the Storage bucket `announcements` (public read, 5 MB, JPEG only).
+2. Supabase > Storage: a bucket `announcements` marked Public, with no policies. It worked if `curl -s -o /dev/null -w "%{http_code}\n" -H "apikey: $SUPABASE_SECRET_KEY" "$SUPABASE_URL/storage/v1/bucket/announcements"` (values from `.env.hosted`) prints `200`. `npm run setup:hosted` checks the same in its database stage.
+3. Deploy the API, then the desk page (the order of section 3 below). Nothing new is set on Render: the API writes to Storage with `SUPABASE_URL` and `SUPABASE_SECRET_KEY`, which it already has.
+4. Render > `libras-api` > Logs of that deploy: `npm ci` ends without an error about `sharp` (the image library installs a prebuilt Linux x64 binary, no compiler). Checked before the merge in a `node:24-bookworm-slim` container with Render's own build command (`npm ci --workspace=@libras/api --omit=dev`): sharp 0.35.5 loaded and made both images with no metadata.
+5. Desk page > Announcements: create one for today with a poster, drag the frame, Publish now. It worked if the card shows the banner, and the banner's address (right click > Open image in new tab) shows the 2:1 cut. Then End now. Supabase > Storage > `announcements` holds one folder per Announcement.
+6. `npm run audit:verify:hosted -w @libras/api`: intact, with the `announcement_created` and `announcement_ended` entries.
 
 # Tier 2: rollout and verification checklist
 

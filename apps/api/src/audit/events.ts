@@ -1,5 +1,15 @@
 import { z } from "zod";
 
+/** What the audit log keeps of an Announcement as it was saved: what every Member sees and where its link sends them. */
+const announcementData = z.strictObject({
+  title: z.string().max(120),
+  firstDay: z.iso.date(),
+  lastDay: z.iso.date(),
+  link: z.enum(["none", "book", "web"]),
+  /** The linked Book's id or the web address; null with no link. */
+  linkTarget: z.string().max(500).nullable(),
+});
+
 /**
  * The whitelist of audit events: every type the log accepts, with the exact
  * shape of its subject and data. Objects are strict, so a field that is not
@@ -203,6 +213,46 @@ export const AUDIT_EVENTS = {
       pickupEndsAt: z.iso.datetime(),
       /** When the API recorded the expiry, ISO 8601. */
       expiredAt: z.iso.datetime(),
+    }),
+  },
+  /**
+   * A Librarian created an Announcement: a poster shown to every Member from
+   * its first to its last day. `actorId` is the Librarian.
+   */
+  announcement_created: {
+    /** The Announcement's id. */
+    subject: z.uuid(),
+    data: announcementData,
+  },
+  /** A Librarian edited a running or scheduled Announcement. `actorId` is the Librarian. */
+  announcement_edited: {
+    /** The Announcement's id. */
+    subject: z.uuid(),
+    data: announcementData.extend({
+      /** A new poster image replaced the old one (a new crop alone is not a new image). */
+      imageReplaced: z.boolean(),
+    }),
+  },
+  /** A Librarian ended the running Announcement early: it stopped showing at `endsAt`. `actorId` is the Librarian. */
+  announcement_ended: {
+    /** The Announcement's id. */
+    subject: z.uuid(),
+    data: z.strictObject({
+      title: z.string().max(120),
+      /** The moment it was ended, ISO 8601. */
+      endsAt: z.iso.datetime(),
+      /** The last day it was meant to show until then. */
+      plannedLastDay: z.iso.date(),
+    }),
+  },
+  /** A Librarian deleted a scheduled Announcement before it started. `actorId` is the Librarian. */
+  announcement_deleted: {
+    /** The Announcement's id. */
+    subject: z.uuid(),
+    data: z.strictObject({
+      title: z.string().max(120),
+      firstDay: z.iso.date(),
+      lastDay: z.iso.date(),
     }),
   },
 } as const;

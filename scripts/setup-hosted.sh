@@ -395,6 +395,16 @@ say "and asks you to type 'apply'."
 printf '\n'
 npm run db:migrate:hosted
 printf '\n'
+say "The migrations also create the Storage bucket of Announcement posters (announcements):"
+say "public to read, written only by the API with the secret key."
+bucket_status=$(http_status "$SUPABASE_URL/storage/v1/bucket/announcements" apikey "$SUPABASE_SECRET_KEY")
+if [[ "$bucket_status" == 200 ]]; then
+  step "The announcements bucket is there"
+else
+  warn "Supabase Storage answered $bucket_status for the announcements bucket, not 200. Check that the migrations above applied."
+  confirm "Continue anyway?" || exit 1
+fi
+printf '\n'
 say "Now the Librarian who signs in to the desk page (created in Supabase Auth)."
 ask SEED_LIBRARIAN_EMAIL "Librarian email:"
 ask_secret SEED_LIBRARIAN_PASSWORD "Librarian password, 12+ characters (hidden):"
