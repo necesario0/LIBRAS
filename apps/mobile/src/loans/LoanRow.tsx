@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { RENEWAL_REASONS, counted, formatLibraryDate, formatPesos } from "@libras/shared";
 import type { Loan } from "@libras/shared";
 import { BookCover } from "../components/BookCover";
-import { RowAction, RowConfirmation, RowConfirmationEmphasis } from "../components/RowConfirmation";
+import { RowAction, RowActions, RowConfirmation, RowConfirmationEmphasis } from "../components/RowConfirmation";
 import { StatusPill } from "../components/StatusPill";
 import type { PillTone } from "../components/StatusPill";
 import { colors, fontFamily, fontSize, radii, spacing } from "../theme/tokens";
@@ -109,14 +109,16 @@ export function LoanRow({ loan, onRenew }: LoanRowProps) {
           questionTestID="loan-renew-question"
         />
       ) : (
-        <RowAction
-          label="Renew"
-          onPress={() => {
-            setFailure(undefined);
-            setConfirming(true);
-          }}
-          testID="loan-renew"
-        />
+        <RowActions>
+          <RowAction
+            label="Renew"
+            onPress={() => {
+              setFailure(undefined);
+              setConfirming(true);
+            }}
+            testID="loan-renew"
+          />
+        </RowActions>
       )}
     </View>
   );

@@ -1,55 +1,46 @@
 import type { ReactNode } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import { ChevronBackIcon } from "../components/icons";
-import { actionHeight, actionRowShadow, colors, fontFamily, fontSize, menuRowShadow, radii, spacing } from "../theme/tokens";
+import { Pressable, StyleSheet, Text } from "react-native";
+import { ChevronRightIcon } from "../components/OutlineIcons";
+import { colors, fontFamily, fontSize, menuRowShadow, spacing } from "../theme/tokens";
 
-/**
- * Which design the row follows. `menu` is the Profile menu row (Figma
- * 921:13989): an icon and a label with a 6.5 blur shadow. `action` is the
- * action row of My Account (580:1832, "Change password"): the same pill and
- * chevron, no icon, 46 pt high, with a tighter 2 blur shadow.
- */
-export type MenuRowVariant = "menu" | "action";
+/** The corner radius of a Profile row (approved Tier 3 preview). */
+const ROW_RADIUS = 25;
 
 interface MenuRowProps {
-  /** Shown before the label. The `menu` variant has one; the `action` variant does not. */
-  icon?: ReactNode;
+  /** Shown before the label: an outline icon of `OutlineIcons`, 22 pt. */
+  icon: ReactNode;
   label: string;
   onPress: () => void;
   testID: string;
-  variant?: MenuRowVariant;
 }
 
-/** A white pill with a label and a chevron pointing at what it opens. */
-export function MenuRow({ icon, label, onPress, testID, variant = "menu" }: MenuRowProps) {
+/**
+ * A row of the Profile menu (approved Tier 3 preview, Figma 921:13989 shadow):
+ * a white pill with an icon, a label and a chevron pointing at what it opens.
+ */
+export function MenuRow({ icon, label, onPress, testID }: MenuRowProps) {
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={[styles.row, variant === "action" && styles.actionRow]} testID={testID}>
-      <View style={styles.start}>
-        {icon}
-        <Text style={styles.label}>{label}</Text>
-      </View>
-      {/* The chevron export is the 7 by 14 stroke inside a 24 pt box: it is turned to point right and its box does not take part in the layout. */}
-      <View style={styles.chevron}>
-        <ChevronBackIcon rotate={180} />
-      </View>
+    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.row, pressed && styles.pressed]} testID={testID}>
+      {icon}
+      <Text style={styles.label} numberOfLines={1}>
+        {label}
+      </Text>
+      <ChevronRightIcon color={colors.textMuted} size={18} />
     </Pressable>
   );
 }
-
-const CHEVRON = { width: 7, height: 14 } as const;
 
 const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    padding: spacing.inset,
-    borderRadius: radii.button,
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: ROW_RADIUS,
     backgroundColor: colors.white,
     boxShadow: menuRowShadow,
   },
-  actionRow: { height: actionHeight, paddingHorizontal: spacing.lg, boxShadow: actionRowShadow },
-  start: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  label: { fontFamily: fontFamily.regular, fontSize: fontSize.body, letterSpacing: -0.96, lineHeight: 16, color: colors.black },
-  chevron: { ...CHEVRON, alignItems: "center", justifyContent: "center" },
+  pressed: { backgroundColor: colors.surface },
+  label: { flex: 1, fontFamily: fontFamily.regular, fontSize: fontSize.note, lineHeight: 19, color: colors.black },
 });

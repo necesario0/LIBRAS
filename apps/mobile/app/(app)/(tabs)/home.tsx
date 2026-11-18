@@ -1,35 +1,30 @@
 import { useRouter } from "expo-router";
 import { ActivityIndicator, Keyboard, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CATALOG_SEARCH_MAX_QUERY_LENGTH } from "@libras/shared";
-import { useAuth, useMember } from "../../src/auth/AuthContext";
-import { useCatalogSearch } from "../../src/catalog/useCatalogSearch";
-import { DigitalIdEntry } from "../../src/digital-id/DigitalIdEntry";
-import { HoldsSummary } from "../../src/holds/HoldsSummary";
-import { LoansSummary } from "../../src/loans/LoansSummary";
-import { useScreenTop } from "../../src/hooks/useScreenTop";
-import { BookResultRow } from "../../src/home/BookResultRow";
-import { HomeHeader } from "../../src/home/HomeHeader";
-import { SearchBar } from "../../src/home/SearchBar";
-import { NoResults, SearchFailed } from "../../src/home/SearchMessage";
-import { colors, fontFamily, fontSize, spacing } from "../../src/theme/tokens";
+import { useAuth, useMember } from "../../../src/auth/AuthContext";
+import { useCatalogSearch } from "../../../src/catalog/useCatalogSearch";
+import { useScreenTop } from "../../../src/hooks/useScreenTop";
+import { useTabBarSpace } from "../../../src/navigation/FloatingTabBar";
+import { BookResultRow } from "../../../src/home/BookResultRow";
+import { HomeHeader } from "../../../src/home/HomeHeader";
+import { SearchBar } from "../../../src/home/SearchBar";
+import { NoResults, SearchFailed } from "../../../src/home/SearchMessage";
+import { colors, fontFamily, fontSize, spacing } from "../../../src/theme/tokens";
 
 /**
  * Home for a signed-in Member: the Figma "Home dashboard" layout (node
- * 1032:1994), trimmed to what Tier 1 builds. The greeting and the search bar
- * are there, and under them the entry to the Digital ID and the summaries of the
- * Member's Loans and Holds; the recommendation sections are left out of Tier 1.
- * The results replace those sections under the search bar.
+ * 1032:1994) as the approved Tier 3 preview lays it out: the greeting and the
+ * search bar, and under the bar the search results. Loans, Holds and the
+ * Digital ID have their own tabs, so Home is about finding Books. There is no
+ * bell and no menu.
  *
- * The avatar and greeting open the Profile account screen, which is also where
- * the Member signs out. The design reaches Profile from its menu drawer and tab
- * bar, neither of which is built, so the header is the way in.
+ * The avatar and greeting open the Profile tab.
  */
 export default function HomeScreen() {
   const router = useRouter();
   const member = useMember();
   const { request } = useAuth();
-  const insets = useSafeAreaInsets();
+  const tabBarSpace = useTabBarSpace();
   const screenTop = useScreenTop();
   const search = useCatalogSearch(request);
   const { state } = search;
@@ -42,7 +37,7 @@ export default function HomeScreen() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Open Profile"
-          onPress={() => router.push("/profile")}
+          onPress={() => router.navigate("/profile")}
           testID="home-profile"
         >
           <HomeHeader firstName={member.firstName} />
@@ -62,7 +57,7 @@ export default function HomeScreen() {
 
       <ScrollView
         style={styles.body}
-        contentContainerStyle={[styles.bodyContent, { paddingBottom: insets.bottom + spacing.xl }]}
+        contentContainerStyle={[styles.bodyContent, { paddingBottom: tabBarSpace }]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
@@ -72,9 +67,6 @@ export default function HomeScreen() {
             <Text style={styles.hint} testID="search-hint">
               Search by title, author, ISBN, accession number or call number. Small typos are fine.
             </Text>
-            <DigitalIdEntry />
-            <LoansSummary />
-            <HoldsSummary />
           </>
         ) : null}
 

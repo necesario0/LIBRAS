@@ -52,9 +52,9 @@ export function HoldAction({
             : "You are in the queue. You will be told when a Copy is set aside for you."}
         </Text>
         {existing.status === "ready" ? (
-          <Button label="Show my Digital ID" radius={radii.formButton} onPress={() => router.push("/digital-id")} testID="hold-digital-id" />
+          <Button label="Show my Digital ID" radius={radii.formButton} onPress={() => router.dismissTo("/digital-id")} testID="hold-digital-id" />
         ) : null}
-        <Button label="See my Holds" tone="muted" radius={radii.formButton} onPress={() => router.push("/holds")} testID="hold-see-all" />
+        <Button label="See my Holds" tone="muted" radius={radii.formButton} onPress={() => router.dismissTo({ pathname: "/my-books", params: { segment: "holds" } })} testID="hold-see-all" />
       </View>
     );
   }

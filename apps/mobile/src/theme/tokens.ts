@@ -39,7 +39,7 @@ export const colors = {
   panelBorder: "rgba(0,0,0,0.32)",
   /** The highlighted word of a heading ("Show this to the librarian", Figma 617:3265). */
   highlight: "#FFA800",
-  /** The greeting's second line on Home ("Whats on your mind"). */
+  /** The greeting's second line on Home ("What’s on your mind"). */
   textFaint: "#AFAFAF",
   /** Shadow of the Home search bar (Figma: black at 25%). */
   shadow: "#000000",
@@ -69,17 +69,17 @@ export const colors = {
   confirm: "#F9B233",
   /** The dimmed screen behind a dialog (Figma 928:14986). */
   scrim: "rgba(0,0,0,0.55)",
+  /** The hairline around the floating tab bar (black at 6%). */
+  hairline: "rgba(0,0,0,0.06)",
   /** The lighter spine drawn over a placeholder Book cover. */
   coverSpine: "rgba(255,255,255,0.35)",
 } as const;
 
-/** Raised cards (Figma 617:3265: x 0, y 7, blur 17.9, black 25%). */
-export const cardShadow = "0px 7px 17.9px rgba(0, 0, 0, 0.25)";
+/** The floating tab bar (approved Tier 3 preview: x 0, y 6, blur 18, black 18%). */
+export const tabBarShadow = "0px 6px 18px rgba(0, 0, 0, 0.18)";
 
 /** The rows of the Profile menu (Figma 921:13989: x 0, y 4, blur 6.5, black 25%). */
 export const menuRowShadow = "0px 4px 6.5px rgba(0, 0, 0, 0.25)";
-/** The action row of My Account, "Change password" (Figma 580:1832): a tighter shadow than the Profile menu rows. */
-export const actionRowShadow = "0px 4px 2px rgba(0, 0, 0, 0.25)";
 
 /** Montserrat is the only family. Keys are the names registered with `useFonts`. */
 export const fontFamily = {
@@ -99,9 +99,13 @@ export const fontSize = {
   hero: 35,
   /** "Show this to the librarian", and the title on the Book page. */
   headline: 32,
+  /** "Show this to the librarian" on the Digital ID tab (approved Tier 3 preview). */
+  idHeading: 30,
   title: 26,
   /** The greeting on Home. */
   large: 24,
+  /** The Member's name on Profile (approved Tier 3 preview). */
+  name: 22,
   subheading: 20,
   body: 16,
   note: 15,
@@ -174,6 +178,12 @@ export const radii = {
   callNumber: 43,
   /** The edition and availability tags of the Book page. */
   tag: 39,
+  /** The floating tab bar. */
+  tabBar: 35,
+  /** The segment control of My Books. */
+  segments: 22,
+  /** A segment of My Books, and the small outlined button of a list row (Renew, Cancel Hold). */
+  segment: 18,
   /** The grabber at the top of the Book page's sheet (Figma 609:1159). */
   grabber: 58,
   /** The rounded rectangle buttons of the account frames: Log out (Figma 580:1741), Cancel and Save changes (580:1842, 580:1845). */
@@ -216,6 +226,12 @@ export const outlineActionHeight = 54;
 
 /** Height of the Home search bar. */
 export const searchBarHeight = 46;
+
+/**
+ * The floating tab bar of the signed-in screens (approved Tier 3 preview): 70 pt
+ * high, 14 pt in from each side and at least 18 pt above the bottom edge.
+ */
+export const tabBar = { height: 70, side: 14, bottom: 18, icon: 25, dot: 10 } as const;
 
 /** The status bar area of a Figma phone frame. Screens position their content from below it. */
 export const statusBarHeight = 62;

@@ -1,11 +1,13 @@
-# A Member opens the Profile screen from the Home header and sees the name,
-# email and Account Type the API holds for them. The "My account" row opens My
-# Account, which shows the same three as read-only fields. Sign out is on Profile
-# and Home has none. Profile also shows the Member's Clearance: cleared with no
+# A Member opens the Profile tab from the Home header and sees the name, email
+# and Account Type the API holds for them, and the rows My account, Clearance
+# and Change password. The "My account" row pushes My Account over the tabs
+# (no tab bar), which shows the same three as read-only fields; its back button
+# and Android's back button both return to Profile. Sign out is on Profile and
+# Home has none. Profile also shows the Member's Clearance: cleared with no
 # Loan out and no Fine; not cleared with a Loan out and on time; with an overdue
 # Loan that comes back late, the Fine stands in the way after the Loan is back.
 # Not in Good standing (an overdue Loan, then an unsettled Fine), the Member
-# reads why on Profile, in My Loans in place of Renew, and on the Book page in
+# reads why on Profile, in the Loans segment of My Books in place of Renew, and on the Book page in
 # place of Place a Hold.
 # Needs the end-to-end API on port 3000 (npm run e2e starts it).
 appId: ph.edu.umak.libras
@@ -38,12 +40,24 @@ appId: ph.edu.umak.libras
 - tapOn:
     id: home-profile
 
-# The Profile account screen shows who is signed in, as the API says.
+# The Profile tab is the active one and shows who is signed in, as the API says.
 - extendedWaitUntil:
     visible:
       id: profile-name
     timeout: 10000
-- assertVisible: "COBBY BALDONADO"
+- assertVisible:
+    id: tab-profile
+    selected: true
+- assertVisible:
+    id: tab-home
+    selected: false
+- assertVisible:
+    id: profile-name
+    text: "Cobby Baldonado"
+- assertVisible:
+    id: profile-my-account
+- assertVisible:
+    id: profile-change-password
 - assertVisible: ${output.email}
 - assertVisible: "UMAK Student"
 
@@ -66,6 +80,8 @@ appId: ph.edu.umak.libras
     visible:
       id: my-account-name
     timeout: 10000
+- assertNotVisible:
+    id: tab-bar
 - runScript: scripts/confirm-loan.js
 - tapOn:
     id: my-account-back
@@ -90,8 +106,8 @@ appId: ph.edu.umak.libras
       id: my-account-name
     timeout: 10000
 - runScript: scripts/overdue-loan.js
-- tapOn:
-    id: my-account-back
+# Android's back button does what the back button does.
+- back
 - extendedWaitUntil:
     visible:
       id: profile-good-standing
@@ -126,14 +142,9 @@ appId: ph.edu.umak.libras
     text: "You cannot borrow, place a Hold or renew a Loan while you have an unsettled Fine. Settle it at the library desk."
 - takeScreenshot: profile-clearance-fine
 
-# My Loans says why the on-time Loan cannot be renewed, in place of Renew.
+# The Loans segment says why the on-time Loan cannot be renewed, in place of Renew.
 - tapOn:
-    id: profile-back
-- extendedWaitUntil:
-    visible: "Hi, Cobby"
-    timeout: 10000
-- tapOn:
-    id: home-loans
+    id: tab-my-books
 - extendedWaitUntil:
     visible:
       id: loans-current
@@ -144,12 +155,12 @@ appId: ph.edu.umak.libras
     id: loan-renew
 - takeScreenshot: profile-loans-not-in-good-standing
 - tapOn:
-    id: loans-back
+    id: tab-home
 
 # The Book page says why in place of Place a Hold, on a Book with no Copy on the shelf.
 - extendedWaitUntil:
     visible:
-      id: home-loans-summary
+      id: search-input
     timeout: 15000
 - tapOn:
     id: search-input
@@ -176,12 +187,8 @@ appId: ph.edu.umak.libras
     id: search-input
 - eraseText: 40
 - hideKeyboard
-- extendedWaitUntil:
-    visible:
-      id: home-loans-summary
-    timeout: 15000
 - tapOn:
-    id: home-profile
+    id: tab-profile
 - extendedWaitUntil:
     visible:
       id: profile-name
@@ -233,18 +240,17 @@ appId: ph.edu.umak.libras
       id: profile-name
     timeout: 10000
 
-# Back returns to Home.
-- tapOn:
-    id: profile-back
+# Android's back button on a tab other than Home returns to Home.
+- back
 - extendedWaitUntil:
     visible: "Hi, Cobby"
     timeout: 10000
+- assertVisible:
+    id: tab-home
+    selected: true
 
 # Signing out from the profile leaves every protected screen.
-- tapOn:
-    id: home-profile
-- tapOn:
-    id: profile-sign-out
+- runFlow: subflows/sign-out.yaml
 - extendedWaitUntil:
     visible: "SIGN  UP"
     timeout: 20000

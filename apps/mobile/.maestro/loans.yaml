@@ -1,12 +1,13 @@
-# A UMAK Student taps Borrow on a Book with an available Copy: the Digital ID
-# opens and nothing is recorded. When the Librarian confirms the Loan at the desk
-# (the end-to-end API does it, with the code on the Member's phone), the app shows
-# "Successfully Borrowed", My Loans lists the Loan with its dates, and Home counts
-# it. The Member renews the Loan from My Loans after a confirmation that shows
-# the new due date. A Renewal refused because another Member's Hold arrived
-# after the list loaded says so, and a Hold on a Book the Member has on Loan is
-# refused with the reason. An overdue Loan is marked on Home and in My Loans with
-# its Fine so far, each Loan that cannot be renewed says why, and the Book page
+# A UMAK Student taps Borrow on a Book with an available Copy: the Book page
+# closes, the Digital ID tab opens and nothing is recorded. When the Librarian
+# confirms the Loan at the desk (the end-to-end API does it, with the code on the
+# Member's phone), the app shows "Successfully Borrowed", and the Loans segment
+# of My Books lists the Loan with its dates. The Member renews the Loan there
+# after a confirmation that shows the new due date. A Loan due tomorrow puts a
+# dot on the My Books tab. A Renewal refused because another Member's Hold
+# arrived after the list loaded says so, and a Hold on a Book the Member has on
+# Loan is refused with the reason. An overdue Loan is marked in the Loans
+# segment with its Fine so far and a dot on the tab, each Loan that cannot be renewed says why, and the Book page
 # says in place of Borrow and of Place a Hold that a Member with an overdue Loan
 # is not in Good standing.
 # Needs the end-to-end API on port 3000 (npm run e2e starts it).
@@ -38,26 +39,30 @@ appId: ph.edu.umak.libras
 - tapOn:
     id: sign-in-continue
 
-# With no Loans, Home says so.
+# Home has no Loans, Holds or Digital ID cards: those are tabs now. No bell, no menu.
 - extendedWaitUntil:
     visible:
-      id: home-loans
+      id: tab-my-books
     timeout: 20000
-- assertVisible: "My Loans"
-- assertVisible: "No current Loans"
-- takeScreenshot: loans-home-empty
+- assertVisible: "What.s on your mind"
+- assertNotVisible: "My Loans"
+- assertNotVisible: "My Holds"
+- assertNotVisible: "My Digital ID"
+- takeScreenshot: loans-home
 
-# My Loans is empty too.
+# With no Loans, the Loans segment of My Books says so, and nothing earns a dot.
 - tapOn:
-    id: home-loans
+    id: tab-my-books
 - extendedWaitUntil:
     visible:
       id: loans-empty
     timeout: 15000
 - assertVisible: "No Loans yet"
+- assertNotVisible:
+    id: tab-my-books-dot
 - takeScreenshot: loans-list-empty
 - tapOn:
-    id: loans-back
+    id: tab-home
 
 # A Book with an available Copy has the Borrow action.
 - tapOn:
@@ -81,7 +86,7 @@ appId: ph.edu.umak.libras
     id: hold-action
 - takeScreenshot: loans-book-borrow
 
-# Borrow opens the Digital ID.
+# Borrow closes the Book page and opens the Digital ID tab.
 - tapOn:
     id: book-borrow
 - assertVisible: "Show this to the librarian"
@@ -89,10 +94,12 @@ appId: ph.edu.umak.libras
     visible:
       id: digital-id-code
     timeout: 15000
+- assertNotVisible:
+    id: book-sheet
 - takeScreenshot: loans-digital-id
 
 # Borrow recorded nothing: after waiting longer than the app takes to ask the API
-# again, the Digital ID is still showing, and Home still has no Loans.
+# again, the Digital ID is still showing, and My Books still has no Loans.
 - extendedWaitUntil:
     visible: "Successfully.*"
     timeout: 6000
@@ -100,9 +107,13 @@ appId: ph.edu.umak.libras
 - assertVisible:
     id: digital-id-code
 - tapOn:
-    id: digital-id-done
+    id: tab-my-books
+- extendedWaitUntil:
+    visible:
+      id: loans-empty
+    timeout: 15000
 - tapOn:
-    id: book-close
+    id: tab-home
 - extendedWaitUntil:
     visible:
       id: search-results
@@ -111,15 +122,10 @@ appId: ph.edu.umak.libras
     id: search-input
 - eraseText: 40
 - hideKeyboard
-- extendedWaitUntil:
-    visible:
-      id: home-loans-summary
-    timeout: 15000
-- assertVisible: "No current Loans"
 
 # The Member shows the Digital ID at the desk, and the Librarian confirms the Loan.
 - tapOn:
-    id: home-digital-id
+    id: tab-digital-id
 - extendedWaitUntil:
     visible:
       id: digital-id-code
@@ -146,14 +152,16 @@ appId: ph.edu.umak.libras
 - assertVisible: "Please return it by [A-Z][a-z]{2} [0-9]{1,2} to avoid a fine\\."
 - takeScreenshot: loans-successfully-borrowed
 
-# My Loans lists it with its checkout and due dates.
+# View My Books opens its Loans segment, which lists it with its checkout and due dates.
 - tapOn:
     id: borrowed-my-loans
 - extendedWaitUntil:
     visible:
       id: loans-current
     timeout: 15000
-- assertVisible: "My Loans"
+- assertVisible:
+    id: my-books-title
+    text: "My Books"
 - assertVisible: "Current - 1 of 3"
 - assertVisible: ${output.borrowTitle}
 - assertVisible: "Borrowed on [A-Z][a-z]{2} [0-9]{1,2}, 20[0-9]{2}"
@@ -204,26 +212,32 @@ appId: ph.edu.umak.libras
     id: loan-renew-error
 - takeScreenshot: loans-renewed
 
-# Back leads Home, which now counts the Loan.
-- tapOn:
-    id: loans-back
-- extendedWaitUntil:
-    visible:
-      id: home-loans-summary
-    timeout: 15000
-- assertVisible: "1 current Loan"
-- takeScreenshot: loans-home-one
+# A Loan due in two weeks earns no dot.
+- assertNotVisible:
+    id: tab-my-books-dot
+- assertNotVisible:
+    id: my-books-loans-dot
 
-# A second Loan, of a Book nobody waits for yet, can be renewed.
+# A second Loan, of a Book nobody waits for yet, can be renewed. It is due
+# tomorrow: the My Books tab and its Loans segment get a dot.
 - runScript: scripts/wanted-loan.js
 - tapOn:
-    id: home-loans
+    id: tab-home
+- tapOn:
+    id: tab-my-books
 - extendedWaitUntil:
     visible:
       id: loan-renew
     timeout: 15000
 - assertVisible: "Current - 2 of 3"
 - assertVisible: ${output.wantedTitle}
+- assertVisible:
+    id: tab-my-books-dot
+- assertVisible:
+    id: my-books-loans-dot
+- assertNotVisible:
+    id: my-books-holds-dot
+- takeScreenshot: loans-due-tomorrow-dot
 
 # Another Member places a Hold on that Book while the list is open. Renew then
 # says what changed, and the row shows the fresh reason.
@@ -244,10 +258,7 @@ appId: ph.edu.umak.libras
     id: loan-renew
 - takeScreenshot: loans-renew-refused
 - tapOn:
-    id: loans-back
-- extendedWaitUntil:
-    visible: "2 current Loans"
-    timeout: 15000
+    id: tab-home
 
 # That Book's only Copy is out with this Member: a Hold on it is refused, with
 # the reason, because their own return would set the Copy aside for them.
@@ -280,18 +291,14 @@ appId: ph.edu.umak.libras
     id: search-input
 - eraseText: 40
 - hideKeyboard
-- extendedWaitUntil:
-    visible:
-      id: home-loans-summary
-    timeout: 15000
 
-# A Loan that is past its due date is marked on Home and in My Loans with its
+# A Loan that is past its due date is marked in the Loans segment with its
 # Fine so far, and cannot be renewed. (It was lent ten days ago, before the
 # Member had anything overdue: a Member with an overdue Loan is not in Good
 # standing and is lent nothing more.)
 - runScript: scripts/overdue-loan.js
 - tapOn:
-    id: home-loans
+    id: tab-my-books
 - extendedWaitUntil:
     visible:
       id: loans-overdue-notice
@@ -306,13 +313,11 @@ appId: ph.edu.umak.libras
     id: loan-fine
     text: "Fine so far: PHP 15 \\(3 days late\\)"
 - assertVisible: "Overdue Loans cannot be renewed. Please return it to the library desk."
+- assertVisible:
+    id: tab-my-books-dot
 - takeScreenshot: loans-list-overdue
 - tapOn:
-    id: loans-back
-- extendedWaitUntil:
-    visible: "3 current Loans, 1 overdue"
-    timeout: 15000
-- takeScreenshot: loans-home-overdue
+    id: tab-home
 
 # With an overdue Loan the Member is not in Good standing. The Book page says
 # so in place of Borrow (the Book has one Copy fewer on the shelf now) ...

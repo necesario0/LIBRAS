@@ -10,7 +10,7 @@ import { currentLoans, useLoans } from "./useLoans";
 /**
  * The Borrow action of the Book page (Figma 609:1066). It appears for a Member
  * who can borrow when the Book has an available Copy. Borrow records nothing:
- * it opens the Digital ID, and the Loan exists only once the Librarian confirms
+ * it closes the Book page and opens the Digital ID tab, and the Loan exists only once the Librarian confirms
  * it at the desk. A Member at their loan limit, or not in Good standing
  * (`goodStanding`, from the API; undefined until it loads), is told so instead
  * of being sent to the desk for nothing.
@@ -61,7 +61,7 @@ export function BorrowAction({
         ) : null}
         After you tap Borrow, show the code to the librarian.
       </Text>
-      <CallToAction label="Borrow" onPress={() => router.push("/digital-id")} testID="book-borrow" />
+      <CallToAction label="Borrow" onPress={() => router.dismissTo("/digital-id")} testID="book-borrow" />
     </View>
   );
 }

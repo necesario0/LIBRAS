@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { HOLD_STATUS_LABELS, formatLibraryDate, formatLibraryDateTime } from "@libras/shared";
 import type { Hold, HoldStatus } from "@libras/shared";
 import { BookCover } from "../components/BookCover";
-import { RowAction, RowConfirmation } from "../components/RowConfirmation";
+import { RowAction, RowActions, RowConfirmation } from "../components/RowConfirmation";
 import { StatusPill } from "../components/StatusPill";
 import type { PillTone } from "../components/StatusPill";
 import { colors, fontFamily, fontSize, radii, spacing } from "../theme/tokens";
@@ -21,15 +21,18 @@ interface HoldRowProps {
   hold: Hold;
   /** Cancels the Hold. Rejects with a message safe to show. */
   onCancel: (hold: Hold) => Promise<void>;
+  /** Opens the Digital ID, which the Member shows at the desk to pick up a ready Hold. */
+  onShowDigitalId: () => void;
 }
 
 /**
  * One of the Member's Holds: the Book, its status and when the Hold was placed.
  * A ready Hold says that a Copy is set aside and when the Pickup Window ends, in
  * the library's time. A waiting or ready Hold has a Cancel button that asks once
- * more: a waiting Hold leaves the queue, a ready one gives its Copy up.
+ * more: a waiting Hold leaves the queue, a ready one gives its Copy up. A
+ * ready Hold also has Show my Digital ID, the way to pick it up.
  */
-export function HoldRow({ hold, onCancel }: HoldRowProps) {
+export function HoldRow({ hold, onCancel, onShowDigitalId }: HoldRowProps) {
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | undefined>(undefined);
@@ -92,7 +95,10 @@ export function HoldRow({ hold, onCancel }: HoldRowProps) {
           onKeep={() => setConfirming(false)}
         />
       ) : (
-        <RowAction label="Cancel Hold" onPress={() => setConfirming(true)} testID="hold-cancel" />
+        <RowActions>
+          {hold.status === "ready" ? <RowAction label="Show my Digital ID" fill onPress={onShowDigitalId} testID="hold-digital-id" /> : null}
+          <RowAction label="Cancel Hold" onPress={() => setConfirming(true)} testID="hold-cancel" />
+        </RowActions>
       )}
     </View>
   );
