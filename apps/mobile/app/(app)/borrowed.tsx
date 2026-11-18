@@ -64,11 +64,9 @@ export default function BorrowedScreen() {
   const { state } = useLoans(request);
   const loan = state.status === "loaded" ? state.loans.find((candidate) => candidate.id === loanId) : undefined;
 
+  // Both close this screen and switch to their tab.
   const home = () => router.dismissTo("/home");
-  const myLoans = () => {
-    router.dismissTo("/home");
-    router.push("/loans");
-  };
+  const myLoans = () => router.dismissTo({ pathname: "/my-books", params: { segment: "loans" } });
 
   return (
     <ScrollView

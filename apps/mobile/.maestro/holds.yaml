@@ -1,6 +1,7 @@
-# A UMAK Student places a Hold on a Book that has no available Copy, sees it on
-# Home and on the Holds screen, and cancels it. A Book with a Copy available has
-# no Hold action, and a Visitor is not offered one.
+# A UMAK Student places a Hold on a Book that has no available Copy, sees it in
+# the Holds segment of My Books, and cancels it. A waiting Hold puts no dot on
+# the My Books tab. A Book with a Copy available has no Hold action, and a
+# Visitor is not offered one: their tab is "Saved", with no segments.
 # Needs the end-to-end API on port 3000 (npm run e2e starts it).
 appId: ph.edu.umak.libras
 ---
@@ -30,14 +31,29 @@ appId: ph.edu.umak.libras
 - tapOn:
     id: sign-in-continue
 
-# With no Holds, Home says so.
+# With no Holds, My Books opens on Loans and its Holds segment says so. Nothing earns a dot.
 - extendedWaitUntil:
     visible:
-      id: home-holds
+      id: tab-my-books
     timeout: 20000
-- assertVisible: "My Holds"
-- assertVisible: "No active Holds"
-- takeScreenshot: holds-home-empty
+- tapOn:
+    id: tab-my-books
+- extendedWaitUntil:
+    visible:
+      id: loans-segment
+    timeout: 15000
+- assertVisible: "My Books"
+- assertNotVisible:
+    id: tab-my-books-dot
+- tapOn:
+    id: my-books-holds
+- extendedWaitUntil:
+    visible:
+      id: holds-empty
+    timeout: 15000
+- takeScreenshot: holds-my-books-empty
+- tapOn:
+    id: tab-home
 
 # A Book with a Copy available has no Hold action.
 - tapOn:
@@ -114,27 +130,24 @@ appId: ph.edu.umak.libras
       id: search-results
     timeout: 10000
 
-# Back on Home, with the search cleared, the summary counts the Hold.
-- tapOn:
-    id: search-input
-- eraseText: 40
-- extendedWaitUntil:
-    visible:
-      id: home-holds-summary
-    timeout: 15000
-- assertVisible: "1 waiting"
-- takeScreenshot: holds-home-summary
-
-# The Holds screen lists it with its status, and the day it was placed in the
+# The Holds segment lists it with its status, and the day it was placed in the
 # library's time zone: placed at 04:00 on Nov 11 in Manila, still Nov 10 in UTC.
+# A waiting Hold is not urgent: My Books still opens on Loans, with no dot.
 - runScript: scripts/hold-placed-at-night.js
 - tapOn:
-    id: home-holds
+    id: tab-my-books
+- extendedWaitUntil:
+    visible:
+      id: loans-segment
+    timeout: 15000
+- assertNotVisible:
+    id: tab-my-books-dot
+- tapOn:
+    id: my-books-holds
 - extendedWaitUntil:
     visible:
       id: holds-active
     timeout: 15000
-- assertVisible: "My Holds"
 - assertVisible: ${output.heldTitle}
 - assertVisible: "Waiting"
 - assertVisible: "Zxqy, Hana"
@@ -156,11 +169,6 @@ appId: ph.edu.umak.libras
 - assertNotVisible:
     id: holds-active
 - takeScreenshot: holds-cancelled
-- tapOn:
-    id: holds-back
-- extendedWaitUntil:
-    visible: "No active Holds"
-    timeout: 15000
 - runFlow: subflows/sign-out.yaml
 - extendedWaitUntil:
     visible: "SIGN  UP"
@@ -183,6 +191,26 @@ appId: ph.edu.umak.libras
 - hideKeyboard
 - tapOn:
     id: sign-in-continue
+
+# A Visitor cannot borrow (a loan limit of zero): the tab is "Saved", with Saved books and no segments.
+- extendedWaitUntil:
+    visible: "Saved"
+    timeout: 20000
+- assertNotVisible: "My Books"
+- tapOn:
+    id: tab-my-books
+- extendedWaitUntil:
+    visible:
+      id: saved-placeholder
+    timeout: 15000
+- assertVisible: "Saved books"
+- assertNotVisible:
+    id: my-books-loans
+- assertNotVisible:
+    id: my-books-holds
+- takeScreenshot: holds-visitor-saved
+- tapOn:
+    id: tab-home
 - extendedWaitUntil:
     visible:
       id: search-input

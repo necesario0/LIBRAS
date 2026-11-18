@@ -2,13 +2,27 @@ import type { ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { colors, fontFamily, fontSize, radii, spacing } from "../theme/tokens";
 
-/** The small grey button of a list row that starts an action on it: Renew a Loan, Cancel a Hold. */
-export function RowAction({ label, onPress, testID }: { label: string; onPress: () => void; testID: string }) {
+/**
+ * The small outlined button of a list row that starts an action on it (approved
+ * Tier 3 preview): Renew a Loan, Cancel a Hold. `fill` is the yellow one, for
+ * the action the row is waiting for: Show my Digital ID on a ready Hold.
+ */
+export function RowAction({ label, onPress, testID, fill = false }: { label: string; onPress: () => void; testID: string; fill?: boolean }) {
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={[styles.action, styles.actionMuted, styles.start]} testID={testID}>
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [styles.small, fill && styles.smallFill, pressed && styles.smallPressed]}
+      testID={testID}
+    >
       <Text style={styles.actionLabel}>{label}</Text>
     </Pressable>
   );
+}
+
+/** Row actions side by side. */
+export function RowActions({ children }: { children: ReactNode }) {
+  return <View style={styles.actions}>{children}</View>;
 }
 
 interface RowConfirmationProps {
@@ -67,11 +81,22 @@ const styles = StyleSheet.create({
   emphasis: { fontFamily: fontFamily.semiBold, color: colors.black },
   actions: { flexDirection: "row", gap: spacing.sm },
   action: { height: 36, borderRadius: radii.button, paddingHorizontal: spacing.lg, alignItems: "center", justifyContent: "center" },
-  start: { alignSelf: "flex-start" },
+  small: {
+    height: 32,
+    borderRadius: radii.segment,
+    borderWidth: 1,
+    borderColor: colors.black,
+    backgroundColor: colors.white,
+    paddingHorizontal: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  smallFill: { backgroundColor: colors.accent },
+  smallPressed: { opacity: 0.7 },
   actionMuted: { backgroundColor: colors.surface },
   actionPrimary: { backgroundColor: colors.primary },
   actionDanger: { backgroundColor: colors.danger },
-  actionLabel: { fontFamily: fontFamily.medium, fontSize: fontSize.caption, color: colors.black },
+  actionLabel: { fontFamily: fontFamily.medium, fontSize: fontSize.caption, lineHeight: 16, color: colors.black },
   actionStrongLabel: { color: colors.white },
   busy: { opacity: 0.6 },
 });

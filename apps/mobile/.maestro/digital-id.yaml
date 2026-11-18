@@ -1,6 +1,8 @@
-# A signed-in Member opens their Digital ID from the home screen: a barcode with
-# the same 12-digit code beneath it, which is replaced by itself when the API's
-# 60-second window turns, with no tap. Needs the end-to-end API on port 3000
+# A signed-in Member opens their Digital ID from its tab: a barcode with the
+# same 12-digit code beneath it and whose it is, which is replaced by itself
+# when the API's 60-second window turns, with no tap. The tab says the screen is
+# kept bright (the brightness itself is checked by hand on a phone). Home has no
+# Digital ID card any more. Needs the end-to-end API on port 3000
 # (npm run e2e starts it). Takes up to about 80 seconds: it waits for a real window.
 appId: ph.edu.umak.libras
 ---
@@ -38,17 +40,25 @@ appId: ph.edu.umak.libras
 - tapOn:
     id: sign-in-continue
 
-# The home screen has the entry.
+# Home has no Digital ID card: the tab bar has the way in.
 - extendedWaitUntil:
     visible:
-      id: home-digital-id
+      id: tab-digital-id
     timeout: 20000
-- takeScreenshot: digital-id-home-entry
+- assertNotVisible: "My Digital ID"
+- takeScreenshot: digital-id-home
 - tapOn:
-    id: home-digital-id
+    id: tab-digital-id
 
-# The barcode and the same code as text, grouped in fours.
+# The barcode and the same code as text, grouped in fours, and whose it is.
 - assertVisible: "Show this to the librarian"
+- assertVisible:
+    id: tab-digital-id
+    selected: true
+- assertVisible:
+    id: digital-id-name
+    text: "Cobby Baldonado"
+- assertVisible: "Your screen is at full brightness and stays on while this is open."
 - extendedWaitUntil:
     visible:
       id: digital-id-code
@@ -79,8 +89,9 @@ appId: ph.edu.umak.libras
 # The Digital ID number (the first six digits, "NNNN NN") stays the same: only the token rotates.
 - assertTrue: ${maestro.copiedText.substring(0, 7) == output.firstCode.substring(0, 7)}
 
-# Done returns home.
+# The Home tab returns home.
 - tapOn:
-    id: digital-id-done
-- assertVisible:
-    id: home-digital-id
+    id: tab-home
+- assertVisible: "Hi, Cobby"
+- assertNotVisible:
+    id: digital-id-code

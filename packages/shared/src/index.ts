@@ -183,6 +183,8 @@ export type {
   RenewalRefusal,
   ReturnedLoan,
 } from "./loans.ts";
+export { myBooksAttention, myBooksStartSegment } from "./my-books.ts";
+export type { MyBooksAttention, MyBooksSegment } from "./my-books.ts";
 export { FINE_MESSAGES, FINE_OUTCOMES, SETTLE_AT_RETURN_MINUTES, formatPesos, settleFineRequestSchema } from "./fines.ts";
 export type { FineOutcome, FineSettlement, LoanFine, SettleFineRequest, SettleFineResponse } from "./fines.ts";
 export { readEventStream } from "./event-stream.ts";

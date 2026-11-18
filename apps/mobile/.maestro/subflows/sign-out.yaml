@@ -1,7 +1,11 @@
-# Signs the Member out from Home: the profile in the header, then Sign out.
+# Signs the Member out from any tab: the Profile tab, then Sign out at its foot.
 appId: ph.edu.umak.libras
 ---
 - tapOn:
-    id: home-profile
+    id: tab-profile
+- scrollUntilVisible:
+    element:
+      id: profile-sign-out
+    direction: DOWN
 - tapOn:
     id: profile-sign-out
