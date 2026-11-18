@@ -25,6 +25,8 @@ const config: ExpoConfig = {
     "expo-router",
     "expo-font",
     "expo-secure-store",
+    // The launch screen: the LIBRAS logo on white. _layout.tsx keeps it up while the stored session is restored.
+    ["expo-splash-screen", { image: "./assets/images/libras-logo.png", imageWidth: 200, resizeMode: "contain", backgroundColor: "#FFFFFF" }],
     ["expo-build-properties", { android: { usesCleartextTraffic: allowCleartext } }],
   ],
   experiments: { typedRoutes: true },
