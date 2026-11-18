@@ -1,9 +1,8 @@
 import { useState } from "react";
 import type { ComponentRef, Ref } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { StyleSheet, Text, TextInput, View } from "react-native";
 import type { ReturnKeyTypeOptions, TextInputProps } from "react-native";
-import { FieldError } from "../components/TextField";
-import { VisibilityIcon, VisibilityOffIcon } from "../components/icons";
+import { FieldError, RevealToggle } from "../components/TextField";
 import { colors, fontFamily, fontSize, passwordFieldHeight, radii, spacing } from "../theme/tokens";
 
 interface PasswordFieldProps {
@@ -62,16 +61,7 @@ export function PasswordField({
           accessibilityLabel={label}
           style={styles.input}
         />
-        <Pressable
-          onPress={() => setRevealed((shown) => !shown)}
-          accessibilityRole="button"
-          accessibilityLabel={revealed ? "Hide password" : "Show password"}
-          hitSlop={12}
-          style={styles.eye}
-          testID={`${testID}-toggle`}
-        >
-          {revealed ? <VisibilityIcon /> : <VisibilityOffIcon />}
-        </Pressable>
+        <RevealToggle revealed={revealed} onToggle={() => setRevealed((shown) => !shown)} fieldTestID={testID} style={styles.eye} />
       </View>
       <FieldError message={error} testID={`${testID}-error`} />
     </View>
@@ -94,5 +84,5 @@ const styles = StyleSheet.create({
   fieldFocused: { backgroundColor: colors.white, borderColor: colors.primary },
   fieldInvalid: { backgroundColor: colors.dangerSurface, borderColor: colors.error },
   input: { flex: 1, height: "100%", paddingVertical: 0, paddingHorizontal: 0, fontFamily: fontFamily.regular, fontSize: fontSize.small, color: colors.ink },
-  eye: { paddingHorizontal: spacing.lg, height: "100%", alignItems: "center", justifyContent: "center" },
+  eye: { paddingHorizontal: spacing.lg, height: "100%" },
 });
