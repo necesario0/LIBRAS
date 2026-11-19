@@ -50,7 +50,7 @@ describe("Help and policies: the Loan Policy in words", () => {
     assert.equal(value("Late Fine"), "None");
   });
 
-  it("tells a borrower when a Renewal is refused and what happens to a Hold", () => {
+  it("tells a Member who can borrow when a Renewal is refused and what happens to a Hold", () => {
     const text = loanPolicyHelp(student).paragraphs.join(" ");
     assert.match(text, /Renewal is refused/);
     assert.match(text, /Pickup Window|Pick it up/);
