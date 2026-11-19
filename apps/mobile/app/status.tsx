@@ -14,7 +14,7 @@ export default function HealthScreen() {
     <View style={[styles.screen, { paddingTop: insets.top + spacing.xxl, paddingBottom: insets.bottom + spacing.xl }]}>
       <View style={styles.brand}>
         <Image source={logo} style={styles.logo} accessibilityIgnoresInvertColors />
-        <Text style={styles.brandName}>Libras</Text>
+        <Text style={styles.brandName}>LIBRAS</Text>
       </View>
       <Text style={styles.tagline}>The library for problem solver</Text>
 
