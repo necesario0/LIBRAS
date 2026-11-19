@@ -250,13 +250,16 @@ describe("GET /home", () => {
       assert.ok(found?.books.every((candidate) => candidate.availableCopies > 0));
     });
 
-    it("gives a Member who cannot borrow On the shelf now, even with a Loan on record", async () => {
+    it("gives an in-library Member their top Subject once they borrow, and On the shelf now before any Loan", async () => {
       const visitor = await ofType("visitor");
       const book = await addBook(`Visitor shelf ${randomUUID()}`, ["available"], { call: "K 487" });
+      const initial = await shelf(visitor, "available_now");
+      assert.equal(initial?.title, "On the shelf now");
+      assert.equal(initial?.subtitle, "You can borrow these for in-library use today");
+
       await borrow(visitor, book, 1, 400);
       const found = await shelf(visitor, "available_now");
-      assert.equal(found?.title, "On the shelf now");
-      assert.equal(found?.subtitle, "You can read these in the library today");
+      assert.equal(found?.title, "Available now in Law");
     });
   });
 

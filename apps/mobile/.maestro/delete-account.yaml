@@ -124,8 +124,10 @@ appId: ph.edu.umak.libras
 - takeScreenshot: delete-account-confirm
 - tapOn:
     id: delete-account-dialog-cancel
-- assertNotVisible:
-    id: delete-account-dialog
+- extendedWaitUntil:
+    notVisible:
+      id: delete-account-dialog
+    timeout: 5000
 
 # A wrong password is refused under the field, and the account stays.
 - tapOn:

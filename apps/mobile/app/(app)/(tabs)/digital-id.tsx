@@ -47,7 +47,7 @@ function DigitalId() {
   const router = useRouter();
   const member = useMember();
   const { request } = useAuth();
-  const { canBorrow } = useMyBooks();
+  const { canBorrow, inLibraryOnly } = useMyBooks();
   const { width } = useWindowDimensions();
   const screenTop = useScreenTop();
   const tabBarSpace = useTabBarSpace();
@@ -69,7 +69,9 @@ function DigitalId() {
       <Text style={styles.subtitle}>
         {canBorrow === false
           ? "Show it at the desk when you visit the library."
-          : "The librarian scans it to lend you a Book or to give you the Copy set aside for your Hold."}
+          : inLibraryOnly
+            ? "The librarian scans it at the desk to lend you a Book for same-day in-library use during library hours."
+            : "The librarian scans it to lend you a Book or to give you the Copy set aside for your Hold."}
       </Text>
 
       <View style={styles.ticket} testID="digital-id-ticket">

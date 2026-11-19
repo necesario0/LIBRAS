@@ -17,6 +17,8 @@ interface MyBooksValue {
    * zero. Undefined until the Loans have loaded at least once.
    */
   canBorrow: boolean | undefined;
+  /** Whether the Member's Loans are limited to same-day in-library use within library hours. */
+  inLibraryOnly: boolean | undefined;
   /** Which segments need the Member now. The My Books tab shows a dot when either does. */
   attention: MyBooksAttention;
   /** Fetches the Loans and the Holds again. */
@@ -60,6 +62,7 @@ export function MyBooksProvider({ children }: { children: ReactNode }) {
       loans: loans.state,
       holds: holds.state,
       canBorrow: loans.state.status === "loaded" ? loans.state.loanLimit > 0 : undefined,
+      inLibraryOnly: loans.state.status === "loaded" ? loans.state.inLibraryOnly : undefined,
       attention,
       reload,
     };

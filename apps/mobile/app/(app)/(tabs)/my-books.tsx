@@ -37,7 +37,7 @@ export default function MyBooksScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const params = useLocalSearchParams<{ segment?: string }>();
-  const { loans, holds, canBorrow, attention, reload } = useMyBooks();
+  const { loans, holds, canBorrow, inLibraryOnly, attention, reload } = useMyBooks();
   const screenTop = useScreenTop();
   const tabBarSpace = useTabBarSpace();
   const [chosen, setChosen] = useState<MyBooksSegment | undefined>(undefined);
@@ -89,18 +89,23 @@ export default function MyBooksScreen() {
   );
 
   const saved = canBorrow === false;
-  const start = holds.status === "loaded" ? myBooksStartSegment(holds.holds) : holds.status === "error" ? "loans" : undefined;
+  const start = holds.status === "loaded" ? myBooksStartSegment(holds.holds, { inLibraryOnly }) : holds.status === "error" ? "loans" : undefined;
   useEffect(() => {
     // Kept once decided, so cancelling the ready Hold does not move the Member to Loans under their finger.
     if (fresh && chosen === undefined && start !== undefined) setChosen(start);
   }, [fresh, chosen, start]);
-  const selected = chosen ?? linked ?? start;
+  const selected = inLibraryOnly && (chosen ?? linked ?? start) === "holds" ? "loans" : (chosen ?? linked ?? start);
 
-  const segments: readonly Segment<MyBooksSegment>[] = [
-    { key: "loans", label: "Loans", dot: attention.loans, testID: "my-books-loans" },
-    { key: "holds", label: "Holds", dot: attention.holds, testID: "my-books-holds" },
-    { key: "saved", label: "Saved", dot: false, testID: "my-books-saved" },
-  ];
+  const segments: readonly Segment<MyBooksSegment>[] = inLibraryOnly
+    ? [
+        { key: "loans", label: "Loans", dot: attention.loans, testID: "my-books-loans" },
+        { key: "saved", label: "Saved", dot: false, testID: "my-books-saved" },
+      ]
+    : [
+        { key: "loans", label: "Loans", dot: attention.loans, testID: "my-books-loans" },
+        { key: "holds", label: "Holds", dot: attention.holds, testID: "my-books-holds" },
+        { key: "saved", label: "Saved", dot: false, testID: "my-books-saved" },
+      ];
 
   return (
     <View style={styles.screen}>

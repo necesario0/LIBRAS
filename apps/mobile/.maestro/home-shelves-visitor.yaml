@@ -42,7 +42,7 @@ appId: ph.edu.umak.libras
       id: shelf-available_now-title
     direction: DOWN
 - assertVisible: "On the shelf now"
-- assertVisible: "You can read these in the library today"
+- assertVisible: "You can borrow these for in-library use today"
 - assertNotVisible: "Available now in Law"
 - takeScreenshot: home-shelves-visitor
 

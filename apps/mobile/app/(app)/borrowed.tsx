@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { formatLibraryDate, formatLibraryDay, libraryDaysBetween } from "@libras/shared";
+import { formatLibraryDate, formatLibraryDay, formatLibraryTime, formatLoanDueAt, hasExactDueTime, libraryDaysBetween } from "@libras/shared";
 import type { Loan } from "@libras/shared";
 import badge from "../../assets/images/borrowed-badge.png";
 import { useAuth } from "../../src/auth/AuthContext";
@@ -24,6 +24,7 @@ function Fact({ label, value, color, testID }: { label: string; value: string; c
 
 function LoanCard({ loan, out, limit }: { loan: Loan; out: number; limit: number }) {
   const days = libraryDaysBetween(loan.checkedOutAt, loan.dueAt);
+  const sameDay = hasExactDueTime(loan.dueAt);
   return (
     <View style={styles.card} testID="borrowed-card">
       <View style={styles.book}>
@@ -42,8 +43,13 @@ function LoanCard({ loan, out, limit }: { loan: Loan; out: number; limit: number
       <View style={styles.rule} />
       <View style={styles.facts}>
         <Fact label="Borrowed on" value={formatLibraryDate(loan.checkedOutAt)} color={colors.black} testID="borrowed-on" />
-        <Fact label="Return by" value={formatLibraryDate(loan.dueAt)} color={colors.primary} testID="borrowed-due" />
-        <Fact label="Time left" value={days === 1 ? "1 day" : `${days} days`} color={colors.availableText} testID="borrowed-time-left" />
+        <Fact label="Return by" value={formatLoanDueAt(loan.dueAt)} color={colors.primary} testID="borrowed-due" />
+        <Fact
+          label="Time left"
+          value={sameDay ? `Until ${formatLibraryTime(loan.dueAt)}` : days === 1 ? "1 day" : `${days} days`}
+          color={colors.availableText}
+          testID="borrowed-time-left"
+        />
         <Fact label="Books borrowed" value={`${out} of ${limit}`} color={colors.black} testID="borrowed-count" />
       </View>
     </View>
@@ -91,9 +97,11 @@ export default function BorrowedScreen() {
       <View style={styles.footer}>
         {loan !== undefined ? (
           <Text style={styles.reminder} testID="borrowed-reminder">
-            {"Please return it by "}
-            <Text style={styles.reminderDate}>{formatLibraryDay(loan.dueAt)}</Text>
-            {" to avoid a fine."}
+            {hasExactDueTime(loan.dueAt) ? "Please return it before " : "Please return it by "}
+            <Text style={styles.reminderDate}>
+              {hasExactDueTime(loan.dueAt) ? formatLibraryTime(loan.dueAt) : formatLibraryDay(loan.dueAt)}
+            </Text>
+            {hasExactDueTime(loan.dueAt) ? " today to avoid a fine." : " to avoid a fine."}
           </Text>
         ) : state.status !== "loading" ? (
           <Text style={styles.reminder} testID="borrowed-reminder">

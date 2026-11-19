@@ -68,6 +68,10 @@ describe("resolveBookSheetRelease", () => {
   it("closes only when dragged deep into the bottom zone from fullscreen", () => {
     assert.equal(
       resolveBookSheetRelease({ state: "expanded", top: 470, velocityY: 0.4, height: 874 }),
+      "default",
+    );
+    assert.equal(
+      resolveBookSheetRelease({ state: "expanded", top: 660, velocityY: 0.4, height: 874 }),
       "closed",
     );
   });

@@ -113,6 +113,7 @@ describe("My Loan Policy", () => {
       accountType: "umak_student",
       loanLimit: 3,
       loanPeriodDays: 7,
+      inLibraryOnly: false,
       renewalLimit: 1,
       fineDailyRateCentavos: 500,
       fineCapCentavos: 30_000,
@@ -128,11 +129,17 @@ describe("My Loan Policy", () => {
   }
 
   for (const accountType of ["visitor", "alumni"] as const satisfies AccountType[]) {
-    it(`tells a ${accountType} that no Loan is allowed: a limit of zero and no loan period`, async () => {
+    it(`gives ${accountType} an in-library-only Loan Policy of 3 books with no multi-day loan period`, async () => {
       const policy = await policyOf(await createTestMemberOfType(api, accountType));
-      assert.equal(policy.accountType, accountType);
-      assert.equal(policy.loanLimit, 0);
-      assert.equal(policy.loanPeriodDays, null);
+      assert.deepEqual(policy, {
+        accountType,
+        loanLimit: 3,
+        loanPeriodDays: null,
+        inLibraryOnly: true,
+        renewalLimit: 0,
+        fineDailyRateCentavos: 500,
+        fineCapCentavos: 30_000,
+      });
     });
   }
 

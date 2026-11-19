@@ -7,17 +7,19 @@ const student: MemberLoanPolicyResponse = {
   accountType: "umak_student",
   loanLimit: 3,
   loanPeriodDays: 7,
+  inLibraryOnly: false,
   renewalLimit: 1,
   fineDailyRateCentavos: 500,
   fineCapCentavos: 30_000,
 };
 const visitor: MemberLoanPolicyResponse = {
   accountType: "visitor",
-  loanLimit: 0,
+  loanLimit: 3,
   loanPeriodDays: null,
-  renewalLimit: 1,
-  fineDailyRateCentavos: 0,
-  fineCapCentavos: 0,
+  inLibraryOnly: true,
+  renewalLimit: 0,
+  fineDailyRateCentavos: 500,
+  fineCapCentavos: 30_000,
 };
 
 describe("Help and policies: the Loan Policy in words", () => {
@@ -56,22 +58,33 @@ describe("Help and policies: the Loan Policy in words", () => {
     assert.match(text, /Pickup Window|Pick it up/);
   });
 
-  it("tells a Visitor plainly that they cannot borrow, and what they can do", () => {
+  it("tells a Visitor plainly how in-library borrowing works within library hours", () => {
     const help = loanPolicyHelp(visitor);
-    assert.equal(help.canBorrow, false);
+    assert.equal(help.canBorrow, true);
+    assert.equal(help.inLibraryOnly, true);
     assert.equal(help.heading, "Loan Policy for Visitor");
     assert.deepEqual(help.facts, [
-      { label: "Borrowing", value: "Not available" },
-      { label: "Reading in the library", value: "Yes, show your Digital ID" },
-      { label: "Saved books", value: "Yes" },
+      { label: "Books at a time", value: "3" },
+      { label: "Loan period", value: "In-library use only (same day)" },
+      { label: "Library hours", value: "Mon-Fri 8:00 AM - 7:00 PM, Sat 8:00 AM - 12:00 PM" },
+      { label: "Renewals", value: "Not allowed" },
+      { label: "Holds", value: "Not allowed" },
+      { label: "Late Fine", value: "PHP 5 a day, up to PHP 300 per Loan" },
     ]);
-    assert.match(help.paragraphs.join(" "), /cannot borrow/);
-    assert.doesNotMatch(help.paragraphs.join(" "), /Fine/);
+    assert.match(help.paragraphs.join(" "), /before closing time/);
   });
 
-  it("treats Alumni, whose limit is zero, the same way", () => {
+  it("treats Alumni with the same in-library Loan Policy", () => {
     const help = loanPolicyHelp({ ...visitor, accountType: "alumni" });
-    assert.equal(help.canBorrow, false);
+    assert.equal(help.canBorrow, true);
+    assert.equal(help.inLibraryOnly, true);
     assert.equal(help.heading, "Loan Policy for Alumni");
+  });
+
+  it("falls back to non-borrowing wording if loanLimit is zero", () => {
+    const help = loanPolicyHelp({ ...visitor, loanLimit: 0, inLibraryOnly: false });
+    assert.equal(help.canBorrow, false);
+    assert.equal(help.inLibraryOnly, false);
+    assert.match(help.paragraphs.join(" "), /cannot borrow/);
   });
 });

@@ -13,6 +13,7 @@ interface DeskMemberRow {
   last_name: string;
   loan_limit: number;
   loan_period_days: number | null;
+  in_library_only: boolean;
 }
 
 /** Whose panel to build, as whom (row-level security applies to the Librarian), and the moment overdue is judged at. */
@@ -31,7 +32,7 @@ export interface DeskMemberRequest {
 export async function deskMember({ db, librarian, memberId, now }: DeskMemberRequest): Promise<DeskMember> {
   return withIdentity(db, librarian, async (scope) => {
     const { rows } = await scope.query<DeskMemberRow>(
-      `select m.user_id, m.account_type, m.first_name, m.middle_name, m.last_name, p.loan_limit, p.loan_period_days
+      `select m.user_id, m.account_type, m.first_name, m.middle_name, m.last_name, p.loan_limit, p.loan_period_days, p.in_library_only
          from public.members m
          join public.loan_policies p on p.account_type = m.account_type
         where m.user_id = $1`,
@@ -49,6 +50,7 @@ export async function deskMember({ db, librarian, memberId, now }: DeskMemberReq
         current: standing.loansOut.length,
         limit: row.loan_limit,
         loanPeriodDays: row.loan_period_days,
+        inLibraryOnly: row.in_library_only,
       },
       clearance: clearanceOf(standing),
     };

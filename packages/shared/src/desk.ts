@@ -17,8 +17,10 @@ export interface LoanStanding {
   current: number;
   /** The Loan Policy limit of the Member's Account Type. Zero means the Account Type cannot borrow. */
   limit: number;
-  /** The Loan Policy loan period, or null for an Account Type that cannot borrow. */
+  /** The Loan Policy loan period in days, or null for in-library-only / non-borrowing Account Types. */
   loanPeriodDays: number | null;
+  /** True when the Member's Loans are limited to same-day in-library use during open hours. */
+  inLibraryOnly: boolean;
 }
 
 /** What the desk page shows about the Member whose Digital ID was scanned. */

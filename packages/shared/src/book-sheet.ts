@@ -47,7 +47,7 @@ export function resolveBookSheetRelease({
     return "default";
   }
 
-  const deepDismissTop = defaultTop + Math.round(height * 0.28);
+  const deepDismissTop = Math.max(defaultTop + Math.round(height * 0.45), Math.round(height * 0.72));
   if (top > deepDismissTop) return "closed";
   if (top > 72 || velocityY > 0.45) return "default";
   return "expanded";

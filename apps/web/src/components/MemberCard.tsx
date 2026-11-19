@@ -60,7 +60,7 @@ export function MemberCard({ member, settleFine }: { member: DeskMember; settleF
                 {`${loans.current} of ${loans.limit}`}
               </span>
               <span className="member-card__loans-note">
-                {atLimit ? "Loan limit reached" : `${loans.loanPeriodDays ?? 0}-day loan period`}
+                {atLimit ? "Loan limit reached" : loans.inLibraryOnly ? "In-library only, same day" : `${loans.loanPeriodDays ?? 0}-day loan period`}
               </span>
             </>
           ) : (

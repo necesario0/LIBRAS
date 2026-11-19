@@ -25,6 +25,7 @@ describe("homeShelfCopy", () => {
     assert.equal(homeShelfCopy({ kind: "popular", college: null }).title, "Popular in the library");
     assert.equal(homeShelfCopy({ kind: "available_now", subject: "Law", canBorrow: true }).title, "Available now in Law");
     assert.equal(homeShelfCopy({ kind: "available_now", subject: null, canBorrow: true }).title, "On the shelf now");
+    assert.match(homeShelfCopy({ kind: "available_now", subject: null, canBorrow: true, inLibraryOnly: true }).subtitle, /in-library use/);
     assert.match(homeShelfCopy({ kind: "available_now", subject: null, canBorrow: false }).subtitle, /in the library/);
   });
 

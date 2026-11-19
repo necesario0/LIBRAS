@@ -95,7 +95,7 @@ describe("Digital ID", () => {
       id: ana.member.id,
       fullName: "Ana Cruz Santos",
       accountType: "umak_student",
-      loans: { current: 0, limit: 3, loanPeriodDays: 7 },
+      loans: { current: 0, limit: 3, loanPeriodDays: 7, inLibraryOnly: false },
       clearance: { cleared: true, loansOut: [], unsettledFines: [] },
     });
   });
@@ -180,12 +180,12 @@ describe("Digital ID", () => {
     }
   });
 
-  for (const [accountType, limit, loanPeriodDays] of [
-    ["umak_student", 3, 7],
-    ["faculty", 3, 7],
-    ["ntp_employee", 3, 7],
-    ["visitor", 0, null],
-    ["alumni", 0, null],
+  for (const [accountType, limit, loanPeriodDays, inLibraryOnly] of [
+    ["umak_student", 3, 7, false],
+    ["faculty", 3, 7, false],
+    ["ntp_employee", 3, 7, false],
+    ["visitor", 3, null, true],
+    ["alumni", 3, null, true],
   ] as const) {
     it(`gives a ${accountType} Member a Digital ID the desk identifies with their Loan Policy limit`, async () => {
       const member = await createTestMemberOfType(api, accountType);
@@ -197,7 +197,7 @@ describe("Digital ID", () => {
         id: member.member.id,
         fullName: "Cobby Baldonado",
         accountType,
-        loans: { current: 0, limit, loanPeriodDays },
+        loans: { current: 0, limit, loanPeriodDays, inLibraryOnly },
         clearance: { cleared: true, loansOut: [], unsettledFines: [] },
       });
     });
@@ -244,14 +244,14 @@ describe("Loan Policy", () => {
 
   it("has a row for every Account Type, with the placeholder policy", async () => {
     const { rows } = await api.db.query(
-      "select account_type, loan_limit, loan_period_days from public.loan_policies order by account_type",
+      "select account_type, loan_limit, loan_period_days, in_library_only from public.loan_policies order by account_type",
     );
     assert.deepEqual(rows, [
-      { account_type: "umak_student", loan_limit: 3, loan_period_days: 7 },
-      { account_type: "faculty", loan_limit: 3, loan_period_days: 7 },
-      { account_type: "ntp_employee", loan_limit: 3, loan_period_days: 7 },
-      { account_type: "visitor", loan_limit: 0, loan_period_days: null },
-      { account_type: "alumni", loan_limit: 0, loan_period_days: null },
+      { account_type: "umak_student", loan_limit: 3, loan_period_days: 7, in_library_only: false },
+      { account_type: "faculty", loan_limit: 3, loan_period_days: 7, in_library_only: false },
+      { account_type: "ntp_employee", loan_limit: 3, loan_period_days: 7, in_library_only: false },
+      { account_type: "visitor", loan_limit: 3, loan_period_days: null, in_library_only: true },
+      { account_type: "alumni", loan_limit: 3, loan_period_days: null, in_library_only: true },
     ]);
   });
 });

@@ -116,12 +116,15 @@ appId: ph.edu.umak.libras
     id: profile-help
 - extendedWaitUntil:
     visible:
-      id: help-cannot-borrow
+      id: help-policy
     timeout: 15000
 - assertVisible: "LOAN POLICY FOR VISITOR"
-- assertVisible: "Borrowing"
-- assertVisible: "Not available"
-- assertVisible: "Your account type cannot borrow books.*"
-- assertNotVisible: "Late Fine"
-- assertNotVisible: "Books at a time"
+- assertVisible: "Books at a time"
+- assertVisible: "3"
+- assertVisible: "In-library use only \\(same day\\)"
+- assertVisible: "Not allowed"
+- assertVisible: "Late Fine"
+- assertVisible: "PHP 5 a day, up to PHP 300 per Loan"
+- assertNotVisible:
+    id: help-cannot-borrow
 - takeScreenshot: help-visitor

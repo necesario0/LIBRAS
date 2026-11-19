@@ -163,12 +163,17 @@ appId: ph.edu.umak.libras
       id: book-sheet
     timeout: 15000
 - assertVisible: "2 of 3 available"
-- assertVisible:
+- scrollUntilVisible:
+    element:
+      id: book-borrow
+    direction: DOWN
+    timeout: 15000
+- assertVisible: ".*In-library use only.*"
+- assertNotVisible:
     id: cannot-borrow-note
-- assertVisible: "Visitor accounts cannot borrow"
 - takeScreenshot: book-visitor
 
-# Dragging the grabber up expands the Book sheet to fullscreen; dragging down returns to default, then closes.
+# Dragging the grabber up expands the Book sheet to fullscreen; dragging partway down returns to default, then swiping down closes.
 - swipe:
     from:
       id: book-grabber
@@ -179,9 +184,9 @@ appId: ph.edu.umak.libras
     timeout: 5000
 - takeScreenshot: book-fullscreen
 - swipe:
-    from:
-      id: book-grabber
-    direction: DOWN
+    start: 50%, 8%
+    end: 50%, 45%
+    duration: 500
 - extendedWaitUntil:
     visible:
       id: book-backdrop

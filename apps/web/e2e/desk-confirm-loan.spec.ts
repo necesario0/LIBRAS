@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { LOAN_MESSAGES, RETURN_MESSAGES, SCAN_MESSAGES } from "@libras/shared";
+import { LOAN_MESSAGES, RETURN_MESSAGES, SCAN_MESSAGES, formatLoanDueAt, inLibraryLoanDueAt, isWithinLibraryHours } from "@libras/shared";
 import { createDeskFixtures, scan, signInAtTheDesk } from "./desk-fixtures.ts";
 import type { DeskTestCopy } from "./desk-fixtures.ts";
 
@@ -107,15 +107,23 @@ test("a refused Loan shows its reason and keeps the Member at the desk", async (
   await page.screenshot({ path: test.info().outputPath("desk-loan-limit.png") });
   expect(await loansOf(ben)).toHaveLength(3);
 
-  // A Visitor cannot borrow.
+  // A Visitor borrows for in-library use only during library hours (same-day closing cutoff).
   const vida = await createMember("visitor", "Vida", "Cruz");
   await scan(page, await codeOnThePhoneOf(vida));
   const vidasCard = page.getByRole("region", { name: "Vida Cruz" });
-  await expect(vidasCard.getByTestId("desk-member-loans")).toHaveText("Cannot borrow");
+  await expect(vidasCard.getByTestId("desk-member-loans")).toHaveText("0 of 3");
+  await expect(vidasCard).toContainText("In-library only, same day");
   await scan(page, five.barcode);
-  await expect(alert).toHaveText(LOAN_MESSAGES.cannotBorrow);
-  await expect(vidasCard).toBeVisible();
-  await page.screenshot({ path: test.info().outputPath("desk-loan-cannot-borrow.png") });
+  const openDue = inLibraryLoanDueAt(new Date());
+  if (isWithinLibraryHours(new Date()) && openDue !== null) {
+    await expect(page.getByTestId("desk-loan-due")).toHaveText(formatLoanDueAt(openDue.toISOString()));
+    await expect(vidasCard.getByTestId("desk-member-loans")).toHaveText("1 of 3");
+    await page.screenshot({ path: test.info().outputPath("desk-loan-visitor-in-library.png") });
+  } else {
+    await expect(alert).toHaveText(LOAN_MESSAGES.libraryClosed);
+    await expect(vidasCard.getByTestId("desk-member-loans")).toHaveText("0 of 3");
+    await page.screenshot({ path: test.info().outputPath("desk-loan-visitor-closed.png") });
+  }
 });
 
 test("a Loan to a Member with an overdue Loan is refused with the reason, and the Member stays at the desk", async ({ page }) => {

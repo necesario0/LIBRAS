@@ -189,21 +189,22 @@ appId: ph.edu.umak.libras
 - tapOn:
     id: sign-in-continue
 
-# A Visitor cannot borrow (a loan limit of zero): the tab is "Saved", with Saved books and no segments.
+# A Visitor borrows in-library only: My Books shows Loans and Saved, and no Holds.
 - extendedWaitUntil:
-    visible: "Saved"
+    visible: "My Books"
     timeout: 20000
-- assertNotVisible: "My Books"
 - runFlow: subflows/leave-search.yaml
 - tapOn:
     id: tab-my-books
 - extendedWaitUntil:
     visible:
-      id: saved-empty
+      id: loans-empty
     timeout: 15000
-- assertVisible: "Saved books"
-- assertNotVisible:
+- assertVisible: "My Books"
+- assertVisible:
     id: my-books-loans
+- assertVisible:
+    id: my-books-saved
 - assertNotVisible:
     id: my-books-holds
 - takeScreenshot: holds-visitor-saved
@@ -228,7 +229,7 @@ appId: ph.edu.umak.libras
     timeout: 15000
 - assertVisible: "None available"
 - assertVisible:
-    id: cannot-borrow-note
+    id: in-library-unavailable-note
 - assertNotVisible:
     id: hold-action
 - assertNotVisible:

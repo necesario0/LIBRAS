@@ -1,4 +1,4 @@
-import { formatLibraryDate } from "@libras/shared";
+import { formatLoanDueAt } from "@libras/shared";
 import type { DeskLoan } from "@libras/shared";
 
 /** The Loan the desk has just confirmed: which Book and Copy went out, and the day it is due. */
@@ -15,7 +15,7 @@ export function LoanNotice({ loan }: { loan: DeskLoan }) {
       <div className="loan-notice__due">
         <span className="loan-notice__due-label">Due</span>
         <span className="loan-notice__due-date" data-testid="desk-loan-due">
-          {formatLibraryDate(loan.dueAt)}
+          {formatLoanDueAt(loan.dueAt)}
         </span>
       </div>
     </section>

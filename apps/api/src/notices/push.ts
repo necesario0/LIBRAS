@@ -1,4 +1,4 @@
-import { formatLibraryDate } from "@libras/shared";
+import { formatLoanDueAt } from "@libras/shared";
 import { pushEvents } from "../push/index.ts";
 import type { PushContent, PushDeps, PushEvent } from "../push/index.ts";
 import { dueWhen } from "./email.ts";
@@ -24,7 +24,7 @@ export function dueTomorrowPush(loans: readonly NotifiedLoan[], now: Date): Push
   const day = when.size === 1 ? [...when][0] : "soon";
   const [only] = loans;
   if (loans.length === 1 && only) {
-    return { title: `Your Loan is due ${day}`, body: `${titles(loans)} is due ${day}, ${formatLibraryDate(only.dueAt.toISOString())}.` };
+    return { title: `Your Loan is due ${day}`, body: `${titles(loans)} is due ${day}, ${formatLoanDueAt(only.dueAt.toISOString())}.` };
   }
   return { title: `Your Loans are due ${day}`, body: `${titles(loans)} are due ${day}.` };
 }
@@ -35,7 +35,7 @@ export function nowOverduePush(loans: readonly NotifiedLoan[]): PushContent {
   if (loans.length === 1 && only) {
     return {
       title: "Your Loan is overdue",
-      body: `${titles(loans)} was due on ${formatLibraryDate(only.dueAt.toISOString())}. Please return it to the library desk.`,
+      body: `${titles(loans)} was due on ${formatLoanDueAt(only.dueAt.toISOString())}. Please return it to the library desk.`,
     };
   }
   return { title: "Your Loans are overdue", body: `${titles(loans)} are overdue. Please return them to the library desk.` };

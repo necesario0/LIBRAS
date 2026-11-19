@@ -60,7 +60,7 @@ describe("Confirming a Loan at the desk", () => {
       id: member.member.id,
       fullName: "Bea Cruz",
       accountType: "umak_student",
-      loans: { current: 1, limit: 3, loanPeriodDays: 7 },
+      loans: { current: 1, limit: 3, loanPeriodDays: 7, inLibraryOnly: false },
       // The Loan just confirmed is out and on time: the Member is not cleared until it is back.
       clearance: {
         cleared: false,
@@ -144,7 +144,7 @@ describe("Confirming a Loan at the desk", () => {
     }
 
     const again = await h.identify(lita, digitalId);
-    assert.deepEqual(((await again.json()) as IdentifyMemberResponse).member.loans, { current: 2, limit: 3, loanPeriodDays: 7 });
+    assert.deepEqual(((await again.json()) as IdentifyMemberResponse).member.loans, { current: 2, limit: 3, loanPeriodDays: 7, inLibraryOnly: false });
   });
 
   it("refuses a Loan beyond the Member's loan limit, and says why", async () => {
@@ -178,14 +178,44 @@ describe("Confirming a Loan at the desk", () => {
   }
 
   for (const accountType of ["visitor", "alumni"] as const) {
-    it(`refuses a Loan to a Member whose Account Type is ${accountType}: it cannot borrow`, async () => {
+    it(`lends to ${accountType} during weekday library hours until 7:00 PM the same day, with no Renewals`, async () => {
       const member = await createTestMemberOfType(h.api(), accountType);
-      const book = await h.addBook(`Not For ${accountType}`);
+      const book = await h.addBook(`In Library For ${accountType}`);
+      h.at("2026-11-20 10:00");
 
       const response = await confirm(member, (book.copies[0] as TestCopy).barcode);
 
-      assert.deepEqual(await refusal(response), { status: 403, code: "cannot_borrow", message: LOAN_MESSAGES.cannotBorrow });
-      assert.deepEqual(await h.myLoans(member), { loans: [], loanLimit: 0, loanPeriodDays: null });
+      assert.equal(response.status, 201, await response.clone().text());
+      const body = (await response.json()) as ConfirmLoanResponse;
+      assert.equal(body.loan.dueAt, "2026-11-20T11:00:00.000Z");
+      assert.deepEqual(body.member.loans, { current: 1, limit: 3, loanPeriodDays: null, inLibraryOnly: true });
+      const mine = await h.myLoans(member);
+      assert.equal(mine.loanLimit, 3);
+      assert.equal(mine.loanPeriodDays, null);
+      assert.equal(mine.inLibraryOnly, true);
+      assert.deepEqual(mine.loans[0]?.renewal, { renewable: false, reason: "not_renewable" });
+    });
+
+    it(`sets Saturday 12:00 PM due time and refuses outside library hours for ${accountType}`, async () => {
+      const member = await createTestMemberOfType(h.api(), accountType);
+      const book = await h.addBook(`Hours Check ${accountType}`, ["available", "available"]);
+
+      h.at("2026-11-21 09:00");
+      const sat = await confirm(member, (book.copies[0] as TestCopy).barcode);
+      assert.equal(sat.status, 201);
+      assert.equal(((await sat.json()) as ConfirmLoanResponse).loan.dueAt, "2026-11-21T04:00:00.000Z");
+
+      // After closing on Saturday, Sunday, and after closing on a weekday are refused with library_closed.
+      for (const closedTime of ["2026-11-21 12:00", "2026-11-22 10:00", "2026-11-20 19:00", "2026-11-20 07:59"]) {
+        h.at(closedTime);
+        const refused = await confirm(member, (book.copies[1] as TestCopy).barcode);
+        assert.deepEqual(await refusal(refused), { status: 409, code: "library_closed", message: LOAN_MESSAGES.libraryClosed });
+      }
+      // Once closing passes on Saturday, the open loan becomes overdue and starts accruing the standard Fine.
+      h.at("2026-11-21 12:01");
+      const [loan] = await h.loansOf(member);
+      assert.equal(loan?.overdue, true);
+      assert.equal(loan?.fine?.amountCentavos, 500);
     });
   }
 
@@ -442,8 +472,8 @@ describe("The desk session: one scan of the Digital ID lends every Copy of the v
     assert.equal((await refusal(await h.lendWith(lita, deskSession, d.barcode))).code, "loan_limit_reached");
     assert.equal((await refusal(await h.lendWith(lita, deskSession, a.barcode))).code, "loan_limit_reached");
     const visitorSession = await h.deskSessionFor(visitor, lita);
-    assert.equal((await refusal(await h.lendWith(lita, visitorSession, setAside.barcode))).code, "cannot_borrow");
-    assert.equal((await refusal(await h.lendWith(lita, visitorSession, a.barcode))).code, "cannot_borrow");
+    assert.equal((await refusal(await h.lendWith(lita, visitorSession, setAside.barcode))).code, "copy_set_aside");
+    assert.equal((await refusal(await h.lendWith(lita, visitorSession, a.barcode))).code, "copy_on_loan");
   });
 
   it("keeps its token out of PostgreSQL's reach for Members and Librarians", async () => {

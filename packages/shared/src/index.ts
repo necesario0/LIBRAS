@@ -46,9 +46,20 @@ export {
   UMAK_EMAIL_DOMAIN,
   accountTypeSchema,
   canBorrow,
+  canPlaceHold,
+  isInLibraryOnlyAccount,
   isUmakEmail,
   requiresUmakEmail,
 } from "./accounts.ts";
+export {
+  LIBRARY_HOURS_SUMMARY,
+  SATURDAY_HOURS,
+  WEEKDAY_HOURS,
+  inLibraryLoanDueAt,
+  isWithinLibraryHours,
+  libraryHoursOn,
+} from "./library-hours.ts";
+export type { DailySchedule, LibraryHoursWindow } from "./library-hours.ts";
 export type { AccountType } from "./accounts.ts";
 export { memberCollege, memberFullName } from "./members.ts";
 export { loanPolicyHelp } from "./loan-policy-help.ts";
@@ -192,6 +203,9 @@ export {
   formatLibraryDate,
   formatLibraryDateTime,
   formatLibraryDay,
+  formatLibraryTime,
+  formatLoanDueAt,
+  hasExactDueTime,
   libraryDaysBetween,
   isCurrentLoan,
   isLoanOverdue,

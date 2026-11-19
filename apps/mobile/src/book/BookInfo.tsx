@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from "react-native";
-import { ACCOUNT_TYPE_LABELS, bookAvailabilityLabel, canBorrow } from "@libras/shared";
+import { ACCOUNT_TYPE_LABELS, bookAvailabilityLabel, canBorrow, isInLibraryOnlyAccount } from "@libras/shared";
 import type { AccountType, BookDetail } from "@libras/shared";
 import { BookCover } from "../components/BookCover";
 import { BookTexts } from "./BookTexts";
@@ -11,10 +11,7 @@ const COVER = { width: 112, height: 164 } as const;
 /** A tag under the authors: the edition, the year, availability, or the Subject. */
 function Tag({ label, tone = "plain", testID }: { label: string; tone?: "plain" | "available" | "none" | "subject"; testID: string }) {
   return (
-    <View
-      style={[styles.tag, tone === "available" && styles.availableTag, tone === "none" && styles.noneTag, tone === "subject" && styles.subjectTag]}
-      testID={testID}
-    >
+    <View style={[styles.tag, tone === "available" && styles.availableTag, tone === "none" && styles.noneTag, tone === "subject" && styles.subjectTag]}>
       <Text
         style={[
           styles.tagText,
@@ -22,6 +19,7 @@ function Tag({ label, tone = "plain", testID }: { label: string; tone?: "plain" 
           tone === "none" && styles.noneText,
           tone === "subject" && styles.subjectText,
         ]}
+        testID={testID}
       >
         {label}
       </Text>
@@ -81,7 +79,7 @@ export function BookInfo({ book, accountType }: { book: BookDetail; accountType:
 
       <BookTexts book={book} />
 
-      {canBorrow(accountType) ? null : (
+      {!canBorrow(accountType) ? (
         <View style={styles.note} testID="cannot-borrow-note">
           <Text style={styles.noteTitle} accessibilityRole="header">
             {`${ACCOUNT_TYPE_LABELS[accountType]} accounts cannot borrow`}
@@ -90,7 +88,16 @@ export function BookInfo({ book, accountType }: { book: BookDetail; accountType:
             You can look at every book and see which Copies are available, to plan a visit to the library. Borrowing is for UMAK Students, Faculty and NTP / Employees.
           </Text>
         </View>
-      )}
+      ) : isInLibraryOnlyAccount(accountType) && book.availableCopies === 0 ? (
+        <View style={styles.note} testID="in-library-unavailable-note">
+          <Text style={styles.noteTitle} accessibilityRole="header">
+            {`${ACCOUNT_TYPE_LABELS[accountType]} in-library borrowing`}
+          </Text>
+          <Text style={styles.noteBody}>
+            No Copy is available on the shelf right now. You can save this Book and borrow it at the desk for in-library reading once a Copy is returned.
+          </Text>
+        </View>
+      ) : null}
     </>
   );
 }

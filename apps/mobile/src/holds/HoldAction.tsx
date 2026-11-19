@@ -1,7 +1,7 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { HOLD_STATUS_LABELS, canBorrow, formatLibraryDateTime, goodStandingNotice } from "@libras/shared";
+import { HOLD_STATUS_LABELS, canPlaceHold, formatLibraryDateTime, goodStandingNotice } from "@libras/shared";
 import type { AccountType, BookDetail, GoodStanding } from "@libras/shared";
 import { useAuth } from "../auth/AuthContext";
 import { Button } from "../components/Button";
@@ -33,7 +33,7 @@ export function HoldAction({
   const [placing, setPlacing] = useState(false);
   const [failure, setFailure] = useState<string | undefined>(undefined);
 
-  if (!canBorrow(accountType) || book.availableCopies > 0) return null;
+  if (!canPlaceHold(accountType) || book.availableCopies > 0) return null;
   if (state.status === "loading") return null;
 
   const existing = state.status === "loaded" ? activeHolds(state.holds).find((hold) => hold.bookId === book.id) : undefined;

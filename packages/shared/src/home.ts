@@ -37,7 +37,7 @@ export interface HomeResponse {
 export type HomeShelfScope =
   | { kind: "new_arrivals" }
   | { kind: "popular"; college: string | null }
-  | { kind: "available_now"; subject: Subject | null; canBorrow: boolean };
+  | { kind: "available_now"; subject: Subject | null; canBorrow: boolean; inLibraryOnly?: boolean };
 
 /** The heading and the explanation under it, in the approved Tier 3 preview's words. */
 export function homeShelfCopy(scope: HomeShelfScope): { title: string; subtitle: string } {
@@ -52,7 +52,11 @@ export function homeShelfCopy(scope: HomeShelfScope): { title: string; subtitle:
       if (scope.subject !== null) return { title: `Available now in ${scope.subject}`, subtitle: "Your top Subject, from what you have borrowed" };
       return {
         title: "On the shelf now",
-        subtitle: scope.canBorrow ? "You can borrow these today" : "You can read these in the library today",
+        subtitle: !scope.canBorrow
+          ? "You can read these in the library today"
+          : scope.inLibraryOnly
+            ? "You can borrow these for in-library use today"
+            : "You can borrow these today",
       };
   }
 }

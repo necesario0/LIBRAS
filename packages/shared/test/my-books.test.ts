@@ -65,7 +65,12 @@ describe("what needs the Member on My Books", () => {
     assert.equal(myBooksAttention({ loans: [loan({ dueDay: "2026-11-19" })], holds: [], now: pastMidnight }).loans, false);
   });
 
-  it("is not a Loan due today or later than tomorrow", () => {
+  it("is the Loans when an in-library Loan is due at closing today", () => {
+    const inLibrary = { ...loan({ dueDay: "2026-11-18" }), dueAt: "2026-11-18T11:00:00.000Z" };
+    assert.deepEqual(myBooksAttention({ loans: [inLibrary], holds: [], now: NOW }), { loans: true, holds: false });
+  });
+
+  it("is not a multi-day Loan due today or later than tomorrow", () => {
     const loans = [loan({ dueDay: "2026-11-18" }), loan({ dueDay: "2026-11-20" }), loan({ dueDay: "2026-11-25" })];
     assert.deepEqual(myBooksAttention({ loans, holds: [], now: NOW }), { loans: false, holds: false });
   });
@@ -93,6 +98,10 @@ describe("what needs the Member on My Books", () => {
 describe("the segment My Books opens on", () => {
   it("is Holds when a Hold is ready for pickup", () => {
     assert.equal(myBooksStartSegment([hold("waiting"), hold("ready")]), "holds");
+  });
+
+  it("is Loans for in-library-only Members even when a ready Hold row exists", () => {
+    assert.equal(myBooksStartSegment([hold("ready")], { inLibraryOnly: true }), "loans");
   });
 
   it("is Loans otherwise", () => {
