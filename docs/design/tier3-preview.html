@@ -1201,7 +1201,7 @@ button { cursor: pointer; }
                 ${D.linkKind === "book" ? `<input id="d-link" type="text" placeholder="Search the catalog by title or call number" value="${h(D.link)}" aria-label="Book"><span class="help">Adds a View book button under the poster.</span>` : ""}
                 ${D.linkKind === "web" ? `<input id="d-link" type="text" placeholder="https://" value="${h(D.link)}" aria-label="Web address"><span class="help">Adds an Open link button that names the site. It opens in the Member's own browser. https addresses only.</span>` : ""}
               </div>
-              <div class="dates"><div class="fl"><label for="d-start">Show from</label><input id="d-start" type="date" value="${D.start}"></div><div class="fl"><label for="d-end">Until</label><input id="d-end" type="date" value="${D.end}"></div></div>
+              <div class="dates"><div class="fl"><label for="d-start">Show from</label><input id="d-start" type="date" value="${h(D.start)}"></div><div class="fl"><label for="d-end">Until</label><input id="d-end" type="date" value="${h(D.end)}"></div></div>
               <div id="d-check"></div>
             </div>
             <div style="display:flex;flex-direction:column;gap:10px">
