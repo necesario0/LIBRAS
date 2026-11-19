@@ -1,7 +1,8 @@
 // What Home shows a Member besides the search bar. `GET /home` answers with
-// all of it, so the Announcement (a later ticket) joins the shelves in the
-// same response and the app loads Home with one call.
+// all of it, the running Announcement and the shelves, so the app loads Home
+// with one call.
 
+import type { MemberAnnouncement } from "./announcements.ts";
 import type { BookSearchResult } from "./catalog.ts";
 import { SUBJECTS } from "./subjects.ts";
 import type { Subject } from "./subjects.ts";
@@ -27,6 +28,8 @@ export interface HomeShelf {
 
 /** The body of `GET /home`. */
 export interface HomeResponse {
+  /** The Announcement running now, or null: a Member never receives a scheduled, past or ended one. */
+  announcement: MemberAnnouncement | null;
   shelves: HomeShelf[];
 }
 
