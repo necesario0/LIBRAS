@@ -231,3 +231,13 @@ export type {
   LibraryDay,
   ParsedAnnouncementDetails,
 } from "./announcements.ts";
+export { pickSuggestions } from "./search/suggestions.ts";
+export type { CatalogSuggestion, SuggestionSource } from "./search/suggestions.ts";
+export { RECENT_SEARCHES_LIMIT, addRecentSearch, removeRecentSearch } from "./recent-searches.ts";
+export {
+  CATALOG_SUGGEST_LIMIT,
+  CATALOG_SUGGEST_MESSAGES,
+  CATALOG_SUGGEST_MIN_LENGTH,
+  catalogSuggestQuerySchema,
+} from "./catalog.ts";
+export type { CatalogSuggestionsResponse } from "./catalog.ts";

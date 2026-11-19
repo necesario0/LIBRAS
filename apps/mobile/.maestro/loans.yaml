@@ -40,6 +40,7 @@ appId: ph.edu.umak.libras
     id: sign-in-continue
 
 # Home has no Loans, Holds or Digital ID cards: those are tabs now. No bell, no menu.
+- runFlow: subflows/leave-search.yaml
 - extendedWaitUntil:
     visible:
       id: tab-my-books
@@ -51,6 +52,7 @@ appId: ph.edu.umak.libras
 - takeScreenshot: loans-home
 
 # With no Loans, the Loans segment of My Books says so, and nothing earns a dot.
+- runFlow: subflows/leave-search.yaml
 - tapOn:
     id: tab-my-books
 - extendedWaitUntil:
@@ -58,16 +60,19 @@ appId: ph.edu.umak.libras
       id: loans-empty
     timeout: 15000
 - assertVisible: "No Loans yet"
+- runFlow: subflows/leave-search.yaml
 - assertNotVisible:
     id: tab-my-books-dot
 - takeScreenshot: loans-list-empty
+- runFlow: subflows/leave-search.yaml
 - tapOn:
     id: tab-home
 
 # A Book with an available Copy has the Borrow action.
-- tapOn:
-    id: search-input
-- inputText: ${output.borrowWord}
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: ${output.borrowWord}
 - extendedWaitUntil:
     visible: ${output.borrowTitle}
     timeout: 15000
@@ -106,12 +111,14 @@ appId: ph.edu.umak.libras
     optional: true
 - assertVisible:
     id: digital-id-code
+- runFlow: subflows/leave-search.yaml
 - tapOn:
     id: tab-my-books
 - extendedWaitUntil:
     visible:
       id: loans-empty
     timeout: 15000
+- runFlow: subflows/leave-search.yaml
 - tapOn:
     id: tab-home
 - extendedWaitUntil:
@@ -119,11 +126,10 @@ appId: ph.edu.umak.libras
       id: search-results
     timeout: 10000
 - tapOn:
-    id: search-input
-- eraseText: 40
-- hideKeyboard
+    id: search-cancel
 
 # The Member shows the Digital ID at the desk, and the Librarian confirms the Loan.
+- runFlow: subflows/leave-search.yaml
 - tapOn:
     id: tab-digital-id
 - extendedWaitUntil:
@@ -213,6 +219,7 @@ appId: ph.edu.umak.libras
 - takeScreenshot: loans-renewed
 
 # A Loan due in two weeks earns no dot.
+- runFlow: subflows/leave-search.yaml
 - assertNotVisible:
     id: tab-my-books-dot
 - assertNotVisible:
@@ -221,8 +228,10 @@ appId: ph.edu.umak.libras
 # A second Loan, of a Book nobody waits for yet, can be renewed. It is due
 # tomorrow: the My Books tab and its Loans segment get a dot.
 - runScript: scripts/wanted-loan.js
+- runFlow: subflows/leave-search.yaml
 - tapOn:
     id: tab-home
+- runFlow: subflows/leave-search.yaml
 - tapOn:
     id: tab-my-books
 - extendedWaitUntil:
@@ -231,6 +240,7 @@ appId: ph.edu.umak.libras
     timeout: 15000
 - assertVisible: "Current - 2 of 3"
 - assertVisible: ${output.wantedTitle}
+- runFlow: subflows/leave-search.yaml
 - assertVisible:
     id: tab-my-books-dot
 - assertVisible:
@@ -257,14 +267,16 @@ appId: ph.edu.umak.libras
 - assertNotVisible:
     id: loan-renew
 - takeScreenshot: loans-renew-refused
+- runFlow: subflows/leave-search.yaml
 - tapOn:
     id: tab-home
 
 # That Book's only Copy is out with this Member: a Hold on it is refused, with
 # the reason, because their own return would set the Copy aside for them.
-- tapOn:
-    id: search-input
-- inputText: ${output.wantedWord}
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: ${output.wantedWord}
 - extendedWaitUntil:
     visible: ${output.wantedTitle}
     timeout: 15000
@@ -288,15 +300,14 @@ appId: ph.edu.umak.libras
       id: search-results
     timeout: 10000
 - tapOn:
-    id: search-input
-- eraseText: 40
-- hideKeyboard
+    id: search-cancel
 
 # A Loan that is past its due date is marked in the Loans segment with its
 # Fine so far, and cannot be renewed. (It was lent ten days ago, before the
 # Member had anything overdue: a Member with an overdue Loan is not in Good
 # standing and is lent nothing more.)
 - runScript: scripts/overdue-loan.js
+- runFlow: subflows/leave-search.yaml
 - tapOn:
     id: tab-my-books
 - extendedWaitUntil:
@@ -313,17 +324,20 @@ appId: ph.edu.umak.libras
     id: loan-fine
     text: "Fine so far: PHP 15 \\(3 days late\\)"
 - assertVisible: "Overdue Loans cannot be renewed. Please return it to the library desk."
+- runFlow: subflows/leave-search.yaml
 - assertVisible:
     id: tab-my-books-dot
 - takeScreenshot: loans-list-overdue
+- runFlow: subflows/leave-search.yaml
 - tapOn:
     id: tab-home
 
 # With an overdue Loan the Member is not in Good standing. The Book page says
 # so in place of Borrow (the Book has one Copy fewer on the shelf now) ...
-- tapOn:
-    id: search-input
-- inputText: ${output.borrowWord}
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: ${output.borrowWord}
 - extendedWaitUntil:
     visible: ${output.borrowTitle}
     timeout: 15000
@@ -345,10 +359,10 @@ appId: ph.edu.umak.libras
     visible:
       id: search-results
     timeout: 10000
-- tapOn:
-    id: search-input
-- eraseText: 40
-- inputText: ${output.lateWord}
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: ${output.lateWord}
 - extendedWaitUntil:
     visible: ${output.lateTitle}
     timeout: 15000

@@ -32,11 +32,12 @@ appId: ph.edu.umak.libras
     id: sign-in-continue
 - extendedWaitUntil:
     visible:
-      id: search-input
+      id: search-(open|input)
     timeout: 20000
-- tapOn:
-    id: search-input
-- inputText: ${output.word}
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: ${output.word}
 - extendedWaitUntil:
     visible: ${output.title}.*
     timeout: 15000
@@ -74,10 +75,10 @@ appId: ph.edu.umak.libras
     id: book-sheet
 
 # A Book with no Copy available says so.
-- tapOn:
-    id: search-input
-- eraseText: 40
-- inputText: ${output.noneWord}
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: ${output.noneWord}
 - extendedWaitUntil:
     visible: ${output.noneTitle}
     timeout: 15000
@@ -98,10 +99,10 @@ appId: ph.edu.umak.libras
 # A real catalog title that wraps over several lines, with three authors: every
 # line shows, and the tags sit below the authors (the screenshot shows nothing
 # overlaps; Maestro cannot see an overlap).
-- tapOn:
-    id: search-input
-- eraseText: 40
-- inputText: ${output.longWord}
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: ${output.longWord}
 - extendedWaitUntil:
     visible: ${output.longTitle}.*
     timeout: 15000
@@ -122,6 +123,7 @@ appId: ph.edu.umak.libras
 - takeScreenshot: book-long-title
 - tapOn:
     id: book-close
+- runFlow: subflows/leave-search.yaml
 - runFlow: subflows/sign-out.yaml
 - extendedWaitUntil:
     visible: "SIGN  UP"
@@ -146,11 +148,12 @@ appId: ph.edu.umak.libras
     id: sign-in-continue
 - extendedWaitUntil:
     visible:
-      id: search-input
+      id: search-(open|input)
     timeout: 20000
-- tapOn:
-    id: search-input
-- inputText: ${output.word}
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: ${output.word}
 - extendedWaitUntil:
     visible: ${output.title}.*
     timeout: 15000

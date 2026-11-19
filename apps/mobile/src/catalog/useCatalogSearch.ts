@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { CatalogSearchResponse } from "@libras/shared";
 import { CATALOG_SEARCH_MAX_QUERY_LENGTH } from "@libras/shared";
 import { api } from "../api";
@@ -6,8 +6,8 @@ import { ApiError } from "../api/client";
 import type { AuthorizedRequest } from "../auth/authorized-request";
 
 /**
- * What the search area shows:
- * - `idle`: nothing typed yet;
+ * What the results area shows:
+ * - `idle`: nothing has been submitted (recent searches or suggestions show instead);
  * - `loading`: a search is running (the previous results stay visible under it);
  * - `results`: Books matched;
  * - `empty`: the search ran and nothing matched. Not a failure;
@@ -20,17 +20,14 @@ export type CatalogSearchState =
   | { status: "empty"; query: string }
   | { status: "error"; query: string; message: string };
 
-
-/** How long typing must pause before the search runs. */
-export const SEARCH_PAUSE_MS = 300;
-
 /**
- * Search as you type. Typing runs a search after a short pause; `submit` runs
- * it at once. An answer that arrives after a newer search started is dropped,
- * so a slow reply never replaces a fresher one.
+ * The catalog search of Home's search mode. Typing only edits `query` (and takes
+ * the results away, so suggestions show again); `submit` runs the search. An
+ * answer that arrives after a newer search started, or after the search was
+ * cleared, is dropped.
  */
 export function useCatalogSearch(request: AuthorizedRequest) {
-  const [query, setQuery] = useState("");
+  const [query, setQueryText] = useState("");
   const [state, setState] = useState<CatalogSearchState>({ status: "idle" });
   const latest = useRef(0);
   const requestRef = useRef(request);
@@ -62,22 +59,28 @@ export function useCatalogSearch(request: AuthorizedRequest) {
     }
   }, []);
 
-  useEffect(() => {
-    if (query.trim() === "") {
-      void run("");
-      return;
-    }
-    const timer = setTimeout(() => void run(query), SEARCH_PAUSE_MS);
-    return () => clearTimeout(timer);
-  }, [query, run]);
+  const setQuery = useCallback((text: string) => {
+    setQueryText(text);
+    // Editing the text ends the search that was shown: suggestions take its place.
+    latest.current++;
+    shown.current = undefined;
+    setState({ status: "idle" });
+  }, []);
 
   return {
     query,
     setQuery,
     state,
-    /** Searches now, without waiting for the pause (the keyboard's search key). */
-    submit: () => void run(query),
+    /** Whether a search has been submitted for the text in the bar (loading, results, no results or failure). */
+    submitted: state.status !== "idle",
+    /** Searches `text` (default: the text in the bar) now: the search key, a recent search or an author suggestion. */
+    submit: (text: string = query) => {
+      setQueryText(text);
+      void run(text);
+    },
     /** Runs the last search again (the "Try again" button). */
     retry: () => void run(query),
+    /** Empties the bar and drops any results (Cancel). */
+    reset: () => setQuery(""),
   };
 }

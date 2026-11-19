@@ -1,8 +1,11 @@
-import { buildCatalogIndexAsync } from "@libras/shared";
-import type { BookDetail, BookSearchResult, CatalogIndex, IndexedBook } from "@libras/shared";
+import { buildCatalogIndexAsync, pickSuggestions } from "@libras/shared";
+import type { BookDetail, BookSearchResult, CatalogIndex, CatalogSuggestion, IndexedBook } from "@libras/shared";
 import { withTransaction } from "../db.ts";
 import type { Database } from "../db.ts";
 import type { Logger } from "../logger.ts";
+
+/** How many best-matching Books suggestions are drawn from: enough for 5 distinct titles and authors. */
+const SUGGEST_CANDIDATES = 30;
 
 /** A built index and the catalog revision it was built from. */
 interface Snapshot {
@@ -80,6 +83,25 @@ export class CatalogSearch {
       return row ? [toResult(row)] : [];
     });
     return { total, results };
+  }
+
+  /**
+   * Up to `limit` suggestions for a query still being typed: Book titles (each with its Book id)
+   * and author names, from the same typo-tolerant index as `search`. Only the Books' titles and
+   * authors are read, so no accession number, barcode or ISBN can reach a suggestion.
+   */
+  async suggest(query: string, limit: number): Promise<CatalogSuggestion[]> {
+    const { index } = await this.#fresh();
+    const { hits } = index.suggest(query, { limit: SUGGEST_CANDIDATES });
+    if (hits.length === 0) return [];
+    const { rows } = await this.#db.query<{ id: string; title: string; authors: string[] }>(
+      "select id, title, authors from public.books where id = any($1::uuid[])",
+      [hits.map((hit) => hit.bookId)],
+    );
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    // Keep the ranking. A Book deleted since the index was built is simply left out.
+    const matched = hits.flatMap((hit) => byId.get(hit.bookId) ?? []);
+    return pickSuggestions(query, matched, limit);
   }
 
   /** These Books (in no particular order) with how many Copies each has and how many are available, read live. */

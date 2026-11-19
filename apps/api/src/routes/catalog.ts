@@ -1,6 +1,14 @@
 import { Router } from "express";
-import { BOOK_MESSAGES, CATALOG_SEARCH_MESSAGES, bookIdSchema, catalogSearchQuerySchema } from "@libras/shared";
-import type { BookDetailResponse, CatalogSearchResponse } from "@libras/shared";
+import {
+  BOOK_MESSAGES,
+  CATALOG_SEARCH_MESSAGES,
+  CATALOG_SUGGEST_LIMIT,
+  CATALOG_SUGGEST_MESSAGES,
+  bookIdSchema,
+  catalogSearchQuerySchema,
+  catalogSuggestQuerySchema,
+} from "@libras/shared";
+import type { BookDetailResponse, CatalogSearchResponse, CatalogSuggestionsResponse } from "@libras/shared";
 import type { AppDeps } from "../app.ts";
 import { requireMember } from "../auth/guards.ts";
 import type { CatalogSearch } from "../catalog/catalog-search.ts";
@@ -27,6 +35,18 @@ export function catalogRouter(deps: AppDeps, catalog: CatalogSearch): Router {
     const { q, limit } = parsed.data;
     const { total, results } = await catalog.search(q, limit);
     const body: CatalogSearchResponse = { query: q, total, results };
+    res.json(body);
+  });
+
+  router.get("/catalog/suggestions", async (req, res) => {
+    const parsed = catalogSuggestQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      const message = parsed.error.issues[0]?.message;
+      const known: string[] = [...Object.values(CATALOG_SUGGEST_MESSAGES), ...Object.values(CATALOG_SEARCH_MESSAGES)];
+      throw new AppError(400, "invalid_request", message !== undefined && known.includes(message) ? message : CATALOG_SUGGEST_MESSAGES.invalid);
+    }
+    const { q } = parsed.data;
+    const body: CatalogSuggestionsResponse = { query: q, suggestions: await catalog.suggest(q, CATALOG_SUGGEST_LIMIT) };
     res.json(body);
   });
 

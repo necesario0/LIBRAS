@@ -3,6 +3,7 @@ import type {
   BookDetailResponse,
   CancelHoldResponse,
   CatalogSearchResponse,
+  CatalogSuggestionsResponse,
   ChangePasswordRequest,
   CheckPasswordResetCodeRequest,
   ClearanceResponse,
@@ -108,6 +109,9 @@ export function createApiClient({ baseUrl, fetch: fetchImpl = fetch, timeoutMs =
         `/catalog/search?q=${encodeURIComponent(query)}${limit === undefined ? "" : `&limit=${limit}`}`,
         { headers: { Authorization: `Bearer ${accessToken}` } },
       ),
+    /** Up to 5 title and author suggestions for a query of at least 2 characters (`invalid_request`, 400, when it is shorter). */
+    suggestCatalog: (accessToken: string, query: string) =>
+      request<CatalogSuggestionsResponse>(`/catalog/suggestions?q=${encodeURIComponent(query)}`, { headers: bearer(accessToken) }),
     /** One Book with its details and how many Copies exist and are available. `book_not_found` (404) when there is no such Book. */
     getBook: (accessToken: string, id: string) =>
       request<BookDetailResponse>(`/catalog/books/${encodeURIComponent(id)}`, { headers: bearer(accessToken) }),

@@ -45,9 +45,11 @@ appId: ph.edu.umak.libras
     visible:
       id: profile-name
     timeout: 10000
+- runFlow: subflows/leave-search.yaml
 - assertVisible:
     id: tab-profile
     selected: true
+- runFlow: subflows/leave-search.yaml
 - assertVisible:
     id: tab-home
     selected: false
@@ -143,6 +145,7 @@ appId: ph.edu.umak.libras
 - takeScreenshot: profile-clearance-fine
 
 # The Loans segment says why the on-time Loan cannot be renewed, in place of Renew.
+- runFlow: subflows/leave-search.yaml
 - tapOn:
     id: tab-my-books
 - extendedWaitUntil:
@@ -154,17 +157,19 @@ appId: ph.edu.umak.libras
 - assertNotVisible:
     id: loan-renew
 - takeScreenshot: profile-loans-not-in-good-standing
+- runFlow: subflows/leave-search.yaml
 - tapOn:
     id: tab-home
 
 # The Book page says why in place of Place a Hold, on a Book with no Copy on the shelf.
 - extendedWaitUntil:
     visible:
-      id: search-input
+      id: search-(open|input)
     timeout: 15000
-- tapOn:
-    id: search-input
-- inputText: ${output.outWord}
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: ${output.outWord}
 - extendedWaitUntil:
     visible: ${output.outTitle}
     timeout: 15000
@@ -184,9 +189,8 @@ appId: ph.edu.umak.libras
       id: search-results
     timeout: 10000
 - tapOn:
-    id: search-input
-- eraseText: 40
-- hideKeyboard
+    id: search-cancel
+- runFlow: subflows/leave-search.yaml
 - tapOn:
     id: tab-profile
 - extendedWaitUntil:
@@ -245,11 +249,13 @@ appId: ph.edu.umak.libras
 - extendedWaitUntil:
     visible: "Hi, Cobby"
     timeout: 10000
+- runFlow: subflows/leave-search.yaml
 - assertVisible:
     id: tab-home
     selected: true
 
 # Signing out from the profile leaves every protected screen.
+- runFlow: subflows/leave-search.yaml
 - runFlow: subflows/sign-out.yaml
 - extendedWaitUntil:
     visible: "SIGN  UP"
