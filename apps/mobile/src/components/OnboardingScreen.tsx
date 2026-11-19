@@ -9,7 +9,6 @@ import { ConsentText } from "./ConsentText";
 import { KeyboardAvoiding } from "./KeyboardAvoiding";
 import { PopupFloorContext } from "./PopupFloor";
 import { StepProgress } from "./StepProgress";
-import { Wordmark } from "./Wordmark";
 
 /** True while the on-screen keyboard is up. */
 export function useKeyboardVisible(): boolean {
@@ -54,7 +53,6 @@ export function OnboardingScreen({ step, formGap, children }: OnboardingScreenPr
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Wordmark />
           <View style={styles.book}>
             <BookIllustration width={133} height={90} />
           </View>
@@ -81,7 +79,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.white },
   scroll: { flex: 1 },
   content: { flexGrow: 1, paddingBottom: spacing.lg },
-  book: { alignSelf: "center", marginTop: 21 },
+  book: { alignSelf: "center" },
   heading: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.heading,

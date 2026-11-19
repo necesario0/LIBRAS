@@ -8,7 +8,6 @@ import { colors, controlHeight, fontFamily, fontSize, lineHeightFor, radii, spac
 import { ConsentText } from "./ConsentText";
 import { KeyboardAvoiding } from "./KeyboardAvoiding";
 import { LoaderIcon } from "./icons";
-import { Wordmark } from "./Wordmark";
 
 /** Spins its child, like the loader in Figma frames 228 to 230. */
 function Spinner({ children }: { children: ReactNode }) {
@@ -100,7 +99,6 @@ export function CodeEntryScreen({ title, email, onSubmit, onResend, resendLabel,
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <Wordmark />
         <Text style={styles.title} accessibilityRole="header">
           {title}
         </Text>
@@ -176,7 +174,7 @@ const styles = StyleSheet.create({
     lineHeight: lineHeightFor(fontSize.subheading),
     color: colors.black,
     textAlign: "center",
-    marginTop: 83,
+    marginTop: spacing.xl,
     paddingHorizontal: spacing.xl,
   },
   panel: {

@@ -9,6 +9,8 @@ export const colors = {
   white: "#FFFFFF",
   /** Main text. */
   black: "#000000",
+  /** Wordmark ink (deep university navy). */
+  brandInk: "#111C4E",
   /** Primary action and brand blue (Figma "progress bar"). */
   primary: "#005DC3",
   /** Text field and card fill. */
@@ -88,6 +90,7 @@ export const fontFamily = {
   regular: "Montserrat_400Regular",
   medium: "Montserrat_500Medium",
   semiBold: "Montserrat_600SemiBold",
+  bold: "Montserrat_700Bold",
   extraLight: "Montserrat_200ExtraLight",
   /** The Book page's call number and its label (Figma: IBM Plex Mono and Roboto Mono). */
   monoLabel: "IBMPlexMono_400Regular",
@@ -217,6 +220,8 @@ export const radii = {
   iconRing: 32,
   /** The round logo of the wordmark (31 pt). */
   logo: 16,
+  /** The square gold accent dot beside the wordmark. */
+  wordmarkDot: 2,
   /** The terms checkbox of sign-up. */
   checkbox: 6,
   /** A radio button (24 pt). */

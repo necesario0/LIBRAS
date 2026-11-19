@@ -7,7 +7,6 @@ import { BookIllustration } from "../../src/components/BookIllustration";
 import { Button } from "../../src/components/Button";
 import { KeyboardAvoiding } from "../../src/components/KeyboardAvoiding";
 import { TextField } from "../../src/components/TextField";
-import { Wordmark } from "../../src/components/Wordmark";
 import { useScreenTop } from "../../src/hooks/useScreenTop";
 import { useForgotPassword } from "../../src/password/ForgotPasswordContext";
 import { check } from "../../src/sign-up/validate";
@@ -55,8 +54,7 @@ export default function ForgotPasswordEmailScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <Wordmark />
-        <View style={styles.book}>
+        <View>
           <BookIllustration width={173} height={117} />
         </View>
         <Text style={styles.title} accessibilityRole="header">
@@ -101,7 +99,6 @@ export default function ForgotPasswordEmailScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.white },
   content: { flexGrow: 1, alignItems: "center", paddingBottom: spacing.xl },
-  book: { marginTop: 17 },
   title: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.title,
