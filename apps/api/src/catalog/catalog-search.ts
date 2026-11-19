@@ -1,12 +1,13 @@
-import { MOST_BORROWED_WINDOW_DAYS, arrangeCatalogResults, buildCatalogIndexAsync, pickSuggestions } from "@libras/shared";
+import { MOST_BORROWED_WINDOW_DAYS, SUBJECTS, arrangeCatalogResults, buildCatalogIndexAsync, pickSuggestions, subjectFor } from "@libras/shared";
 import type {
   BookDetail,
   BookSearchResult,
   CatalogIndex,
-  CatalogSearchFilters,
+  CatalogSearchCriteria,
   CatalogSearchRow,
   CatalogSuggestion,
   IndexedBook,
+  Subject,
 } from "@libras/shared";
 import type { Clock } from "../clock.ts";
 import { withTransaction } from "../db.ts";
@@ -16,14 +17,16 @@ import type { Logger } from "../logger.ts";
 /** How many best-matching Books suggestions are drawn from: enough for 5 distinct titles and authors. */
 const SUGGEST_CANDIDATES = 30;
 
-/** A built index and the catalog revision it was built from. */
+/** A built index, the Subjects that have Books, and the catalog revision both were built from. */
 interface Snapshot {
   revision: bigint;
   index: CatalogIndex;
+  /** Worked out from the call numbers when the index is built (nothing is stored), in table order. */
+  subjects: Subject[];
 }
 
 export interface CatalogSearchOutcome {
-  /** Rows after folding and Available now, before `limit`. */
+  /** Rows after the Subject and Published filters, folding and Available now, before `limit`. */
   total: number;
   results: CatalogSearchRow[];
 }
@@ -87,12 +90,19 @@ export class CatalogSearch {
     return row && text ? { ...toResult(row), summary: text.summary, contents: text.contents } : undefined;
   }
 
+  /** The Subjects that have at least one Book, in table order, as of the current index. */
+  async subjects(): Promise<Subject[]> {
+    return (await this.#fresh()).subjects;
+  }
+
   /**
-   * The rows for `query`: editions of one work folded when `latestEditionOnly`, then only rows whose
-   * shown edition has a Copy on the shelf when `availableNow`, in the order `sort` asks for. At most
-   * `limit` rows; `total` counts them all.
+   * The rows for `query`: first only the Books in one of `subject` (when any is given) and published
+   * from `publishedFrom` to `publishedTo`; then editions of one work folded when `latestEditionOnly`
+   * (so a year filter can leave an older edition as the row); then only rows whose shown edition has
+   * a Copy on the shelf when `availableNow`, in the order `sort` asks for. At most `limit` rows;
+   * `total` counts them all.
    */
-  async search(query: string, { limit, ...filters }: CatalogSearchFilters & { limit: number }): Promise<CatalogSearchOutcome> {
+  async search(query: string, { limit, subject, publishedFrom, publishedTo, ...filters }: CatalogSearchCriteria): Promise<CatalogSearchOutcome> {
     const { index } = await this.#fresh();
     const { hits } = index.search(query);
     if (hits.length === 0) return { total: 0, results: [] };
@@ -103,8 +113,13 @@ export class CatalogSearch {
       filters.sort === "borrowed" ? this.#loansInWindow(ids) : undefined,
     ]);
     const byId = new Map(rows.map((row) => [row.id, toResult(row)]));
+    const subjects = new Set(subject);
+    const chosen = (book: BookSearchResult) =>
+      (subjects.size === 0 || (book.subject !== null && subjects.has(book.subject))) &&
+      (publishedFrom === undefined || (book.publicationYear !== null && book.publicationYear >= publishedFrom)) &&
+      (publishedTo === undefined || (book.publicationYear !== null && book.publicationYear <= publishedTo));
     // Best-match order. A Book deleted since the index was built is simply left out.
-    const ranked = ids.flatMap((id) => byId.get(id) ?? []);
+    const ranked = ids.flatMap((id) => byId.get(id) ?? []).filter(chosen);
     const arranged = arrangeCatalogResults(ranked, { ...filters, loansInWindow });
     return {
       total: arranged.length,
@@ -206,7 +221,12 @@ export class CatalogSearch {
       callNumber: row.lc_call_number,
       accessionNumbers: row.accession_numbers,
     }));
-    const built: Snapshot = { revision: snapshot.revision, index: await buildCatalogIndexAsync(indexed) };
+    const present = new Set(snapshot.books.map((row) => subjectFor(row.lc_call_number)));
+    const built: Snapshot = {
+      revision: snapshot.revision,
+      index: await buildCatalogIndexAsync(indexed),
+      subjects: SUBJECTS.filter((subject) => present.has(subject)),
+    };
     this.#current = built; // the atomic swap: one assignment
     this.#logger.info(`Catalog search index built: ${indexed.length} Books, ${built.index.tokenCount} words (revision ${built.revision})`);
     return built;
@@ -243,6 +263,7 @@ function toResult(row: BookRow): BookSearchResult {
     publicationYear: row.publication_year,
     isbn: row.isbn,
     lcCallNumber: row.lc_call_number,
+    subject: subjectFor(row.lc_call_number),
     availableCopies: row.available_copies,
     totalCopies: row.total_copies,
   };

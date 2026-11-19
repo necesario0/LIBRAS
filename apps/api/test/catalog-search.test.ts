@@ -24,14 +24,16 @@ describe("GET /catalog/search", () => {
     title: string,
     authors: string[],
     copyStatuses: CopyStatus[],
-    { edition = null, publicationYear = null }: { edition?: string | null; publicationYear?: number | null } = {},
+    {
+      edition = null,
+      publicationYear = null,
+      lcCallNumber = null,
+    }: { edition?: string | null; publicationYear?: number | null; lcCallNumber?: string | null } = {},
   ): Promise<string> {
-    const { rows } = await api.db.query("insert into public.books (title, authors, edition, publication_year) values ($1, $2, $3, $4) returning id", [
-      title,
-      authors,
-      edition,
-      publicationYear,
-    ]);
+    const { rows } = await api.db.query(
+      "insert into public.books (title, authors, edition, publication_year, lc_call_number) values ($1, $2, $3, $4, $5) returning id",
+      [title, authors, edition, publicationYear, lcCallNumber],
+    );
     const id: string = rows[0].id;
     bookIds.push(id);
     for (const status of copyStatuses) {
@@ -377,6 +379,111 @@ describe("GET /catalog/search", () => {
       await lend(close, 200);
       await lend(close, 365);
       assert.deepEqual(await rowIds(word, "&sort=borrowed", 3), [undated, exact, close]);
+    });
+  });
+
+  describe("Subject and Published filters", () => {
+    const word = uniqueWord("zf");
+    const Word = capitalize(word);
+    let algorithms = "";
+    let calculus = "";
+    let obligations = "";
+    let pamphlet = "";
+    let undatedLaw = "";
+    let networks3 = "";
+    let networks5 = "";
+
+    before(async () => {
+      algorithms = await addBook(`${Word} Algorithms`, ["Cormen, Thomas"], ["available"], { publicationYear: 2019, lcCallNumber: "QA76.9.A43 C67 2019" });
+      calculus = await addBook(`${Word} Calculus`, ["Leithold, Louis"], ["available"], { publicationYear: 2010, lcCallNumber: "QA303 .L42 2010" });
+      obligations = await addBook(`${Word} Obligations`, ["Paras, Edgardo"], ["available"], { publicationYear: 2022, lcCallNumber: "KPM1 .P37 2022" });
+      // No call number: no Subject.
+      pamphlet = await addBook(`${Word} Pamphlet`, ["Uno, Ana"], ["available"], { publicationYear: 2021 });
+      undatedLaw = await addBook(`${Word} Statutes`, ["Dos, Ben"], ["available"], { lcCallNumber: "KPM2 .D6" });
+      // Two editions of one work.
+      networks3 = await addBook(`${Word} Networks, 3rd ed.`, ["Tanen, Andrew"], ["available"], {
+        edition: "3rd ed.",
+        publicationYear: 2003,
+        lcCallNumber: "TK5105.5 .T36 2003",
+      });
+      networks5 = await addBook(`${Word} Networks, 5th ed.`, ["Tanen, Andrew"], ["available"], {
+        edition: "5th ed.",
+        publicationYear: 2011,
+        lcCallNumber: "TK5105.5 .T36 2011",
+      });
+      await resultsWithTotal(word, 7, "&latestEditionOnly=false");
+    });
+
+    const sorted = (ids: string[]) => [...ids].sort();
+    const withSubject = (subject: string) => `&subject=${encodeURIComponent(subject)}`;
+
+    it("gives each result the Subject of its call number, or none", async () => {
+      const body = await resultsWithTotal(word, 7, "&latestEditionOnly=false");
+      const subjectOf = new Map(body.results.map((row) => [row.id, row.subject]));
+      assert.equal(subjectOf.get(algorithms), "Computer Science");
+      assert.equal(subjectOf.get(calculus), "Mathematics");
+      assert.equal(subjectOf.get(obligations), "Law");
+      assert.equal(subjectOf.get(networks3), "Electrical and Electronics Engineering");
+      assert.equal(subjectOf.get(pamphlet), null);
+    });
+
+    it("keeps a Book with no Subject while no Subject filter is on", async () => {
+      assert.ok((await rowIds(word, "", 6)).includes(pamphlet));
+    });
+
+    it("narrows to one Subject, dropping Books with no Subject", async () => {
+      const body = await resultsWithTotal(word, 1, withSubject("Computer Science"));
+      assert.deepEqual([body.total, body.results.map((row) => row.id)], [1, [algorithms]]);
+    });
+
+    it("narrows to any of several Subjects", async () => {
+      const ids = await rowIds(word, `${withSubject("Computer Science")}${withSubject("Law")}`, 3);
+      assert.deepEqual(sorted(ids), sorted([algorithms, obligations, undatedLaw]));
+    });
+
+    it("answers with no rows for a Subject none of the matches has", async () => {
+      const response = await search(word, member.accessToken, withSubject("Maritime Studies"));
+      assert.equal(response.status, 200);
+      assert.deepEqual(await response.json(), { query: word, total: 0, results: [] });
+    });
+
+    it("narrows to Books published from a year, to a year, or between two, leaving out Books with no year", async () => {
+      assert.deepEqual(sorted(await rowIds(word, "&publishedFrom=2019", 3)), sorted([algorithms, pamphlet, obligations]));
+      assert.deepEqual(sorted(await rowIds(word, "&publishedTo=2010", 2)), sorted([calculus, networks3]));
+      // Both ends are included.
+      assert.deepEqual(sorted(await rowIds(word, "&publishedFrom=2010&publishedTo=2019", 3)), sorted([algorithms, calculus, networks5]));
+      assert.deepEqual(await rowIds(word, "&publishedFrom=2022&publishedTo=2022", 1), [obligations]);
+    });
+
+    it("combines the Subject filter and the years", async () => {
+      assert.deepEqual(await rowIds(word, `${withSubject("Law")}&publishedFrom=2020`, 1), [obligations]);
+    });
+
+    it("chooses Books before folding editions, so a year filter can make an older edition the row", async () => {
+      const folded = (await resultsWithTotal(word, 6)).results.find((row) => row.id === networks5);
+      assert.deepEqual(folded?.olderEditions.map((older) => older.id), [networks3]);
+
+      const body = await resultsWithTotal(word, 1, "&publishedTo=2005");
+      const row = body.results.find((result) => result.id === networks3);
+      assert.ok(row, "the 3rd edition is the row");
+      assert.deepEqual(row.olderEditions, []);
+      assert.ok(!body.results.some((result) => result.id === networks5));
+    });
+
+    it("refuses an unknown Subject, a year that is not a year, and a range that ends before it starts", async () => {
+      for (const extra of [
+        withSubject("Astrology"),
+        withSubject(""),
+        "&publishedFrom=abc",
+        "&publishedFrom=2020.5",
+        "&publishedTo=99999",
+        "&publishedFrom=2020&publishedTo=2010",
+      ]) {
+        const response = await search(word, member.accessToken, extra);
+        assert.equal(response.status, 400, extra);
+        const body = await response.json();
+        assert.deepEqual([body.error.code, body.error.message], ["invalid_request", "Check what you typed and try again."], extra);
+      }
     });
   });
 

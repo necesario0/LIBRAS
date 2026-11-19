@@ -1,10 +1,11 @@
-import { CATALOG_SORTS, CATALOG_SORT_LABELS } from "@libras/shared";
+import { CATALOG_SORTS, CATALOG_SORT_LABELS, activeFilterCount } from "@libras/shared";
 import type { CatalogSearchFilters, CatalogSort } from "@libras/shared";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import { BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { ReactNode } from "react";
-import { CheckIcon, ChevronDownIcon, SlidersIcon, SortIcon } from "../components/OutlineIcons";
+import { CheckIcon, ChevronDownIcon, CrossIcon, SlidersIcon, SortIcon } from "../components/OutlineIcons";
+import { publishedLabel } from "./FiltersSheet";
 import { colors, fontFamily, fontSize, popupMenuShadow, radii, spacing } from "../theme/tokens";
 
 /** The chips' height, and how far below their top the Sort menu opens. */
@@ -44,11 +45,26 @@ function Chip({
   );
 }
 
+/** One filter that is on, under the controls: tapping it turns that filter off. */
+function FilterChip({ label, onRemove, testID }: { label: string; onRemove: () => void; testID: string }) {
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={`Remove ${label}`} onPress={onRemove} style={styles.filterChip} testID={testID}>
+      <Text style={styles.filterChipText}>{label}</Text>
+      <CrossIcon color={colors.primary} size={14} />
+    </Pressable>
+  );
+}
+
 /**
  * The row under the search bar in search results (approved Tier 3 preview):
  * the Sort chip, which opens a menu of the four orders just under it; the
  * one-tap Available now chip; and the Filters chip, which opens the Filters
- * sheet. The menu closes on a choice, on the Sort chip, or on Android back.
+ * sheet and says how many of its filters are on. The menu closes on a choice,
+ * on the Sort chip, or on Android back.
+ *
+ * Under the row, each filter of the sheet that is on shows as a chip that
+ * removes it: each Subject, the Published years, and "All editions" when
+ * Latest edition only is off.
  *
  * The menu is drawn in place over the results (the row sits above them), so
  * the results area must not clip it.
@@ -60,10 +76,10 @@ export function SearchControls({
 }: {
   filters: CatalogSearchFilters;
   onChange: (change: Partial<CatalogSearchFilters>) => void;
-  /** Opens the Filters sheet. Until it exists the chip shows but does nothing. */
-  onOpenFilters?: () => void;
+  onOpenFilters: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const filterCount = activeFilterCount(filters);
 
   // Android back closes the menu first (Home's own handler, registered earlier, would leave search mode).
   useFocusEffect(
@@ -111,8 +127,36 @@ export function SearchControls({
           icon={filters.availableNow ? <CheckIcon color={colors.black} size={14} /> : undefined}
           testID="search-available-now"
         />
-        <Chip on={false} label="Filters" onPress={onOpenFilters} icon={<SlidersIcon color={colors.black} size={15} />} testID="search-filters" />
+        <Chip
+          on={filterCount > 0}
+          label={filterCount > 0 ? `Filters (${filterCount})` : "Filters"}
+          onPress={() => {
+            setMenuOpen(false);
+            onOpenFilters();
+          }}
+          icon={<SlidersIcon color={colors.black} size={15} />}
+          testID="search-filters"
+        />
       </ScrollView>
+
+      {filterCount > 0 ? (
+        <View style={styles.filterChips} testID="search-filter-chips">
+          {filters.subjects.map((subject) => (
+            <FilterChip
+              key={subject}
+              label={subject}
+              onRemove={() => onChange({ subjects: filters.subjects.filter((chosen) => chosen !== subject) })}
+              testID={`search-filter-subject-${subject}`}
+            />
+          ))}
+          {filters.published.kind === "any" ? null : (
+            <FilterChip label={publishedLabel(filters.published)} onRemove={() => onChange({ published: { kind: "any" } })} testID="search-filter-published" />
+          )}
+          {filters.latestEditionOnly ? null : (
+            <FilterChip label="All editions" onRemove={() => onChange({ latestEditionOnly: true })} testID="search-filter-all-editions" />
+          )}
+        </View>
+      ) : null}
 
       {menuOpen ? (
         <View style={styles.menu} accessibilityRole="menu" testID="search-sort-menu">
@@ -158,6 +202,18 @@ const styles = StyleSheet.create({
   },
   chipOn: { backgroundColor: colors.accent, borderColor: colors.black },
   chipText: { fontFamily: fontFamily.medium, fontSize: fontSize.caption, lineHeight: 16, color: colors.black },
+  filterChips: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 10 },
+  filterChip: {
+    height: 28,
+    borderRadius: radii.filterChip,
+    backgroundColor: colors.selected,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    paddingLeft: 10,
+    paddingRight: spacing.xs,
+  },
+  filterChipText: { fontFamily: fontFamily.medium, fontSize: fontSize.caption, lineHeight: 16, color: colors.primary },
   menu: {
     position: "absolute",
     top: MENU_TOP,

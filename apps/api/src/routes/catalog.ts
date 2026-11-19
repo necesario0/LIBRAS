@@ -8,7 +8,7 @@ import {
   catalogSearchQuerySchema,
   catalogSuggestQuerySchema,
 } from "@libras/shared";
-import type { BookDetailResponse, CatalogSearchResponse, CatalogSuggestionsResponse } from "@libras/shared";
+import type { BookDetailResponse, CatalogSearchResponse, CatalogSubjectsResponse, CatalogSuggestionsResponse } from "@libras/shared";
 import type { AppDeps } from "../app.ts";
 import { requireMember } from "../auth/guards.ts";
 import type { CatalogSearch } from "../catalog/catalog-search.ts";
@@ -47,6 +47,11 @@ export function catalogRouter(deps: AppDeps, catalog: CatalogSearch): Router {
     }
     const { q } = parsed.data;
     const body: CatalogSuggestionsResponse = { query: q, suggestions: await catalog.suggest(q, CATALOG_SUGGEST_LIMIT) };
+    res.json(body);
+  });
+
+  router.get("/catalog/subjects", async (_req, res) => {
+    const body: CatalogSubjectsResponse = { subjects: await catalog.subjects() };
     res.json(body);
   });
 

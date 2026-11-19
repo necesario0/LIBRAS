@@ -26,7 +26,7 @@ function Stat({ value, label }: { value: string; label: string }) {
 }
 
 /**
- * The body of the Book sheet (Figma 609:1066): call number, cover, title,
+ * The body of the Book sheet (Figma 609:1066): call number and Subject, cover, title,
  * authors, availability pill, the figures, details, and the note for an Account
  * Type that cannot borrow. The Figma genre tag, page count and description have
  * no field in the catalog yet, so they are not shown; the edition takes the
@@ -43,6 +43,12 @@ export function BookInfo({ book, accountType }: { book: BookDetail; accountType:
             <Text style={styles.callNumberText}>{book.lcCallNumber}</Text>
           </View>
         </View>
+      )}
+      {book.subject === null ? null : (
+        <Text style={styles.subject} testID="book-subject">
+          {"Subject: "}
+          <Text style={styles.subjectName}>{book.subject}</Text>
+        </Text>
       )}
 
       <View style={styles.header}>
@@ -118,6 +124,16 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   callNumberText: { fontFamily: fontFamily.mono, fontSize: fontSize.body, color: colors.black, letterSpacing: -0.64, textAlign: "center" },
+  subject: {
+    alignSelf: "center",
+    textAlign: "center",
+    marginTop: -spacing.md,
+    fontFamily: fontFamily.regular,
+    fontSize: fontSize.action,
+    lineHeight: 16,
+    color: colors.textBody,
+  },
+  subjectName: { fontFamily: fontFamily.medium, color: colors.black },
   header: { flexDirection: "row", alignItems: "center", gap: 9 },
   cover: {
     borderRadius: radii.cover,

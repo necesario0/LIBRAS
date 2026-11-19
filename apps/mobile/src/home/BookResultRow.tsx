@@ -19,8 +19,8 @@ export function availabilityLabel(book: Pick<BookSearchResult, "availableCopies"
 /**
  * One matched Book (the row of Figma Search C, node 1057:7346, as the approved
  * Tier 3 preview lays it out): a cover, the title with its edition, the authors,
- * the publication year, and a pill with how many Copies are available. Tapping
- * it opens the Book's page.
+ * the publication year and the Subject ("2019 · Computer Science"), and a pill
+ * with how many Copies are available. Tapping it opens the Book's page.
  */
 export function BookResultRow({ book, onPress }: { book: BookSearchResult; onPress: () => void }) {
   const available = book.availableCopies > 0;
@@ -35,9 +35,9 @@ export function BookResultRow({ book, onPress }: { book: BookSearchResult; onPre
         <Text style={styles.authors} numberOfLines={1}>
           {authorLine(book.authors)}
         </Text>
-        {book.publicationYear === null ? null : (
-          <Text style={styles.meta} testID="book-year">
-            {String(book.publicationYear)}
+        {book.publicationYear === null && book.subject === null ? null : (
+          <Text style={styles.meta} numberOfLines={1} testID="book-meta">
+            {[book.publicationYear === null ? null : String(book.publicationYear), book.subject].filter((part) => part !== null).join(" · ")}
           </Text>
         )}
       </View>

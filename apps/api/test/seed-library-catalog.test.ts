@@ -38,8 +38,9 @@ describe("seeding the library's catalog from its accession list", () => {
     return new Map(rows.map((row) => [row.accession_number, row]));
   };
 
+  /** Every edition as its own row: these tests look at Books, not at the folded rows Members see. */
   const search = async (q: string): Promise<CatalogSearchResponse> => {
-    const response = await fetch(`${api.baseUrl}/catalog/search?q=${encodeURIComponent(q)}`, {
+    const response = await fetch(`${api.baseUrl}/catalog/search?q=${encodeURIComponent(q)}&latestEditionOnly=false`, {
       headers: { authorization: `Bearer ${member.accessToken}` },
     });
     assert.equal(response.status, 200);

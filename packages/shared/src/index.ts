@@ -50,7 +50,7 @@ export {
   requiresUmakEmail,
 } from "./accounts.ts";
 export type { AccountType } from "./accounts.ts";
-export { memberFullName } from "./members.ts";
+export { memberCollege, memberFullName } from "./members.ts";
 export type {
   MemberMeResponse,
   MemberProfile,
@@ -137,22 +137,32 @@ export {
   CATALOG_SORT_LABELS,
   DEFAULT_CATALOG_SEARCH_FILTERS,
   MOST_BORROWED_WINDOW_DAYS,
+  PUBLISHED_YEAR_MAX,
+  PUBLISHED_YEAR_MIN,
+  activeFilterCount,
   bookIdSchema,
   COPY_STATUSES,
   catalogSearchQuerySchema,
   catalogSearchQueryString,
   contentsChapters,
+  libraryYear,
+  publishedYears,
 } from "./catalog.ts";
 export type {
   BookDetail,
   BookDetailResponse,
   BookSearchResult,
+  CatalogSearchCriteria,
   CatalogSearchFilters,
   CatalogSearchQuery,
   CatalogSearchResponse,
   CatalogSearchRow,
+  CatalogSubjectsResponse,
   CopyStatus,
+  PublishedFilter,
 } from "./catalog.ts";
+export { COLLEGE_SUBJECTS, SUBJECTS, SUBJECT_LC_CLASSES, subjectFilterOptions, subjectFor, subjectSchema } from "./subjects.ts";
+export type { Subject } from "./subjects.ts";
 export { CATALOG_SORTS, arrangeCatalogResults, workKey } from "./search/editions.ts";
 export type { ArrangeOptions, ArrangedRow, CatalogSort, EditionCandidate } from "./search/editions.ts";
 export {
