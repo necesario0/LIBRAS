@@ -75,6 +75,8 @@ export const colors = {
   clearField: "#B9B9B9",
   /** The lighter spine drawn over a placeholder Book cover. */
   coverSpine: "rgba(255,255,255,0.35)",
+  /** The chosen option of the Sort menu (approved Tier 3 preview). */
+  menuChosen: "#FFF6E0",
 } as const;
 
 /** The floating tab bar (approved Tier 3 preview: x 0, y 6, blur 18, black 18%). */
@@ -82,6 +84,9 @@ export const tabBarShadow = "0px 6px 18px rgba(0, 0, 0, 0.18)";
 
 /** The rows of the Profile menu (Figma 921:13989: x 0, y 4, blur 6.5, black 25%). */
 export const menuRowShadow = "0px 4px 6.5px rgba(0, 0, 0, 0.25)";
+
+/** A menu that pops up over the screen, such as Sort (approved Tier 3 preview: x 0, y 10, blur 30, black 20%). */
+export const popupMenuShadow = "0px 10px 30px rgba(0, 0, 0, 0.2)";
 
 /** Montserrat is the only family. Keys are the names registered with `useFonts`. */
 export const fontFamily = {
@@ -119,6 +124,9 @@ export const fontSize = {
   action: 12.5,
   listRow: 14.5,
   emptyTitle: 17,
+  /** Search results (approved Tier 3 preview): the count line and "Also in N older editions", then a result's year line. */
+  resultNote: 11.5,
+  resultMeta: 11,
   /** The line under the greeting on Home. */
   micro: 10,
 } as const;
@@ -201,6 +209,11 @@ export const radii = {
   dialog: 28,
   /** The round icon behind an empty state message (64 pt). */
   iconRing: 32,
+  /** The Sort, Available now and Filters chips above search results (34 pt). */
+  chip: 17,
+  /** The Sort menu, and one option in it. */
+  popupMenu: 16,
+  menuOption: 10,
   /** The round logo of the wordmark (31 pt). */
   logo: 16,
   /** The terms checkbox of sign-up. */

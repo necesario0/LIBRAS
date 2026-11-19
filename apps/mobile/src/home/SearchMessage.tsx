@@ -2,14 +2,18 @@ import { StyleSheet, Text, View } from "react-native";
 import { Button } from "../components/Button";
 import { colors, fontFamily, fontSize, radii, spacing } from "../theme/tokens";
 
-/** The search ran and nothing matched. A normal answer: neutral colours, no retry. */
-export function NoResults({ query }: { query: string }) {
+/** The search ran and nothing matched. A normal answer: neutral colours, no retry. With Available now on, it says what the chip left out. */
+export function NoResults({ query, availableNow = false }: { query: string; availableNow?: boolean }) {
   return (
     <View style={styles.panel} testID="search-no-results">
       <Text style={styles.title} accessibilityRole="header">
         No books found
       </Text>
-      <Text style={styles.body}>{`Nothing in the catalog matches “${query}”. Check the spelling, or try fewer words, an author's name or an ISBN.`}</Text>
+      <Text style={styles.body}>
+        {availableNow
+          ? `Nothing on the shelf now matches “${query}”. Switch Available now off to see the Books that are out.`
+          : `Nothing in the catalog matches “${query}”. Check the spelling, or try fewer words, an author's name or an ISBN.`}
+      </Text>
     </View>
   );
 }

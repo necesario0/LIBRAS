@@ -6,16 +6,25 @@ import { useCatalogSearch } from "../../../src/catalog/useCatalogSearch";
 import { useScreenTop } from "../../../src/hooks/useScreenTop";
 import { useHideTabBar } from "../../../src/navigation/TabBarVisibility";
 import { useTabBarSpace } from "../../../src/navigation/FloatingTabBar";
-import { BookResultRow } from "../../../src/home/BookResultRow";
+import { SearchResultRow } from "../../../src/home/BookResultRow";
 import { HomeHeader } from "../../../src/home/HomeHeader";
 import { SearchBar } from "../../../src/home/SearchBar";
 import { NoResults, SearchFailed } from "../../../src/home/SearchMessage";
 import { RecentSearches } from "../../../src/search/RecentSearches";
+import { SearchControls } from "../../../src/search/SearchControls";
 import { SearchModeBar } from "../../../src/search/SearchModeBar";
 import { Suggestions } from "../../../src/search/Suggestions";
 import { useRecentSearches } from "../../../src/search/useRecentSearches";
 import { useSuggestions } from "../../../src/search/useSuggestions";
 import { colors, fontFamily, fontSize, spacing } from "../../../src/theme/tokens";
+import type { CatalogSearchResponse } from "@libras/shared";
+
+/** "12 results", "1 result" or "Top 20 of 64 results", and whether older editions were folded into the rows shown. */
+function resultCount(response: CatalogSearchResponse): string {
+  const { total, results } = response;
+  const count = total === 1 ? "1 result" : total > results.length ? `Top ${results.length} of ${total} results` : `${total} results`;
+  return results.some((row) => row.olderEditions.length > 0) ? `${count} · older editions folded in` : count;
+}
 
 /**
  * Home for a signed-in Member: the Figma "Home dashboard" layout (node
@@ -136,18 +145,22 @@ export default function HomeScreen() {
           <ActivityIndicator color={colors.primary} style={styles.spinner} testID="search-loading" />
         ) : null}
 
+        {search.submitted && state.status !== "error" ? (
+          <SearchControls filters={search.filters} onChange={search.setFilters} />
+        ) : null}
+
         {shown !== undefined ? (
           <View testID="search-results">
             <Text style={styles.count} testID="search-count">
-              {shown.total === 1 ? "1 book" : shown.total > shown.results.length ? `Top ${shown.results.length} of ${shown.total} books` : `${shown.total} books`}
+              {resultCount(shown)}
             </Text>
-            {shown.results.map((book) => (
-              <BookResultRow key={book.id} book={book} onPress={() => openBook(book.id)} />
+            {shown.results.map((row) => (
+              <SearchResultRow key={row.id} row={row} onOpenBook={openBook} />
             ))}
           </View>
         ) : null}
 
-        {state.status === "empty" ? <NoResults query={state.query} /> : null}
+        {state.status === "empty" ? <NoResults query={state.query} availableNow={search.filters.availableNow} /> : null}
         {state.status === "error" ? <SearchFailed message={state.message} onRetry={search.retry} /> : null}
       </ScrollView>
     </View>
@@ -164,5 +177,5 @@ const styles = StyleSheet.create({
   modeContent: { paddingBottom: spacing.xl },
   hint: { fontFamily: fontFamily.regular, fontSize: fontSize.label, lineHeight: 20, color: colors.textMuted, paddingHorizontal: spacing.xs },
   spinner: { marginTop: spacing.xl },
-  count: { fontFamily: fontFamily.semiBold, fontSize: fontSize.small, lineHeight: 18, color: colors.textMuted, marginBottom: spacing.xs },
+  count: { fontFamily: fontFamily.regular, fontSize: fontSize.resultNote, lineHeight: 15, color: colors.textMuted, marginTop: 2 },
 });
