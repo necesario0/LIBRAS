@@ -15,6 +15,14 @@ Work as for Tier 2 below: Git Bash, an up-to-date `main`, `.env.hosted` in the r
 5. Desk page > Announcements: create one for today with a poster, drag the frame, Publish now. It worked if the card shows the banner, and the banner's address (right click > Open image in new tab) shows the 2:1 cut. Then End now. Supabase > Storage > `announcements` holds one folder per Announcement.
 6. `npm run audit:verify:hosted -w @libras/api`: intact, with the `announcement_created` and `announcement_ended` entries.
 
+## Push notifications (#54)
+
+1. The owner's Firebase and Expo setup, a checklist of its own: [`docs/push-notifications.md`](push-notifications.md). It can be done before or after the steps below; until it is done the new APK simply gets no push notifications.
+2. `npm run db:migrate:hosted -- --dry-run`. It worked if `20261124100000_push_notifications` is listed with no error. Then `npm run db:migrate:hosted` and type `apply`. The migration adds `push_devices`, `push_settings` (a row for every existing Member, and a trigger for new ones), `push_sends` and `push_tickets`. Apply it before the API deploy: the API reads these tables at sign-out and at every Hold dispatch.
+3. Deploy the API, then build and install the APK (`npm run build:apk:hosted -w @libras/mobile`; it says whether push notifications are on). Nothing new is required on Render; `EXPO_ACCESS_TOKEN` only with Expo's enhanced security (step 6 of the checklist).
+4. On a real phone with the push APK (#55): sign in and allow notifications; Settings > Push notifications shows Hold ready, Loan due tomorrow and Loan overdue on and Announcements off. Switch Announcements on. Place a Hold on a Book whose only Copy is out, and return that Copy at the desk: within seconds a "Your Hold is ready" push arrives, and tapping it opens My Books on Holds. Publish an Announcement for today on the desk page: within about a minute (the sweep tick; up to five minutes while the API sleeps) a "New from the library" push arrives, and tapping it opens the Announcement. Switch Hold ready off and repeat the Hold: the email comes, no push.
+5. Sign out on the phone, then make another Hold ready for the same Member: no push reaches the phone.
+
 # Tier 2: rollout and verification checklist
 
 Work in Git Bash from an up-to-date checkout of `main`, with `.env.hosted` in the repository root. Never paste a key into a chat or an issue. Each step says how to tell it worked. Write the results in the run record at the end of this part.

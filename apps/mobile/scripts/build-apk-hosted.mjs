@@ -7,6 +7,11 @@
 //
 // Before the long Gradle build starts, the script asks the API for /health, so a
 // wrong address or a sleeping Render service fails in a minute, not after 25.
+//
+// Push notifications (docs/push-notifications.md) are built in when
+// apps/mobile/google-services.json exists and EXPO_PROJECT_ID is set, in the
+// environment or in .env.hosted (it is an id, not a secret). Otherwise the APK
+// works without them, and the script says so.
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -15,12 +20,12 @@ import { parseEnv } from "node:util";
 const here = dirname(fileURLToPath(import.meta.url));
 const envFile = resolve(here, "..", "..", "..", ".env.hosted");
 
-function fromEnvFile() {
+function fromEnvFile(name) {
   if (!existsSync(envFile)) return undefined;
-  return parseEnv(readFileSync(envFile, "utf8")).EXPO_PUBLIC_API_URL;
+  return parseEnv(readFileSync(envFile, "utf8"))[name];
 }
 
-const url = (process.argv[2] ?? process.env.EXPO_PUBLIC_API_URL ?? fromEnvFile() ?? "").replace(/\/+$/, "");
+const url = (process.argv[2] ?? process.env.EXPO_PUBLIC_API_URL ?? fromEnvFile("EXPO_PUBLIC_API_URL") ?? "").replace(/\/+$/, "");
 if (!url.startsWith("https://")) {
   console.error(
     "The hosted API address must start with https://. Pass it as an argument, set EXPO_PUBLIC_API_URL,\n" +
@@ -41,4 +46,17 @@ try {
 }
 
 process.env.EXPO_PUBLIC_API_URL = url;
+
+const projectId = process.env.EXPO_PROJECT_ID || fromEnvFile("EXPO_PROJECT_ID");
+const googleServices = process.env.GOOGLE_SERVICES_JSON ?? join(here, "..", "google-services.json");
+if (projectId && existsSync(googleServices)) {
+  process.env.EXPO_PROJECT_ID = projectId;
+  console.log("Push notifications: on (google-services.json and EXPO_PROJECT_ID found).\n");
+} else {
+  console.log(
+    "Push notifications: OFF in this APK. To build them in, follow docs/push-notifications.md:\n" +
+      "apps/mobile/google-services.json and EXPO_PROJECT_ID (environment or .env.hosted) are both needed.\n",
+  );
+}
+
 await import(pathToFileURL(join(here, "build-apk.mjs")).href);

@@ -84,6 +84,10 @@ _Avoid_: Extension, reborrow, reloan
 An email that tells a Member about the due dates of their Loans. There are three kinds: due tomorrow, now overdue, and still overdue, which repeats weekly up to four times. The overdue kinds state the Fine so far. A Member gets at most one Loan notice a day, covering all their Loans that need one, and none for a Loan after its Copy is returned.
 _Avoid_: Reminder, overdue email (it also covers Loans that are not overdue yet), alert
 
+**Push notification**:
+A message on a Member's phone, outside the app, about a Hold that is ready, a Loan due tomorrow, a Loan on its first overdue day, or a new Announcement. Each kind has its own switch in Settings; the first three start on and Announcements off. A tap opens the screen it is about. It never replaces a Loan notice, which is always emailed.
+_Avoid_: Alert, reminder, Loan notice (that is the email)
+
 **Fine**:
 The peso amount a Member owes for one Loan returned late. It grows by the daily rate for every calendar day after the due date, up to the cap, and stops at the return, when the amount is fixed for good. A Fine is unsettled until a Librarian settles it.
 _Avoid_: Penalty, fee, charge, overdue fee

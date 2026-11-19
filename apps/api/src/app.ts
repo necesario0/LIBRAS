@@ -8,6 +8,8 @@ import { cors } from "./cors.ts";
 import type { Database } from "./db.ts";
 import type { EmailSender } from "./email.ts";
 import type { FileStore } from "./announcements/storage.ts";
+import type { PushSender } from "./push/sender.ts";
+import { pushRouter } from "./routes/push.ts";
 import { announcementsRouter } from "./routes/announcements.ts";
 import { createErrorHandler, notFoundHandler } from "./errors.ts";
 import type { Logger } from "./logger.ts";
@@ -30,7 +32,7 @@ import { scannerRouter } from "./routes/scanner.ts";
 import { staffRouter } from "./routes/staff.ts";
 import { sweepsRouter } from "./routes/sweeps.ts";
 
-/** Everything the API reaches outside itself. Tests swap the clock and the email sender. */
+/** Everything the API reaches outside itself. Tests swap the clock, the email sender and the push sender. */
 export interface AppDeps {
   db: Database;
   /** Accounts, passwords and sessions (Supabase Auth). */
@@ -42,6 +44,8 @@ export interface AppDeps {
   logger: Logger;
   /** Public files: Announcement posters (Supabase Storage, the `announcements` bucket). */
   files: FileStore;
+  /** Push notifications to Members' phones (Expo's push service). */
+  push: PushSender;
 }
 
 export interface AppOptions {
@@ -107,6 +111,7 @@ export function createApp(deps: AppDeps, options: AppOptions = {}): LibrasApp {
   app.use(digitalIdRouter(deps));
   app.use(holdsRouter(deps));
   app.use(savedBooksRouter(deps));
+  app.use(pushRouter(deps));
   app.use(loansRouter(deps));
   app.use(finesRouter(deps));
   if (options.sweepSecret) app.use(sweepsRouter(deps, options.sweepSecret));

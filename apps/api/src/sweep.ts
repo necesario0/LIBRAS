@@ -1,6 +1,7 @@
 import type { AppDeps } from "./app.ts";
 import { expireDueHolds } from "./holds/expiry.ts";
 import { sendLoanNotices } from "./notices/index.ts";
+import { checkPushReceipts, pushRunningAnnouncement } from "./push/index.ts";
 
 /** What one tick of the sweep did: Holds whose Pickup Window it ended, Loan notice emails it sent. */
 export interface SweepResult {
@@ -11,8 +12,10 @@ export interface SweepResult {
 /**
  * One tick of the sweep: the work that must happen on time whether or not
  * anyone uses the API. It runs each job in turn: Pickup Window expiry (ADR
- * 0007), then Loan notices (ADR 0009). A job that fails is logged and counts
- * as having done nothing; the other still runs.
+ * 0007), Loan notices (ADR 0009) with their push notifications, then the push
+ * notification of a new Announcement and the reading of push receipts (which
+ * forgets phones that are no longer registered). A job that fails is logged
+ * and counts as having done nothing; the others still run.
  */
 export async function runSweep(deps: AppDeps): Promise<SweepResult> {
   const job = async (name: string, work: () => Promise<number>): Promise<number> => {
@@ -25,6 +28,8 @@ export async function runSweep(deps: AppDeps): Promise<SweepResult> {
   };
   const expired = await job("Pickup Window expiry", () => expireDueHolds(deps));
   const noticeEmails = await job("Loan notices", () => sendLoanNotices(deps));
+  await job("Announcement push notifications", () => pushRunningAnnouncement(deps));
+  await job("Push receipts", () => checkPushReceipts(deps));
   return { expired, noticeEmails };
 }
 

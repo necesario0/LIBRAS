@@ -3,7 +3,8 @@ import type { CatalogSearchFilters, PublishedFilter, Subject, UmakCollege } from
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Animated, KeyboardAvoidingView, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors, fontFamily, fontSize, radii, segmentShadow, spacing, switchKnobShadow } from "../theme/tokens";
+import { Toggle } from "../components/Toggle";
+import { colors, fontFamily, fontSize, radii, segmentShadow, spacing } from "../theme/tokens";
 
 /** The four Published choices of the sheet, in order. */
 const PUBLISHED_CHOICES = [
@@ -57,23 +58,6 @@ function SubjectOption({ subject, on, onPress }: { subject: Subject; on: boolean
     >
       <Text style={styles.optionText}>{subject}</Text>
       <Text style={[styles.optionClasses, on && styles.optionClassesOn]}>{SUBJECT_LC_CLASSES[subject]}</Text>
-    </Pressable>
-  );
-}
-
-/** The on and off switch of the preview (46 by 28, a white knob). */
-function Toggle({ on, onPress, label, testID }: { on: boolean; onPress: () => void; label: string; testID: string }) {
-  return (
-    <Pressable
-      accessibilityRole="switch"
-      accessibilityLabel={label}
-      accessibilityState={{ checked: on }}
-      onPress={onPress}
-      hitSlop={8}
-      style={[styles.toggle, on && styles.toggleOn]}
-      testID={testID}
-    >
-      <View style={[styles.knob, on && styles.knobOn]} />
     </Pressable>
   );
 }
@@ -335,10 +319,6 @@ const styles = StyleSheet.create({
   toggleText: { flex: 1, gap: 2 },
   toggleTitle: { fontFamily: fontFamily.medium, fontSize: fontSize.listRow, lineHeight: 19, color: colors.black },
   toggleNote: { fontFamily: fontFamily.regular, fontSize: fontSize.resultNote, lineHeight: 15, color: colors.textMuted },
-  toggle: { width: 46, height: 28, borderRadius: radii.switch, backgroundColor: colors.border, padding: 3 },
-  toggleOn: { backgroundColor: colors.primary },
-  knob: { width: 22, height: 22, borderRadius: radii.switchKnob, backgroundColor: colors.white, boxShadow: switchKnobShadow },
-  knobOn: { transform: [{ translateX: 18 }] },
   show: {
     marginTop: 22,
     height: 48,
