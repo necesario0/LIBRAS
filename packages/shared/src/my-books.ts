@@ -3,16 +3,18 @@ import { isCurrentLoan, libraryDaysBetween } from "./loans.ts";
 import type { Loan } from "./loans.ts";
 
 /**
- * My Books: the app's tab for the Member's Loans and Holds (and, later, Saved
- * books). These rules decide what it opens on and when its tab shows a dot.
+ * My Books: the app's tab for the Member's Loans and Holds (and Saved books). These rules decide what it opens on and when its tab shows a dot.
  * They read only the Loans and Holds the API already sent.
  */
 
 /** The segments of My Books that hold circulation: the Member's Loans and their Holds. */
-export type MyBooksSegment = "loans" | "holds";
+export type CirculationSegment = "loans" | "holds";
 
-/** Which segments of My Books need the Member now: each one earns a dot, and the tab shows one when either does. */
-export type MyBooksAttention = Readonly<Record<MyBooksSegment, boolean>>;
+/** Every segment of My Books: Loans and Holds, then the Member's Saved books (no circulation, so never needs the Member). */
+export type MyBooksSegment = CirculationSegment | "saved";
+
+/** Which segments of My Books need the Member now: each one earns a dot, and the tab shows one when either does. Saved books never do. */
+export type MyBooksAttention = Readonly<Record<CirculationSegment, boolean>>;
 
 /**
  * What needs the Member: a Hold ready for pickup (the Holds), and a current
@@ -28,6 +30,6 @@ export function myBooksAttention({ loans, holds, now }: { loans: readonly Loan[]
 }
 
 /** My Books opens on Holds when a Hold is ready for pickup, since the Pickup Window is the easiest thing to miss, and on Loans otherwise. */
-export function myBooksStartSegment(holds: readonly Hold[]): MyBooksSegment {
+export function myBooksStartSegment(holds: readonly Hold[]): CirculationSegment {
   return holds.some((hold) => hold.status === "ready") ? "holds" : "loans";
 }

@@ -3,10 +3,12 @@ import { isCurrentLoan } from "@libras/shared";
 import type { Loan } from "@libras/shared";
 import { useAuth } from "../auth/AuthContext";
 import { Button } from "../components/Button";
+import { BookOutlineIcon } from "../components/OutlineIcons";
 import { LoanRow } from "../loans/LoanRow";
 import { loanFailureMessage, renewLoan } from "../loans/useLoans";
 import type { LoansState } from "../loans/useLoans";
 import { colors, radii } from "../theme/tokens";
+import { EmptyState } from "./EmptyState";
 import { panelStyles as styles } from "./panelStyles";
 
 /**
@@ -48,15 +50,12 @@ export function LoansSegment({ state, reload }: { state: LoansState; reload: () 
       ) : null}
 
       {state.status === "loaded" && state.loans.length === 0 ? (
-        <View style={styles.panel} testID="loans-empty">
-          <Text style={styles.panelTitle} accessibilityRole="header">
-            No Loans yet
-          </Text>
-          <Text style={styles.panelBody}>
-            Open a Book with an available Copy and tap Borrow, then show your Digital ID to the librarian. The Copies you take home are listed
-            here.
-          </Text>
-        </View>
+        <EmptyState
+          icon={<BookOutlineIcon color={colors.textMuted} size={28} />}
+          title="No Loans yet"
+          line="Open a Book with an available Copy and borrow it at the desk. It will be listed here."
+          testID="loans-empty"
+        />
       ) : null}
 
       {overdue > 0 ? (

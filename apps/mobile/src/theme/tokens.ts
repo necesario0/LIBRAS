@@ -214,6 +214,8 @@ export const radii = {
   cover: 10,
   /** A small Book cover in a list row (search results, Loans, Holds). */
   coverSmall: 6,
+  /** The Save button and the toast (approved Tier 3 preview). */
+  pillButton: 22,
   /** The call number pill of the Book page (Figma 1187:1479). */
   callNumber: 43,
   /** The edition and availability tags of the Book page. */
