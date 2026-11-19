@@ -84,7 +84,14 @@ export function SearchControls({
 
   return (
     <View style={styles.controls}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row} style={styles.scroller}>
+      {/* "handled", like the results around it: with the default, Android before API 30 may take the first tap on a chip to put the keyboard away. */}
+      <ScrollView
+        horizontal
+        keyboardShouldPersistTaps="handled"
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.row}
+        style={styles.scroller}
+      >
         <Chip
           on
           label={CATALOG_SORT_LABELS[filters.sort]}
