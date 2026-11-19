@@ -62,6 +62,19 @@ describe("UMAK Student sign-up", () => {
     });
   }
 
+  it("signs up with a student number that starts with A, the other prefix used on campus", async () => {
+    const original = studentSignUpBody();
+    const lowerA = original.details.studentNumber.replace(/^K/, "a");
+    const body = { ...original, details: { ...original.details, studentNumber: lowerA } };
+
+    const signUp = await postJson(signUpUrl(), body);
+    assert.equal(signUp.status, 201, await signUp.clone().text());
+    const code = codeFromEmail(api.emails.lastTo(body.email));
+    const verify = await postJson(verifyUrl(), { email: body.email, code });
+    assert.equal(verify.status, 200);
+    assert.equal((await verify.json()).member.details.studentNumber, lowerA.toUpperCase());
+  });
+
   it("does not let the person sign in before the code is accepted", async () => {
     const body = studentSignUpBody();
 
