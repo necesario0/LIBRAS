@@ -8,7 +8,7 @@ import {
   signUpRequestSchema,
   verifySignUpRequestSchema,
 } from "@libras/shared";
-import type { ClearanceResponse, MemberMeResponse, VerifySignUpResponse } from "@libras/shared";
+import type { ClearanceResponse, MemberLoanPolicyResponse, MemberMeResponse, VerifySignUpResponse } from "@libras/shared";
 import type { z } from "zod";
 import type { AppDeps } from "../app.ts";
 import { createAuditLog, recordingSignInFailures } from "../audit/index.ts";
@@ -16,7 +16,9 @@ import { accessTokenOf, identityOf, memberOf, requireMember } from "../auth/guar
 import { withIdentity } from "../auth/identity.ts";
 import type { AttemptLimiter } from "../auth/attempt-limit.ts";
 import { AppError } from "../errors.ts";
+import { memberPolicy } from "../loans/policy.ts";
 import { changeMemberPassword, verifyCurrentPassword } from "../members/change-password.ts";
+import { recordPasswordEvent } from "../members/password-audit.ts";
 import { signInMember } from "../members/sign-in.ts";
 import { resendSignUpCode, startSignUp, verifySignUp } from "../members/sign-up.ts";
 import { clearanceOf, goodStandingOf, readStanding } from "../standing/index.ts";
@@ -81,6 +83,28 @@ export function membersRouter(deps: AppDeps, limiter: AttemptLimiter): Router {
     const standing = await withIdentity(deps.db, identity, (scope) => readStanding(scope, identity.userId, deps.clock.now()));
     const body: ClearanceResponse = { clearance: clearanceOf(standing), goodStanding: goodStandingOf(standing) };
     res.json(body);
+  });
+
+  // Read as the Member: row-level security lets them read their own row and the policy of their Account Type.
+  router.get("/members/me/loan-policy", ...requireMember(deps), async (_req, res) => {
+    const identity = identityOf(res);
+    const policy = await withIdentity(deps.db, identity, (scope) => memberPolicy(scope, identity.userId, { lock: false }));
+    const body: MemberLoanPolicyResponse = {
+      accountType: policy.account_type,
+      loanLimit: policy.loan_limit,
+      loanPeriodDays: policy.loan_period_days,
+      renewalLimit: policy.renewal_limit,
+      fineDailyRateCentavos: policy.fine_daily_rate_centavos,
+      fineCapCentavos: policy.fine_cap_centavos,
+    };
+    res.json(body);
+  });
+
+  // "Sign out of all devices": Supabase Auth ends every session, the caller's included, so the Member signs in again.
+  router.post("/members/me/sign-out-all", ...requireMember(deps), async (req, res) => {
+    await deps.auth.signOutEverywhere(accessTokenOf(res));
+    await recordPasswordEvent(deps, { type: "signed_out_all_devices", memberId: memberOf(res).id, clientAddress: req.ip });
+    res.status(204).end();
   });
 
   router.put("/members/me/password", ...requireMember(deps), async (req, res) => {

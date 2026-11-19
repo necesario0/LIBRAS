@@ -72,6 +72,18 @@ export const AUDIT_EVENTS = {
       clientAddress: z.string().max(64).nullable(),
     }),
   },
+  /**
+   * A signed-in Member chose "Sign out of all devices" in Settings. Every
+   * session of the account was ended, the one that asked included. `actorId` is the Member.
+   */
+  signed_out_all_devices: {
+    /** The Member's account id. */
+    subject: z.uuid(),
+    data: z.strictObject({
+      /** The client address that asked, when known. */
+      clientAddress: z.string().max(64).nullable(),
+    }),
+  },
   /** A Librarian confirmed a Loan at the desk. `actorId` is the Librarian. */
   loan_confirmed: {
     /** The Loan's id. */

@@ -30,6 +30,13 @@ export interface AuthProvider {
   /** Ends the session the access token belongs to. Safe to call with a token that no longer works. */
   signOut(accessToken: string): Promise<void>;
   /**
+   * Ends EVERY session of the account the access token belongs to (access and
+   * refresh tokens), this one included: "Sign out of all devices". Safe to call
+   * with a token that no longer works. `account-settings.test.ts` proves it
+   * against the real Supabase Auth.
+   */
+  signOutEverywhere(accessToken: string): Promise<void>;
+  /**
    * Sets a new password for the account the access token belongs to. Supabase
    * Auth ends every OTHER session of the account (access and refresh tokens)
    * and keeps the one the token belongs to: Change password relies on it

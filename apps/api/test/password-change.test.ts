@@ -307,6 +307,7 @@ describe("Change password limit: what counts", () => {
         refresh: (refreshToken) => auth.refresh(refreshToken),
         identify: (accessToken) => auth.identify(accessToken),
         signOut: (accessToken) => auth.signOut(accessToken),
+        signOutEverywhere: (accessToken) => auth.signOutEverywhere(accessToken),
         changePassword: (accessToken, newPassword) =>
           sessionEnded ? Promise.resolve(false) : auth.changePassword(accessToken, newPassword),
       }),

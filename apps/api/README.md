@@ -120,6 +120,13 @@ Finishing a sign-up (`verifySignUp`) calls nothing outside the database inside a
 
 Tests: `test/password-change.test.ts` (HTTP against the real Supabase Auth: session rules with three sessions and refresh tokens, audit and email, wrong password, the audit entry for it, the sign-up rules, the same password, who may call, the limit and its sharing with sign-in, a 401 from an ended session not counting, and a failing audit write or email send leaving the change standing; the audit failure is a trigger the test adds to `audit_log` and drops, the email one is `api.emails.failing`, the ended session is `startTestApi({ wrapAuth })`).
 
+## Sign out of all devices and My Loan Policy
+
+Routes in `routes/members.ts`, behind `requireMember`.
+
+- `POST /members/me/sign-out-all` -> `204`. `AuthProvider.signOutEverywhere` calls Supabase Auth's `/logout?scope=global` with the Member's access token: every session of the account ends, the caller's included, so an old access token is refused (401) and no refresh token works. The Member signs in again with the same password. `signed_out_all_devices` is written to the audit log (Member as actor and subject, client address; migration `..._sign_out_all_devices_audit.sql`) through `recordPasswordEvent`, which retries once and only logs a failed write, so a broken audit write never keeps a Member signed in. `account-settings.test.ts` proves it against the real Supabase Auth.
+- `GET /members/me/loan-policy` -> `200 MemberLoanPolicyResponse`: `accountType`, `loanLimit`, `loanPeriodDays` (null when the Account Type cannot borrow), `renewalLimit`, `fineDailyRateCentavos`, `fineCapCentavos`, read as the Member. Help and policies words it (`loanPolicyHelp` in `@libras/shared`); a `loanLimit` of zero means the Account Type cannot borrow.
+
 ## Digital ID and Loan Policy
 
 A Digital ID is 12 digits: the Member's fixed 6-digit Digital ID number, then a 6-digit TOTP-style token (HMAC-SHA-256 of the 60-second window under a 32-byte per-Member secret). ADR 0004 records why. `digital-id/code.ts` is the derivation (pure); `digital-id/index.ts` has `currentDigitalId(deps, memberId)`, which creates the number and secret on first use with the CSPRNG, and `verifyDigitalId(deps, code)`, which accepts the current and the previous window by `deps.clock`, compares in constant time, and throws 400 `digital_id_expired` (up to an hour old) or `digital_id_invalid`. It returns `{ memberId, window }`: the pair that names one shown code, which scanning it at the desk claims for that Librarian (see Loans, desk sessions).

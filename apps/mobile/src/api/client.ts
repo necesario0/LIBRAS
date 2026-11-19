@@ -13,6 +13,7 @@ import type {
   CompletePasswordResetRequest,
   DigitalIdResponse,
   HealthResponse,
+  MemberLoanPolicyResponse,
   MemberMeResponse,
   MemberSignInResponse,
   MyHoldsResponse,
@@ -140,6 +141,12 @@ export function createApiClient({ baseUrl, fetch: fetchImpl = fetch, timeoutMs =
       request<RenewLoanResponse>(`/loans/${encodeURIComponent(loanId)}/renew`, { method: "POST", headers: bearer(accessToken) }),
     /** Whether the Member is cleared, with the Loans still out and the unsettled Fines that stand in the way. */
     getClearance: (accessToken: string) => request<ClearanceResponse>("/members/me/clearance", { headers: bearer(accessToken) }),
+    /** The Loan Policy of the Member's Account Type: loan limit and period, renewal limit, daily Fine rate and Fine cap. */
+    getLoanPolicy: (accessToken: string) =>
+      request<MemberLoanPolicyResponse>("/members/me/loan-policy", { headers: bearer(accessToken) }),
+    /** Ends every session of the Member's account, this one included. The app signs out locally afterwards. */
+    signOutAllDevices: (accessToken: string) =>
+      request<null>("/members/me/sign-out-all", { method: "POST", headers: bearer(accessToken) }),
     /** Starts a sign-up: the API emails a verification code. */
     signUp: (body: SignUpRequest) => post<SignUpCodeSentResponse>("/members/sign-up", body),
     /** Accepts the emailed code: the account is active from here on. */

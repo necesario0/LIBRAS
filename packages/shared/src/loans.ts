@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { AccountType } from "./accounts.ts";
 import { deskSessionTokenSchema } from "./desk.ts";
 import type { DeskMember } from "./desk.ts";
 import type { LoanFine } from "./fines.ts";
@@ -162,6 +163,24 @@ export interface MyLoansResponse {
   loanLimit: number;
   /** The Loan Policy loan period in days, or null for an Account Type that cannot borrow. */
   loanPeriodDays: number | null;
+}
+
+/**
+ * `GET /members/me/loan-policy`: the Loan Policy of the signed-in Member's
+ * Account Type, as the library has set it. Help and policies words it for the
+ * Member. A `loanLimit` of zero means the Account Type cannot borrow; then
+ * `loanPeriodDays` is null and the Fine amounts are zero.
+ */
+export interface MemberLoanPolicyResponse {
+  accountType: AccountType;
+  loanLimit: number;
+  loanPeriodDays: number | null;
+  /** How many times one Loan may be renewed. */
+  renewalLimit: number;
+  /** The Fine for each day a Loan is late, in centavos. */
+  fineDailyRateCentavos: number;
+  /** The most one Loan's Fine can reach, in centavos. */
+  fineCapCentavos: number;
 }
 
 /** A Copy as the desk names it: its barcode or its accession number, already through the scan whitelist. */

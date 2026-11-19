@@ -1,0 +1,173 @@
+# A Member opens Settings from the Profile tab (a pushed screen, no tab bar).
+# Clear search history empties the recent searches on this phone and says so;
+# Home then shows none. Library info shows the hours, location and contact with
+# the note that they are examples. Sign out of all devices asks first (Cancel
+# changes nothing); confirming ends every session of the account, this phone's
+# and another device's, and returns to sign-in, where the same password signs in
+# again. The app version is at the foot.
+# Needs the end-to-end API on port 3000 (npm run e2e starts it).
+appId: ph.edu.umak.libras
+---
+- launchApp:
+    clearState: true
+- runScript: scripts/create-members.js
+
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 30000
+- tapOn:
+    id: welcome-sign-in
+- tapOn:
+    id: sign-in-email
+- inputText: ${output.email}
+- tapOn:
+    id: sign-in-password
+- inputText: ${output.password}
+- hideKeyboard
+- tapOn:
+    id: sign-in-continue
+- extendedWaitUntil:
+    visible: "Hi, Cobby"
+    timeout: 20000
+
+# Another device is signed in to the same account.
+- runScript:
+    file: scripts/other-session.js
+    env:
+      EMAIL: ${output.email}
+      PASSWORD: ${output.password}
+
+# One search leaves one recent search on this phone.
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: history
+- extendedWaitUntil:
+    visible:
+      id: search-(results|no-results)
+    timeout: 15000
+- runFlow: subflows/leave-search.yaml
+
+# Profile: Settings and Help and policies come after Change password, before Sign out.
+- tapOn:
+    id: tab-profile
+- scrollUntilVisible:
+    element:
+      id: profile-settings
+    direction: DOWN
+- assertVisible:
+    id: profile-help
+- tapOn:
+    id: profile-settings
+- extendedWaitUntil:
+    visible:
+      id: settings-version
+    timeout: 10000
+- assertNotVisible:
+    id: tab-bar
+- assertVisible: "Settings"
+- assertVisible:
+    id: settings-clear-history-detail
+    text: "1 recent search on this phone"
+- assertVisible: "LIBRAS for Android · version .*"
+- takeScreenshot: settings
+
+# Clear search history: confirmed with a short message, and the count goes to none.
+- tapOn:
+    id: settings-clear-history
+- assertVisible:
+    id: settings-toast
+- assertVisible: "Search history cleared"
+- assertVisible:
+    id: settings-clear-history-detail
+    text: "No recent searches on this phone"
+- takeScreenshot: settings-history-cleared
+
+# Home has no recent searches left. The Android back button leaves Settings.
+- back
+- extendedWaitUntil:
+    visible:
+      id: profile-settings
+    timeout: 10000
+- tapOn:
+    id: tab-home
+- tapOn:
+    id: search-open
+- extendedWaitUntil:
+    visible:
+      id: recent-empty
+    timeout: 10000
+- runFlow: subflows/leave-search.yaml
+
+# Library info: example values, marked as such.
+- tapOn:
+    id: tab-profile
+- scrollUntilVisible:
+    element:
+      id: profile-settings
+    direction: DOWN
+- tapOn:
+    id: profile-settings
+- extendedWaitUntil:
+    visible:
+      id: settings-library-info
+    timeout: 10000
+- tapOn:
+    id: settings-library-info
+- extendedWaitUntil:
+    visible:
+      id: library-info-note
+    timeout: 10000
+- assertVisible: "Monday to Friday"
+- assertVisible: "Saturday"
+- assertVisible: "library@umak.edu.ph"
+- assertVisible: "Example values.*"
+- takeScreenshot: library-info
+- tapOn:
+    id: library-info-back
+- extendedWaitUntil:
+    visible:
+      id: settings-sign-out-all
+    timeout: 10000
+
+# Sign out of all devices asks first: Cancel changes nothing.
+- tapOn:
+    id: settings-sign-out-all
+- assertVisible: "Sign out of all devices?"
+- assertVisible: "Every phone signed in to your account, this one included, will need your password again."
+- takeScreenshot: settings-sign-out-all-dialog
+- tapOn:
+    id: sign-out-all-dialog-cancel
+- assertNotVisible: "Sign out of all devices?"
+- assertVisible:
+    id: settings-sign-out-all
+
+# Confirming ends every session and returns to sign-in.
+- tapOn:
+    id: settings-sign-out-all
+- tapOn:
+    id: sign-out-all-dialog-confirm
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 20000
+- assertNotVisible: "Hi, Cobby"
+- runScript:
+    file: scripts/check-signed-out-everywhere.js
+    env:
+      OTHER_TOKEN: ${output.accessToken}
+
+# The same password signs in again.
+- tapOn:
+    id: welcome-sign-in
+- tapOn:
+    id: sign-in-email
+- inputText: ${output.email}
+- tapOn:
+    id: sign-in-password
+- inputText: ${output.password}
+- hideKeyboard
+- tapOn:
+    id: sign-in-continue
+- extendedWaitUntil:
+    visible: "Hi, Cobby"
+    timeout: 20000
