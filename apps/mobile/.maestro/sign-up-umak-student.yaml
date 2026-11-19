@@ -36,10 +36,11 @@ appId: ph.edu.umak.libras
     id: student-number
 - inputText: ${output.studentNumber}
 - hideKeyboard
-- tapOn:
-    id: student-college
-- tapOn:
-    id: student-college-option-CCIS
+- runFlow:
+    file: subflows/pick-option.yaml
+    env:
+      FIELD: student-college
+      OPTION: CCIS
 - tapOn:
     id: student-continue
 

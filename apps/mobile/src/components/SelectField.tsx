@@ -119,7 +119,7 @@ export function SelectField<T extends string>({ label, placeholder, options, val
       <Modal visible={open} transparent animationType="none" statusBarTranslucent navigationBarTranslucent onRequestClose={() => setFrame(undefined)}>
         <Pressable style={StyleSheet.absoluteFill} onPress={() => setFrame(undefined)} accessibilityLabel={`Close ${label}`} testID={`${testID}-dismiss`} />
         {frame === undefined ? null : (
-          <ScrollView style={[styles.list, frame]} contentContainerStyle={styles.listContent} persistentScrollbar accessibilityRole="list" testID={`${testID}-list`}>
+          <ScrollView style={[styles.list, frame]} contentContainerStyle={styles.listContent} persistentScrollbar keyboardShouldPersistTaps="handled" accessibilityRole="list" testID={`${testID}-list`}>
             {options.map((option) => (
               <Pressable
                 key={option}
