@@ -149,18 +149,32 @@ appId: ph.edu.umak.libras
 - tapOn:
     id: filter-published-custom
 # Tapping a year selects it, so typing replaces the whole year wherever the tap lands.
-- tapOn:
-    id: filter-published-from
-- inputText: "2000"
-- assertVisible:
-    id: filter-published-from
-    text: "2000"
-- tapOn:
-    id: filter-published-to
-- inputText: "2005"
-- assertVisible:
-    id: filter-published-to
-    text: "2005"
+# Typing can start before the keyboard is ready and lose the first digit: wait for it, and
+# on a retry tap the PUBLISHED label first so the field is left and the next tap selects again.
+- retry:
+    maxRetries: 3
+    commands:
+      - tapOn: "PUBLISHED"
+      - tapOn:
+          id: filter-published-from
+      - waitForAnimationToEnd:
+          timeout: 3000
+      - inputText: "2000"
+      - assertVisible:
+          id: filter-published-from
+          text: "2000"
+- retry:
+    maxRetries: 3
+    commands:
+      - tapOn: "PUBLISHED"
+      - tapOn:
+          id: filter-published-to
+      - waitForAnimationToEnd:
+          timeout: 3000
+      - inputText: "2005"
+      - assertVisible:
+          id: filter-published-to
+          text: "2005"
 - scrollUntilVisible:
     element:
       id: filters-show
