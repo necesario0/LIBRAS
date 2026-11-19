@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { Animated, PanResponder, StyleSheet, View } from "react-native";
 import type { GestureResponderEvent } from "react-native";
-import { colors } from "../theme/tokens";
+import { colors, radii } from "../theme/tokens";
 
 const MAX_ZOOM = 4;
 
@@ -113,6 +113,6 @@ export function ZoomableImage({ uri, width, height, accessibilityLabel, onZoomed
 }
 
 const styles = StyleSheet.create({
-  frame: { overflow: "hidden", borderRadius: 16, backgroundColor: colors.surface },
+  frame: { overflow: "hidden", borderRadius: radii.option, backgroundColor: colors.surface },
   hidden: { opacity: 0 },
 });
