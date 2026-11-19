@@ -27,7 +27,6 @@ export function SaveButton({ saved, onPress }: { saved: boolean; onPress: () => 
 
 const styles = StyleSheet.create({
   button: {
-    alignSelf: "flex-end",
     flexDirection: "row",
     alignItems: "center",
     gap: 6,

@@ -110,6 +110,12 @@ appId: ph.edu.umak.libras
 - assertVisible:
     id: book-save-label
     text: "Save"
+# Save shares the top row with the close button, to its left, so no empty band sits above the cover.
+- assertVisible:
+    id: book-save
+    leftOf:
+      id: book-close
+- takeScreenshot: saved-books-book-unsaved
 - tapOn:
     id: book-save
 - extendedWaitUntil:

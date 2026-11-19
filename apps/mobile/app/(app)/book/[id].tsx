@@ -27,7 +27,7 @@ const MESSAGE_MS = 2500;
  * exist and are available come from the API. Borrow shows when a Copy is
  * available and opens the Digital ID; the Hold action shows when none is. A
  * Member who is not in Good standing is told why in place of either. Save, at
- * the top, keeps the Book in the Member's Saved books and says what changed.
+ * the top beside the close button, keeps the Book in the Member's Saved books and says what changed.
  */
 export default function BookScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -54,7 +54,10 @@ export default function BookScreen() {
       <Pressable accessibilityLabel="Close" onPress={close} style={{ height: height * SHEET_TOP }} testID="book-backdrop" />
       <View style={styles.sheet} testID="book-sheet">
         <View style={styles.grabber} />
-        <View style={styles.close}>
+        <View style={styles.top}>
+          {state.status === "loaded" ? (
+            <SaveAction bookId={state.book.id} accountType={member.accountType} initiallySaved={state.saved} onMessage={showMessage} />
+          ) : null}
           <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={close} hitSlop={8} testID="book-close">
             <CloseIcon />
           </Pressable>
@@ -66,7 +69,6 @@ export default function BookScreen() {
           {state.status === "loading" ? <ActivityIndicator color={colors.primary} style={styles.spinner} testID="book-loading" /> : null}
           {state.status === "loaded" ? (
             <>
-              <SaveAction bookId={state.book.id} accountType={member.accountType} initiallySaved={state.saved} onMessage={showMessage} />
               <BookInfo book={state.book} accountType={member.accountType} />
               <BorrowAction book={state.book} accountType={member.accountType} goodStanding={goodStanding} />
               <HoldAction book={state.book} accountType={member.accountType} goodStanding={goodStanding} />
@@ -111,8 +113,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 9, height: 4 },
   },
   grabber: { alignSelf: "center", marginTop: 10, width: 56, height: 10, borderRadius: radii.grabber, backgroundColor: colors.grabber },
-  close: { position: "absolute", right: 20, top: 20, zIndex: 1 },
-  content: { paddingTop: 52, paddingHorizontal: spacing.xl, gap: spacing.xl },
+  // Save and the close button share the row under the grabber (Save alone at the top right in the approved preview).
+  top: { flexDirection: "row", justifyContent: "flex-end", alignItems: "center", gap: spacing.md, paddingHorizontal: 20 },
+  content: { paddingTop: spacing.md, paddingHorizontal: spacing.xl, gap: spacing.xl },
   spinner: { marginTop: spacing.xxl },
   message: { borderWidth: 1, borderColor: colors.panelBorder, borderRadius: radii.panel, padding: spacing.lg, gap: spacing.sm, marginTop: spacing.xl },
   failed: { borderColor: colors.error },

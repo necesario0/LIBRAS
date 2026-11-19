@@ -1,8 +1,7 @@
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
-import { formatAnnouncementDay } from "@libras/shared";
-import type { MemberAnnouncement } from "@libras/shared";
+import { announcementDatesLine } from "@libras/shared";
 import { api } from "../../src/api";
 import { linkLabel, openInBrowser } from "../../src/announcement/openLink";
 import { ZoomableImage } from "../../src/announcement/ZoomableImage";
@@ -12,12 +11,6 @@ import { useFetch } from "../../src/hooks/useFocusedFetch";
 import { useScreenTop } from "../../src/hooks/useScreenTop";
 import { PushedHeader } from "../../src/navigation/PushedHeader";
 import { colors, fontFamily, fontSize, lineHeightFor, spacing } from "../../src/theme/tokens";
-
-/** "Nov 17, 2026 to Nov 28, 2026", or one day when it runs for one. */
-function dates(announcement: MemberAnnouncement): string {
-  const first = formatAnnouncementDay(announcement.firstDay);
-  return announcement.firstDay === announcement.lastDay ? first : `${first} to ${formatAnnouncementDay(announcement.lastDay)}`;
-}
 
 /**
  * The running Announcement in full (approved Tier 3 preview): back at the top left, the whole poster (pinch to
@@ -72,7 +65,7 @@ export default function AnnouncementScreen() {
                 {announcement.title}
               </Text>
               <Text style={styles.dates} testID="announcement-dates">
-                {dates(announcement)}
+                {announcementDatesLine(announcement.firstDay, announcement.lastDay)}
               </Text>
               {announcement.body === null ? null : (
                 <Text style={styles.text} testID="announcement-body">

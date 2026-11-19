@@ -3,6 +3,7 @@
 //   web   a poster with text and a web link (https://forms.gle/e2e-sign-up), running today
 //   book  a poster with no text and a Book link ("<Word> Almanac"), running today
 //   none  no Announcement at all (every one is removed)
+//   broken  a poster whose file is missing, so it fails to load on the Announcement screen, running today
 // Outputs:
 //   email, password        the Visitor
 //   title                  the Announcement's title ("" for none)
@@ -37,8 +38,11 @@ if (MODE === "none") {
 } else if (MODE === "book") {
   title = "Read this week " + Word;
   post("/e2e/announcements", { title: title, bookId: book.id });
+} else if (MODE === "broken") {
+  title = "Lost poster " + Word;
+  post("/e2e/announcements", { title: title, body: "The poster of this one does not load.", posterMissing: true });
 } else {
-  throw new Error("MODE must be web, book or none");
+  throw new Error("MODE must be web, book, broken or none");
 }
 
 output.email = visitor.email;
