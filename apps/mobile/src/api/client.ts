@@ -19,10 +19,12 @@ import type {
   MemberSignInResponse,
   MyHoldsResponse,
   MyLoansResponse,
+  MySavedBooksResponse,
   PasswordResetRequestedResponse,
   PlaceHoldResponse,
   RefreshSessionResponse,
   RenewLoanResponse,
+  SaveBookResponse,
   RequestPasswordResetRequest,
   ResendSignUpCodeRequest,
   SignInRequest,
@@ -134,6 +136,14 @@ export function createApiClient({ baseUrl, fetch: fetchImpl = fetch, timeoutMs =
     /** Takes the Member out of a Book's queue. Failures: `hold_not_found` (404), `hold_not_cancellable` (409). */
     cancelHold: (accessToken: string, holdId: string) =>
       request<CancelHoldResponse>(`/holds/${encodeURIComponent(holdId)}/cancel`, { method: "POST", headers: bearer(accessToken) }),
+    /** The Member's own Saved books, newest first, with each Book's availability. */
+    getSavedBooks: (accessToken: string) => request<MySavedBooksResponse>("/members/me/saved-books", { headers: bearer(accessToken) }),
+    /** Saves a Book (saving again changes nothing). `book_not_found` (404) when there is no such Book. */
+    saveBook: (accessToken: string, bookId: string) =>
+      request<SaveBookResponse>(`/members/me/saved-books/${encodeURIComponent(bookId)}`, { method: "PUT", headers: bearer(accessToken) }),
+    /** Takes a Book off the Member's Saved books (succeeds when it was not there). */
+    unsaveBook: (accessToken: string, bookId: string) =>
+      request<SaveBookResponse>(`/members/me/saved-books/${encodeURIComponent(bookId)}`, { method: "DELETE", headers: bearer(accessToken) }),
     /** The Member's own Loans, current ones first, with the loan limit and loan period of their Loan Policy. */
     getLoans: (accessToken: string) => request<MyLoansResponse>("/members/me/loans", { headers: bearer(accessToken) }),
     /**

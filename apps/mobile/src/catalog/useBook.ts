@@ -7,13 +7,13 @@ import type { AuthorizedRequest } from "../auth/authorized-request";
 /**
  * What the Book page shows:
  * - `loading`: the Book is being fetched;
- * - `loaded`: the Book and its Copy counts;
+ * - `loaded`: the Book and its Copy counts, and whether the Member has saved it;
  * - `missing`: there is no such Book (removed, or a stale link). Not a failure to retry;
  * - `error`: it could not be fetched. `message` is safe to show.
  */
 export type BookState =
   | { status: "loading" }
-  | { status: "loaded"; book: BookDetail }
+  | { status: "loaded"; book: BookDetail; saved: boolean }
   | { status: "missing"; message: string }
   | { status: "error"; message: string };
 
@@ -28,8 +28,8 @@ export function useBook(request: AuthorizedRequest, id: string) {
     let current = true;
     setState({ status: "loading" });
     requestRef.current((token) => api.getBook(token, id)).then(
-      ({ book }) => {
-        if (current) setState({ status: "loaded", book });
+      ({ book, saved }) => {
+        if (current) setState({ status: "loaded", book, saved });
       },
       (error: unknown) => {
         if (!current) return;

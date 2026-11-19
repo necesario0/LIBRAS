@@ -10,9 +10,10 @@ import {
 } from "@libras/shared";
 import type { BookDetailResponse, CatalogSearchResponse, CatalogSubjectsResponse, CatalogSuggestionsResponse } from "@libras/shared";
 import type { AppDeps } from "../app.ts";
-import { requireMember } from "../auth/guards.ts";
+import { identityOf, requireMember } from "../auth/guards.ts";
 import type { CatalogSearch } from "../catalog/catalog-search.ts";
 import { AppError } from "../errors.ts";
+import { isBookSaved } from "../saved-books/index.ts";
 
 /**
  * The catalog, for Members.
@@ -60,7 +61,7 @@ export function catalogRouter(deps: AppDeps, catalog: CatalogSearch): Router {
     if (!id.success) throw new AppError(400, "invalid_request", BOOK_MESSAGES.invalidId);
     const book = await catalog.book(id.data);
     if (!book) throw new AppError(404, "book_not_found", BOOK_MESSAGES.notFound);
-    const body: BookDetailResponse = { book };
+    const body: BookDetailResponse = { book, saved: await isBookSaved(deps, identityOf(res), book.id) };
     res.json(body);
   });
 

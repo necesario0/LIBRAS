@@ -21,6 +21,7 @@ import { finesRouter } from "./routes/fines.ts";
 import { healthRouter } from "./routes/health.ts";
 import { holdsRouter } from "./routes/holds.ts";
 import { homeRouter } from "./routes/home.ts";
+import { savedBooksRouter } from "./routes/saved-books.ts";
 import { loansRouter } from "./routes/loans.ts";
 import { membersRouter } from "./routes/members.ts";
 import { passwordResetRouter } from "./routes/password-reset.ts";
@@ -105,6 +106,7 @@ export function createApp(deps: AppDeps, options: AppOptions = {}): LibrasApp {
   app.use(passwordResetRouter(deps, options.passwordResetLimit));
   app.use(digitalIdRouter(deps));
   app.use(holdsRouter(deps));
+  app.use(savedBooksRouter(deps));
   app.use(loansRouter(deps));
   app.use(finesRouter(deps));
   if (options.sweepSecret) app.use(sweepsRouter(deps, options.sweepSecret));
