@@ -211,7 +211,8 @@ const styles = StyleSheet.create({
   modeBar: { paddingHorizontal: spacing.home, paddingVertical: 4 },
   body: { flex: 1, marginTop: spacing.lg },
   bodyContent: { paddingHorizontal: spacing.home, gap: spacing.md },
-  modeContent: { paddingBottom: spacing.xl },
+  // At least the screen tall, so the Sort menu fits inside it even over one result (see SearchControls).
+  modeContent: { flexGrow: 1, paddingBottom: spacing.xl },
   hint: { fontFamily: fontFamily.regular, fontSize: fontSize.label, lineHeight: 20, color: colors.textMuted, paddingHorizontal: spacing.xs },
   spinner: { marginTop: spacing.xl },
   count: { fontFamily: fontFamily.regular, fontSize: fontSize.resultNote, lineHeight: 15, color: colors.textMuted, marginTop: 2 },
