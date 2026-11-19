@@ -84,7 +84,7 @@ export default function SignInScreen() {
           <BookIllustration width={292} height={197} />
         </View>
         <Text style={styles.tagline} accessibilityRole="header">
-          The library for problem solver
+          Every shelf, within reach.
         </Text>
         <View style={styles.form}>
           <TextField

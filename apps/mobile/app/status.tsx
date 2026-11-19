@@ -16,7 +16,7 @@ export default function HealthScreen() {
         <Image source={logo} style={styles.logo} accessibilityIgnoresInvertColors />
         <Text style={styles.brandName}>Libras</Text>
       </View>
-      <Text style={styles.tagline}>The library for problem solver</Text>
+      <Text style={styles.tagline}>Every shelf, within reach.</Text>
 
       <View style={styles.card} testID="health-card">
         <Text style={styles.cardTitle}>Service status</Text>
