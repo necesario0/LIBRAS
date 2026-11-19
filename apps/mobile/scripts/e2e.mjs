@@ -7,7 +7,7 @@
 // the AVD named by LIBRAS_AVD (default Medium_Phone) is started and stopped again.
 // An argument names one flow to run (`sign-in` for .maestro/sign-in.yaml); the default is all of them.
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { apkAbis } from "./apk-abis.mjs";
@@ -19,6 +19,14 @@ const { env, isWindows } = androidEnv();
 const avd = process.env.LIBRAS_AVD ?? "Medium_Phone";
 const apk = join(root, "build", "libras.apk");
 const apiUrl = `http://127.0.0.1:${process.env.PORT ?? 3000}`;
+
+/** The port of the local Supabase API (`[api] port` in supabase/config.toml), where Storage serves the Announcement images. */
+function localSupabasePort() {
+  const config = readFileSync(join(repoRoot, "supabase", "config.toml"), "utf8");
+  const port = /^\[api\][^[]*?^port\s*=\s*(\d+)/m.exec(config)?.[1];
+  if (port === undefined) throw new Error("supabase/config.toml has no [api] port.");
+  return port;
+}
 
 const NEWLINE = String.fromCharCode(10);
 const TAB = String.fromCharCode(9);
@@ -151,6 +159,11 @@ async function main() {
   adb("shell", "settings", "put", "system", "screen_off_timeout", "2147483647");
   adb("shell", "input", "keyevent", "KEYCODE_WAKEUP");
   adb("shell", "input", "keyevent", "82");
+
+  // The API gives the app Announcement images at the local Supabase address (http://127.0.0.1:54321), which on the
+  // device is the device itself: forward that port to this machine so the images load as they do from hosted Storage.
+  const supabasePort = localSupabasePort();
+  if (adb("reverse", `tcp:${supabasePort}`, `tcp:${supabasePort}`).status !== 0) throw new Error(`adb reverse of port ${supabasePort} failed`);
 
   console.log("Installing the APK ...");
   const install = spawnSync("adb", ["-s", serial, "install", "-r", apk], { env, stdio: "inherit", shell: isWindows });
