@@ -5,6 +5,7 @@ import { api } from "../api";
 import { ApiError } from "../api/client";
 import { SessionManager } from "./SessionManager";
 import type { AuthorizedRequest } from "./authorized-request";
+import { currentPushToken, forgetCurrentPushToken } from "../push/push-device";
 import { clearRecentSearches } from "../search/recent-searches-store";
 import { secureSessionStore } from "./session-store";
 
@@ -25,7 +26,7 @@ interface AuthContextValue {
   state: AuthState;
   /** Signs in with email and password. Throws an `ApiError` the sign-in screen shows. */
   signIn(credentials: SignInRequest): Promise<void>;
-  /** Signs out on this device and on the server. Protected screens close at once. */
+  /** Signs out on this device and on the server, and the phone stops getting push notifications. Protected screens close at once. */
   signOut(): Promise<void>;
   /** Checks the stored session again after the app could not reach the server. */
   retry(): void;
@@ -50,6 +51,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onEnded: () => {
       void clearRecentSearches();
       setState({ status: "signedOut" });
+      // The session ended on its own: still stop this phone getting the Member's push notifications.
+      const pushToken = currentPushToken();
+      forgetCurrentPushToken();
+      if (pushToken !== undefined) api.signOut(undefined, pushToken).catch(() => undefined);
     },
   });
   const sessions = manager.current;
@@ -85,7 +90,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async signOut() {
         await clearRecentSearches();
         setState({ status: "signedOut" });
-        await sessions.end();
+        // This phone stops getting the Member's push notifications, along with the session.
+        const pushToken = currentPushToken();
+        forgetCurrentPushToken();
+        await sessions.end(pushToken);
       },
       retry: () => void restore(),
       request: (call) => sessions.call(call),

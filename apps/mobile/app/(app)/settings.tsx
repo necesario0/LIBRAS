@@ -11,6 +11,7 @@ import { useScreenTop } from "../../src/hooks/useScreenTop";
 import { PushedHeader } from "../../src/navigation/PushedHeader";
 import { clearRecentSearches, loadRecentSearches } from "../../src/search/recent-searches-store";
 import { DeleteAccountSection } from "../../src/settings/DeleteAccount";
+import { PushNotificationsSection } from "../../src/settings/PushNotifications";
 import { SectionLabel, SettingsGroup, SettingsRow } from "../../src/settings/SettingsParts";
 import { colors, fontFamily, fontSize, radii, spacing } from "../../src/theme/tokens";
 
@@ -18,12 +19,10 @@ const ICON = 20;
 const TOAST_MS = 2500;
 
 /**
- * Settings (approved Tier 3 preview): Privacy and security (Clear search
- * history, Sign out of all devices), Library (Library info), Account (Delete my
+ * Settings (approved Tier 3 preview): Push notifications (a switch per kind,
+ * `PushNotificationsSection`), Privacy and security (Clear search history,
+ * Sign out of all devices), Library (Library info), Account (Delete my
  * account, `DeleteAccountSection`) and the app version at the foot.
- *
- * Push notifications (#54) would add a section above Privacy and security, with
- * the note "Loan notice emails are always sent, whatever you choose here."
  */
 export default function SettingsScreen() {
   const router = useRouter();
@@ -89,6 +88,8 @@ export default function SettingsScreen() {
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: screenTop }]} showsVerticalScrollIndicator={false}>
         <PushedHeader title="Settings" testID="settings-back" />
         <View style={styles.body}>
+          <PushNotificationsSection onMessage={showToast} />
+
           <SectionLabel>Privacy and security</SectionLabel>
           <SettingsGroup>
             <SettingsRow

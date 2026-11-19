@@ -23,6 +23,8 @@ import type {
   MySavedBooksResponse,
   PasswordResetRequestedResponse,
   PlaceHoldResponse,
+  PushSettingsChange,
+  PushSettingsResponse,
   RefreshSessionResponse,
   RenewLoanResponse,
   SaveBookResponse,
@@ -145,6 +147,22 @@ export function createApiClient({ baseUrl, fetch: fetchImpl = fetch, timeoutMs =
     /** Takes a Book off the Member's Saved books (succeeds when it was not there). */
     unsaveBook: (accessToken: string, bookId: string) =>
       request<SaveBookResponse>(`/members/me/saved-books/${encodeURIComponent(bookId)}`, { method: "DELETE", headers: bearer(accessToken) }),
+    /** Which kinds of push notification the Member gets. */
+    getPushSettings: (accessToken: string) => request<PushSettingsResponse>("/members/me/push-settings", { headers: bearer(accessToken) }),
+    /** Turns the named push notification switches on or off; answers all of them. */
+    changePushSettings: (accessToken: string, change: PushSettingsChange) =>
+      request<PushSettingsResponse>("/members/me/push-settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...bearer(accessToken) },
+        body: JSON.stringify(change),
+      }),
+    /** This phone gets the signed-in Member's push notifications (repeating it is harmless). */
+    registerPushDevice: (accessToken: string, token: string) =>
+      request<null>("/members/me/push-device", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...bearer(accessToken) },
+        body: JSON.stringify({ token }),
+      }),
     /** The Member's own Loans, current ones first, with the loan limit and loan period of their Loan Policy. */
     getLoans: (accessToken: string) => request<MyLoansResponse>("/members/me/loans", { headers: bearer(accessToken) }),
     /**
@@ -206,9 +224,12 @@ export function createApiClient({ baseUrl, fetch: fetchImpl = fetch, timeoutMs =
     signIn: (body: SignInRequest) => post<MemberSignInResponse>("/members/sign-in", body),
     /** Swaps a refresh token for a new session. A refresh token works once. */
     refreshSession: (refreshToken: string) => post<RefreshSessionResponse>("/auth/refresh", { refreshToken }),
-    /** Ends the session on the server. Never fails for a session that is already gone. */
-    signOut: (accessToken: string) =>
-      request<null>("/auth/sign-out", { method: "POST", headers: bearer(accessToken) }),
+    /**
+     * Ends the session on the server. Never fails for a session that is already gone. With this phone's
+     * push token the phone also stops getting push notifications; that works without a session.
+     */
+    signOut: (accessToken: string | undefined, pushToken?: string) =>
+      post<null>("/auth/sign-out", pushToken === undefined ? {} : { pushToken }, accessToken),
     /** The signed-in Member's profile. `not_signed_in` (401) when the access token no longer works. */
     getMe: (accessToken: string) => request<MemberMeResponse>("/members/me", { headers: bearer(accessToken) }),
     /** The Member's Digital ID for the current 60-second window. */

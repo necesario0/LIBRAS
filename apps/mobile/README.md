@@ -63,12 +63,16 @@ Both Profile frames of the design are built, cut down to what exists.
 
 ## Settings and Help and policies
 
-Pushed screens in `app/(app)/`, built from `src/settings/SettingsParts.tsx` (`SectionLabel`, `SettingsGroup`, `SettingsRow`, `FactTable`) as the approved Tier 3 preview.
+Pushed screens in `app/(app)/`, built from `src/settings/SettingsParts.tsx` (`SectionLabel`, `SettingsGroup`, `SettingsRow`, `SettingsSwitchRow`, `SettingsNote`, `FactTable`) as the approved Tier 3 preview.
 
-- `settings.tsx`: Privacy and security (Clear search history: `clearRecentSearches()`, a short toast, the row's count of recent searches on this phone; Sign out of all devices: `ConfirmDialog`, then `POST /members/me/sign-out-all` and a local `signOut()`, which returns to sign-in), Library (Library info), Account (Delete my account: `src/settings/DeleteAccount.tsx` reads the Clearance first; not cleared shows `notClearedNotice` with Close and See My Loans, or See Clearance when only Fines are left; cleared asks for the password in a `ConfirmDialog` of `tone="danger"`, then `POST /members/me/delete` and a local `signOut()`) and the version from `expo-constants`. Push notifications (#54) would add its own section, where the file's comment says.
+- `settings.tsx`: Push notifications first (`src/settings/PushNotifications.tsx`: four switches read with `GET /members/me/push-settings` and saved one by one with `PATCH`, moving at once and back with a toast if the save fails; a note with a way to the phone's settings when Android blocks LIBRAS notifications; the line that Loan notice emails are always sent), then Privacy and security (Clear search history: `clearRecentSearches()`, a short toast, the row's count of recent searches on this phone; Sign out of all devices: `ConfirmDialog`, then `POST /members/me/sign-out-all` and a local `signOut()`, which returns to sign-in), Library (Library info), Account (Delete my account: `src/settings/DeleteAccount.tsx` reads the Clearance first; not cleared shows `notClearedNotice` with Close and See My Loans, or See Clearance when only Fines are left; cleared asks for the password in a `ConfirmDialog` of `tone="danger"`, then `POST /members/me/delete` and a local `signOut()`) and the version from `expo-constants`.
 - `help.tsx`: `useLoanPolicy` (`GET /members/me/loan-policy`) and `loanPolicyHelp` (shared) word the Member's own Loan Policy; an Account Type that cannot borrow is told so. Terms and Conditions and Privacy Policy both open `/terms`, which holds both texts.
 - `library-info.tsx`: static text from `src/settings/library-info.ts`. Every value is an example marked `toConfirm` until the library supplies the real ones; the screen says so.
-- Flows: `settings.yaml` and `help-policies.yaml`.
+- Flows: `settings.yaml`, `settings-push.yaml` and `help-policies.yaml`.
+
+## Push notifications
+
+`src/push/`. `push-device.ts` knows whether this build can get push notifications (`app.config.ts` sets `extra.pushEnabled` only with `google-services.json` and `EXPO_PROJECT_ID`; `LIBRAS_PUSH=off` forces it off) and gets the phone's Expo push token, asking Android's permission once. `usePushNotifications` (mounted in `app/(app)/_layout.tsx`) registers the phone with `PUT /members/me/push-device` on every start and opens the screen of a tapped push (`pushDestination` in `@libras/shared`: My Books on Holds or Loans, or `/announcement`). Sign-out hands the token back in `POST /auth/sign-out`, also when the session ended on its own. A build without push notifications skips all of it and never shows the permission dialog. The owner's Firebase and Expo setup: `docs/push-notifications.md`.
 
 ## The Book page
 
@@ -120,7 +124,7 @@ After one full build, a change to JavaScript only needs Gradle again, without `e
 
 `EXPO_PUBLIC_API_URL` is baked in at build time. A build whose URL starts with `http://` (or is unset) allows cleartext traffic; an `https://` build does not. For a phone on the same network, set it to `http://<your-computer-LAN-ip>:3000` and rebuild.
 
-To build against the hosted API on Render, run `npm run build:apk:hosted -w @libras/mobile`. It takes `EXPO_PUBLIC_API_URL` from its first argument, the environment or `.env.hosted` (written by `npm run setup:hosted`), refuses anything that is not `https://`, and asks the API for `/health` before the long build starts (a sleeping free Render service takes about a minute to answer). It reads only that one value from `.env.hosted`. The build is about 25 minutes, so it is not run casually. See the Deployment section of the root README.
+To build against the hosted API on Render, run `npm run build:apk:hosted -w @libras/mobile`. It takes `EXPO_PUBLIC_API_URL` from its first argument, the environment or `.env.hosted` (written by `npm run setup:hosted`), refuses anything that is not `https://`, and asks the API for `/health` before the long build starts (a sleeping free Render service takes about a minute to answer). It reads only that value and `EXPO_PROJECT_ID` (push notifications, see above) from `.env.hosted`. The build is about 25 minutes, so it is not run casually. See the Deployment section of the root README.
 
 `LIBRAS_ABIS` (default `arm64-v8a,x86,x86_64`) sets the CPU architectures in the APK. Use `x86_64` alone for a faster emulator-only build. `npm run e2e` stops before installing an APK that has none of the device's architectures.
 

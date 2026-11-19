@@ -1,4 +1,6 @@
 # A Member opens Settings from the Profile tab (a pushed screen, no tab bar).
+# Push notifications come first (settings-push.yaml checks them), so the
+# version line at the foot is scrolled to.
 # Clear search history empties the recent searches on this phone and says so;
 # Home then shows none. Library info shows the hours, location and contact with
 # the note that they are examples. Sign out of all devices asks first (Cancel
@@ -61,7 +63,7 @@ appId: ph.edu.umak.libras
     id: profile-settings
 - extendedWaitUntil:
     visible:
-      id: settings-version
+      id: settings-clear-history
     timeout: 10000
 - assertNotVisible:
     id: tab-bar
@@ -69,8 +71,18 @@ appId: ph.edu.umak.libras
 - assertVisible:
     id: settings-clear-history-detail
     text: "1 recent search on this phone"
-- assertVisible: "LIBRAS for Android · version .*"
 - takeScreenshot: settings
+# The version line is at the foot, under Push notifications, Privacy and security, Library and Account.
+- scrollUntilVisible:
+    element:
+      id: settings-version
+    direction: DOWN
+- assertVisible: "LIBRAS for Android · version .*"
+- takeScreenshot: settings-foot
+- scrollUntilVisible:
+    element:
+      id: settings-clear-history
+    direction: UP
 
 # Clear search history: confirmed with a short message, and the count goes to none.
 - tapOn:
