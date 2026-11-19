@@ -34,7 +34,7 @@ export function SignInPage({ onSignedIn }: { onSignedIn: (staff: StaffProfile) =
         <div className="sign-in__illustration">
           <img src={openBook} alt="" />
         </div>
-        <p className="sign-in__tagline">The library for problem solver</p>
+        <p className="sign-in__tagline">Every shelf, within reach.</p>
       </aside>
       <section className="sign-in__panel">
         <form className="sign-in__form" onSubmit={submit} noValidate>
