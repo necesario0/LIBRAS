@@ -134,7 +134,7 @@ npm run build:apk -w @libras/mobile
 npm run e2e -w @libras/mobile
 ```
 
-`npm run e2e` starts the end-to-end API (the one that captures emails; it refuses to run if another API already holds port 3000), starts the emulator if no device is connected, installs `build/libras.apk` and runs every flow in `.maestro/` with Maestro. It stops what it started. It is not part of `npm test` because it needs an emulator.
+`npm run e2e` starts the end-to-end API (the one that captures emails; it refuses to run if another API already holds port 3000), starts the emulator if no device is connected, installs `build/libras.apk` and runs every flow in `.maestro/` with Maestro. It stops what it started. It also runs `adb reverse tcp:54321 tcp:54321`: the local API gives Announcement images at the local Supabase address (`http://127.0.0.1:54321`), which the device can only reach through that forward. Run the same command when you try the app against a local API by hand. It is not part of `npm test` because it needs an emulator.
 
 Checks that need no emulator: `npm run typecheck` and `npm run lint` from the repo root.
 
