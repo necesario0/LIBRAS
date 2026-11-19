@@ -13,6 +13,7 @@ import type {
   CompletePasswordResetRequest,
   DigitalIdResponse,
   HealthResponse,
+  HomeResponse,
   MemberLoanPolicyResponse,
   MemberMeResponse,
   MemberSignInResponse,
@@ -118,6 +119,8 @@ export function createApiClient({ baseUrl, fetch: fetchImpl = fetch, timeoutMs =
       request<CatalogSuggestionsResponse>(`/catalog/suggestions?q=${encodeURIComponent(query)}`, { headers: bearer(accessToken) }),
     /** The Subjects that have at least one Book in the catalog, in table order: the options of the Filters sheet. */
     getSubjects: (accessToken: string) => request<CatalogSubjectsResponse>("/catalog/subjects", { headers: bearer(accessToken) }),
+    /** What Home shows besides the search bar: the shelves (the Announcement joins them later). A shelf with no Books is not in the answer. */
+    getHome: (accessToken: string) => request<HomeResponse>("/home", { headers: bearer(accessToken) }),
     /** One Book with its details and how many Copies exist and are available. `book_not_found` (404) when there is no such Book. */
     getBook: (accessToken: string, id: string) =>
       request<BookDetailResponse>(`/catalog/books/${encodeURIComponent(id)}`, { headers: bearer(accessToken) }),

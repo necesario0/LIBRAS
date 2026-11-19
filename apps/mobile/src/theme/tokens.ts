@@ -295,3 +295,9 @@ export const statusBarHeight = 62;
 
 /** The cover colours of the design's book placeholders (Figma Search C). A Book without a cover picture takes one by its id. */
 export const bookCovers = ["#801A1A", "#3366B2", "#738C4D", "#E5C773", "#2B2B33", "#33998C"] as const;
+
+/** A Book on a Home shelf (approved Tier 3 preview): the cover is 96 by 140 and the title and author sit under it in the same width. */
+export const shelfCover = { width: 96, height: 140 } as const;
+
+/** The title printed on a Home shelf cover: white, except on the pale yellow cover, where white could not be read. */
+export const coverInk = { light: "#FFFFFF", dark: "#2B2B33", darkOn: "#E5C773" } as const;

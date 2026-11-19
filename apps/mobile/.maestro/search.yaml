@@ -27,14 +27,16 @@ appId: ph.edu.umak.libras
 - tapOn:
     id: sign-in-continue
 
-# Home: the greeting and the search bar, and none of the recommendation sections.
+# Home: the greeting, the search bar and the shelves (home-shelves.yaml checks those), and none of the old recommendation sections.
 - extendedWaitUntil:
     visible: "Hi, Cobby"
     timeout: 20000
 - assertVisible:
     id: search-open
-- assertVisible:
-    id: search-hint
+- extendedWaitUntil:
+    visible:
+      id: home-shelves
+    timeout: 20000
 - assertNotVisible: "Book of the month!"
 - assertNotVisible: "You might also like these"
 - takeScreenshot: home-idle
@@ -85,12 +87,12 @@ appId: ph.edu.umak.libras
 - assertNotVisible: ${output.title}
 - takeScreenshot: search-no-results
 
-# Cancel leaves search mode: Home with its hint and the tab bar again.
+# Cancel leaves search mode: Home with its search bar and the tab bar again.
 - tapOn:
     id: search-cancel
 - extendedWaitUntil:
     visible:
-      id: search-hint
+      id: search-open
     timeout: 10000
 - assertVisible:
     id: tab-home

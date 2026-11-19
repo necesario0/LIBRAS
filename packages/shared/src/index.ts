@@ -269,3 +269,5 @@ export {
   catalogSuggestQuerySchema,
 } from "./catalog.ts";
 export type { CatalogSuggestionsResponse } from "./catalog.ts";
+export { HOME_SHELF_KINDS, HOME_SHELF_LENGTH, homeShelfCopy, topSubject } from "./home.ts";
+export type { HomeResponse, HomeShelf, HomeShelfKind, HomeShelfScope } from "./home.ts";
