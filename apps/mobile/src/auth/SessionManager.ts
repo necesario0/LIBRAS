@@ -47,15 +47,18 @@ export class SessionManager {
     await this.#store.write(session);
   }
 
-  /** Signs out: tells the server (best effort) and forgets the session on this device. */
-  async end(): Promise<void> {
+  /**
+   * Signs out: tells the server (best effort) and forgets the session on this device. With this
+   * phone's push token, the server also stops sending it push notifications, even without a session.
+   */
+  async end(pushToken?: string): Promise<void> {
     const session = this.#session;
     this.#session = undefined;
     this.#renewal = undefined;
     await this.#store.clear();
-    if (session === undefined) return;
+    if (session === undefined && pushToken === undefined) return;
     try {
-      await this.#api.signOut(session.accessToken);
+      await this.#api.signOut(session?.accessToken, pushToken);
     } catch {
       // The device is signed out either way; the server session expires by itself.
     }

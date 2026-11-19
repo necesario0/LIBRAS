@@ -1,4 +1,5 @@
 import { Stack } from "expo-router";
+import { usePushNotifications } from "../../src/push/usePushNotifications";
 import { colors } from "../../src/theme/tokens";
 
 /** A link straight to a pushed screen still has the tabs under it, so back leads somewhere. */
@@ -13,8 +14,12 @@ export const unstable_settings = { initialRouteName: "(tabs)" };
  * Books, Digital ID, Profile). Every other screen here is pushed over them and
  * so covers the floating tab bar; each has its back button at the top left
  * (`PushedHeader`), and Android's back button does the same.
+ *
+ * It also registers the phone for push notifications and opens the screen a
+ * tapped one is about (`usePushNotifications`).
  */
 export default function AppLayout() {
+  usePushNotifications();
   return (
     <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.white } }}>
       <Stack.Screen name="(tabs)" />

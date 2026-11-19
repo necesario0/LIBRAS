@@ -8,6 +8,8 @@ import { booksWithWaitingHolds, renewalOf } from "../loans/renewability.ts";
 import { goodStandingRefusal } from "../standing/index.ts";
 import { loanNoticeEmail } from "./email.ts";
 import type { NoticeLoan } from "./email.ts";
+import { pushLoanNotices } from "./push.ts";
+import type { NotifiedLoan } from "./push.ts";
 import { libraryDate, libraryDayOf, noticeDue, noticeWindow } from "./schedule.ts";
 import type { LoanNoticeSlot } from "./schedule.ts";
 
@@ -72,7 +74,8 @@ interface MemberContactRow {
 
 /**
  * Sends one Member the email of this library day, covering every Loan of theirs
- * with a notice due, and records each notice. Returns whether an email went out.
+ * with a notice due, and records each notice. Returns the Loans the email
+ * covered, or none when no email went out.
  *
  * The email's row (one per Member and library day) is inserted first: a second
  * tick doing the same waits on it, and finds it taken once this one commits.
@@ -86,7 +89,7 @@ interface MemberContactRow {
  * slow provider does not get the same email on every tick; the next library
  * day's run finds the notices still unsent and sends those still due once.
  */
-async function notifyMember(deps: AppDeps, memberId: string): Promise<boolean> {
+async function notifyMember(deps: AppDeps, memberId: string): Promise<NotifiedLoan[]> {
   return withTransaction(deps.db, async (tx) => {
     const now = deps.clock.now();
     const email = await tx.query<{ id: string }>(
@@ -96,7 +99,7 @@ async function notifyMember(deps: AppDeps, memberId: string): Promise<boolean> {
       [memberId, libraryDate(libraryDayOf(now)), now],
     );
     const emailId = email.rows[0]?.id;
-    if (emailId === undefined) return false;
+    if (emailId === undefined) return [];
 
     // Read again under the email's row: a notice another tick sent meanwhile is no longer due.
     const due = pending(await candidates(tx, now, { memberId, emailId }), now);
@@ -152,11 +155,11 @@ async function notifyMember(deps: AppDeps, memberId: string): Promise<boolean> {
         `The Loan notice email for Member ${memberId} may not have been sent: the email service did not answer in time. It is not sent again before the next library day.`,
         error,
       );
-      return false;
+      return [];
     }
-    return true;
+    return due.map((loan) => ({ id: loan.id, title: loan.title, dueAt: loan.due_at, slot: loan.slot }));
   }).catch((error: unknown) => {
-    if (error instanceof NothingToSend) return false;
+    if (error instanceof NothingToSend) return [];
     throw error;
   });
 }
@@ -170,17 +173,25 @@ class NothingToSend extends Error {}
  * a library day. Returns how many emails went out. A Member whose email fails
  * is logged and tried again on the next tick, and does not stop the others;
  * one whose email has an unknown outcome is tried again on the next library day.
+ *
+ * Once a Member's email went out they get its push notifications
+ * (`pushLoanNotices`), which never throw: a failed push changes nothing about the email.
  */
 export async function sendLoanNotices(deps: AppDeps): Promise<number> {
   const now = deps.clock.now();
   const members = [...new Set(pending(await candidates(deps.db, now, null), now).map((row) => row.member_id))];
   let sent = 0;
   for (const memberId of members) {
+    let notified: NotifiedLoan[];
     try {
-      if (await notifyMember(deps, memberId)) sent += 1;
+      notified = await notifyMember(deps, memberId);
     } catch (error) {
       deps.logger.error(`The Loan notice email for Member ${memberId} could not be sent`, error);
+      continue;
     }
+    if (notified.length === 0) continue;
+    sent += 1;
+    await pushLoanNotices(deps, memberId, notified);
   }
   return sent;
 }

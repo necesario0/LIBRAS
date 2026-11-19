@@ -100,6 +100,9 @@ apps/mobile/android/
 apps/mobile/ios/
 apps/mobile/.expo/
 apps/mobile/expo-env.d.ts
+# Firebase credentials for push notifications (ticket #54): the owner keeps them outside git
+google-services.json
+*firebase-adminsdk*.json
 
 # Playwright output
 apps/web/test-results/
