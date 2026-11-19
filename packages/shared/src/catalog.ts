@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { CATALOG_SORTS } from "./search/editions.ts";
+import type { CatalogSort } from "./search/editions.ts";
 import type { CatalogSuggestion } from "./search/suggestions.ts";
 
 export const CATALOG_SEARCH_MAX_QUERY_LENGTH = 100;
@@ -11,6 +13,39 @@ export const CATALOG_SEARCH_MESSAGES = {
   queryTooLong: `Search for at most ${CATALOG_SEARCH_MAX_QUERY_LENGTH} characters at a time.`,
   invalid: "Check what you typed and try again.",
 } as const;
+
+/**
+ * Most borrowed counts the Loans confirmed in this many days up to now (a
+ * rolling window), so a Book that was popular years ago does not stay on top.
+ * The Home shelves use the same window.
+ */
+export const MOST_BORROWED_WINDOW_DAYS = 180;
+
+/** What the Sort menu calls each order. */
+export const CATALOG_SORT_LABELS: Record<CatalogSort, string> = {
+  best: "Best match",
+  newest: "Newest edition",
+  title: "Title A to Z",
+  borrowed: "Most borrowed",
+};
+
+/** How a Member narrows and orders search results. The query string carries them; anything left out takes its default. */
+export interface CatalogSearchFilters {
+  sort: CatalogSort;
+  /** Only rows whose shown edition has a Copy on the shelf now. */
+  availableNow: boolean;
+  /** Older editions of a work fold into the row of its newest edition. */
+  latestEditionOnly: boolean;
+}
+
+export const DEFAULT_CATALOG_SEARCH_FILTERS: Readonly<CatalogSearchFilters> = { sort: "best", availableNow: false, latestEditionOnly: true };
+
+/** A yes-or-no switch in the query string: exactly "true" or "false", or left out for its default. */
+const queryFlag = (fallback: boolean) =>
+  z
+    .enum(["true", "false"], { error: CATALOG_SEARCH_MESSAGES.invalid })
+    .optional()
+    .transform((value) => (value === undefined ? fallback : value === "true"));
 
 /** The query string of `GET /catalog/search`. */
 export const catalogSearchQuerySchema = z.object({
@@ -25,7 +60,22 @@ export const catalogSearchQuerySchema = z.object({
     .min(1, CATALOG_SEARCH_MESSAGES.invalid)
     .max(CATALOG_SEARCH_MAX_LIMIT, CATALOG_SEARCH_MESSAGES.invalid)
     .default(CATALOG_SEARCH_DEFAULT_LIMIT),
+  sort: z.enum(CATALOG_SORTS, { error: CATALOG_SEARCH_MESSAGES.invalid }).default(DEFAULT_CATALOG_SEARCH_FILTERS.sort),
+  availableNow: queryFlag(DEFAULT_CATALOG_SEARCH_FILTERS.availableNow),
+  latestEditionOnly: queryFlag(DEFAULT_CATALOG_SEARCH_FILTERS.latestEditionOnly),
 });
+
+/** The query string of a search for `query` with these filters, as `GET /catalog/search` reads it. Filters at their default are left out. */
+export function catalogSearchQueryString(query: string, filters: CatalogSearchFilters, limit?: number): string {
+  const params = new URLSearchParams({ q: query });
+  if (limit !== undefined) params.set("limit", String(limit));
+  if (filters.sort !== DEFAULT_CATALOG_SEARCH_FILTERS.sort) params.set("sort", filters.sort);
+  if (filters.availableNow !== DEFAULT_CATALOG_SEARCH_FILTERS.availableNow) params.set("availableNow", String(filters.availableNow));
+  if (filters.latestEditionOnly !== DEFAULT_CATALOG_SEARCH_FILTERS.latestEditionOnly) {
+    params.set("latestEditionOnly", String(filters.latestEditionOnly));
+  }
+  return params.toString();
+}
 
 export type CatalogSearchQuery = z.input<typeof catalogSearchQuerySchema>;
 
@@ -52,6 +102,12 @@ export interface BookSearchResult {
   totalCopies: number;
 }
 
+/** One row of search results: the Book it shows and, when editions are folded, the older editions of the same work. */
+export interface CatalogSearchRow extends BookSearchResult {
+  /** Newest first. Empty when no other edition of the work matched, or when Latest edition only is off. */
+  olderEditions: BookSearchResult[];
+}
+
 /**
  * The body of `GET /catalog/search`. No match is a normal answer with an empty
  * `results`, not an error: a failure is an `ApiErrorBody` with a 4xx or 5xx status.
@@ -59,9 +115,9 @@ export interface BookSearchResult {
 export interface CatalogSearchResponse {
   /** The query as the API understood it (trimmed). */
   query: string;
-  /** How many Books matched. `results` holds at most `limit` of them, best match first. */
+  /** How many rows matched, after editions were folded and Available now applied. `results` holds at most `limit` of them, in the order asked for. */
   total: number;
-  results: BookSearchResult[];
+  results: CatalogSearchRow[];
 }
 
 /** The words the API and the app both show when a Book cannot be opened. */

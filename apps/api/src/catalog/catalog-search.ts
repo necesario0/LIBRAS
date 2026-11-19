@@ -1,5 +1,14 @@
-import { buildCatalogIndexAsync, pickSuggestions } from "@libras/shared";
-import type { BookDetail, BookSearchResult, CatalogIndex, CatalogSuggestion, IndexedBook } from "@libras/shared";
+import { MOST_BORROWED_WINDOW_DAYS, arrangeCatalogResults, buildCatalogIndexAsync, pickSuggestions } from "@libras/shared";
+import type {
+  BookDetail,
+  BookSearchResult,
+  CatalogIndex,
+  CatalogSearchFilters,
+  CatalogSearchRow,
+  CatalogSuggestion,
+  IndexedBook,
+} from "@libras/shared";
+import type { Clock } from "../clock.ts";
 import { withTransaction } from "../db.ts";
 import type { Database } from "../db.ts";
 import type { Logger } from "../logger.ts";
@@ -14,9 +23,12 @@ interface Snapshot {
 }
 
 export interface CatalogSearchOutcome {
+  /** Rows after folding and Available now, before `limit`. */
   total: number;
-  results: BookSearchResult[];
+  results: CatalogSearchRow[];
 }
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Typo-tolerant catalog search for the API (ADR 0001).
@@ -32,17 +44,22 @@ export interface CatalogSearchOutcome {
  * (one rebuild, about a second at the benchmark scale), not instantly.
  *
  * Availability is not in the index: it is read from the Copies for the Books
- * that matched, so it is always current.
+ * that matched, so it is always current. So are the fields that fold editions
+ * and order results (title, first author, publication year) and the Loan
+ * counts for Most borrowed: every matched Book is read in one query, then
+ * `arrangeCatalogResults` folds, filters and sorts, and only then is the page cut.
  */
 export class CatalogSearch {
   readonly #db: Database;
   readonly #logger: Logger;
+  readonly #clock: Clock;
   #current: Snapshot | undefined;
   #rebuilding: Promise<Snapshot> | undefined;
 
-  constructor(db: Database, logger: Logger) {
+  constructor(db: Database, logger: Logger, clock: Clock) {
     this.#db = db;
     this.#logger = logger;
+    this.#clock = clock;
   }
 
   /** Builds the first index ahead of the first search. A failure is logged and the first search tries again. */
@@ -70,19 +87,29 @@ export class CatalogSearch {
     return row && text ? { ...toResult(row), summary: text.summary, contents: text.contents } : undefined;
   }
 
-  async search(query: string, limit: number): Promise<CatalogSearchOutcome> {
+  /**
+   * The rows for `query`: editions of one work folded when `latestEditionOnly`, then only rows whose
+   * shown edition has a Copy on the shelf when `availableNow`, in the order `sort` asks for. At most
+   * `limit` rows; `total` counts them all.
+   */
+  async search(query: string, { limit, ...filters }: CatalogSearchFilters & { limit: number }): Promise<CatalogSearchOutcome> {
     const { index } = await this.#fresh();
-    const { total, hits } = index.search(query, { limit });
-    if (hits.length === 0) return { total, results: [] };
+    const { hits } = index.search(query);
+    if (hits.length === 0) return { total: 0, results: [] };
 
-    const rows = await this.#booksWithCopyCounts(hits.map((hit) => hit.bookId));
-    const byId = new Map(rows.map((row) => [row.id, row]));
-    // Keep the ranking. A Book deleted since the index was built is simply left out.
-    const results = hits.flatMap((hit) => {
-      const row = byId.get(hit.bookId);
-      return row ? [toResult(row)] : [];
-    });
-    return { total, results };
+    const ids = hits.map((hit) => hit.bookId);
+    const [rows, loansInWindow] = await Promise.all([
+      this.#booksWithCopyCounts(ids),
+      filters.sort === "borrowed" ? this.#loansInWindow(ids) : undefined,
+    ]);
+    const byId = new Map(rows.map((row) => [row.id, toResult(row)]));
+    // Best-match order. A Book deleted since the index was built is simply left out.
+    const ranked = ids.flatMap((id) => byId.get(id) ?? []);
+    const arranged = arrangeCatalogResults(ranked, { ...filters, loansInWindow });
+    return {
+      total: arranged.length,
+      results: arranged.slice(0, limit).map(({ book, olderEditions }) => ({ ...book, olderEditions })),
+    };
   }
 
   /**
@@ -102,6 +129,20 @@ export class CatalogSearch {
     // Keep the ranking. A Book deleted since the index was built is simply left out.
     const matched = hits.flatMap((hit) => byId.get(hit.bookId) ?? []);
     return pickSuggestions(query, matched, limit);
+  }
+
+  /** How many Loans of each of these Books were confirmed in the Most borrowed window up to now. Books with none are left out. */
+  async #loansInWindow(ids: readonly string[]): Promise<Map<string, number>> {
+    const since = new Date(this.#clock.now().getTime() - MOST_BORROWED_WINDOW_DAYS * DAY_MS);
+    const { rows } = await this.#db.query<{ book_id: string; loans: number }>(
+      `select c.book_id, count(*)::int as loans
+         from public.loans l
+         join public.copies c on c.id = l.copy_id
+        where l.checked_out_at > $2 and c.book_id = any($1::uuid[])
+        group by c.book_id`,
+      [ids, since],
+    );
+    return new Map(rows.map((row) => [row.book_id, row.loans]));
   }
 
   /** These Books (in no particular order) with how many Copies each has and how many are available, read live. */

@@ -107,7 +107,7 @@ export function createApp(deps: AppDeps, options: AppOptions = {}): LibrasApp {
   app.use(loansRouter(deps));
   app.use(finesRouter(deps));
   if (options.sweepSecret) app.use(sweepsRouter(deps, options.sweepSecret));
-  const catalog = new CatalogSearch(deps.db, deps.logger);
+  const catalog = new CatalogSearch(deps.db, deps.logger, deps.clock);
   app.use(scannerRouter(deps, scannerHub, pairingLimiter));
   app.use(catalogRouter(deps, catalog));
   app.use(announcementsRouter(deps, catalog));

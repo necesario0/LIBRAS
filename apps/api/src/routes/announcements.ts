@@ -93,7 +93,8 @@ export function announcementsRouter(deps: AppDeps, catalog: CatalogSearch): Rout
   router.get("/desk/announcements/books", async (req, res) => {
     const parsed = catalogSearchQuerySchema.safeParse({ q: req.query.q, limit: String(BOOK_CHOICES) });
     if (!parsed.success) throw new AppError(400, "invalid_request", CATALOG_SEARCH_MESSAGES.invalid);
-    const { results } = await catalog.search(parsed.data.q, parsed.data.limit);
+    // A Librarian links one particular Book, so every edition is its own choice.
+    const { results } = await catalog.search(parsed.data.q, { ...parsed.data, latestEditionOnly: false });
     const body: AnnouncementBooksResponse = { books: results };
     res.json(body);
   });

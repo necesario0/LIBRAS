@@ -32,8 +32,8 @@ export function catalogRouter(deps: AppDeps, catalog: CatalogSearch): Router {
       const known = Object.values(CATALOG_SEARCH_MESSAGES) as string[];
       throw new AppError(400, "invalid_request", message !== undefined && known.includes(message) ? message : CATALOG_SEARCH_MESSAGES.invalid);
     }
-    const { q, limit } = parsed.data;
-    const { total, results } = await catalog.search(q, limit);
+    const { q, ...options } = parsed.data;
+    const { total, results } = await catalog.search(q, options);
     const body: CatalogSearchResponse = { query: q, total, results };
     res.json(body);
   });
