@@ -13,7 +13,7 @@ export default function HealthScreen() {
   return (
     <View style={[styles.screen, { paddingTop: insets.top + spacing.xxl, paddingBottom: insets.bottom + spacing.xl }]}>
       <Wordmark />
-      <Text style={styles.tagline}>The library for problem solver</Text>
+      <Text style={styles.tagline}>Every shelf, within reach.</Text>
 
       <View style={styles.card} testID="health-card">
         <Text style={styles.cardTitle}>Service status</Text>
