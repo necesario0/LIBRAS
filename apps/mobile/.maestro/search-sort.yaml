@@ -78,6 +78,19 @@ appId: ph.edu.umak.libras
 - assertVisible: "Most borrowed"
 - takeScreenshot: search-sort-menu
 
+# Android back closes the menu and stays in search mode; the chip opens it again.
+- back
+- extendedWaitUntil:
+    notVisible: "SORT BY"
+    timeout: 10000
+- assertVisible:
+    id: search-cancel
+- tapOn:
+    id: search-sort
+- extendedWaitUntil:
+    visible: "SORT BY"
+    timeout: 10000
+
 # Title A to Z: Aardvark, Mango, then the work.
 - tapOn: "Title A to Z"
 - extendedWaitUntil:

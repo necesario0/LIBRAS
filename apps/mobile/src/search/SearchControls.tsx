@@ -1,20 +1,15 @@
 import { CATALOG_SORTS, CATALOG_SORT_LABELS } from "@libras/shared";
 import type { CatalogSearchFilters, CatalogSort } from "@libras/shared";
-import { useRef, useState } from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import type { ComponentRef, ReactNode, Ref } from "react";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
+import { BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import type { ReactNode } from "react";
 import { CheckIcon, ChevronDownIcon, SlidersIcon, SortIcon } from "../components/OutlineIcons";
 import { colors, fontFamily, fontSize, popupMenuShadow, radii, spacing } from "../theme/tokens";
 
-/** Where the Sort chip is on the screen, to open its menu just under it. */
-interface Anchor {
-  x: number;
-  y: number;
-  height: number;
-}
-
-/** How far below the chip the menu opens. */
-const MENU_GAP = 8;
+/** The chips' height, and how far below their top the Sort menu opens. */
+const CHIP_HEIGHT = 34;
+const MENU_TOP = CHIP_HEIGHT + 8;
 
 function Chip({
   on,
@@ -23,7 +18,6 @@ function Chip({
   icon,
   trailing,
   testID,
-  chipRef,
   expanded,
 }: {
   on: boolean;
@@ -32,12 +26,10 @@ function Chip({
   icon?: ReactNode;
   trailing?: ReactNode;
   testID: string;
-  chipRef?: Ref<ComponentRef<typeof Pressable>>;
   expanded?: boolean;
 }) {
   return (
     <Pressable
-      ref={chipRef}
       accessibilityRole="button"
       accessibilityState={{ selected: on, expanded, disabled: onPress === undefined }}
       disabled={onPress === undefined}
@@ -54,8 +46,12 @@ function Chip({
 
 /**
  * The row under the search bar in search results (approved Tier 3 preview):
- * the Sort chip, which opens a menu of the four orders; the one-tap Available
- * now chip; and the Filters chip, which opens the Filters sheet.
+ * the Sort chip, which opens a menu of the four orders just under it; the
+ * one-tap Available now chip; and the Filters chip, which opens the Filters
+ * sheet. The menu closes on a choice, on the Sort chip, or on Android back.
+ *
+ * The menu is drawn in place over the results (the row sits above them), so
+ * the results area must not clip it.
  */
 export function SearchControls({
   filters,
@@ -67,24 +63,33 @@ export function SearchControls({
   /** Opens the Filters sheet. Until it exists the chip shows but does nothing. */
   onOpenFilters?: () => void;
 }) {
-  const sortChip = useRef<ComponentRef<typeof Pressable>>(null);
-  const [menu, setMenu] = useState<Anchor | undefined>(undefined);
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  const openMenu = () => sortChip.current?.measureInWindow((x, y, _width, height) => setMenu({ x, y, height }));
+  // Android back closes the menu first (Home's own handler, registered earlier, would leave search mode).
+  useFocusEffect(
+    useCallback(() => {
+      if (!menuOpen) return undefined;
+      const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
+        setMenuOpen(false);
+        return true;
+      });
+      return () => subscription.remove();
+    }, [menuOpen]),
+  );
+
   const choose = (sort: CatalogSort) => {
-    setMenu(undefined);
+    setMenuOpen(false);
     if (sort !== filters.sort) onChange({ sort });
   };
 
   return (
-    <View>
+    <View style={styles.controls}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row} style={styles.scroller}>
         <Chip
-          chipRef={sortChip}
           on
           label={CATALOG_SORT_LABELS[filters.sort]}
-          onPress={openMenu}
-          expanded={menu !== undefined}
+          onPress={() => setMenuOpen(!menuOpen)}
+          expanded={menuOpen}
           icon={<SortIcon color={colors.black} size={15} />}
           trailing={<ChevronDownIcon color={colors.black} size={14} />}
           testID="search-sort"
@@ -92,53 +97,49 @@ export function SearchControls({
         <Chip
           on={filters.availableNow}
           label="Available now"
-          onPress={() => onChange({ availableNow: !filters.availableNow })}
+          onPress={() => {
+            setMenuOpen(false);
+            onChange({ availableNow: !filters.availableNow });
+          }}
           icon={filters.availableNow ? <CheckIcon color={colors.black} size={14} /> : undefined}
           testID="search-available-now"
         />
-        <Chip
-          on={false}
-          label="Filters"
-          onPress={onOpenFilters}
-          icon={<SlidersIcon color={colors.black} size={15} />}
-          testID="search-filters"
-        />
+        <Chip on={false} label="Filters" onPress={onOpenFilters} icon={<SlidersIcon color={colors.black} size={15} />} testID="search-filters" />
       </ScrollView>
 
-      <Modal visible={menu !== undefined} transparent animationType="none" statusBarTranslucent navigationBarTranslucent onRequestClose={() => setMenu(undefined)}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={() => setMenu(undefined)} accessibilityLabel="Close Sort" testID="search-sort-dismiss" />
-        {menu === undefined ? null : (
-          <View style={[styles.menu, { top: menu.y + menu.height + MENU_GAP, left: menu.x }]} accessibilityRole="menu" testID="search-sort-menu">
-            <Text style={styles.menuLabel}>SORT BY</Text>
-            {CATALOG_SORTS.map((sort) => {
-              const chosen = sort === filters.sort;
-              return (
-                <Pressable
-                  key={sort}
-                  accessibilityRole="menuitem"
-                  accessibilityState={{ checked: chosen }}
-                  onPress={() => choose(sort)}
-                  style={[styles.option, chosen && styles.optionChosen]}
-                  testID={`search-sort-${sort}`}
-                >
-                  <Text style={styles.optionText}>{CATALOG_SORT_LABELS[sort]}</Text>
-                  {chosen ? <CheckIcon color={colors.black} size={18} /> : null}
-                </Pressable>
-              );
-            })}
-          </View>
-        )}
-      </Modal>
+      {menuOpen ? (
+        <View style={styles.menu} accessibilityRole="menu" testID="search-sort-menu">
+          <Text style={styles.menuLabel}>SORT BY</Text>
+          {CATALOG_SORTS.map((sort) => {
+            const chosen = sort === filters.sort;
+            return (
+              <Pressable
+                key={sort}
+                accessibilityRole="menuitem"
+                accessibilityState={{ checked: chosen }}
+                onPress={() => choose(sort)}
+                style={[styles.option, chosen && styles.optionChosen]}
+                testID={`search-sort-${sort}`}
+              >
+                <Text style={styles.optionText}>{CATALOG_SORT_LABELS[sort]}</Text>
+                {chosen ? <CheckIcon color={colors.black} size={18} /> : null}
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  // Above the count and the results that follow it, so the open menu covers them.
+  controls: { zIndex: 1 },
   // The chips scroll sideways edge to edge, so the row reaches past the screen's side gutter.
   scroller: { marginHorizontal: -spacing.home },
   row: { gap: spacing.sm, paddingHorizontal: spacing.home },
   chip: {
-    height: 34,
+    height: CHIP_HEIGHT,
     paddingHorizontal: spacing.inset,
     borderRadius: radii.chip,
     borderWidth: 1,
@@ -152,6 +153,8 @@ const styles = StyleSheet.create({
   chipText: { fontFamily: fontFamily.medium, fontSize: fontSize.caption, lineHeight: 16, color: colors.black },
   menu: {
     position: "absolute",
+    top: MENU_TOP,
+    left: 0,
     width: 230,
     backgroundColor: colors.white,
     borderRadius: radii.popupMenu,
