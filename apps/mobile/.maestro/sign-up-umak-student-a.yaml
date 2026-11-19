@@ -1,0 +1,9 @@
+# A UMAK Student whose student number starts with A (older numbers do; newer ones start with K) signs up end to
+# end, the same way as sign-up-umak-student.yaml. Needs the end-to-end API on port 3000 (npm run e2e starts it).
+appId: ph.edu.umak.libras
+---
+- runFlow:
+    file: sign-up-umak-student.yaml
+    env:
+      PREFIX: A
+- assertTrue: ${output.studentNumber.startsWith("A")}
