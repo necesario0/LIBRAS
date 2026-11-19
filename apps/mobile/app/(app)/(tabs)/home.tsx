@@ -2,7 +2,9 @@ import { useFocusEffect, useIsFocused, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { ActivityIndicator, BackHandler, Keyboard, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useAuth, useMember } from "../../../src/auth/AuthContext";
+import { api } from "../../../src/api";
 import { useCatalogSearch } from "../../../src/catalog/useCatalogSearch";
+import { useFetch } from "../../../src/hooks/useFocusedFetch";
 import { useScreenTop } from "../../../src/hooks/useScreenTop";
 import { useHideTabBar } from "../../../src/navigation/TabBarVisibility";
 import { useTabBarSpace } from "../../../src/navigation/FloatingTabBar";
@@ -10,6 +12,8 @@ import { SearchResultRow } from "../../../src/home/BookResultRow";
 import { HomeHeader } from "../../../src/home/HomeHeader";
 import { SearchBar } from "../../../src/home/SearchBar";
 import { NoResults, SearchFailed } from "../../../src/home/SearchMessage";
+import { FiltersSheet } from "../../../src/search/FiltersSheet";
+import type { SubjectOptions } from "../../../src/search/FiltersSheet";
 import { RecentSearches } from "../../../src/search/RecentSearches";
 import { SearchControls } from "../../../src/search/SearchControls";
 import { SearchModeBar } from "../../../src/search/SearchModeBar";
@@ -17,6 +21,7 @@ import { Suggestions } from "../../../src/search/Suggestions";
 import { useRecentSearches } from "../../../src/search/useRecentSearches";
 import { useSuggestions } from "../../../src/search/useSuggestions";
 import { colors, fontFamily, fontSize, spacing } from "../../../src/theme/tokens";
+import { DEFAULT_CATALOG_SEARCH_FILTERS, activeFilterCount, memberCollege, subjectFilterOptions } from "@libras/shared";
 import type { CatalogSearchResponse } from "@libras/shared";
 
 /** "12 results", "1 result" or "Top 20 of 64 results", and whether older editions were folded into the rows shown. */
@@ -52,6 +57,9 @@ export default function HomeScreen() {
   const typing = searchOn && !search.submitted;
   const suggestions = useSuggestions(request, search.query, typing);
   const { state } = search;
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const college = memberCollege(member);
+  const subjects = useFetch(request, api.getSubjects, "The Subjects could not be loaded. Close the filters and try again.");
 
   // Search mode can stay open under another screen (Home is left through a Book sheet's links): the bar is hidden only while Home itself is showing.
   const homeShowing = useIsFocused();
@@ -60,8 +68,26 @@ export default function HomeScreen() {
   const closeSearch = useCallback(() => {
     Keyboard.dismiss();
     search.reset();
+    setFiltersOpen(false);
     setSearchOn(false);
   }, [search]);
+
+  const openFilters = () => {
+    Keyboard.dismiss();
+    setFiltersOpen(true);
+    void subjects.reload();
+  };
+
+  /** Turns every filter off, Available now too; the sort stays. */
+  const clearFilters = () => search.setFilters({ ...DEFAULT_CATALOG_SEARCH_FILTERS, sort: search.filters.sort });
+  const filtered = search.filters.availableNow || activeFilterCount(search.filters) > 0;
+
+  const subjectOptions: SubjectOptions =
+    subjects.state.status === "loaded"
+      ? { status: "loaded", ...subjectFilterOptions(subjects.state.subjects, college) }
+      : subjects.state.status === "error"
+        ? { status: "error", message: subjects.state.message }
+        : { status: "loading" };
 
   // Android's back button leaves search mode (the tabs' own back would leave the app from Home).
   useFocusEffect(
@@ -146,7 +172,7 @@ export default function HomeScreen() {
         ) : null}
 
         {search.submitted && state.status !== "error" ? (
-          <SearchControls filters={search.filters} onChange={search.setFilters} />
+          <SearchControls filters={search.filters} onChange={search.setFilters} onOpenFilters={openFilters} />
         ) : null}
 
         {shown !== undefined ? (
@@ -160,9 +186,20 @@ export default function HomeScreen() {
           </View>
         ) : null}
 
-        {state.status === "empty" ? <NoResults query={state.query} availableNow={search.filters.availableNow} /> : null}
+        {state.status === "empty" ? <NoResults query={state.query} filtered={filtered} onClearFilters={clearFilters} /> : null}
         {state.status === "error" ? <SearchFailed message={state.message} onRetry={search.retry} /> : null}
       </ScrollView>
+
+      <FiltersSheet
+        visible={filtersOpen}
+        filters={search.filters}
+        onChange={search.setFilters}
+        onReset={clearFilters}
+        onClose={() => setFiltersOpen(false)}
+        subjects={subjectOptions}
+        college={college}
+        count={state.status === "results" ? state.response.total : state.status === "empty" ? 0 : undefined}
+      />
     </View>
   );
 }

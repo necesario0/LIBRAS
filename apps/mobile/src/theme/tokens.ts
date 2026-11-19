@@ -88,6 +88,12 @@ export const menuRowShadow = "0px 4px 6.5px rgba(0, 0, 0, 0.25)";
 /** A menu that pops up over the screen, such as Sort (approved Tier 3 preview: x 0, y 10, blur 30, black 20%). */
 export const popupMenuShadow = "0px 10px 30px rgba(0, 0, 0, 0.2)";
 
+/** The chosen Published choice of the Filters sheet (approved Tier 3 preview: x 0, y 1, blur 3, black 15%). */
+export const segmentShadow = "0px 1px 3px rgba(0, 0, 0, 0.15)";
+
+/** The knob of an on and off switch (approved Tier 3 preview: x 0, y 1, blur 3, black 30%). */
+export const switchKnobShadow = "0px 1px 3px rgba(0, 0, 0, 0.3)";
+
 /** Montserrat is the only family. Keys are the names registered with `useFonts`. */
 export const fontFamily = {
   regular: "Montserrat_400Regular",
@@ -127,6 +133,8 @@ export const fontSize = {
   /** Search results (approved Tier 3 preview): the count line and "Also in N older editions", then a result's year line. */
   resultNote: 11.5,
   resultMeta: 11,
+  /** The LC classes next to a Subject in the Filters sheet. */
+  lcClasses: 9.5,
   /** The line under the greeting on Home. */
   micro: 10,
 } as const;
@@ -214,6 +222,14 @@ export const radii = {
   /** The Sort menu, and one option in it. */
   popupMenu: 16,
   menuOption: 10,
+  /** The Published choices of the Filters sheet, and the chosen one. */
+  publishedChoices: 14,
+  publishedChoice: 11,
+  /** An on and off switch (28 pt high). */
+  switch: 14,
+  switchKnob: 11,
+  /** A removable filter chip under the search controls (28 pt high). */
+  filterChip: 14,
   /** The round logo of the wordmark (31 pt). */
   logo: 16,
   /** The terms checkbox of sign-up. */

@@ -5,6 +5,7 @@ import type {
   CancelHoldResponse,
   CatalogSearchFilters,
   CatalogSearchResponse,
+  CatalogSubjectsResponse,
   CatalogSuggestionsResponse,
   ChangePasswordRequest,
   CheckPasswordResetCodeRequest,
@@ -105,7 +106,7 @@ export function createApiClient({ baseUrl, fetch: fetchImpl = fetch, timeoutMs =
      * Searches the catalog by title or author (typos are tolerated) or by ISBN,
      * accession number or call number. Needs a signed-in Member's access token.
      * No match is a normal answer with an empty `results`, not an error. `filters` sorts the
-     * results, keeps only what is on the shelf now and folds older editions.
+     * results, keeps only what is on the shelf now, narrows by Subject and year, and folds older editions.
      */
     searchCatalog: (accessToken: string, query: string, filters: CatalogSearchFilters, limit?: number) =>
       request<CatalogSearchResponse>(`/catalog/search?${catalogSearchQueryString(query, filters, limit)}`, {
@@ -114,6 +115,8 @@ export function createApiClient({ baseUrl, fetch: fetchImpl = fetch, timeoutMs =
     /** Up to 5 title and author suggestions for a query of at least 2 characters (`invalid_request`, 400, when it is shorter). */
     suggestCatalog: (accessToken: string, query: string) =>
       request<CatalogSuggestionsResponse>(`/catalog/suggestions?q=${encodeURIComponent(query)}`, { headers: bearer(accessToken) }),
+    /** The Subjects that have at least one Book in the catalog, in table order: the options of the Filters sheet. */
+    getSubjects: (accessToken: string) => request<CatalogSubjectsResponse>("/catalog/subjects", { headers: bearer(accessToken) }),
     /** One Book with its details and how many Copies exist and are available. `book_not_found` (404) when there is no such Book. */
     getBook: (accessToken: string, id: string) =>
       request<BookDetailResponse>(`/catalog/books/${encodeURIComponent(id)}`, { headers: bearer(accessToken) }),
