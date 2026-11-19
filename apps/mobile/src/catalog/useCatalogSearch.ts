@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from "react";
-import type { CatalogSearchResponse } from "@libras/shared";
-import { CATALOG_SEARCH_MAX_QUERY_LENGTH } from "@libras/shared";
+import type { CatalogSearchFilters, CatalogSearchResponse } from "@libras/shared";
+import { CATALOG_SEARCH_MAX_QUERY_LENGTH, DEFAULT_CATALOG_SEARCH_FILTERS } from "@libras/shared";
 import { api } from "../api";
 import { ApiError } from "../api/client";
 import type { AuthorizedRequest } from "../auth/authorized-request";
@@ -25,10 +25,15 @@ export type CatalogSearchState =
  * the results away, so suggestions show again); `submit` runs the search. An
  * answer that arrives after a newer search started, or after the search was
  * cleared, is dropped.
+ *
+ * `filters` (sort, Available now, Latest edition only) go with every search and
+ * stay set for the next one. Changing them runs the shown search again.
  */
 export function useCatalogSearch(request: AuthorizedRequest) {
   const [query, setQueryText] = useState("");
   const [state, setState] = useState<CatalogSearchState>({ status: "idle" });
+  const [filters, setFiltersState] = useState<CatalogSearchFilters>(DEFAULT_CATALOG_SEARCH_FILTERS);
+  const filtersRef = useRef(filters);
   const latest = useRef(0);
   const requestRef = useRef(request);
   requestRef.current = request;
@@ -44,7 +49,7 @@ export function useCatalogSearch(request: AuthorizedRequest) {
     }
     setState({ status: "loading", query: trimmed, previous: shown.current });
     try {
-      const response = await requestRef.current((token) => api.searchCatalog(token, trimmed));
+      const response = await requestRef.current((token) => api.searchCatalog(token, trimmed, filtersRef.current));
       if (id !== latest.current) return;
       shown.current = response.results.length > 0 ? response : undefined;
       setState(response.results.length > 0 ? { status: "results", response } : { status: "empty", query: trimmed });
@@ -67,12 +72,23 @@ export function useCatalogSearch(request: AuthorizedRequest) {
     setState({ status: "idle" });
   }, []);
 
+  const submittedState = state.status !== "idle";
+  const setFilters = (change: Partial<CatalogSearchFilters>) => {
+    const next = { ...filtersRef.current, ...change };
+    filtersRef.current = next;
+    setFiltersState(next);
+    if (submittedState) void run(query);
+  };
+
   return {
     query,
     setQuery,
     state,
     /** Whether a search has been submitted for the text in the bar (loading, results, no results or failure). */
-    submitted: state.status !== "idle",
+    submitted: submittedState,
+    filters,
+    /** Changes some filters and, when a search is shown, runs it again with them. */
+    setFilters,
     /** Searches `text` (default: the text in the bar) now: the search key, a recent search or an author suggestion. */
     submit: (text: string = query) => {
       setQueryText(text);

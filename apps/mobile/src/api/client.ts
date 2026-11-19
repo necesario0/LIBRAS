@@ -1,7 +1,9 @@
+import { catalogSearchQueryString } from "@libras/shared";
 import type {
   ApiErrorBody,
   BookDetailResponse,
   CancelHoldResponse,
+  CatalogSearchFilters,
   CatalogSearchResponse,
   CatalogSuggestionsResponse,
   ChangePasswordRequest,
@@ -102,13 +104,13 @@ export function createApiClient({ baseUrl, fetch: fetchImpl = fetch, timeoutMs =
     /**
      * Searches the catalog by title or author (typos are tolerated) or by ISBN,
      * accession number or call number. Needs a signed-in Member's access token.
-     * No match is a normal answer with an empty `results`, not an error.
+     * No match is a normal answer with an empty `results`, not an error. `filters` sorts the
+     * results, keeps only what is on the shelf now and folds older editions.
      */
-    searchCatalog: (accessToken: string, query: string, limit?: number) =>
-      request<CatalogSearchResponse>(
-        `/catalog/search?q=${encodeURIComponent(query)}${limit === undefined ? "" : `&limit=${limit}`}`,
-        { headers: { Authorization: `Bearer ${accessToken}` } },
-      ),
+    searchCatalog: (accessToken: string, query: string, filters: CatalogSearchFilters, limit?: number) =>
+      request<CatalogSearchResponse>(`/catalog/search?${catalogSearchQueryString(query, filters, limit)}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }),
     /** Up to 5 title and author suggestions for a query of at least 2 characters (`invalid_request`, 400, when it is shorter). */
     suggestCatalog: (accessToken: string, query: string) =>
       request<CatalogSuggestionsResponse>(`/catalog/suggestions?q=${encodeURIComponent(query)}`, { headers: bearer(accessToken) }),

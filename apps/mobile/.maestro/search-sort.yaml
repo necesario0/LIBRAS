@@ -1,0 +1,157 @@
+# Search results can be sorted, narrowed to Books on the shelf now (Available
+# now), and fold older editions of one work under the newest ("Also in N older
+# editions"), keeping the availability wording.
+# Needs the end-to-end API on port 3000 (npm run e2e starts it).
+appId: ph.edu.umak.libras
+---
+- launchApp:
+    clearState: true
+- runScript:
+    file: scripts/create-members.js
+- runScript:
+    file: scripts/create-editions.js
+
+# Sign in.
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 30000
+- tapOn:
+    id: welcome-sign-in
+- tapOn:
+    id: sign-in-email
+- inputText: ${output.email}
+- tapOn:
+    id: sign-in-password
+- inputText: ${output.password}
+- hideKeyboard
+- tapOn:
+    id: sign-in-continue
+- extendedWaitUntil:
+    visible: "Hi, Cobby"
+    timeout: 20000
+
+# The three editions are one row showing the newest (the 8th, which is out), and the count says so.
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: ${output.word}
+- extendedWaitUntil:
+    visible: "${output.work}, 8th ed."
+    timeout: 15000
+- assertVisible: "3 results · older editions folded in"
+- assertVisible: "Also in 2 older editions ›"
+- assertNotVisible: "${output.work}, 7th ed."
+- assertVisible: "None available"
+- assertVisible: "2 of 2 available"
+- assertVisible:
+    id: search-sort
+- assertVisible: "Best match"
+- assertVisible: "Available now"
+- assertVisible: "Filters"
+- takeScreenshot: search-sort-folded
+
+# The older editions open inline, newest first, with their own availability, and close again.
+- tapOn: "Also in 2 older editions ›"
+- extendedWaitUntil:
+    visible: "${output.work}, 7th ed."
+    timeout: 10000
+- assertVisible:
+    text: "${output.work}, 6th ed."
+    below: "${output.work}, 7th ed."
+- assertVisible: "Hide 2 older editions"
+- assertVisible: "2012"
+- takeScreenshot: search-sort-older-open
+- tapOn: "Hide 2 older editions"
+- assertNotVisible: "${output.work}, 7th ed."
+
+# Sort: the menu lists the four orders, Best match chosen.
+- tapOn:
+    id: search-sort
+- extendedWaitUntil:
+    visible: "SORT BY"
+    timeout: 10000
+- assertVisible:
+    id: search-sort-best
+    checked: true
+- assertVisible: "Newest edition"
+- assertVisible: "Title A to Z"
+- assertVisible: "Most borrowed"
+- takeScreenshot: search-sort-menu
+
+# Android back closes the menu and stays in search mode; the chip opens it again.
+- back
+- extendedWaitUntil:
+    notVisible: "SORT BY"
+    timeout: 10000
+- assertVisible:
+    id: search-cancel
+- tapOn:
+    id: search-sort
+- extendedWaitUntil:
+    visible: "SORT BY"
+    timeout: 10000
+
+# Title A to Z: Aardvark, Mango, then the work.
+- tapOn: "Title A to Z"
+- extendedWaitUntil:
+    notVisible: "SORT BY"
+    timeout: 10000
+- assertVisible: "Title A to Z"
+- assertNotVisible: "Best match"
+- extendedWaitUntil:
+    visible:
+      text: ${output.notes}
+      below: ${output.atlas}
+    timeout: 15000
+- assertVisible:
+    text: "${output.work}, 8th ed."
+    below: ${output.notes}
+
+# Newest edition: 2020, 2016, 1999.
+- tapOn:
+    id: search-sort
+- tapOn: "Newest edition"
+- extendedWaitUntil:
+    visible:
+      text: "${output.work}, 8th ed."
+      below: ${output.atlas}
+    timeout: 15000
+- assertVisible:
+    text: ${output.notes}
+    below: "${output.work}, 8th ed."
+- takeScreenshot: search-sort-newest
+
+# Most borrowed can be chosen too (no Loans here, so the order falls back to best match).
+- tapOn:
+    id: search-sort
+- tapOn: "Most borrowed"
+- extendedWaitUntil:
+    notVisible: "SORT BY"
+    timeout: 10000
+- assertVisible: "Most borrowed"
+- assertNotVisible: "Newest edition"
+
+# Available now drops the work: the edition it shows (the 8th) is out, although older ones are on the shelf.
+- tapOn:
+    id: search-available-now
+- extendedWaitUntil:
+    visible: "2 results"
+    timeout: 15000
+- assertNotVisible: "${output.work}, 8th ed."
+- assertVisible: ${output.atlas}
+- assertVisible: ${output.notes}
+- takeScreenshot: search-sort-available-now
+
+# One tap switches it off again.
+- tapOn:
+    id: search-available-now
+- extendedWaitUntil:
+    visible: "${output.work}, 8th ed."
+    timeout: 15000
+
+# Leave search mode and sign out.
+- runFlow: subflows/leave-search.yaml
+- runFlow: subflows/sign-out.yaml
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 20000

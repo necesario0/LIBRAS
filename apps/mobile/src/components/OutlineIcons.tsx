@@ -160,3 +160,41 @@ export function ClearFieldIcon({ size, color }: OutlineIconProps) {
     </Svg>
   );
 }
+
+/** Two arrows, up and down: the Sort chip of search results. */
+export function SortIcon(props: OutlineIconProps) {
+  return (
+    <Outline {...props}>
+      <Path d="M7 4v16M3.5 16.5 7 20l3.5-3.5M17 20V4M13.5 7.5 17 4l3.5 3.5" />
+    </Outline>
+  );
+}
+
+/** A chevron pointing down: a chip that opens a menu. */
+export function ChevronDownIcon(props: OutlineIconProps) {
+  return (
+    <Outline {...props}>
+      <Path d="m6 9 6 6 6-6" />
+    </Outline>
+  );
+}
+
+/** A check mark: a chip that is on, the chosen option of a menu. */
+export function CheckIcon(props: OutlineIconProps) {
+  return (
+    <Outline {...props}>
+      <Path d="m5 12.5 4.5 4.5L19 7.5" />
+    </Outline>
+  );
+}
+
+/** Two sliders: the Filters chip of search results. */
+export function SlidersIcon(props: OutlineIconProps) {
+  return (
+    <Outline {...props}>
+      <Path d="M4 7h10M18 7h2M4 17h4M12 17h8" />
+      <Circle cx={16} cy={7} r={2} />
+      <Circle cx={10} cy={17} r={2} />
+    </Outline>
+  );
+}

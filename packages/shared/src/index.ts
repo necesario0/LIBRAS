@@ -134,12 +134,27 @@ export {
   CATALOG_SEARCH_MAX_LIMIT,
   CATALOG_SEARCH_MAX_QUERY_LENGTH,
   CATALOG_SEARCH_MESSAGES,
+  CATALOG_SORT_LABELS,
+  DEFAULT_CATALOG_SEARCH_FILTERS,
+  MOST_BORROWED_WINDOW_DAYS,
   bookIdSchema,
   COPY_STATUSES,
   catalogSearchQuerySchema,
+  catalogSearchQueryString,
   contentsChapters,
 } from "./catalog.ts";
-export type { BookDetail, BookDetailResponse, BookSearchResult, CatalogSearchQuery, CatalogSearchResponse, CopyStatus } from "./catalog.ts";
+export type {
+  BookDetail,
+  BookDetailResponse,
+  BookSearchResult,
+  CatalogSearchFilters,
+  CatalogSearchQuery,
+  CatalogSearchResponse,
+  CatalogSearchRow,
+  CopyStatus,
+} from "./catalog.ts";
+export { CATALOG_SORTS, arrangeCatalogResults, workKey } from "./search/editions.ts";
+export type { ArrangeOptions, ArrangedRow, CatalogSort, EditionCandidate } from "./search/editions.ts";
 export {
   HOLD_MESSAGES,
   HOLD_STATUSES,
