@@ -90,6 +90,16 @@ export function formatAnnouncementDay(day: LibraryDay): string {
   return `${MONTHS[month - 1]} ${date}, ${year}`;
 }
 
+/**
+ * "Nov 17, 2026 to Nov 28, 2026 · University Library": the dates line under an Announcement's title in the app, with
+ * one day for an Announcement that runs for one.
+ */
+export function announcementDatesLine(firstDay: LibraryDay, lastDay: LibraryDay): string {
+  const first = formatAnnouncementDay(firstDay);
+  const days = firstDay === lastDay ? first : `${first} to ${formatAnnouncementDay(lastDay)}`;
+  return `${days} · University Library`;
+}
+
 /** Whether `text` is a web address an Announcement may link to: https, a real host name, no user name or password. */
 export function isAnnouncementWebLink(text: string): boolean {
   let url: URL;

@@ -13,9 +13,10 @@ const FIXTURE_LIBRARIAN = { email: "e2e-announcement-desk@libras.test", fullName
  * the real creation (a poster image made here, stored, cut to the 2:1 banner, audited). They exist only on the
  * end-to-end server (`e2e-server.ts`): the real server never imports this module.
  *
- *   POST /e2e/announcements { title, body?, bookId?, url?, startsInDays?, lengthInDays? } -> 201 { id }
+ *   POST /e2e/announcements { title, body?, bookId?, url?, startsInDays?, lengthInDays?, posterMissing? } -> 201 { id }
  *   (runs from `startsInDays` days from today, default 0, for `lengthInDays` days, default 3; replaces whatever
- *   was running or scheduled, since only one shows at a time)
+ *   was running or scheduled, since only one shows at a time; with `posterMissing` the poster's address leads to
+ *   no file, so the app shows what it does when a poster fails to load)
  *
  *   POST /e2e/announcements/clear -> 200 { removed }   (every Announcement is deleted, so Home has no banner)
  */
@@ -37,7 +38,7 @@ export function announcementFixtureRoutes(router: Router, deps: AppDeps): void {
   });
 
   router.post("/e2e/announcements", async (req, res) => {
-    const { title, body, bookId, url, startsInDays = 0, lengthInDays = 3 } = (req.body ?? {}) as Record<string, unknown>;
+    const { title, body, bookId, url, startsInDays = 0, lengthInDays = 3, posterMissing = false } = (req.body ?? {}) as Record<string, unknown>;
     if (
       typeof title !== "string" ||
       (body !== undefined && typeof body !== "string") ||
@@ -45,6 +46,7 @@ export function announcementFixtureRoutes(router: Router, deps: AppDeps): void {
       (url !== undefined && typeof url !== "string") ||
       typeof startsInDays !== "number" ||
       typeof lengthInDays !== "number" ||
+      typeof posterMissing !== "boolean" ||
       !Number.isInteger(startsInDays) ||
       !Number.isInteger(lengthInDays) ||
       startsInDays < 0 ||
@@ -70,6 +72,9 @@ export function announcementFixtureRoutes(router: Router, deps: AppDeps): void {
       { title, body: body === undefined ? null : body, link, firstDay, lastDay, cropPosition: 0.5 },
       new Uint8Array(poster),
     );
+    if (posterMissing) {
+      await deps.db.query("update public.announcements set poster_path = id::text || '/' || gen_random_uuid()::text || '.jpg' where id = $1", [made.id]);
+    }
     res.status(201).json({ id: made.id });
   });
 }

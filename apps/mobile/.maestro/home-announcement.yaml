@@ -35,6 +35,7 @@ appId: ph.edu.umak.libras
 - assertVisible: "One-on-one help with your thesis. Bring your draft and a printed outline."
 - assertVisible:
     id: announcement-dates
+    text: ".* to .* · University Library"
 - assertVisible: "Open forms.gle"
 - takeScreenshot: announcement-detail
 

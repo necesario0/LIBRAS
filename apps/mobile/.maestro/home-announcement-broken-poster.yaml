@@ -1,0 +1,55 @@
+# A poster that fails to load says so in its frame and offers Try again, in place of an empty grey frame. The
+# rest of the Announcement (title, dates, text) still shows.
+# Needs the end-to-end API on port 3000 (npm run e2e starts it).
+appId: ph.edu.umak.libras
+---
+- launchApp:
+    clearState: true
+- runScript:
+    file: scripts/create-announcement.js
+    env:
+      MODE: broken
+- runFlow: subflows/visitor-sign-in.yaml
+
+- extendedWaitUntil:
+    visible:
+      id: home-announcement
+    timeout: 20000
+- tapOn:
+    id: home-announcement
+- extendedWaitUntil:
+    visible:
+      id: announcement-title
+    timeout: 15000
+- assertVisible: ${output.title}
+- extendedWaitUntil:
+    visible:
+      id: announcement-poster-failed
+    timeout: 15000
+- assertVisible: "The poster did not load."
+- assertVisible:
+    id: announcement-poster-retry
+- assertVisible: "The poster of this one does not load."
+- assertVisible:
+    id: announcement-dates
+    text: ".* · University Library"
+- takeScreenshot: announcement-poster-failed
+
+# Try again loads it again; the file is still missing, so the message comes back.
+- tapOn:
+    id: announcement-poster-retry
+- extendedWaitUntil:
+    visible:
+      id: announcement-poster-failed
+    timeout: 15000
+
+- tapOn:
+    id: announcement-back
+- extendedWaitUntil:
+    visible:
+      id: home-announcement
+    timeout: 10000
+- runFlow: subflows/sign-out.yaml
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 20000

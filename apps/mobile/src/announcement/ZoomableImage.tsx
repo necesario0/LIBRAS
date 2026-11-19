@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
-import { Animated, PanResponder, StyleSheet, View } from "react-native";
+import { Animated, PanResponder, StyleSheet, Text, View } from "react-native";
 import type { GestureResponderEvent } from "react-native";
-import { colors, radii } from "../theme/tokens";
+import { colors, fontFamily, fontSize, lineHeightFor, radii, spacing } from "../theme/tokens";
 
 const MAX_ZOOM = 4;
 
@@ -36,6 +36,8 @@ export function ZoomableImage({ uri, width, height, accessibilityLabel, onZoomed
   const zoomedChange = useRef(onZoomedChange);
   zoomedChange.current = onZoomedChange;
   const [failed, setFailed] = useState(false);
+  // Bumped by Try again, so the image is made anew and loads again.
+  const [attempt, setAttempt] = useState(0);
 
   const responder = useMemo(() => {
     const apply = (nextScale: number, x: number, y: number) => {
@@ -100,19 +102,51 @@ export function ZoomableImage({ uri, width, height, accessibilityLabel, onZoomed
 
   return (
     <View style={[styles.frame, { width, height }]} {...responder.panHandlers} testID={testID}>
-      <Animated.Image
-        source={{ uri }}
-        accessible
-        accessibilityLabel={accessibilityLabel}
-        onError={() => setFailed(true)}
-        resizeMode="contain"
-        style={[{ width, height, transform: [{ translateX }, { translateY }, { scale }] }, failed && styles.hidden]}
-      />
+      {failed ? (
+        <View style={styles.failed} testID={testID === undefined ? undefined : `${testID}-failed`}>
+          <Text style={styles.failedText} accessibilityRole="alert">
+            The poster did not load.
+          </Text>
+          <Text
+            style={styles.retry}
+            accessibilityRole="button"
+            onPress={() => {
+              setFailed(false);
+              setAttempt((n) => n + 1);
+            }}
+            testID={testID === undefined ? undefined : `${testID}-retry`}
+          >
+            Try again
+          </Text>
+        </View>
+      ) : (
+        <Animated.Image
+          key={attempt}
+          source={{ uri }}
+          accessible
+          accessibilityLabel={accessibilityLabel}
+          onError={() => setFailed(true)}
+          resizeMode="contain"
+          style={{ width, height, transform: [{ translateX }, { translateY }, { scale }] }}
+        />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  frame: { overflow: "hidden", borderRadius: radii.option, backgroundColor: colors.surface },
-  hidden: { opacity: 0 },
+  // The approved preview's soft shadow under the poster (0 4px 14px at 15 %).
+  frame: {
+    overflow: "hidden",
+    borderRadius: radii.option,
+    backgroundColor: colors.surface,
+    elevation: 4,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 14,
+  },
+  failed: { flex: 1, alignItems: "center", justifyContent: "center", gap: spacing.sm, padding: spacing.xl },
+  failedText: { fontFamily: fontFamily.regular, fontSize: fontSize.label, lineHeight: lineHeightFor(fontSize.label), color: colors.textMuted, textAlign: "center" },
+  retry: { fontFamily: fontFamily.medium, fontSize: fontSize.label, lineHeight: lineHeightFor(fontSize.label), color: colors.primary },
 });

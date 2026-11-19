@@ -240,6 +240,7 @@ export {
   ANNOUNCEMENT_STATUSES,
   ANNOUNCEMENT_TITLE_MAX_LENGTH,
   ANNOUNCEMENT_URL_MAX_LENGTH,
+  announcementDatesLine,
   announcementDetailsSchema,
   announcementLinkInputSchema,
   announcementLinkSite,
