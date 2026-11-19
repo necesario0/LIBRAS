@@ -39,13 +39,20 @@ interface SettingsRowProps {
   opens?: boolean;
   /** `danger` is for rows that cannot be undone (Delete my account). */
   tone?: "normal" | "danger";
+  /** Off while what it opens is loading. */
+  disabled?: boolean;
   testID: string;
 }
 
 /** One row of a Settings group. Rows of a group are separated by a hairline. */
-export function SettingsRow({ icon, label, detail, onPress, opens = false, tone = "normal", testID }: SettingsRowProps) {
+export function SettingsRow({ icon, label, detail, onPress, opens = false, tone = "normal", disabled = false, testID }: SettingsRowProps) {
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.row, pressed && styles.pressed]} testID={testID}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => [styles.row, pressed && styles.pressed]} testID={testID}>
       {icon}
       <View style={styles.rowText}>
         <Text style={[styles.rowLabel, tone === "danger" && styles.danger]}>{label}</Text>

@@ -1,8 +1,10 @@
 import { Router } from "express";
 import {
+  ACCOUNT_DELETION_MESSAGES,
   PASSWORD_CHANGE_MESSAGES,
   SIGN_UP_MESSAGES,
   changePasswordSchema,
+  deleteAccountSchema,
   resendSignUpCodeRequestSchema,
   signInRequestSchema,
   signUpRequestSchema,
@@ -18,6 +20,7 @@ import type { AttemptLimiter } from "../auth/attempt-limit.ts";
 import { AppError } from "../errors.ts";
 import { memberPolicy } from "../loans/policy.ts";
 import { changeMemberPassword, verifyCurrentPassword } from "../members/change-password.ts";
+import { deleteMemberAccount, verifyDeletionPassword } from "../members/delete-account.ts";
 import { recordPasswordEvent } from "../members/password-audit.ts";
 import { signInMember } from "../members/sign-in.ts";
 import { resendSignUpCode, startSignUp, verifySignUp } from "../members/sign-up.ts";
@@ -39,7 +42,7 @@ function signUpRefusal(error: z.ZodError): AppError {
   return new AppError(400, "invalid_request", message ?? "Check what you entered and try again.");
 }
 
-/** Sign-up, sign-in, the Member's own profile and their Clearance. */
+/** Sign-up, sign-in, the Member's own profile, their Clearance, and their account's settings (Delete my account included). */
 export function membersRouter(deps: AppDeps, limiter: AttemptLimiter): Router {
   const router = Router();
   const audit = createAuditLog(deps);
@@ -104,6 +107,16 @@ export function membersRouter(deps: AppDeps, limiter: AttemptLimiter): Router {
   router.post("/members/me/sign-out-all", ...requireMember(deps), async (req, res) => {
     await deps.auth.signOutEverywhere(accessTokenOf(res));
     await recordPasswordEvent(deps, { type: "signed_out_all_devices", memberId: memberOf(res).id, clientAddress: req.ip });
+    res.status(204).end();
+  });
+
+  // Delete my account (ADR 0011). POST with a body, not DELETE: the password travels in the body.
+  router.post("/members/me/delete", ...requireMember(deps), async (req, res) => {
+    const { password } = parseBody(deleteAccountSchema, req.body, ACCOUNT_DELETION_MESSAGES.invalidRequest);
+    const request = { member: memberOf(res), password, clientAddress: req.ip };
+    // A wrong password counts like a failed sign-in, through the same limiter. The deletion itself is outside it.
+    await limiter.attempt(req.ip, () => verifyDeletionPassword(deps, request));
+    await deleteMemberAccount(deps, request);
     res.status(204).end();
   });
 

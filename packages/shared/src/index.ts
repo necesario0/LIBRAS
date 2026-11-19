@@ -119,6 +119,8 @@ export type {
   RequestPasswordResetRequest,
 } from "./password-reset.ts";
 export { PASSWORD_CHANGE_MESSAGES, changePasswordSchema } from "./password-change.ts";
+export { ACCOUNT_DELETION_MESSAGES, deleteAccountSchema, notClearedNotice } from "./account-deletion.ts";
+export type { DeleteAccountRequest, NotClearedNotice } from "./account-deletion.ts";
 export type { ChangePasswordRequest } from "./password-change.ts";
 export { buildTrie, searchTrie } from "./search/flat-trie.ts";
 export type { FlatTrie, TrieMatch } from "./search/flat-trie.ts";
@@ -259,6 +261,7 @@ export type {
   AnnouncementStatus,
   DeskAnnouncementsResponse,
   LibraryDay,
+  MemberAnnouncement,
   ParsedAnnouncementDetails,
 } from "./announcements.ts";
 export { pickSuggestions } from "./search/suggestions.ts";

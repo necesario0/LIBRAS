@@ -197,6 +197,12 @@ export interface Announcement {
   updatedAt: string;
 }
 
+/**
+ * The running Announcement as a Member receives it in `GET /home`: no Librarian names, no status (only the
+ * running one is ever sent) and no edit time.
+ */
+export type MemberAnnouncement = Pick<Announcement, "id" | "title" | "body" | "link" | "image" | "firstDay" | "lastDay" | "startsAt" | "endsAt">;
+
 /** `GET /desk/announcements`: the one showing now, the scheduled ones (soonest first), and the past ones (latest first). */
 export interface DeskAnnouncementsResponse {
   running: Announcement | null;
