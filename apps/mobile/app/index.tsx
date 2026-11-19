@@ -1,5 +1,5 @@
 import { Redirect, useRouter } from "expo-router";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../src/auth/AuthContext";
 import { useScreenTop } from "../src/hooks/useScreenTop";
@@ -29,6 +29,9 @@ function WelcomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const screenTop = useScreenTop();
+  const { width } = useWindowDimensions();
+  const emblemWidth = Math.min(344, width - 36);
+  const emblemHeight = Math.round((emblemWidth * 721) / 1181);
 
   return (
     <View style={styles.screen}>
@@ -38,7 +41,7 @@ function WelcomeScreen() {
       >
         <Wordmark />
         <View style={styles.hero}>
-          <BookIllustration width={292} height={197} />
+          <BookIllustration width={emblemWidth} height={emblemHeight} />
           <Text style={styles.name} accessibilityRole="header">
             {"UNIVERSITY OF\nMAKATI"}
           </Text>
@@ -71,14 +74,14 @@ function WelcomeScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.white },
   content: { flexGrow: 1, alignItems: "center" },
-  hero: { alignItems: "center", gap: 41, marginTop: 68 + spacing.sm + 2 },
+  hero: { alignItems: "center", gap: 28, marginTop: 48 },
   name: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.hero,
     color: colors.black,
     textAlign: "center",
   },
-  actions: { alignSelf: "stretch", alignItems: "center", paddingHorizontal: spacing.screen, marginTop: 60, gap: spacing.md },
+  actions: { alignSelf: "stretch", alignItems: "center", paddingHorizontal: spacing.screen, marginTop: 48, gap: spacing.md },
   signIn: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.label,

@@ -167,3 +167,30 @@ appId: ph.edu.umak.libras
     id: cannot-borrow-note
 - assertVisible: "Visitor accounts cannot borrow"
 - takeScreenshot: book-visitor
+
+# Dragging the grabber up expands the Book sheet to fullscreen; dragging down returns to default, then closes.
+- swipe:
+    from:
+      id: book-grabber
+    direction: UP
+- extendedWaitUntil:
+    notVisible:
+      id: book-backdrop
+    timeout: 5000
+- takeScreenshot: book-fullscreen
+- swipe:
+    from:
+      id: book-grabber
+    direction: DOWN
+- extendedWaitUntil:
+    visible:
+      id: book-backdrop
+    timeout: 5000
+- swipe:
+    from:
+      id: book-grabber
+    direction: DOWN
+- extendedWaitUntil:
+    notVisible:
+      id: book-sheet
+    timeout: 5000

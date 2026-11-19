@@ -76,7 +76,9 @@ appId: ph.edu.umak.libras
       id: book-sheet
     timeout: 15000
 - assertVisible: ${output.statutesTitle}
-- assertVisible: "Subject: Law"
+- assertVisible:
+    id: book-subject
+    text: "Law"
 - tapOn:
     id: book-close
 - extendedWaitUntil:

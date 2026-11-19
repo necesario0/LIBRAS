@@ -56,14 +56,14 @@ export default function HelpScreen() {
               icon={<DocumentIcon color={colors.black} size={ICON} />}
               label="Terms and Conditions"
               opens
-              onPress={() => router.push("/terms")}
+              onPress={() => router.push({ pathname: "/terms", params: { doc: "terms" } })}
               testID="help-terms"
             />
             <SettingsRow
               icon={<ShieldIcon color={colors.black} size={ICON} />}
               label="Privacy Policy"
               opens
-              onPress={() => router.push("/terms")}
+              onPress={() => router.push({ pathname: "/terms", params: { doc: "privacy" } })}
               testID="help-privacy"
             />
           </SettingsGroup>

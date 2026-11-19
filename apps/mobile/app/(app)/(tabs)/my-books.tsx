@@ -1,4 +1,4 @@
-import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
 import { myBooksStartSegment } from "@libras/shared";
@@ -35,6 +35,7 @@ function segmentParam(value: string | string[] | undefined): MyBooksSegment | un
  */
 export default function MyBooksScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
   const params = useLocalSearchParams<{ segment?: string }>();
   const { loans, holds, canBorrow, attention, reload } = useMyBooks();
   const screenTop = useScreenTop();
@@ -59,7 +60,17 @@ export default function MyBooksScreen() {
     router.setParams({ segment: undefined });
   }, [linked, router]);
 
-  // Each visit fetches again and, once that is back, opens on what is urgent; leaving the tab forgets the choice.
+  // Clear the chosen segment when the Member moves to another tab, not when opening a modal (such as a Book) over it.
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("state", () => {
+      const state = navigation.getState();
+      const active = state?.routes[state.index]?.name;
+      if (active !== "my-books") setChosen(undefined);
+    });
+    return unsubscribe;
+  }, [navigation]);
+
+  // Each visit fetches again and, once that is back, opens on what is urgent; leaving to another tab forgets the choice.
   useFocusEffect(
     useCallback(() => {
       let visiting = true;
@@ -69,10 +80,12 @@ export default function MyBooksScreen() {
       return () => {
         visiting = false;
         setFresh(false);
-        setChosen(undefined);
+        const state = navigation.getState();
+        const active = state?.routes[state.index]?.name;
+        if (active !== "my-books") setChosen(undefined);
         showMessage(undefined);
       };
-    }, [reload, showMessage]),
+    }, [navigation, reload, showMessage]),
   );
 
   const saved = canBorrow === false;

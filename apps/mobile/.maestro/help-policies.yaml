@@ -53,12 +53,14 @@ appId: ph.edu.umak.libras
 - assertVisible: "PHP 5 a day, up to PHP 300 per Loan"
 - takeScreenshot: help-umak-student
 
-# Terms and Conditions and Privacy Policy open the terms; back returns here.
+# Terms and Conditions and Privacy Policy open the matching document directly; back returns here.
 - tapOn:
     id: help-terms
 - extendedWaitUntil:
-    visible: "Terms and policies"
+    visible: "LIBRAS Terms and Conditions"
     timeout: 10000
+- assertVisible: "Terms and policies"
+- assertVisible: "Acceptance of Terms"
 - tapOn:
     id: terms-back
 - extendedWaitUntil:
@@ -68,8 +70,9 @@ appId: ph.edu.umak.libras
 - tapOn:
     id: help-privacy
 - extendedWaitUntil:
-    visible: "Terms and policies"
+    visible: "LIBRAS Data Privacy Policy"
     timeout: 10000
+- assertVisible: "Terms and policies"
 - back
 - extendedWaitUntil:
     visible:

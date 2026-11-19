@@ -8,11 +8,23 @@ import { colors, fontFamily, fontSize, lineHeightFor, radii, spacing } from "../
 /** The cover on the Book page (approved Tier 3 preview). */
 const COVER = { width: 112, height: 164 } as const;
 
-/** A tag under the authors: the edition, the year or the availability. */
-function Tag({ label, tone = "plain", testID }: { label: string; tone?: "plain" | "available" | "none"; testID: string }) {
+/** A tag under the authors: the edition, the year, availability, or the Subject. */
+function Tag({ label, tone = "plain", testID }: { label: string; tone?: "plain" | "available" | "none" | "subject"; testID: string }) {
   return (
-    <View style={[styles.tag, tone === "available" && styles.availableTag, tone === "none" && styles.noneTag]} testID={testID}>
-      <Text style={[styles.tagText, tone === "available" && styles.availableText, tone === "none" && styles.noneText]}>{label}</Text>
+    <View
+      style={[styles.tag, tone === "available" && styles.availableTag, tone === "none" && styles.noneTag, tone === "subject" && styles.subjectTag]}
+      testID={testID}
+    >
+      <Text
+        style={[
+          styles.tagText,
+          tone === "available" && styles.availableText,
+          tone === "none" && styles.noneText,
+          tone === "subject" && styles.subjectText,
+        ]}
+      >
+        {label}
+      </Text>
     </View>
   );
 }
@@ -20,8 +32,8 @@ function Tag({ label, tone = "plain", testID }: { label: string; tone?: "plain" 
 /**
  * The body of the Book sheet, laid out as the approved Tier 3 preview (style
  * from Figma 609:1066): the cover beside the title, the authors and the tags
- * (edition, year, how many Copies are available), then the call number and
- * the Subject, the ISBN, the summary and contents, and the note for an
+ * (edition, year, how many Copies are available, and the Subject pill), then
+ * the call number, the ISBN, the summary and contents, and the note for an
  * Account Type that cannot borrow. The title and the authors wrap as far as they need to; the tags
  * always come after them, never over them.
  */
@@ -45,24 +57,17 @@ export function BookInfo({ book, accountType }: { book: BookDetail; accountType:
               {book.edition === null ? null : <Tag label={book.edition} testID="book-edition" />}
               {book.publicationYear === null ? null : <Tag label={String(book.publicationYear)} testID="book-year" />}
               <Tag label={bookAvailabilityLabel(book)} tone={available ? "available" : "none"} testID="book-availability-pill" />
+              {book.subject === null ? null : <Tag label={book.subject} tone="subject" testID="book-subject" />}
             </View>
           </View>
         </View>
 
-        {book.lcCallNumber === null && book.subject === null ? null : (
+        {book.lcCallNumber === null ? null : (
           <View style={styles.classification}>
-            {book.lcCallNumber === null ? null : (
-              <View style={styles.callNumber} testID="book-call-number">
-                <Text style={styles.callNumberLabel}>CALL NO.</Text>
-                <Text style={styles.callNumberText}>{book.lcCallNumber}</Text>
-              </View>
-            )}
-            {book.subject === null ? null : (
-              <Text style={styles.subject} testID="book-subject">
-                {"Subject: "}
-                <Text style={styles.subjectName}>{book.subject}</Text>
-              </Text>
-            )}
+            <View style={styles.callNumber} testID="book-call-number">
+              <Text style={styles.callNumberLabel}>CALL NO.</Text>
+              <Text style={styles.callNumberText}>{book.lcCallNumber}</Text>
+            </View>
           </View>
         )}
       </View>
@@ -118,12 +123,15 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     paddingHorizontal: spacing.inset - 1,
     paddingVertical: 3,
+    maxWidth: "100%",
   },
   tagText: { fontFamily: fontFamily.medium, fontSize: fontSize.tag, lineHeight: lineHeightFor(fontSize.tag), color: colors.black },
   availableTag: { backgroundColor: colors.availableSurface, borderColor: colors.availableSurface },
   availableText: { color: colors.availableText },
   noneTag: { backgroundColor: colors.pill, borderColor: colors.pill },
   noneText: { color: colors.textMuted },
+  subjectTag: { backgroundColor: colors.selected, borderColor: colors.selected },
+  subjectText: { fontFamily: fontFamily.semiBold, color: colors.brandInk },
   classification: { alignItems: "flex-start", gap: 10 },
   callNumber: {
     alignSelf: "flex-start",
@@ -137,8 +145,6 @@ const styles = StyleSheet.create({
   },
   callNumberLabel: { fontFamily: fontFamily.monoLabel, fontSize: fontSize.caption, lineHeight: lineHeightFor(fontSize.caption), color: colors.black },
   callNumberText: { fontFamily: fontFamily.mono, fontSize: fontSize.caption, lineHeight: lineHeightFor(fontSize.caption), color: colors.black },
-  subject: { fontFamily: fontFamily.regular, fontSize: fontSize.action, lineHeight: lineHeightFor(fontSize.action), color: colors.textBody },
-  subjectName: { fontFamily: fontFamily.medium, color: colors.black },
   details: { gap: 7 },
   detailsHeading: { fontFamily: fontFamily.regular, fontSize: fontSize.body, lineHeight: lineHeightFor(fontSize.body), letterSpacing: -0.64, color: colors.black },
   detailsBody: { fontFamily: fontFamily.regular, fontSize: fontSize.body, lineHeight: lineHeightFor(fontSize.body), letterSpacing: -0.64, color: colors.textBody },

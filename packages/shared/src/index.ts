@@ -296,3 +296,12 @@ export type {
   PushSettingsResponse,
   SignOutRequest,
 } from "./push.ts";
+export {
+  BOOK_SHEET_TOP_RATIO,
+  bookSheetSnapBounds,
+  clampBookSheetTop,
+  resolveBookSheetRelease,
+} from "./book-sheet.ts";
+export type { BookSheetPosition, BookSheetSnapBounds } from "./book-sheet.ts";
+export { POLICY_DOCUMENTS, policyDocumentKind } from "./policies.ts";
+export type { PolicyDocumentKind } from "./policies.ts";
