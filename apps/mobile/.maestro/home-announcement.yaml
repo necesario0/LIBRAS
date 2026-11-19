@@ -1,0 +1,64 @@
+# The running Announcement shows as a banner above the shelves. Tapping it opens the Announcement screen: the full
+# poster, the title, the dates, the text and a link button. This one links to a web page, so the button says
+# "Open forms.gle" and opens the phone's browser, outside the app; coming back lands on the same screen.
+# Needs the end-to-end API on port 3000 (npm run e2e starts it).
+appId: ph.edu.umak.libras
+---
+- launchApp:
+    clearState: true
+- runScript:
+    file: scripts/create-announcement.js
+    env:
+      MODE: web
+- runFlow: subflows/visitor-sign-in.yaml
+
+# The banner is above the shelves and its accessible name is the title.
+- extendedWaitUntil:
+    visible:
+      id: home-announcement
+    timeout: 20000
+- assertVisible:
+    id: home-announcement
+- assertVisible: "New arrivals"
+- takeScreenshot: home-announcement-banner
+
+- tapOn:
+    id: home-announcement
+- extendedWaitUntil:
+    visible:
+      id: announcement-title
+    timeout: 15000
+- assertVisible: ${output.title}
+- assertVisible:
+    id: announcement-poster
+- assertVisible: "Pinch to zoom"
+- assertVisible: "One-on-one help with your thesis. Bring your draft and a printed outline."
+- assertVisible:
+    id: announcement-dates
+- assertVisible: "Open forms.gle"
+- takeScreenshot: announcement-detail
+
+# The web link leaves the app for the browser.
+- tapOn:
+    id: announcement-link
+- assertNotVisible:
+    id: announcement-title
+- launchApp:
+    stopApp: false
+- extendedWaitUntil:
+    visible:
+      id: announcement-title
+    timeout: 15000
+
+# Back returns to Home with the banner still there.
+- tapOn:
+    id: announcement-back
+- extendedWaitUntil:
+    visible:
+      id: home-announcement
+    timeout: 10000
+
+- runFlow: subflows/sign-out.yaml
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 20000

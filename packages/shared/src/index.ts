@@ -259,6 +259,7 @@ export type {
   AnnouncementStatus,
   DeskAnnouncementsResponse,
   LibraryDay,
+  MemberAnnouncement,
   ParsedAnnouncementDetails,
 } from "./announcements.ts";
 export { pickSuggestions } from "./search/suggestions.ts";

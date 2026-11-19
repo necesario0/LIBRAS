@@ -1,0 +1,53 @@
+# An Announcement that links to a Book: the button says "View book" and opens the Book page over the Announcement
+# screen; closing the page returns to the Announcement. Needs the end-to-end API on port 3000 (npm run e2e starts it).
+appId: ph.edu.umak.libras
+---
+- launchApp:
+    clearState: true
+- runScript:
+    file: scripts/create-announcement.js
+    env:
+      MODE: book
+- runFlow: subflows/visitor-sign-in.yaml
+
+- extendedWaitUntil:
+    visible:
+      id: home-announcement
+    timeout: 20000
+- tapOn:
+    id: home-announcement
+- extendedWaitUntil:
+    visible:
+      id: announcement-title
+    timeout: 15000
+- assertVisible: ${output.title}
+# No text was added, so none shows.
+- assertNotVisible:
+    id: announcement-body
+- assertVisible: "View book"
+- takeScreenshot: announcement-detail-book
+
+- tapOn:
+    id: announcement-link
+- extendedWaitUntil:
+    visible:
+      id: book-sheet
+    timeout: 15000
+- assertVisible: ${output.bookTitle}
+- tapOn:
+    id: book-close
+- extendedWaitUntil:
+    visible:
+      id: announcement-title
+    timeout: 10000
+- tapOn:
+    id: announcement-back
+- extendedWaitUntil:
+    visible:
+      id: home-announcement
+    timeout: 10000
+
+- runFlow: subflows/sign-out.yaml
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 20000

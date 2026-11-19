@@ -9,6 +9,7 @@ import { useScreenTop } from "../../../src/hooks/useScreenTop";
 import { useHideTabBar } from "../../../src/navigation/TabBarVisibility";
 import { useTabBarSpace } from "../../../src/navigation/FloatingTabBar";
 import { SearchResultRow } from "../../../src/home/BookResultRow";
+import { AnnouncementBanner } from "../../../src/home/AnnouncementBanner";
 import { HomeHeader } from "../../../src/home/HomeHeader";
 import { HomeShelves, ShelvesFailed } from "../../../src/home/HomeShelves";
 import { SearchBar } from "../../../src/home/SearchBar";
@@ -35,7 +36,8 @@ function resultCount(response: CatalogSearchResponse): string {
 /**
  * Home for a signed-in Member: the Figma "Home dashboard" layout (node
  * 1032:1994) as the approved Tier 3 preview lays it out: the greeting and the
- * search bar, then the shelves (New arrivals, Popular in your college,
+ * search bar, then the running Announcement as a banner (nothing when none
+ * runs), then the shelves (New arrivals, Popular in your college,
  * Available now in your top Subject). Loans, Holds and the Digital ID have
  * their own tabs, so Home is about finding Books. There is no bell and no menu.
  *
@@ -149,6 +151,12 @@ export default function HomeScreen() {
           contentContainerStyle={[styles.bodyContent, { paddingBottom: tabBarSpace }]}
           showsVerticalScrollIndicator={false}
         >
+          {home.state.status === "loaded" && home.state.announcement !== null ? (
+            // The shelf below brings its own 24 of space, as in the preview, so the screen's gap is taken back here.
+            <View style={styles.banner}>
+              <AnnouncementBanner announcement={home.state.announcement} onOpen={() => router.push("/announcement")} />
+            </View>
+          ) : null}
           {home.state.status === "loaded" ? <HomeShelves shelves={home.state.shelves} onOpenBook={openBook} /> : null}
           {home.state.status === "error" ? <ShelvesFailed message={home.state.message} onRetry={() => void home.reload()} /> : null}
         </ScrollView>
@@ -218,6 +226,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.white },
   header: { flexDirection: "row", alignItems: "center", paddingHorizontal: spacing.home },
   search: { paddingHorizontal: spacing.home, marginTop: 10 },
+  banner: { marginBottom: -spacing.md },
   modeBar: { paddingHorizontal: spacing.home, paddingVertical: 4 },
   body: { flex: 1, marginTop: spacing.lg },
   bodyContent: { paddingHorizontal: spacing.home, gap: spacing.md },
