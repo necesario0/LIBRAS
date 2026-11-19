@@ -44,7 +44,7 @@ type WorkLoans = ReadonlyMap<string, number>;
  */
 export async function homeShelves(deps: { db: Database; clock: Clock }, member: MemberProfile): Promise<HomeShelf[]> {
   const college = memberCollege(member);
-  const borrower = canBorrow(member.accountType);
+  const mayBorrow = canBorrow(member.accountType);
   const since = new Date(deps.clock.now().getTime() - MOST_BORROWED_WINDOW_DAYS * DAY_MS);
 
   const [books, collegeLoans, libraryLoans, borrowedSubjects] = await Promise.all([
@@ -52,7 +52,7 @@ export async function homeShelves(deps: { db: Database; clock: Clock }, member: 
     readLoansInWindow(deps.db, since, college),
     // A Member with no college has the whole library for both shelves: one read.
     college === null ? undefined : readLoansInWindow(deps.db, since, null),
-    borrower ? readBorrowedSubjects(deps.db, member.id) : Promise.resolve([]),
+    mayBorrow ? readBorrowedSubjects(deps.db, member.id) : Promise.resolve([]),
   ]);
   const subject = topSubject(borrowedSubjects);
   const inSubject = subject === null ? books : books.filter((book) => book.subject === subject);
@@ -67,7 +67,7 @@ export async function homeShelves(deps: { db: Database; clock: Clock }, member: 
     shelfOf(mostBorrowed(books, collegeLoans).filter((book) => loansOf(book, collegeLoans) > 0), false),
   );
   add(
-    { kind: "available_now", ...homeShelfCopy({ kind: "available_now", subject, canBorrow: borrower }) },
+    { kind: "available_now", ...homeShelfCopy({ kind: "available_now", subject, canBorrow: mayBorrow }) },
     shelfOf(mostBorrowed(inSubject, libraryLoans ?? collegeLoans), true),
   );
   return shelves;
