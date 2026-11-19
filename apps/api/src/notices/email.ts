@@ -30,7 +30,7 @@ export interface LoanNoticeEmail {
 const isOverdue = (loan: NoticeLoan) => loan.slot.kind !== "due_tomorrow";
 
 /** "tomorrow" or "today": a due-tomorrow notice held back by the one-email-a-day rule goes out on the due day. */
-function dueWhen(loan: NoticeLoan, now: Date): string {
+export function dueWhen(loan: Pick<NoticeLoan, "dueAt">, now: Date): "tomorrow" | "today" {
   return libraryDayOf(loan.dueAt) > libraryDayOf(now) ? "tomorrow" : "today";
 }
 

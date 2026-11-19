@@ -5,6 +5,7 @@ export type { TestAccount, TestAccountOptions } from "./accounts.ts";
 export { FakeClock } from "./fake-clock.ts";
 export type { Duration } from "./fake-clock.ts";
 export { CapturingEmailSender } from "./capturing-email-sender.ts";
+export { CapturingPushSender } from "./capturing-push-sender.ts";
 export {
   alumniSignUpBody,
   codeFromEmail,

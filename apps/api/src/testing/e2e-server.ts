@@ -25,6 +25,7 @@ import { createDatabase } from "../db.ts";
 import { consoleLogger } from "../logger.ts";
 import { startSweeper } from "../sweep.ts";
 import { CapturingEmailSender } from "./capturing-email-sender.ts";
+import { CapturingPushSender } from "./capturing-push-sender.ts";
 import { announcementFixtureRoutes } from "./announcement-fixture-routes.ts";
 import { catalogFixtureRoutes } from "./catalog-fixture-routes.ts";
 import { loanFixtureRoutes } from "./loan-fixture-routes.ts";
@@ -52,6 +53,8 @@ const deps = {
   email: emails,
   logger: consoleLogger,
   files: announcementFiles(config),
+  // Push notifications are captured too: an end-to-end run never reaches Expo's push service.
+  push: new CapturingPushSender(),
 };
 
 const { app, stop } = createApp(deps, {

@@ -25,6 +25,7 @@ import { recordPasswordEvent } from "../members/password-audit.ts";
 import { signInMember } from "../members/sign-in.ts";
 import { resendSignUpCode, startSignUp, verifySignUp } from "../members/sign-up.ts";
 import { clearanceOf, goodStandingOf, readStanding } from "../standing/index.ts";
+import { forgetPushDevicesOf } from "../push/index.ts";
 import { parseBody, passwordRuleRefusal } from "../validation.ts";
 
 const KNOWN_MESSAGES: ReadonlySet<string> = new Set(Object.values(SIGN_UP_MESSAGES));
@@ -103,9 +104,11 @@ export function membersRouter(deps: AppDeps, limiter: AttemptLimiter): Router {
     res.json(body);
   });
 
-  // "Sign out of all devices": Supabase Auth ends every session, the caller's included, so the Member signs in again.
+  // "Sign out of all devices": Supabase Auth ends every session, the caller's included, so the Member signs in
+  // again, and no phone gets their push notifications until it is signed in again.
   router.post("/members/me/sign-out-all", ...requireMember(deps), async (req, res) => {
     await deps.auth.signOutEverywhere(accessTokenOf(res));
+    await forgetPushDevicesOf(deps.db, memberOf(res).id);
     await recordPasswordEvent(deps, { type: "signed_out_all_devices", memberId: memberOf(res).id, clientAddress: req.ip });
     res.status(204).end();
   });
