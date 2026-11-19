@@ -4,10 +4,12 @@ import { isActiveHold } from "@libras/shared";
 import type { Hold } from "@libras/shared";
 import { useAuth } from "../auth/AuthContext";
 import { Button } from "../components/Button";
+import { ClockIcon } from "../components/OutlineIcons";
 import { HoldRow } from "../holds/HoldRow";
 import { cancelHold, holdFailureMessage } from "../holds/useHolds";
 import type { HoldsState } from "../holds/useHolds";
 import { colors, radii } from "../theme/tokens";
+import { EmptyState } from "./EmptyState";
 import { panelStyles as styles } from "./panelStyles";
 
 /**
@@ -50,14 +52,12 @@ export function HoldsSegment({ state, reload }: { state: HoldsState; reload: () 
       ) : null}
 
       {state.status === "loaded" && state.holds.length === 0 ? (
-        <View style={styles.panel} testID="holds-empty">
-          <Text style={styles.panelTitle} accessibilityRole="header">
-            No Holds yet
-          </Text>
-          <Text style={styles.panelBody}>
-            When a Book has no available Copy, open it and place a Hold. You join the queue and see where you stand here.
-          </Text>
-        </View>
+        <EmptyState
+          icon={<ClockIcon color={colors.textMuted} size={28} />}
+          title="No Holds yet"
+          line="When a Book has no available Copy, open it and place a Hold to join the queue."
+          testID="holds-empty"
+        />
       ) : null}
 
       {active.length > 0 ? (

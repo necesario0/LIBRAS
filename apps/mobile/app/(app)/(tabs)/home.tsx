@@ -1,5 +1,5 @@
-import { useFocusEffect, useIsFocused, useRouter } from "expo-router";
-import { useCallback, useState } from "react";
+import { useFocusEffect, useIsFocused, useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, BackHandler, Keyboard, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useAuth, useMember } from "../../../src/auth/AuthContext";
 import { api } from "../../../src/api";
@@ -53,6 +53,13 @@ export default function HomeScreen() {
   const screenTop = useScreenTop();
   const search = useCatalogSearch(request);
   const [searchOn, setSearchOn] = useState(false);
+  // `/home?search=1` opens search mode, once (the empty states of My Books link here).
+  const { search: searchParam } = useLocalSearchParams<{ search?: string }>();
+  useEffect(() => {
+    if (searchParam !== "1") return;
+    setSearchOn(true);
+    router.setParams({ search: undefined });
+  }, [searchParam, router]);
   const recent = useRecentSearches(member.id, searchOn);
   const typing = searchOn && !search.submitted;
   const suggestions = useSuggestions(request, search.query, typing);

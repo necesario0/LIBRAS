@@ -54,6 +54,15 @@ export function SavedTabIcon(props: OutlineIconProps) {
   );
 }
 
+/** The same bookmark, filled: a Book that is saved. */
+export function SavedFilledIcon({ color, size }: OutlineIconProps) {
+  return (
+    <Outline color={color} size={size}>
+      <Path d="M6 3h12v18l-6-4.5L6 21z" fill={color} />
+    </Outline>
+  );
+}
+
 export function DigitalIdTabIcon(props: OutlineIconProps) {
   return (
     <Outline {...props}>

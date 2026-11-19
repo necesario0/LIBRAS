@@ -1,4 +1,5 @@
 import { useLocalSearchParams } from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth, useMember } from "../../../src/auth/AuthContext";
@@ -6,21 +7,27 @@ import { BookInfo } from "../../../src/book/BookInfo";
 import { useBook } from "../../../src/catalog/useBook";
 import { useClearance } from "../../../src/clearance/useClearance";
 import { Button } from "../../../src/components/Button";
+import { Toast } from "../../../src/components/Toast";
 import { CloseIcon } from "../../../src/components/icons";
 import { useGoBack } from "../../../src/hooks/useGoBack";
 import { HoldAction } from "../../../src/holds/HoldAction";
 import { BorrowAction } from "../../../src/loans/BorrowAction";
+import { SaveAction } from "../../../src/saved-books/SaveAction";
 import { colors, fontFamily, fontSize, radii, spacing } from "../../../src/theme/tokens";
 
 /** The sheet starts this far down the screen: 200 pt of the 874 pt Figma frame. */
 const SHEET_TOP = 200 / 874;
+
+/** How long the message after saving or removing stays. */
+const MESSAGE_MS = 2500;
 
 /**
  * A Book, opened from a search result: the Figma "Book detail" sheet (node
  * 609:1066) over the screen that opened it. Its details and how many Copies
  * exist and are available come from the API. Borrow shows when a Copy is
  * available and opens the Digital ID; the Hold action shows when none is. A
- * Member who is not in Good standing is told why in place of either.
+ * Member who is not in Good standing is told why in place of either. Save, at
+ * the top, keeps the Book in the Member's Saved books and says what changed.
  */
 export default function BookScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -33,6 +40,14 @@ export default function BookScreen() {
   const { state: standing } = useClearance(request);
   const goodStanding = standing.status === "loaded" ? standing.goodStanding : undefined;
   const close = useGoBack();
+  const [message, setMessage] = useState<string | undefined>(undefined);
+  const messageTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const showMessage = useCallback((text: string) => {
+    clearTimeout(messageTimer.current);
+    setMessage(text);
+    messageTimer.current = setTimeout(() => setMessage(undefined), MESSAGE_MS);
+  }, []);
+  useEffect(() => () => clearTimeout(messageTimer.current), []);
 
   return (
     <View style={styles.screen}>
@@ -51,6 +66,7 @@ export default function BookScreen() {
           {state.status === "loading" ? <ActivityIndicator color={colors.primary} style={styles.spinner} testID="book-loading" /> : null}
           {state.status === "loaded" ? (
             <>
+              <SaveAction bookId={state.book.id} accountType={member.accountType} initiallySaved={state.saved} onMessage={showMessage} />
               <BookInfo book={state.book} accountType={member.accountType} />
               <BorrowAction book={state.book} accountType={member.accountType} goodStanding={goodStanding} />
               <HoldAction book={state.book} accountType={member.accountType} goodStanding={goodStanding} />
@@ -75,6 +91,7 @@ export default function BookScreen() {
             </View>
           ) : null}
         </ScrollView>
+        {message === undefined ? null : <Toast message={message} bottom={insets.bottom + spacing.xl} testID="book-toast" />}
       </View>
     </View>
   );
@@ -95,7 +112,7 @@ const styles = StyleSheet.create({
   },
   grabber: { alignSelf: "center", marginTop: 10, width: 56, height: 10, borderRadius: radii.grabber, backgroundColor: colors.grabber },
   close: { position: "absolute", right: 20, top: 20, zIndex: 1 },
-  content: { paddingTop: 42, paddingHorizontal: spacing.xl, gap: spacing.xl },
+  content: { paddingTop: 52, paddingHorizontal: spacing.xl, gap: spacing.xl },
   spinner: { marginTop: spacing.xxl },
   message: { borderWidth: 1, borderColor: colors.panelBorder, borderRadius: radii.panel, padding: spacing.lg, gap: spacing.sm, marginTop: spacing.xl },
   failed: { borderColor: colors.error },

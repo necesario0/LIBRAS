@@ -1,12 +1,14 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
 import { myBooksStartSegment } from "@libras/shared";
 import type { MyBooksSegment } from "@libras/shared";
-import { SavedTabIcon } from "../../../src/components/OutlineIcons";
+import { Toast } from "../../../src/components/Toast";
 import { useScreenTop } from "../../../src/hooks/useScreenTop";
 import { HoldsSegment } from "../../../src/my-books/HoldsSegment";
 import { LoansSegment } from "../../../src/my-books/LoansSegment";
+import { SavedSegment } from "../../../src/my-books/SavedSegment";
+import type { SavedMessage } from "../../../src/my-books/SavedSegment";
 import { useMyBooks } from "../../../src/my-books/MyBooksContext";
 import { SegmentControl } from "../../../src/my-books/SegmentControl";
 import type { Segment } from "../../../src/my-books/SegmentControl";
@@ -15,7 +17,7 @@ import { colors, fontFamily, fontSize, spacing } from "../../../src/theme/tokens
 
 /** `/my-books?segment=holds` opens My Books on that segment, once. */
 function segmentParam(value: string | string[] | undefined): MyBooksSegment | undefined {
-  return value === "loans" || value === "holds" ? value : undefined;
+  return value === "loans" || value === "holds" || value === "saved" ? value : undefined;
 }
 
 /**
@@ -28,9 +30,8 @@ function segmentParam(value: string | string[] | undefined): MyBooksSegment | un
  * the tab has.
  *
  * A Member who cannot borrow (a loan limit of zero) has no segments: the tab
- * is "Saved" and shows Saved books, a placeholder until the Saved books ticket
- * fills it. That ticket also adds a Saved segment for everyone else: one more
- * entry in `segments` and one more branch below.
+ * is "Saved" and shows only Saved books. Everyone else has Saved as the third
+ * segment. Removing a Saved book shows a message with Undo at the foot.
  */
 export default function MyBooksScreen() {
   const router = useRouter();
@@ -42,6 +43,14 @@ export default function MyBooksScreen() {
   // The Loans and Holds fetched on this visit have arrived: the segment to open on is decided from them, then kept.
   const [fresh, setFresh] = useState(false);
   const linked = segmentParam(params.segment);
+  const [message, setMessage] = useState<SavedMessage | undefined>(undefined);
+  const messageTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const showMessage = useCallback((next: SavedMessage | undefined) => {
+    clearTimeout(messageTimer.current);
+    setMessage(next);
+    if (next !== undefined) messageTimer.current = setTimeout(() => setMessage(undefined), next.undo === undefined ? MESSAGE_MS : UNDO_MS);
+  }, []);
+  useEffect(() => () => clearTimeout(messageTimer.current), []);
 
   // A link that names a segment wins once.
   useEffect(() => {
@@ -61,8 +70,9 @@ export default function MyBooksScreen() {
         visiting = false;
         setFresh(false);
         setChosen(undefined);
+        showMessage(undefined);
       };
-    }, [reload]),
+    }, [reload, showMessage]),
   );
 
   const saved = canBorrow === false;
@@ -76,59 +86,55 @@ export default function MyBooksScreen() {
   const segments: readonly Segment<MyBooksSegment>[] = [
     { key: "loans", label: "Loans", dot: attention.loans, testID: "my-books-loans" },
     { key: "holds", label: "Holds", dot: attention.holds, testID: "my-books-holds" },
+    { key: "saved", label: "Saved", dot: false, testID: "my-books-saved" },
   ];
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={[styles.content, { paddingTop: screenTop, paddingBottom: tabBarSpace }]}
-      showsVerticalScrollIndicator={false}
-    >
-      <Text style={styles.title} accessibilityRole="header" testID="my-books-title">
-        {saved ? "Saved books" : "My Books"}
-      </Text>
+    <View style={styles.screen}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[styles.content, { paddingTop: screenTop, paddingBottom: tabBarSpace }]}
+        showsVerticalScrollIndicator={false}
+      >
+        <Text style={styles.title} accessibilityRole="header" testID="my-books-title">
+          {saved ? "Saved books" : "My Books"}
+        </Text>
 
-      {saved ? (
-        <SavedPlaceholder />
-      ) : (
-        <>
-          <View style={styles.segments}>
-            <SegmentControl segments={segments} selected={selected} onSelect={setChosen} />
-          </View>
-          {selected === undefined ? <ActivityIndicator color={colors.primary} style={styles.spinner} testID="my-books-loading" /> : null}
-          {selected === "loans" ? <LoansSegment state={loans} reload={reload} /> : null}
-          {selected === "holds" ? <HoldsSegment state={holds} reload={reload} /> : null}
-        </>
+        {saved ? (
+          <SavedSegment onMessage={showMessage} />
+        ) : (
+          <>
+            <View style={styles.segments}>
+              <SegmentControl segments={segments} selected={selected} onSelect={setChosen} />
+            </View>
+            {selected === undefined ? <ActivityIndicator color={colors.primary} style={styles.spinner} testID="my-books-loading" /> : null}
+            {selected === "loans" ? <LoansSegment state={loans} reload={reload} /> : null}
+            {selected === "holds" ? <HoldsSegment state={holds} reload={reload} /> : null}
+            {selected === "saved" ? <SavedSegment onMessage={showMessage} /> : null}
+          </>
+        )}
+      </ScrollView>
+      {message === undefined ? null : (
+        <Toast
+          message={message.text}
+          action={message.undo === undefined ? undefined : { label: "Undo", onPress: message.undo, testID: "saved-undo" }}
+          bottom={tabBarSpace}
+          testID="saved-toast"
+        />
       )}
-    </ScrollView>
-  );
-}
-
-const RING = 64;
-
-/** What a Member who cannot borrow sees until Saved books exist. */
-function SavedPlaceholder() {
-  return (
-    <View style={styles.empty} testID="saved-placeholder">
-      <View style={styles.ring}>
-        <SavedTabIcon color={colors.textMuted} size={28} />
-      </View>
-      <Text style={styles.emptyTitle} accessibilityRole="header">
-        No Saved books yet
-      </Text>
-      <Text style={styles.emptyBody}>Saving Books to read in the library is coming soon. They will be listed here.</Text>
     </View>
   );
 }
 
+/** How long a message stays, and how long Undo is offered. */
+const MESSAGE_MS = 2500;
+const UNDO_MS = 5000;
+
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.white },
+  scroll: { flex: 1 },
   content: { paddingHorizontal: spacing.home },
   title: { marginTop: 10, fontFamily: fontFamily.semiBold, fontSize: fontSize.heading, letterSpacing: -2.16, lineHeight: 45, color: colors.black },
   segments: { marginTop: 18, marginBottom: spacing.sm },
   spinner: { marginTop: spacing.xl },
-  empty: { alignItems: "center", gap: spacing.sm, marginTop: 56, paddingHorizontal: spacing.xl },
-  ring: { width: RING, height: RING, borderRadius: RING / 2, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" },
-  emptyTitle: { marginTop: spacing.sm, fontFamily: fontFamily.semiBold, fontSize: fontSize.body, lineHeight: 20, color: colors.black },
-  emptyBody: { fontFamily: fontFamily.regular, fontSize: fontSize.small, lineHeight: 18, color: colors.textMuted, textAlign: "center" },
 });
