@@ -2,7 +2,7 @@ import { CATALOG_SORTS, CATALOG_SORT_LABELS, activeFilterCount } from "@libras/s
 import type { CatalogSearchFilters, CatalogSort } from "@libras/shared";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
-import { BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { BackHandler, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { ReactNode } from "react";
 import { CheckIcon, ChevronDownIcon, CrossIcon, SlidersIcon, SortIcon } from "../components/OutlineIcons";
 import { publishedLabel } from "./FiltersSheet";
@@ -66,8 +66,12 @@ function FilterChip({ label, onRemove, testID }: { label: string; onRemove: () =
  * removes it: each Subject, the Published years, and "All editions" when
  * Latest edition only is off.
  *
- * The menu is drawn in place over the results (the row sits above them), so
- * the results area must not clip it.
+ * The menu opens over the results. It is not a child of the row but its next
+ * sibling, placed by the row's position: Android leaves a view drawn outside
+ * its parent's bounds out of the accessibility tree, so a menu hanging below
+ * the row could be seen and tapped but never reached by TalkBack (or Maestro).
+ * The parent must therefore reach as far down as the menu (Home's search-mode
+ * content fills the screen) and must not clip it.
  */
 export function SearchControls({
   filters,
@@ -79,6 +83,8 @@ export function SearchControls({
   onOpenFilters: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  // Where the row sits in its parent, so the menu can open just under the Sort chip.
+  const [rowAt, setRowAt] = useState<{ x: number; y: number } | null>(null);
   const filterCount = activeFilterCount(filters);
 
   // Android back closes the menu first (Home's own handler, registered earlier, would leave search mode).
@@ -99,67 +105,69 @@ export function SearchControls({
   };
 
   return (
-    <View style={styles.controls}>
-      {/* "handled", like the results around it: with the default, Android before API 30 may take the first tap on a chip to put the keyboard away. */}
-      <ScrollView
-        horizontal
-        keyboardShouldPersistTaps="handled"
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.row}
-        style={styles.scroller}
-      >
-        <Chip
-          on
-          label={CATALOG_SORT_LABELS[filters.sort]}
-          onPress={() => setMenuOpen(!menuOpen)}
-          expanded={menuOpen}
-          icon={<SortIcon color={colors.black} size={15} />}
-          trailing={<ChevronDownIcon color={colors.black} size={14} />}
-          testID="search-sort"
-        />
-        <Chip
-          on={filters.availableNow}
-          label="Available now"
-          onPress={() => {
-            setMenuOpen(false);
-            onChange({ availableNow: !filters.availableNow });
-          }}
-          icon={filters.availableNow ? <CheckIcon color={colors.black} size={14} /> : undefined}
-          testID="search-available-now"
-        />
-        <Chip
-          on={filterCount > 0}
-          label={filterCount > 0 ? `Filters (${filterCount})` : "Filters"}
-          onPress={() => {
-            setMenuOpen(false);
-            onOpenFilters();
-          }}
-          icon={<SlidersIcon color={colors.black} size={15} />}
-          testID="search-filters"
-        />
-      </ScrollView>
+    <>
+      <View onLayout={(event) => setRowAt({ x: event.nativeEvent.layout.x, y: event.nativeEvent.layout.y })}>
+        {/* "handled", like the results around it: with the default, Android before API 30 may take the first tap on a chip to put the keyboard away. */}
+        <ScrollView
+          horizontal
+          keyboardShouldPersistTaps="handled"
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.row}
+          style={styles.scroller}
+        >
+          <Chip
+            on
+            label={CATALOG_SORT_LABELS[filters.sort]}
+            onPress={() => setMenuOpen(!menuOpen)}
+            expanded={menuOpen}
+            icon={<SortIcon color={colors.black} size={15} />}
+            trailing={<ChevronDownIcon color={colors.black} size={14} />}
+            testID="search-sort"
+          />
+          <Chip
+            on={filters.availableNow}
+            label="Available now"
+            onPress={() => {
+              setMenuOpen(false);
+              onChange({ availableNow: !filters.availableNow });
+            }}
+            icon={filters.availableNow ? <CheckIcon color={colors.black} size={14} /> : undefined}
+            testID="search-available-now"
+          />
+          <Chip
+            on={filterCount > 0}
+            label={filterCount > 0 ? `Filters (${filterCount})` : "Filters"}
+            onPress={() => {
+              setMenuOpen(false);
+              onOpenFilters();
+            }}
+            icon={<SlidersIcon color={colors.black} size={15} />}
+            testID="search-filters"
+          />
+        </ScrollView>
 
-      {filterCount > 0 ? (
-        <View style={styles.filterChips} testID="search-filter-chips">
-          {filters.subjects.map((subject) => (
-            <FilterChip
-              key={subject}
-              label={subject}
-              onRemove={() => onChange({ subjects: filters.subjects.filter((chosen) => chosen !== subject) })}
-              testID={`search-filter-subject-${subject}`}
-            />
-          ))}
-          {filters.published.kind === "any" ? null : (
-            <FilterChip label={publishedLabel(filters.published)} onRemove={() => onChange({ published: { kind: "any" } })} testID="search-filter-published" />
-          )}
-          {filters.latestEditionOnly ? null : (
-            <FilterChip label="All editions" onRemove={() => onChange({ latestEditionOnly: true })} testID="search-filter-all-editions" />
-          )}
-        </View>
-      ) : null}
+        {filterCount > 0 ? (
+          <View style={styles.filterChips} testID="search-filter-chips">
+            {filters.subjects.map((subject) => (
+              <FilterChip
+                key={subject}
+                label={subject}
+                onRemove={() => onChange({ subjects: filters.subjects.filter((chosen) => chosen !== subject) })}
+                testID={`search-filter-subject-${subject}`}
+              />
+            ))}
+            {filters.published.kind === "any" ? null : (
+              <FilterChip label={publishedLabel(filters.published)} onRemove={() => onChange({ published: { kind: "any" } })} testID="search-filter-published" />
+            )}
+            {filters.latestEditionOnly ? null : (
+              <FilterChip label="All editions" onRemove={() => onChange({ latestEditionOnly: true })} testID="search-filter-all-editions" />
+            )}
+          </View>
+        ) : null}
+      </View>
 
-      {menuOpen ? (
-        <View style={styles.menu} accessibilityRole="menu" testID="search-sort-menu">
+      {menuOpen && rowAt !== null ? (
+        <View style={[styles.menu, { left: rowAt.x, top: rowAt.y + MENU_TOP }]} accessibilityRole="menu" testID="search-sort-menu">
           <Text style={styles.menuLabel}>SORT BY</Text>
           {CATALOG_SORTS.map((sort) => {
             const chosen = sort === filters.sort;
@@ -179,13 +187,11 @@ export function SearchControls({
           })}
         </View>
       ) : null}
-    </View>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  // Above the count and the results that follow it, so the open menu covers them.
-  controls: { zIndex: 1 },
   // The chips scroll sideways edge to edge, so the row reaches past the screen's side gutter.
   scroller: { marginHorizontal: -spacing.home },
   row: { gap: spacing.sm, paddingHorizontal: spacing.home },
@@ -214,15 +220,16 @@ const styles = StyleSheet.create({
     paddingRight: spacing.xs,
   },
   filterChipText: { fontFamily: fontFamily.medium, fontSize: fontSize.caption, lineHeight: 16, color: colors.primary },
+  // Above the count and the results that follow it, so the open menu covers them.
   menu: {
     position: "absolute",
-    top: MENU_TOP,
-    left: 0,
+    zIndex: 1,
     width: 230,
     backgroundColor: colors.white,
     borderRadius: radii.popupMenu,
     padding: spacing.sm,
-    boxShadow: popupMenuShadow,
+    // Android draws an outer boxShadow from 9 (API 28) on; before that the menu would have no edge over the results.
+    ...(Platform.OS === "android" && Platform.Version < 28 ? { elevation: 8 } : { boxShadow: popupMenuShadow }),
   },
   menuLabel: {
     fontFamily: fontFamily.semiBold,
