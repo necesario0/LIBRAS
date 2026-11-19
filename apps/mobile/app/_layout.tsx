@@ -4,6 +4,7 @@ import {
   Montserrat_400Regular,
   Montserrat_500Medium,
   Montserrat_600SemiBold,
+  Montserrat_700Bold,
   useFonts,
 } from "@expo-google-fonts/montserrat";
 import { RobotoMono_400Regular } from "@expo-google-fonts/roboto-mono";
@@ -25,6 +26,7 @@ export default function RootLayout() {
     Montserrat_400Regular,
     Montserrat_500Medium,
     Montserrat_600SemiBold,
+    Montserrat_700Bold,
   });
   const fontsReady = fontsLoaded || fontError !== null;
 

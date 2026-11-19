@@ -9,6 +9,8 @@ export const colors = {
   white: "#FFFFFF",
   /** Main text. */
   black: "#000000",
+  /** Wordmark ink (deep university navy). */
+  brandInk: "#111C4E",
   /** Primary action and brand blue (Figma "progress bar"). */
   primary: "#005DC3",
   /** Text field and card fill. */
@@ -99,6 +101,7 @@ export const fontFamily = {
   regular: "Montserrat_400Regular",
   medium: "Montserrat_500Medium",
   semiBold: "Montserrat_600SemiBold",
+  bold: "Montserrat_700Bold",
   extraLight: "Montserrat_200ExtraLight",
   /** The Book page's call number and its label (Figma: IBM Plex Mono and Roboto Mono). */
   monoLabel: "IBMPlexMono_400Regular",
@@ -110,7 +113,7 @@ export const fontSize = {
   display: 40,
   heading: 36,
   hero: 35,
-  /** "Show this to the librarian", and the title on the Book page. */
+  /** "Show this to the librarian", and the title of the password screens. */
   headline: 32,
   /** "Show this to the librarian" on the Digital ID tab (approved Tier 3 preview). */
   idHeading: 30,
@@ -119,12 +122,16 @@ export const fontSize = {
   large: 24,
   /** The Member's name on Profile (approved Tier 3 preview). */
   name: 22,
+  /** The title on the Book page (approved Tier 3 preview). */
+  bookTitle: 21,
   subheading: 20,
   body: 16,
   note: 15,
   label: 14,
   small: 13,
   caption: 12,
+  /** The tags of the Book page: edition, year and availability (approved Tier 3 preview). */
+  tag: 11,
   /** Search mode (approved Tier 3 preview): the list label, the text link, a list row and the empty state heading. */
   listLabel: 10.5,
   action: 12.5,
@@ -138,6 +145,16 @@ export const fontSize = {
   /** The line under the greeting on Home. */
   micro: 10,
 } as const;
+
+/**
+ * The line height for a text of `size`: 1.25 times it, rounded up. Montserrat's
+ * descenders ("g", "y") reach below a line any tighter, and Android cuts them
+ * off, so every text that sets a line height takes it from here. React Native
+ * scales it with the phone's font size, as it does the text.
+ */
+export function lineHeightFor(size: number): number {
+  return Math.ceil(size * 1.25);
+}
 
 export const typography = {
   display: { fontFamily: fontFamily.regular, fontSize: fontSize.display },
@@ -232,6 +249,8 @@ export const radii = {
   filterChip: 14,
   /** The round logo of the wordmark (31 pt). */
   logo: 16,
+  /** The square gold accent dot beside the wordmark. */
+  wordmarkDot: 2,
   /** The terms checkbox of sign-up. */
   checkbox: 6,
   /** A radio button (24 pt). */

@@ -17,8 +17,8 @@ const config: ExpoConfig = {
     package: "ph.edu.umak.libras",
     versionCode: 1,
     adaptiveIcon: {
-      foregroundImage: "./assets/images/libras-logo.png",
-      backgroundColor: "#FFFFFF",
+      foregroundImage: "./assets/images/libras-adaptive-foreground.png",
+      backgroundColor: "#005DC3",
     },
   },
   plugins: [
@@ -26,7 +26,7 @@ const config: ExpoConfig = {
     "expo-font",
     "expo-secure-store",
     // The launch screen: the LIBRAS logo on white. _layout.tsx keeps it up while the stored session is restored.
-    ["expo-splash-screen", { image: "./assets/images/libras-logo.png", imageWidth: 200, resizeMode: "contain", backgroundColor: "#FFFFFF" }],
+    ["expo-splash-screen", { image: "./assets/images/libras-splash.png", imageWidth: 200, resizeMode: "contain", backgroundColor: "#FFFFFF" }],
     ["expo-build-properties", { android: { usesCleartextTraffic: allowCleartext } }],
   ],
   experiments: { typedRoutes: true },

@@ -7,6 +7,7 @@
 @import "@fontsource/montserrat/400.css";
 @import "@fontsource/montserrat/500.css";
 @import "@fontsource/montserrat/600.css";
+@import "@fontsource/montserrat/700.css";
 
 :root {
   --font-sans: "Montserrat", system-ui, sans-serif;
@@ -17,6 +18,7 @@
   --color-surface: #ffffff;
   --color-field: #f0f0f0; /* input background */
   --color-text: #000000;
+  --color-brand-ink: #111c4e; /* wordmark text: deep university navy */
   --color-text-muted: #747474; /* placeholders and secondary text */
   --color-border: #e4e4e4;
   --color-danger: #d92d2d;
@@ -38,6 +40,7 @@
   --radius-key: 6px; /* the small "Enter" key in the scan field */
   --radius-input: 12px; /* text areas, date and text fields of a form */
   --radius-thumb: 8px;
+  --radius-wordmark-dot: 2px; /* the gold square accent dot beside the wordmark */
 
   --shadow-raised: 0 1px 3px rgb(0 0 0 / 0.15); /* the chosen option of a segmented control */
   --shadow-banner: 0 4px 10px rgb(0 0 0 / 0.2); /* the Home banner, as the app draws it */

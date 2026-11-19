@@ -9,7 +9,7 @@ import { Avatar } from "../../../src/components/Avatar";
 import { GearIcon, HelpIcon, KeyIcon, PersonOutlineIcon } from "../../../src/components/OutlineIcons";
 import { useScreenTop } from "../../../src/hooks/useScreenTop";
 import { useTabBarSpace } from "../../../src/navigation/FloatingTabBar";
-import { colors, fontFamily, fontSize, radii, spacing } from "../../../src/theme/tokens";
+import { colors, fontFamily, fontSize, lineHeightFor, radii, spacing } from "../../../src/theme/tokens";
 
 const AVATAR = 70;
 const ROW_ICON = 22;
@@ -99,11 +99,11 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.white },
   content: { paddingHorizontal: spacing.home },
-  title: { marginTop: 10, fontFamily: fontFamily.semiBold, fontSize: fontSize.heading, letterSpacing: -2.16, lineHeight: 45, color: colors.black },
-  identity: { flexDirection: "row", alignItems: "center", gap: spacing.inset, marginTop: spacing.md },
+  title: { marginTop: 10, fontFamily: fontFamily.semiBold, fontSize: fontSize.heading, letterSpacing: -2.16, lineHeight: lineHeightFor(fontSize.heading), color: colors.black },
+  identity: { flexDirection: "row", alignItems: "center", gap: spacing.inset, marginTop: 18 },
   details: { flex: 1, gap: 2 },
-  name: { fontFamily: fontFamily.regular, fontSize: fontSize.name, letterSpacing: -1.3, lineHeight: 28, color: colors.black },
-  fact: { fontFamily: fontFamily.regular, fontSize: fontSize.small, letterSpacing: -0.4, lineHeight: 17, color: colors.textMuted },
+  name: { fontFamily: fontFamily.regular, fontSize: fontSize.name, letterSpacing: -1.3, lineHeight: lineHeightFor(fontSize.name), color: colors.black },
+  fact: { fontFamily: fontFamily.regular, fontSize: fontSize.small, letterSpacing: -0.4, lineHeight: lineHeightFor(fontSize.small), color: colors.textMuted },
   menu: { marginTop: 22, marginHorizontal: 6, gap: 14 },
   signOut: {
     marginTop: 22,
@@ -117,5 +117,5 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
   },
   pressed: { backgroundColor: colors.surface },
-  signOutLabel: { fontFamily: fontFamily.regular, fontSize: fontSize.body, lineHeight: 20, color: colors.error },
+  signOutLabel: { fontFamily: fontFamily.regular, fontSize: fontSize.body, lineHeight: lineHeightFor(fontSize.body), color: colors.error },
 });

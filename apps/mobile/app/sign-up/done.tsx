@@ -4,7 +4,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useScreenTop } from "../../src/hooks/useScreenTop";
 import { BookIllustration } from "../../src/components/BookIllustration";
 import { Button } from "../../src/components/Button";
-import { Wordmark } from "../../src/components/Wordmark";
 import { useSignUp } from "../../src/sign-up/SignUpContext";
 import { colors, fontFamily, fontSize, radii, spacing } from "../../src/theme/tokens";
 
@@ -26,8 +25,7 @@ export default function DoneScreen() {
 
   return (
     <View style={[styles.screen, { paddingTop: screenTop + 18, paddingBottom: insets.bottom + 25 }]}>
-      <Wordmark />
-      <View style={styles.book}>
+      <View>
         <BookIllustration width={173} height={117} />
       </View>
       <Text style={styles.title} accessibilityRole="header" testID="done-title">
@@ -45,7 +43,6 @@ export default function DoneScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.white, alignItems: "center", paddingHorizontal: spacing.screen },
-  book: { marginTop: 17 },
   title: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.heading,

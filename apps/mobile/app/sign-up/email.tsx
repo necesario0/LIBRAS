@@ -15,7 +15,6 @@ import { KeyboardAvoiding } from "../../src/components/KeyboardAvoiding";
 import { useKeyboardVisible } from "../../src/components/OnboardingScreen";
 import { StepProgress } from "../../src/components/StepProgress";
 import { FieldError, TextField } from "../../src/components/TextField";
-import { Wordmark } from "../../src/components/Wordmark";
 import { useSignUp } from "../../src/sign-up/SignUpContext";
 import { DETAILS_ROUTE, buildSignUpRequest } from "../../src/sign-up/request";
 import { check } from "../../src/sign-up/validate";
@@ -89,8 +88,7 @@ export default function EmailScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <Wordmark />
-        <View style={styles.book}>
+        <View>
           <BookIllustration width={173} height={117} />
         </View>
         <Text style={styles.title} accessibilityRole="header">
@@ -174,7 +172,6 @@ function TermsCheckbox({ checked, onToggle, error }: { checked: boolean; onToggl
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.white },
   content: { flexGrow: 1, alignItems: "center", paddingBottom: spacing.lg },
-  book: { marginTop: 17 },
   title: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.display,

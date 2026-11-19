@@ -17,10 +17,11 @@ appId: ph.edu.umak.libras
     id: ntp-number
 - inputText: E${output.idNumber}
 - hideKeyboard
-- tapOn:
-    id: ntp-college
-- tapOn:
-    id: ntp-college-option-CCIS
+- runFlow:
+    file: subflows/pick-option.yaml
+    env:
+      FIELD: ntp-college
+      OPTION: CCIS
 - tapOn:
     id: ntp-continue
 

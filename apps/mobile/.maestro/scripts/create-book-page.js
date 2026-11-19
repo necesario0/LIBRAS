@@ -3,6 +3,8 @@
 // Visitor Member who can sign in. Outputs:
 //   word, title, authors, edition, isbn, callNumber   the detailed Book
 //   noneWord, noneTitle                               the Book with no Copy available
+//   longWord, longTitle, longAuthors, longEdition     a Book with a long title and three authors,
+//                                                     shaped like one in the real catalog
 //   visitorEmail, visitorPassword                     the Visitor
 //
 // Needs the end-to-end API on port 3000 (npm run e2e starts it).
@@ -40,6 +42,20 @@ post("/e2e/books", {
   onLoanCopies: 1,
 });
 post("/e2e/books", { title: noneTitle, authors: ["Zxqy, Ben"], availableCopies: 0, onLoanCopies: 1 });
+// The title of a real catalog Book that wraps over five lines on a phone; the
+// random surname of its third author is what the flow searches for.
+const longWord = randomWord("zl");
+const longTitle = "A Course module for readings in Philippine history";
+const longAuthors = ["Reyes, Ana Liza P.", "Santos, Mark Anthony C.", capitalize(longWord) + ", Maria Theresa R."];
+post("/e2e/books", {
+  title: longTitle,
+  authors: longAuthors,
+  edition: "2021 edition",
+  publicationYear: 2021,
+  lcCallNumber: "DS668 .C36 2021",
+  availableCopies: 2,
+  onLoanCopies: 1,
+});
 const visitor = post("/e2e/members", { accountType: "visitor" });
 
 output.word = word;
@@ -50,5 +66,9 @@ output.isbn = isbn;
 output.callNumber = callNumber;
 output.noneWord = noneWord;
 output.noneTitle = noneTitle;
+output.longWord = longWord;
+output.longTitle = longTitle;
+output.longAuthors = longAuthors.join("; ");
+output.longEdition = "2021 edition";
 output.visitorEmail = visitor.email;
 output.visitorPassword = visitor.password;

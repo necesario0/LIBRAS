@@ -1,19 +1,37 @@
 import { Image, StyleSheet, Text, View } from "react-native";
 import logo from "../../assets/images/libras-logo.png";
-import { colors, radii, spacing, typography } from "../theme/tokens";
+import { colors, fontFamily, fontSize, lineHeightFor, radii, spacing } from "../theme/tokens";
 
-/** The round logo and the word "Libras", as at the top of every onboarding frame. */
+/** The round Monogram L-Book logo and the "Libras." wordmark at the top of onboarding screens. */
 export function Wordmark() {
   return (
     <View style={styles.row} accessibilityRole="header">
       <Image source={logo} style={styles.logo} accessibilityIgnoresInvertColors />
-      <Text style={styles.name}>Libras</Text>
+      <View style={styles.wordRow}>
+        <Text style={styles.name}>Libras</Text>
+        <View style={styles.dot} importantForAccessibility="no-hide-descendants" />
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: "row", alignItems: "flex-end", justifyContent: "center", gap: spacing.xs + 1 },
+  row: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.sm },
   logo: { width: 31, height: 31, borderRadius: radii.logo },
-  name: { ...typography.title, color: colors.black },
+  wordRow: { flexDirection: "row", alignItems: "flex-end" },
+  name: {
+    fontFamily: fontFamily.bold,
+    fontSize: fontSize.title,
+    lineHeight: lineHeightFor(fontSize.title),
+    letterSpacing: -0.7,
+    color: colors.brandInk,
+  },
+  dot: {
+    width: 5,
+    height: 5,
+    borderRadius: radii.wordmarkDot,
+    backgroundColor: colors.accent,
+    marginLeft: 2,
+    marginBottom: 6,
+  },
 });

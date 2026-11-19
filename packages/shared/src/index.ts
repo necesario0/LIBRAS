@@ -142,6 +142,7 @@ export {
   PUBLISHED_YEAR_MAX,
   PUBLISHED_YEAR_MIN,
   activeFilterCount,
+  bookAvailabilityLabel,
   bookIdSchema,
   COPY_STATUSES,
   catalogSearchQuerySchema,

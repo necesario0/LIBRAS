@@ -1,0 +1,27 @@
+# Picks ${OPTION} from the select field ${FIELD} (a test id): opens its list,
+# scrolls the list until the option shows (the list is about 4.5 rows high), taps
+# it and checks the list closed. While the list is open Maestro sees only the list.
+appId: ph.edu.umak.libras
+---
+- tapOn:
+    id: ${FIELD}
+- extendedWaitUntil:
+    visible:
+      id: ${FIELD}-list
+    timeout: 5000
+- repeat:
+    while:
+      notVisible:
+        id: ${FIELD}-option-${OPTION}
+    times: 4
+    commands:
+      - swipe:
+          from:
+            id: ${FIELD}-list
+          direction: UP
+- tapOn:
+    id: ${FIELD}-option-${OPTION}
+- extendedWaitUntil:
+    notVisible:
+      id: ${FIELD}-list
+    timeout: 5000
