@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import type { ExpoConfig } from "expo/config";
+import { withGradleProperties } from "expo/config-plugins";
 
 // Plain http is only allowed when the app is pointed at an http API (local
 // development and the emulator test). A build against an https API, such as
@@ -52,4 +53,15 @@ const config: ExpoConfig = {
   experiments: { typedRoutes: true },
 };
 
-export default config;
+// R8 minification runs out of Expo's default 512 MiB JVM metaspace once expo-notifications is linked.
+const GRADLE_JVM_ARGS = "-Xmx2048m -XX:MaxMetaspaceSize=1024m";
+
+export default withGradleProperties(config, (gradleConfig) => {
+  const existing = gradleConfig.modResults.find((item) => item.type === "property" && item.key === "org.gradle.jvmargs");
+  if (existing && existing.type === "property") {
+    existing.value = GRADLE_JVM_ARGS;
+  } else {
+    gradleConfig.modResults.push({ type: "property", key: "org.gradle.jvmargs", value: GRADLE_JVM_ARGS });
+  }
+  return gradleConfig;
+});
