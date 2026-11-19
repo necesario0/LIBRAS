@@ -11,6 +11,7 @@ import type {
   CheckPasswordResetCodeRequest,
   ClearanceResponse,
   CompletePasswordResetRequest,
+  DeleteAccountRequest,
   DigitalIdResponse,
   HealthResponse,
   MemberLoanPolicyResponse,
@@ -157,6 +158,16 @@ export function createApiClient({ baseUrl, fetch: fetchImpl = fetch, timeoutMs =
     /** Ends every session of the Member's account, this one included. The app signs out locally afterwards. */
     signOutAllDevices: (accessToken: string) =>
       request<null>("/members/me/sign-out-all", { method: "POST", headers: bearer(accessToken) }),
+    /**
+     * Deletes the Member's account, confirmed with their password (only when cleared). Failures:
+     * `not_cleared` (409, with the Clearance reason), `password_incorrect` (403), `too_many_attempts` (429).
+     */
+    deleteAccount: (accessToken: string, body: DeleteAccountRequest) =>
+      request<null>("/members/me/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...bearer(accessToken) },
+        body: JSON.stringify(body),
+      }),
     /** Starts a sign-up: the API emails a verification code. */
     signUp: (body: SignUpRequest) => post<SignUpCodeSentResponse>("/members/sign-up", body),
     /** Accepts the emailed code: the account is active from here on. */

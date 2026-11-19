@@ -274,3 +274,12 @@ export function ShieldIcon(props: OutlineIconProps) {
     </Outline>
   );
 }
+
+/** A bin: Delete my account (approved Tier 3 preview). */
+export function TrashIcon(props: OutlineIconProps) {
+  return (
+    <Outline {...props}>
+      <Path d="M4 7h16M9 7V4h6v3M6.5 7l1 13h9l1-13" />
+    </Outline>
+  );
+}

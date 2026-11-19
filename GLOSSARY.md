@@ -21,6 +21,10 @@ _Avoid_: Guest, visiting researcher
 **Alumni**:
 A Member who graduated from the university. Has the same privileges as a Visitor (pending team confirmation).
 
+**Deleted Member**:
+A Member who deleted their own account once cleared. They can no longer sign in, and nothing about them is kept but their Account Type and their past Loans and Fines, which no longer say who they were.
+_Avoid_: Deactivated, archived, former user, anonymous user
+
 **Librarian**:
 A staff member who runs circulation. Not a Member.
 

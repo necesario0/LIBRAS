@@ -1,0 +1,163 @@
+# A Member deletes their account from Settings (ticket #53). Delete my account
+# is the last row, in red. While a Loan is out the app says why the account
+# cannot be deleted yet, naming the Book ("Return your books first"); Close
+# leaves Settings as it was and "See My Loans" opens the Loans segment of My
+# Books. Once the Loan is returned (the Member is cleared), the app asks for the
+# password: Cancel changes nothing, a wrong password is refused under the field,
+# and the right one deletes the account and returns to the welcome screen. The
+# old email and password no longer sign in, and the Member got the "your account
+# was deleted" email.
+# Needs the end-to-end API on port 3000 (npm run e2e starts it).
+appId: ph.edu.umak.libras
+---
+- launchApp:
+    clearState: true
+- runScript: scripts/create-delete-account.js
+
+# The UMAK Student signs in. The emulator sometimes doubles the first character
+# typed after a tap: check and retype.
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 30000
+- tapOn:
+    id: welcome-sign-in
+- tapOn:
+    id: sign-in-email
+- retry:
+    maxRetries: 3
+    commands:
+      - eraseText: 80
+      - inputText: ${output.email}
+      - assertVisible: ${output.email}
+- tapOn:
+    id: sign-in-password
+- inputText: ${output.password}
+- hideKeyboard
+- tapOn:
+    id: sign-in-continue
+- extendedWaitUntil:
+    visible: "Hi, Cobby"
+    timeout: 20000
+
+# Profile -> Settings: Delete my account is the last row, under ACCOUNT.
+- tapOn:
+    id: tab-profile
+- scrollUntilVisible:
+    element:
+      id: profile-settings
+    direction: DOWN
+- tapOn:
+    id: profile-settings
+- scrollUntilVisible:
+    element:
+      id: settings-delete-account
+    direction: DOWN
+- assertVisible: "ACCOUNT"
+- assertVisible: "Delete my account"
+- takeScreenshot: settings-account
+
+# Not cleared: the Loan out is named, and Close changes nothing.
+- tapOn:
+    id: settings-delete-account
+- extendedWaitUntil:
+    visible:
+      id: delete-not-cleared-dialog
+    timeout: 10000
+- assertVisible: "Return your books first"
+- assertVisible:
+    id: delete-not-cleared-dialog-message
+    text: "You can delete your account once you are cleared. You still have 1 Loan out: ${output.loanTitle}."
+- assertVisible:
+    id: delete-not-cleared-dialog-confirm
+    text: "See My Loans"
+- takeScreenshot: delete-account-not-cleared
+- tapOn:
+    id: delete-not-cleared-dialog-cancel
+- assertNotVisible:
+    id: delete-not-cleared-dialog
+- assertVisible:
+    id: settings-delete-account
+
+# "See My Loans" opens the Loans segment of My Books, with the Loan in it.
+- tapOn:
+    id: settings-delete-account
+- extendedWaitUntil:
+    visible:
+      id: delete-not-cleared-dialog
+    timeout: 10000
+- tapOn:
+    id: delete-not-cleared-dialog-confirm
+- extendedWaitUntil:
+    visible:
+      id: loans-segment
+    timeout: 10000
+- assertVisible: ${output.loanTitle}
+
+# The Librarian records the return on time: the Member is cleared.
+- runScript: scripts/return-delete-account-loan.js
+
+- tapOn:
+    id: tab-profile
+- scrollUntilVisible:
+    element:
+      id: profile-settings
+    direction: DOWN
+- tapOn:
+    id: profile-settings
+- scrollUntilVisible:
+    element:
+      id: settings-delete-account
+    direction: DOWN
+
+# Cleared: the app asks for the password. Cancel changes nothing.
+- tapOn:
+    id: settings-delete-account
+- extendedWaitUntil:
+    visible:
+      id: delete-account-dialog
+    timeout: 10000
+- assertVisible: "Delete your account?"
+- assertVisible: "Your profile, Saved books and sign-in are deleted for good. The library keeps your past Loans and Fines without your name."
+- assertVisible:
+    id: delete-account-dialog-confirm
+    text: "Delete account"
+- takeScreenshot: delete-account-confirm
+- tapOn:
+    id: delete-account-dialog-cancel
+- assertNotVisible:
+    id: delete-account-dialog
+
+# A wrong password is refused under the field, and the account stays.
+- tapOn:
+    id: settings-delete-account
+- extendedWaitUntil:
+    visible:
+      id: delete-account-dialog
+    timeout: 10000
+- tapOn:
+    id: delete-account-password
+- inputText: not-my-password
+# No hideKeyboard inside the dialog: on Android it can press Back, which closes it. The dialog rides above the keyboard.
+- tapOn:
+    id: delete-account-dialog-confirm
+- extendedWaitUntil:
+    visible:
+      id: delete-account-password-error
+      text: "That password is incorrect."
+    timeout: 15000
+- assertVisible:
+    id: delete-account-dialog
+- takeScreenshot: delete-account-wrong-password
+
+# The right password deletes the account and returns to the welcome screen.
+- tapOn:
+    id: delete-account-password
+- eraseText: 40
+- inputText: ${output.password}
+- tapOn:
+    id: delete-account-dialog-confirm
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 20000
+- assertNotVisible: "Hi, Cobby"
+- runScript: scripts/check-account-deleted.js
