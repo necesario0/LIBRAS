@@ -6,7 +6,10 @@ import { FieldError, RevealToggle } from "../components/TextField";
 import { colors, fontFamily, fontSize, passwordFieldHeight, radii, spacing } from "../theme/tokens";
 
 interface PasswordFieldProps {
+  /** Shown above the field, and read out as the field's name. */
   label: string;
+  /** Read out only, not shown: a dialog whose message already says what to enter (Delete my account). */
+  labelHidden?: boolean;
   value: string;
   onChangeText: (value: string) => void;
   placeholder: string;
@@ -25,6 +28,7 @@ interface PasswordFieldProps {
  */
 export function PasswordField({
   label,
+  labelHidden = false,
   value,
   onChangeText,
   placeholder,
@@ -41,7 +45,7 @@ export function PasswordField({
 
   return (
     <View style={styles.group}>
-      <Text style={styles.label}>{label}</Text>
+      {labelHidden ? null : <Text style={styles.label}>{label}</Text>}
       <View style={[styles.field, focused ? styles.fieldFocused : invalid ? styles.fieldInvalid : undefined]}>
         <TextInput
           ref={inputRef}

@@ -10,6 +10,7 @@ import { DevicesIcon, HistoryIcon, PinIcon } from "../../src/components/OutlineI
 import { useScreenTop } from "../../src/hooks/useScreenTop";
 import { PushedHeader } from "../../src/navigation/PushedHeader";
 import { clearRecentSearches, loadRecentSearches } from "../../src/search/recent-searches-store";
+import { DeleteAccountSection } from "../../src/settings/DeleteAccount";
 import { SectionLabel, SettingsGroup, SettingsRow } from "../../src/settings/SettingsParts";
 import { colors, fontFamily, fontSize, radii, spacing } from "../../src/theme/tokens";
 
@@ -18,14 +19,11 @@ const TOAST_MS = 2500;
 
 /**
  * Settings (approved Tier 3 preview): Privacy and security (Clear search
- * history, Sign out of all devices), Library (Library info) and the app
- * version at the foot.
+ * history, Sign out of all devices), Library (Library info), Account (Delete my
+ * account, `DeleteAccountSection`) and the app version at the foot.
  *
- * Other tickets add their parts here:
- * - Push notifications (#54): a section above Privacy and security, with the
- *   note "Loan notice emails are always sent, whatever you choose here."
- * - Delete my account (#53): an "Account" section (`SectionLabel`, a
- *   `SettingsGroup` with a `SettingsRow` of `tone="danger"`) after Library, before the version.
+ * Push notifications (#54) would add a section above Privacy and security, with
+ * the note "Loan notice emails are always sent, whatever you choose here."
  */
 export default function SettingsScreen() {
   const router = useRouter();
@@ -123,6 +121,8 @@ export default function SettingsScreen() {
               testID="settings-library-info"
             />
           </SettingsGroup>
+
+          <DeleteAccountSection onMessage={showToast} />
 
           <Text style={styles.version} testID="settings-version">
             LIBRAS for Android · version {Constants.expoConfig?.version ?? "0.1.0"}

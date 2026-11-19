@@ -4,6 +4,7 @@ import type { AppDeps } from "../app.ts";
 import { notSignedIn } from "../auth/guards.ts";
 import { AppError } from "../errors.ts";
 import { recordPasswordEvent } from "./password-audit.ts";
+import { isCurrentPassword } from "./password-check.ts";
 import { passwordChangedEmail } from "./password-emails.ts";
 
 type ChangeDeps = Pick<AppDeps, "db" | "auth" | "clock" | "email" | "logger">;
@@ -29,22 +30,16 @@ const errors = {
 };
 
 /**
- * Checks the current password, by signing in with it at Supabase Auth. That
- * makes a session of its own, which is ended again at once (the change would
- * end it anyway, as one of the other sessions).
+ * Checks the current password (`isCurrentPassword`).
  *
  * Throws 403 `current_password_incorrect` for a wrong one and records it in
  * the audit log. The route puts this, and only this, behind the sign-in
  * limiter, which counts 401 and 403 refusals.
  */
 export async function verifyCurrentPassword(deps: ChangeDeps, request: PasswordChangeRequest): Promise<void> {
-  const signedIn = await deps.auth.signInWithPassword(request.member.email, request.currentPassword);
-  if (signedIn === undefined) {
-    await recordPasswordEvent(deps, { type: "password_change_failed", memberId: request.member.id, clientAddress: request.clientAddress });
-    throw errors.currentPasswordIncorrect();
-  }
-  if (signedIn === "unverified") throw new Error("A signed-in Member's email is not verified");
-  await deps.auth.signOut(signedIn.session.accessToken);
+  if (await isCurrentPassword(deps, request.member, request.currentPassword)) return;
+  await recordPasswordEvent(deps, { type: "password_change_failed", memberId: request.member.id, clientAddress: request.clientAddress });
+  throw errors.currentPasswordIncorrect();
 }
 
 /**
