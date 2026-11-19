@@ -212,8 +212,10 @@ export type {
   RenewalRefusal,
   ReturnedLoan,
 } from "./loans.ts";
+export { SAVED_BOOK_MESSAGES } from "./saved-books.ts";
+export type { MySavedBooksResponse, SaveBookResponse, SavedBook } from "./saved-books.ts";
 export { myBooksAttention, myBooksStartSegment } from "./my-books.ts";
-export type { MyBooksAttention, MyBooksSegment } from "./my-books.ts";
+export type { CirculationSegment, MyBooksAttention, MyBooksSegment } from "./my-books.ts";
 export { FINE_MESSAGES, FINE_OUTCOMES, SETTLE_AT_RETURN_MINUTES, formatPesos, settleFineRequestSchema } from "./fines.ts";
 export type { FineOutcome, FineSettlement, LoanFine, SettleFineRequest, SettleFineResponse } from "./fines.ts";
 export { readEventStream } from "./event-stream.ts";
@@ -269,3 +271,5 @@ export {
   catalogSuggestQuerySchema,
 } from "./catalog.ts";
 export type { CatalogSuggestionsResponse } from "./catalog.ts";
+export { HOME_SHELF_KINDS, HOME_SHELF_LENGTH, homeShelfCopy, topSubject } from "./home.ts";
+export type { HomeResponse, HomeShelf, HomeShelfKind, HomeShelfScope } from "./home.ts";

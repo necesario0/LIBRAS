@@ -13,15 +13,18 @@ import type {
   CompletePasswordResetRequest,
   DigitalIdResponse,
   HealthResponse,
+  HomeResponse,
   MemberLoanPolicyResponse,
   MemberMeResponse,
   MemberSignInResponse,
   MyHoldsResponse,
   MyLoansResponse,
+  MySavedBooksResponse,
   PasswordResetRequestedResponse,
   PlaceHoldResponse,
   RefreshSessionResponse,
   RenewLoanResponse,
+  SaveBookResponse,
   RequestPasswordResetRequest,
   ResendSignUpCodeRequest,
   SignInRequest,
@@ -118,6 +121,8 @@ export function createApiClient({ baseUrl, fetch: fetchImpl = fetch, timeoutMs =
       request<CatalogSuggestionsResponse>(`/catalog/suggestions?q=${encodeURIComponent(query)}`, { headers: bearer(accessToken) }),
     /** The Subjects that have at least one Book in the catalog, in table order: the options of the Filters sheet. */
     getSubjects: (accessToken: string) => request<CatalogSubjectsResponse>("/catalog/subjects", { headers: bearer(accessToken) }),
+    /** What Home shows besides the search bar: the shelves (the Announcement joins them later). A shelf with no Books is not in the answer. */
+    getHome: (accessToken: string) => request<HomeResponse>("/home", { headers: bearer(accessToken) }),
     /** One Book with its details and how many Copies exist and are available. `book_not_found` (404) when there is no such Book. */
     getBook: (accessToken: string, id: string) =>
       request<BookDetailResponse>(`/catalog/books/${encodeURIComponent(id)}`, { headers: bearer(accessToken) }),
@@ -131,6 +136,14 @@ export function createApiClient({ baseUrl, fetch: fetchImpl = fetch, timeoutMs =
     /** Takes the Member out of a Book's queue. Failures: `hold_not_found` (404), `hold_not_cancellable` (409). */
     cancelHold: (accessToken: string, holdId: string) =>
       request<CancelHoldResponse>(`/holds/${encodeURIComponent(holdId)}/cancel`, { method: "POST", headers: bearer(accessToken) }),
+    /** The Member's own Saved books, newest first, with each Book's availability. */
+    getSavedBooks: (accessToken: string) => request<MySavedBooksResponse>("/members/me/saved-books", { headers: bearer(accessToken) }),
+    /** Saves a Book (saving again changes nothing). `book_not_found` (404) when there is no such Book. */
+    saveBook: (accessToken: string, bookId: string) =>
+      request<SaveBookResponse>(`/members/me/saved-books/${encodeURIComponent(bookId)}`, { method: "PUT", headers: bearer(accessToken) }),
+    /** Takes a Book off the Member's Saved books (succeeds when it was not there). */
+    unsaveBook: (accessToken: string, bookId: string) =>
+      request<SaveBookResponse>(`/members/me/saved-books/${encodeURIComponent(bookId)}`, { method: "DELETE", headers: bearer(accessToken) }),
     /** The Member's own Loans, current ones first, with the loan limit and loan period of their Loan Policy. */
     getLoans: (accessToken: string) => request<MyLoansResponse>("/members/me/loans", { headers: bearer(accessToken) }),
     /**

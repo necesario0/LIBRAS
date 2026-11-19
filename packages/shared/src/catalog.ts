@@ -251,6 +251,8 @@ export function bookAvailabilityLabel(book: Pick<BookDetail, "availableCopies" |
 /** The body of `GET /catalog/books/:id`. Availability is read live from the Copies. */
 export interface BookDetailResponse {
   book: BookDetail;
+  /** Whether the signed-in Member has saved this Book (a Saved book). */
+  saved: boolean;
 }
 
 /** Suggestions start at this many characters. */

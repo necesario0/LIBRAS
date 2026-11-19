@@ -199,7 +199,7 @@ appId: ph.edu.umak.libras
     id: tab-my-books
 - extendedWaitUntil:
     visible:
-      id: saved-placeholder
+      id: saved-empty
     timeout: 15000
 - assertVisible: "Saved books"
 - assertNotVisible:

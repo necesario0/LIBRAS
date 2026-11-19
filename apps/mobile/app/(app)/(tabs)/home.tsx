@@ -1,15 +1,16 @@
-import { useFocusEffect, useIsFocused, useRouter } from "expo-router";
-import { useCallback, useState } from "react";
+import { useFocusEffect, useIsFocused, useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, BackHandler, Keyboard, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useAuth, useMember } from "../../../src/auth/AuthContext";
 import { api } from "../../../src/api";
 import { useCatalogSearch } from "../../../src/catalog/useCatalogSearch";
-import { useFetch } from "../../../src/hooks/useFocusedFetch";
+import { useFetch, useFocusedFetch } from "../../../src/hooks/useFocusedFetch";
 import { useScreenTop } from "../../../src/hooks/useScreenTop";
 import { useHideTabBar } from "../../../src/navigation/TabBarVisibility";
 import { useTabBarSpace } from "../../../src/navigation/FloatingTabBar";
 import { SearchResultRow } from "../../../src/home/BookResultRow";
 import { HomeHeader } from "../../../src/home/HomeHeader";
+import { HomeShelves, ShelvesFailed } from "../../../src/home/HomeShelves";
 import { SearchBar } from "../../../src/home/SearchBar";
 import { NoResults, SearchFailed } from "../../../src/home/SearchMessage";
 import { FiltersSheet } from "../../../src/search/FiltersSheet";
@@ -34,8 +35,9 @@ function resultCount(response: CatalogSearchResponse): string {
 /**
  * Home for a signed-in Member: the Figma "Home dashboard" layout (node
  * 1032:1994) as the approved Tier 3 preview lays it out: the greeting and the
- * search bar. Loans, Holds and the Digital ID have their own tabs, so Home is
- * about finding Books. There is no bell and no menu.
+ * search bar, then the shelves (New arrivals, Popular in your college,
+ * Available now in your top Subject). Loans, Holds and the Digital ID have
+ * their own tabs, so Home is about finding Books. There is no bell and no menu.
  *
  * Tapping the search bar turns Home into search mode (it is a state of Home,
  * not another route): the bar moves up with a Cancel button, the tab bar steps
@@ -53,12 +55,21 @@ export default function HomeScreen() {
   const screenTop = useScreenTop();
   const search = useCatalogSearch(request);
   const [searchOn, setSearchOn] = useState(false);
+  // `/home?search=1` opens search mode, once (the empty states of My Books link here).
+  const { search: searchParam } = useLocalSearchParams<{ search?: string }>();
+  useEffect(() => {
+    if (searchParam !== "1") return;
+    setSearchOn(true);
+    router.setParams({ search: undefined });
+  }, [searchParam, router]);
   const recent = useRecentSearches(member.id, searchOn);
   const typing = searchOn && !search.submitted;
   const suggestions = useSuggestions(request, search.query, typing);
   const { state } = search;
   const [filtersOpen, setFiltersOpen] = useState(false);
   const college = memberCollege(member);
+  // The shelves are read again each time Home comes into view, so they follow what was borrowed meanwhile.
+  const home = useFocusedFetch(request, api.getHome, "The shelves could not be loaded.");
   const subjects = useFetch(request, api.getSubjects, "The Subjects could not be loaded. Close the filters and try again.");
 
   // Search mode can stay open under another screen (Home is left through a Book sheet's links): the bar is hidden only while Home itself is showing.
@@ -138,9 +149,8 @@ export default function HomeScreen() {
           contentContainerStyle={[styles.bodyContent, { paddingBottom: tabBarSpace }]}
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.hint} testID="search-hint">
-            Search by title, author, ISBN, accession number or call number. Small typos are fine.
-          </Text>
+          {home.state.status === "loaded" ? <HomeShelves shelves={home.state.shelves} onOpenBook={openBook} /> : null}
+          {home.state.status === "error" ? <ShelvesFailed message={home.state.message} onRetry={() => void home.reload()} /> : null}
         </ScrollView>
       </View>
     );
@@ -213,7 +223,6 @@ const styles = StyleSheet.create({
   bodyContent: { paddingHorizontal: spacing.home, gap: spacing.md },
   // At least the screen tall, so the Sort menu fits inside it even over one result (see SearchControls).
   modeContent: { flexGrow: 1, paddingBottom: spacing.xl },
-  hint: { fontFamily: fontFamily.regular, fontSize: fontSize.label, lineHeight: 20, color: colors.textMuted, paddingHorizontal: spacing.xs },
   spinner: { marginTop: spacing.xl },
   count: { fontFamily: fontFamily.regular, fontSize: fontSize.resultNote, lineHeight: 15, color: colors.textMuted, marginTop: 2 },
 });

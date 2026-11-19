@@ -1,7 +1,7 @@
 import { StyleSheet, View } from "react-native";
 import { bookCovers, colors } from "../theme/tokens";
 
-function coverColor(id: string): string {
+export function coverColor(id: string): string {
   let hash = 0;
   for (const char of id) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
   return bookCovers[hash % bookCovers.length] ?? bookCovers[0];
