@@ -226,6 +226,7 @@ export function FiltersSheet({
                     <Text style={styles.rangeText}>From</Text>
                     <TextInput
                       accessibilityLabel="From year"
+                      selectTextOnFocus
                       value={fromText}
                       onChangeText={(text) => editRange(text, toText)}
                       keyboardType="number-pad"
@@ -236,6 +237,7 @@ export function FiltersSheet({
                     <Text style={styles.rangeText}>to</Text>
                     <TextInput
                       accessibilityLabel="To year"
+                      selectTextOnFocus
                       value={toText}
                       onChangeText={(text) => editRange(fromText, text)}
                       keyboardType="number-pad"

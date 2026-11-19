@@ -148,14 +148,19 @@ appId: ph.edu.umak.libras
     direction: DOWN
 - tapOn:
     id: filter-published-custom
+# Tapping a year selects it, so typing replaces the whole year wherever the tap lands.
 - tapOn:
     id: filter-published-from
-- eraseText: 10
 - inputText: "2000"
+- assertVisible:
+    id: filter-published-from
+    text: "2000"
 - tapOn:
     id: filter-published-to
-- eraseText: 10
 - inputText: "2005"
+- assertVisible:
+    id: filter-published-to
+    text: "2005"
 - scrollUntilVisible:
     element:
       id: filters-show
