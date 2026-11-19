@@ -4,12 +4,13 @@ import { Keyboard, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDime
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, controlHeight, fontFamily, fontSize, lineHeightFor, menuRowShadow, radii, spacing } from "../theme/tokens";
 import { ChevronBackIcon } from "./icons";
+import { usePopupFloor } from "./PopupFloor";
 import { FieldError, FieldLabel } from "./TextField";
 
 /** How many rows the open list shows before it scrolls: the half row says there is more. */
 const VISIBLE_ROWS = 4.5;
-/** Below this many rows of room under the field, the list opens above it. */
-const MIN_ROWS_BELOW = 3;
+/** With room for fewer rows than this under the field, the list opens above it. */
+const MIN_ROWS_BELOW = 3.5;
 const OPTION_PADDING = spacing.sm + 1;
 const LIST_PADDING = spacing.sm;
 /** The gap between the field and the open list. */
@@ -52,7 +53,8 @@ function afterKeyboard(then: () => void) {
 /**
  * A choice from a list. The field looks like the text fields with a chevron.
  * Tapping it drops a list just under it (or just above it when the screen has
- * too little room below), over the screen, about four and a half rows high and
+ * too little room below), over the screen but above a fixed footer the screen
+ * names with `PopupFloorContext`, about four and a half rows high and
  * scrolling inside itself, so nothing on the screen moves (the sign-up step
  * footer stays where it is). Tapping outside the list or Android's back button
  * closes it. The list's test id is `<testID>-list`, each row's
@@ -63,15 +65,18 @@ export function SelectField<T extends string>({ label, placeholder, options, val
   const [frame, setFrame] = useState<ListFrame | undefined>();
   const { height: screenHeight, fontScale } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  const floor = usePopupFloor();
   const open = frame !== undefined;
 
   // The rows grow with the phone's font size, and so does the list, to keep showing the same number of them.
   const rowHeight = 2 * OPTION_PADDING + lineHeightFor(fontSize.label) * fontScale;
   const fullHeight = Math.min(options.length, VISIBLE_ROWS) * rowHeight + 2 * LIST_PADDING + 2;
 
-  function place(x: number, y: number, width: number, height: number) {
+  /** Places the list by the field (x, y, width, height), above `floorTop` when the screen has a footer. */
+  function place(x: number, y: number, width: number, height: number, floorTop: number | undefined) {
     const top = y + height + LIST_OFFSET;
-    const roomBelow = screenHeight - insets.bottom - EDGE - top;
+    const bottomLimit = floorTop === undefined ? screenHeight - insets.bottom - EDGE : floorTop - LIST_OFFSET;
+    const roomBelow = bottomLimit - top;
     const roomAbove = y - LIST_OFFSET - insets.top - EDGE;
     const below = roomBelow >= Math.min(fullHeight, MIN_ROWS_BELOW * rowHeight) || roomBelow >= roomAbove;
     const listHeight = Math.min(fullHeight, below ? roomBelow : roomAbove);
@@ -83,7 +88,13 @@ export function SelectField<T extends string>({ label, placeholder, options, val
       setFrame(undefined);
       return;
     }
-    afterKeyboard(() => field.current?.measureInWindow(place));
+    afterKeyboard(() =>
+      field.current?.measureInWindow((x, y, width, height) => {
+        const footer = floor?.current;
+        if (footer) footer.measureInWindow((_footerX, footerY) => place(x, y, width, height, footerY));
+        else place(x, y, width, height, undefined);
+      }),
+    );
   }
 
   return (
