@@ -51,6 +51,8 @@ export {
 } from "./accounts.ts";
 export type { AccountType } from "./accounts.ts";
 export { memberFullName } from "./members.ts";
+export { loanPolicyHelp } from "./loan-policy-help.ts";
+export type { LoanPolicyHelp, PolicyFact } from "./loan-policy-help.ts";
 export type {
   MemberMeResponse,
   MemberProfile,
@@ -191,6 +193,7 @@ export type {
   EndDeskSessionRequest,
   Loan,
   LoanRenewal,
+  MemberLoanPolicyResponse,
   MyLoansResponse,
   RecordReturnRequest,
   RecordReturnResponse,

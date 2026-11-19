@@ -198,3 +198,70 @@ export function SlidersIcon(props: OutlineIconProps) {
     </Outline>
   );
 }
+
+/** A gear: the Settings row of Profile. */
+export function GearIcon(props: OutlineIconProps) {
+  return (
+    <Outline {...props}>
+      <Circle cx={12} cy={12} r={3} />
+      <Path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />
+    </Outline>
+  );
+}
+
+/** A question mark in a circle: the Help and policies row of Profile. */
+export function HelpIcon(props: OutlineIconProps) {
+  return (
+    <Outline {...props}>
+      <Circle cx={12} cy={12} r={9.5} />
+      <Path d="M9.5 9.2a2.6 2.6 0 0 1 5 .9c0 1.7-2.5 2.3-2.5 3.9M12 17.2v.1" />
+    </Outline>
+  );
+}
+
+/** A clock with a back arrow: Clear search history. */
+export function HistoryIcon(props: OutlineIconProps) {
+  return (
+    <Outline {...props}>
+      <Path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1L3.5 8.5M3.5 4v4.5H8M12 7.5V12l3 2" />
+    </Outline>
+  );
+}
+
+/** A phone and a laptop: Sign out of all devices. */
+export function DevicesIcon(props: OutlineIconProps) {
+  return (
+    <Outline {...props}>
+      <Rect x={3} y={5} width={13} height={10} rx={1.5} />
+      <Path d="M1.5 19h16M16 9h4.5a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H16a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1z" />
+    </Outline>
+  );
+}
+
+/** A map pin: the Library info row of Settings. */
+export function PinIcon(props: OutlineIconProps) {
+  return (
+    <Outline {...props}>
+      <Path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z" />
+      <Circle cx={12} cy={9.5} r={2.5} />
+    </Outline>
+  );
+}
+
+/** A document: the Terms and Conditions row of Help and policies. */
+export function DocumentIcon(props: OutlineIconProps) {
+  return (
+    <Outline {...props}>
+      <Path d="M6 3h8l4 4v14H6zM14 3v4h4M9 12h6M9 16h6" />
+    </Outline>
+  );
+}
+
+/** A shield: the Privacy Policy row of Help and policies. */
+export function ShieldIcon(props: OutlineIconProps) {
+  return (
+    <Outline {...props}>
+      <Path d="M12 3 5 6v5.5c0 4.4 3 8 7 9.5 4-1.5 7-5.1 7-9.5V6z" />
+    </Outline>
+  );
+}

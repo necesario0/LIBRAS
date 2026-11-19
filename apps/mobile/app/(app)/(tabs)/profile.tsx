@@ -6,7 +6,7 @@ import { useAuth, useMember } from "../../../src/auth/AuthContext";
 import { ClearancePanel } from "../../../src/clearance/ClearancePanel";
 import { useClearance } from "../../../src/clearance/useClearance";
 import { Avatar } from "../../../src/components/Avatar";
-import { KeyIcon, PersonOutlineIcon } from "../../../src/components/OutlineIcons";
+import { GearIcon, HelpIcon, KeyIcon, PersonOutlineIcon } from "../../../src/components/OutlineIcons";
 import { useScreenTop } from "../../../src/hooks/useScreenTop";
 import { useTabBarSpace } from "../../../src/navigation/FloatingTabBar";
 import { colors, fontFamily, fontSize, radii, spacing } from "../../../src/theme/tokens";
@@ -21,8 +21,7 @@ const ROW_ICON = 22;
  * the Member is cleared, the Loans still out and the unsettled Fines) and
  * Change password, then Sign out, which lives only here.
  *
- * Settings and Help and policies come with their own ticket: add their rows
- * after Change password, in that order.
+ * Then Settings and Help and policies.
  */
 export default function ProfileScreen() {
   const router = useRouter();
@@ -70,6 +69,18 @@ export default function ProfileScreen() {
           label="Change password"
           onPress={() => router.push("/change-password")}
           testID="profile-change-password"
+        />
+        <MenuRow
+          icon={<GearIcon color={colors.black} size={ROW_ICON} />}
+          label="Settings"
+          onPress={() => router.push("/settings")}
+          testID="profile-settings"
+        />
+        <MenuRow
+          icon={<HelpIcon color={colors.black} size={ROW_ICON} />}
+          label="Help and policies"
+          onPress={() => router.push("/help")}
+          testID="profile-help"
         />
       </View>
 

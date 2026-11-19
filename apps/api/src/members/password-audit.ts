@@ -3,8 +3,8 @@ import { createAuditLog } from "../audit/index.ts";
 
 type AuditDeps = Pick<AppDeps, "db" | "clock" | "logger">;
 
-/** The password events of a Member's own account: Forgot password and Change password. */
-export type PasswordEventType = "password_reset" | "password_changed" | "password_change_failed";
+/** The security events of a Member's own account: Forgot password, Change password and Sign out of all devices. */
+export type PasswordEventType = "password_reset" | "password_changed" | "password_change_failed" | "signed_out_all_devices";
 
 /** The client address as the audit log keeps it: at most 64 characters, or null when it is not known. */
 export function auditClientAddress(clientAddress: string | undefined): string | null {
@@ -12,7 +12,7 @@ export function auditClientAddress(clientAddress: string | undefined): string | 
 }
 
 /**
- * Writes a password event of a Member to the audit log: the Member is actor and
+ * Writes a security event of a Member's own account to the audit log: the Member is actor and
  * subject, the client address is kept, a password never is.
  *
  * It is called once the thing it records has happened (or been refused), so it
