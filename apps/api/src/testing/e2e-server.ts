@@ -5,7 +5,8 @@
 // at POST /e2e/members (see member-fixture-routes.ts), and it can have a Librarian confirm a
 // Loan for a Member at POST /e2e/loans (see loan-fixture-routes.ts), and let a Hold's Pickup Window run out at
 // POST /e2e/holds/lapse (same file), and put an Announcement on Home or take them all away at
-// POST /e2e/announcements and /e2e/announcements/clear (see announcement-fixture-routes.ts).
+// POST /e2e/announcements and /e2e/announcements/clear (see announcement-fixture-routes.ts), and give a
+// Member the Notification of a Loan notice at POST /e2e/notifications/loan (see notification-fixture-routes.ts).
 //
 //   node scripts/with-local-supabase.ts node src/testing/e2e-server.ts
 //
@@ -30,6 +31,7 @@ import { announcementFixtureRoutes } from "./announcement-fixture-routes.ts";
 import { catalogFixtureRoutes } from "./catalog-fixture-routes.ts";
 import { loanFixtureRoutes } from "./loan-fixture-routes.ts";
 import { memberFixtureRoutes } from "./member-fixture-routes.ts";
+import { notificationFixtureRoutes } from "./notification-fixture-routes.ts";
 import { mailboxRoutes } from "./mailbox-routes.ts";
 
 // Read the repository's .env first, so a NODE_ENV set there is seen by the check below.
@@ -64,6 +66,7 @@ const { app, stop } = createApp(deps, {
     memberFixtureRoutes(router, deps);
     loanFixtureRoutes(router, deps);
     announcementFixtureRoutes(router, deps);
+    notificationFixtureRoutes(router, deps);
   },
   warmCatalog: true,
   // Every request reaches this server from the same address, so the real

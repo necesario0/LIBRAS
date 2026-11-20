@@ -10,6 +10,7 @@ import type { EmailSender } from "./email.ts";
 import type { FileStore } from "./announcements/storage.ts";
 import type { PushSender } from "./push/sender.ts";
 import { pushRouter } from "./routes/push.ts";
+import { notificationsRouter } from "./routes/notifications.ts";
 import { announcementsRouter } from "./routes/announcements.ts";
 import { createErrorHandler, notFoundHandler } from "./errors.ts";
 import type { Logger } from "./logger.ts";
@@ -112,6 +113,7 @@ export function createApp(deps: AppDeps, options: AppOptions = {}): LibrasApp {
   app.use(holdsRouter(deps));
   app.use(savedBooksRouter(deps));
   app.use(pushRouter(deps));
+  app.use(notificationsRouter(deps));
   app.use(loansRouter(deps));
   app.use(finesRouter(deps));
   if (options.sweepSecret) app.use(sweepsRouter(deps, options.sweepSecret));

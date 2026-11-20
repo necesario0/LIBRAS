@@ -8,6 +8,7 @@ import { booksWithWaitingHolds, renewalOf } from "../loans/renewability.ts";
 import { goodStandingRefusal } from "../standing/index.ts";
 import { loanNoticeEmail } from "./email.ts";
 import type { NoticeLoan } from "./email.ts";
+import { recordLoanNotifications } from "./notifications.ts";
 import { pushLoanNotices } from "./push.ts";
 import type { NotifiedLoan } from "./push.ts";
 import { libraryDate, libraryDayOf, noticeDue, noticeWindow } from "./schedule.ts";
@@ -174,8 +175,10 @@ class NothingToSend extends Error {}
  * is logged and tried again on the next tick, and does not stop the others;
  * one whose email has an unknown outcome is tried again on the next library day.
  *
- * Once a Member's email went out they get its push notifications
- * (`pushLoanNotices`), which never throw: a failed push changes nothing about the email.
+ * Once a Member's email went out they get its Notifications in the app's
+ * inbox (`recordLoanNotifications`) and its push notifications
+ * (`pushLoanNotices`). Neither ever throws: a failed one changes nothing about
+ * the email or the other.
  */
 export async function sendLoanNotices(deps: AppDeps): Promise<number> {
   const now = deps.clock.now();
@@ -191,6 +194,7 @@ export async function sendLoanNotices(deps: AppDeps): Promise<number> {
     }
     if (notified.length === 0) continue;
     sent += 1;
+    await recordLoanNotifications(deps, memberId, notified);
     await pushLoanNotices(deps, memberId, notified);
   }
   return sent;

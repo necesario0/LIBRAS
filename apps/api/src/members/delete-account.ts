@@ -13,6 +13,7 @@ import type { HoldDispatch } from "../holds/dispatch.ts";
 import { expireDueHolds } from "../holds/expiry.ts";
 import { lockMember } from "../loans/policy.ts";
 import { forgetPushDevicesOf } from "../push/index.ts";
+import { forgetNotificationsOf } from "../notifications/index.ts";
 import { clearanceOf, readStanding } from "../standing/index.ts";
 import { accountDeletedEmail } from "./account-emails.ts";
 import { auditClientAddress, recordPasswordEvent } from "./password-audit.ts";
@@ -66,7 +67,7 @@ const sameHolds = (seen: readonly ActiveHoldRow[], locked: readonly ActiveHoldRo
  * and a Member who is not cleared is refused with 409 `not_cleared` and the
  * reason. Then every waiting or ready Hold is cancelled, and each ready Hold's
  * Copy goes on through Hold dispatch as with any cancel; the Saved books,
- * the phones that get push notifications,
+ * the phones that get push notifications, the Notifications,
  * Digital ID, desk sessions and Forgot password rows go; the Member record
  * keeps its id and Account Type and loses every personal field; and the
  * sign-in (`auth.users`) is deleted, which ends every session. The deletion is
@@ -122,6 +123,7 @@ async function deleteOnce(deps: AppDeps, tx: Tx, { member, clientAddress }: Acco
   ]);
   await tx.query("delete from public.saved_books where member_id = $1", [member.id]);
   await forgetPushDevicesOf(tx, member.id);
+  await forgetNotificationsOf(tx, member.id);
   await tx.query("delete from public.digital_id_secrets where member_id = $1", [member.id]);
   await tx.query("delete from public.digital_id_uses where member_id = $1", [member.id]);
   await tx.query("delete from public.desk_sessions where member_id = $1", [member.id]);

@@ -319,3 +319,21 @@ export {
 export type { BookSheetPosition, BookSheetSnapBounds } from "./book-sheet.ts";
 export { POLICY_DOCUMENTS, policyDocumentKind } from "./policies.ts";
 export type { PolicyDocumentKind } from "./policies.ts";
+export {
+  NOTIFICATIONS_PAGE_SIZE,
+  NOTIFICATION_MESSAGES,
+  UNREAD_BADGE_MAX,
+  bellLabel,
+  notificationAge,
+  notificationDestination,
+  notificationIdSchema,
+  notificationsQuerySchema,
+  unreadBadgeText,
+} from "./notifications.ts";
+export type {
+  MemberNotification,
+  MyNotificationsResponse,
+  NotificationKind,
+  NotificationSubject,
+  NotificationsUnreadResponse,
+} from "./notifications.ts";

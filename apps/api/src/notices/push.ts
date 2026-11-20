@@ -41,8 +41,8 @@ export function nowOverduePush(loans: readonly NotifiedLoan[]): PushContent {
   return { title: "Your Loans are overdue", body: `${titles(loans)} are overdue. Please return them to the library desk.` };
 }
 
-/** One push event per Loan and due date: a Renewal gives the Loan a new due date, and so new pushes. */
-const occasionOf = (loan: NotifiedLoan) => `${loan.id}:${loan.dueAt.toISOString()}`;
+/** One event per Loan and due date: a Renewal gives the Loan a new due date, and so new pushes and Notifications. */
+export const occasionOf = (loan: Pick<NotifiedLoan, "id" | "dueAt">) => `${loan.id}:${loan.dueAt.toISOString()}`;
 
 /**
  * Pushes, alongside a Loan notice email that just went out, one notification
