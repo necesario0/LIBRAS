@@ -23,6 +23,11 @@ import type { FileStore } from "./storage.ts";
  * The API also looks for an overlap before it stores any image, to name it
  * without wasted work; the constraint is what makes the rule hold.
  *
+ * Creates and edits take one lock first (`lockWrites`), so they write one at a
+ * time. Without it, two overlapping inserts at the same moment can each wait
+ * for the other while checking the constraint: PostgreSQL then ends one with a
+ * deadlock (40P01) instead of the overlap refusal (23P01).
+ *
  * Files and rows: new images are stored first, under new names, then the row
  * is written. When the row cannot be written the new files are removed; once it
  * is, the files it no longer names are removed. A failure to remove is logged
@@ -180,6 +185,11 @@ async function refusalOf(db: Database, error: unknown, startsAt: Date, endsAt: D
   return error;
 }
 
+/** Waits for any other create or edit to commit, so the constraint refuses this one (23P01) rather than deadlocking with it. */
+async function lockWrites(tx: Tx): Promise<void> {
+  await tx.query("select pg_advisory_xact_lock(hashtextextended('announcements:write', 0))");
+}
+
 async function checkBook(db: Database, details: ParsedAnnouncementDetails): Promise<void> {
   if (details.link.kind !== "book") return;
   const { rowCount } = await db.query("select 1 from public.books where id = $1", [details.link.bookId]);
@@ -248,6 +258,7 @@ export async function createAnnouncement(deps: Deps, librarian: Identity, detail
   const link = linkColumns(details);
   try {
     await withTransaction(deps.db, async (tx) => {
+      await lockWrites(tx);
       await tx.query(
         `insert into public.announcements
            (id, title, body, link_book_id, link_url, starts_at, ends_at, poster_path, banner_path,
@@ -320,6 +331,7 @@ export async function editAnnouncement(
   const link = linkColumns(details);
   try {
     await withTransaction(deps.db, async (tx) => {
+      await lockWrites(tx);
       // Locked and read again: it may have been ended, deleted or changed since the checks above.
       const locked = await findAnnouncement(tx, id, true);
       if (locked === undefined) throw refusals.notFound();
