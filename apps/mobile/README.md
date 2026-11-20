@@ -50,7 +50,7 @@ No Figma frames, so it is built from the screens around it. "Forgot password?" u
 
 ## Home and catalog search
 
-`app/(app)/(tabs)/home.tsx` is the Home tab (Figma "Home dashboard", node 1032:1994, laid out as the approved Tier 3 preview): the avatar and greeting ("Hi, <first name>", then "What’s on your mind"), which open the Profile tab, the search bar, and under it the search results. There is no bell and no menu, and Loans, Holds and the Digital ID have their own tabs. The shelves come with their ticket. `src/catalog/useCatalogSearch.ts` runs the search as the Member types (300 ms pause, stale answers dropped) through `useAuth().request`, and has five states: idle, loading, results, empty (neutral "No books found") and error ("Search is not working" with Try again). The pieces are in `src/home/`. Each result shows its available Copy count from the API.
+`app/(app)/(tabs)/home.tsx` is the Home tab (Figma "Home dashboard", node 1032:1994, laid out as the approved Tier 3 preview): the avatar and greeting ("Hi, <first name>", then "What’s on your mind"), which open the Profile tab, the bell at the right (see Notifications below), the search bar, and under it the search results. There is no menu, and Loans, Holds and the Digital ID have their own tabs. The shelves come with their ticket. `src/catalog/useCatalogSearch.ts` runs the search as the Member types (300 ms pause, stale answers dropped) through `useAuth().request`, and has five states: idle, loading, results, empty (neutral "No books found") and error ("Search is not working" with Try again). The pieces are in `src/home/`. Each result shows its available Copy count from the API.
 
 ## Profile and My Account
 
@@ -73,6 +73,14 @@ Pushed screens in `app/(app)/`, built from `src/settings/SettingsParts.tsx` (`Se
 ## Push notifications
 
 `src/push/`. `push-device.ts` knows whether this build can get push notifications (`app.config.ts` sets `extra.pushEnabled` only with `google-services.json` and `EXPO_PROJECT_ID`; `LIBRAS_PUSH=off` forces it off) and gets the phone's Expo push token, asking Android's permission once. `usePushNotifications` (mounted in `app/(app)/_layout.tsx`) registers the phone with `PUT /members/me/push-device` on every start and opens the screen of a tapped push (`pushDestination` in `@libras/shared`: My Books on Holds or Loans, or `/announcement`). Sign-out hands the token back in `POST /auth/sign-out`, also when the session ended on its own. A build without push notifications skips all of it and never shows the permission dialog. The owner's Firebase and Expo setup: `docs/push-notifications.md`.
+
+## Notifications
+
+The notification inbox works on every build, with or without push notifications: it only talks to the API.
+
+- **The bell** (`src/home/NotificationBell.tsx`, testID `home-bell`) sits at the right of the Home header. Its red badge (`home-bell-badge`) counts the unread Notifications (`unreadBadgeText` in `@libras/shared`: none at zero, "9+" above nine). `useUnreadNotifications` reads `GET /members/me/notifications/unread` whenever Home comes into view and whenever the app returns to the foreground while Home shows. There is no polling.
+- **The Notifications screen** (`app/(app)/notifications.tsx`, pushed): back at the top left and Mark all as read at the right (`PushedHeader`'s `action`), then the list (`src/notifications/NotificationRow.tsx`): the kind's icon in a ring, the title, how long ago (`notificationAge`), the line, and a blue dot while unread (`notification-unread`). Rows have the testID `notification-<kind>`. More pages load as the list reaches its end. Tapping a row marks it read (`POST .../:id/read`) and opens the screen its push notification opens (`notificationDestination`): My Books on Holds or Loans (`router.dismissTo`), or the Announcement (pushed, so back returns to the list). Mark all as read calls `POST .../read-all`. With no Notification, one line says what will show there (`notifications-empty`).
+- Flows: `notifications.yaml` (with `scripts/create-notifications.js`) and `notifications-empty.yaml`.
 
 ## The Book page
 

@@ -88,6 +88,10 @@ _Avoid_: Reminder, overdue email (it also covers Loans that are not overdue yet)
 A message on a Member's phone, outside the app, about a Hold that is ready, a Loan due tomorrow, a Loan on its first overdue day, or a new Announcement. Each kind has its own switch in Settings; the first three start on and Announcements off. A tap opens the screen it is about. It never replaces a Loan notice, which is always emailed.
 _Avoid_: Alert, reminder, Loan notice (that is the email)
 
+**Notification**:
+An entry in a Member's notification inbox in the app, opened from the bell on Home. There is one for each event a Push notification is about: a Hold that is ready, a Loan due tomorrow, a Loan on its first overdue day, or a new Announcement. The inbox holds every kind whatever the push switches say, and needs no push setup on the phone. A Notification is unread until the Member opens it or marks all as read. Opening it leads to the same screen as its Push notification.
+_Avoid_: Alert, inbox item, Push notification (that is the message on the phone, outside the app)
+
 **Fine**:
 The peso amount a Member owes for one Loan returned late. It grows by the daily rate for every calendar day after the due date, up to the cap, and stops at the return, when the amount is fixed for good. A Fine is unsettled until a Librarian settles it.
 _Avoid_: Penalty, fee, charge, overdue fee

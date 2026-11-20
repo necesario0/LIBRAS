@@ -23,6 +23,13 @@ Work as for Tier 2 below: Git Bash, an up-to-date `main`, `.env.hosted` in the r
 4. On a real phone with the push APK (#55): sign in and allow notifications; Settings > Push notifications shows Hold ready, Loan due tomorrow and Loan overdue on and Announcements off. Switch Announcements on. Place a Hold on a Book whose only Copy is out, and return that Copy at the desk: within seconds a "Your Hold is ready" push arrives, and tapping it opens My Books on Holds. Publish an Announcement for today on the desk page: within about a minute (the sweep tick; up to five minutes while the API sleeps) a "New from the library" push arrives, and tapping it opens the Announcement. Switch Hold ready off and repeat the Hold: the email comes, no push.
 5. Sign out on the phone, then make another Hold ready for the same Member: no push reaches the phone.
 
+## Notification inbox (#62)
+
+1. `npm run db:migrate:hosted -- --dry-run`. It worked if `20261126100000_notifications` is listed with no error. Then `npm run db:migrate:hosted` and type `apply`. The migration adds `notifications` and `announcement_reads`, with row-level security. Apply it before the API deploy: the API writes a Notification at every Hold dispatch and Loan notice.
+2. Deploy the API, then build and install the APK. Nothing new is set on Render. The inbox needs no Firebase or Expo setup.
+3. On a real phone (#55), with an APK built with or without push notifications: Home shows a bell at the right of the header. Make a Hold ready for the Member (place a Hold on a Book whose only Copy is out, return that Copy at the desk) and publish an Announcement for today. It worked if, after going back to Home, the bell has a badge of 2. In Notifications, tapping "Your Hold is ready" opens My Books on Holds, and back on Home the badge reads 1. "Mark all as read" removes every dot, and back on Home the badge is gone.
+4. Settings > Push notifications: switch Hold ready off and make another Hold ready. It worked if no push arrives but the inbox still gets "Your Hold is ready".
+
 # Tier 2: rollout and verification checklist
 
 Work in Git Bash from an up-to-date checkout of `main`, with `.env.hosted` in the repository root. Never paste a key into a chat or an issue. Each step says how to tell it worked. Write the results in the run record at the end of this part.
