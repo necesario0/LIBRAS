@@ -85,7 +85,11 @@ export default function SettingsScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScrollView contentContainerStyle={[styles.content, { paddingTop: screenTop }]} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={[styles.content, { paddingTop: screenTop }]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <PushedHeader title="Settings" testID="settings-back" />
         <View style={styles.body}>
           <PushNotificationsSection onMessage={showToast} />

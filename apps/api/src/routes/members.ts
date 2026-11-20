@@ -97,6 +97,7 @@ export function membersRouter(deps: AppDeps, limiter: AttemptLimiter): Router {
       accountType: policy.account_type,
       loanLimit: policy.loan_limit,
       loanPeriodDays: policy.loan_period_days,
+      inLibraryOnly: policy.in_library_only,
       renewalLimit: policy.renewal_limit,
       fineDailyRateCentavos: policy.fine_daily_rate_centavos,
       fineCapCentavos: policy.fine_cap_centavos,

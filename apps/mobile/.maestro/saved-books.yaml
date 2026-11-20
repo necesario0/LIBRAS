@@ -298,7 +298,6 @@ appId: ph.edu.umak.libras
       id: book-save-label
       text: "Saved"
     timeout: 10000
-- assertNotVisible: "Saved to My Books"
 - tapOn:
     id: book-close
 - runFlow: subflows/leave-search.yaml
@@ -306,14 +305,20 @@ appId: ph.edu.umak.libras
     id: tab-my-books
 - extendedWaitUntil:
     visible:
+      id: my-books-saved
+    timeout: 15000
+- tapOn:
+    id: my-books-saved
+- extendedWaitUntil:
+    visible:
       id: saved-list
     timeout: 15000
-- assertVisible: "Saved books"
+- assertVisible: "My Books"
 - assertVisible: ${output.firstTitle}
-- assertNotVisible:
+- assertVisible:
     id: my-books-loans
 - assertNotVisible:
     id: my-books-holds
-- assertNotVisible:
+- assertVisible:
     id: my-books-saved
 - takeScreenshot: saved-books-visitor

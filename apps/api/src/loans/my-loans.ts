@@ -36,6 +36,7 @@ export const LOAN_SELECT = `
 /** The parts of the Member's Loan Policy that a Loan as the Member reads it depends on: Renewals and Fines. */
 export interface RenewalPolicy extends FinePolicy {
   loan_period_days: number | null;
+  in_library_only?: boolean;
   renewal_limit: number;
 }
 
@@ -112,5 +113,6 @@ export async function listLoans(deps: AppDeps, identity: Identity): Promise<MyLo
     loans: rows.map((row) => toLoan({ row, policy, holdWaiting: waiting.has(row.book_id), notInGoodStanding, now })),
     loanLimit: policy.loan_limit,
     loanPeriodDays: policy.loan_period_days,
+    inLibraryOnly: policy.in_library_only,
   };
 }

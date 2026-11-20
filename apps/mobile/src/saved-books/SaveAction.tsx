@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import { canBorrow } from "@libras/shared";
 import type { AccountType } from "@libras/shared";
 import { useAuth } from "../auth/AuthContext";
 import { SaveButton } from "./SaveButton";
@@ -14,10 +13,9 @@ interface SaveActionProps {
   onMessage: (message: string) => void;
 }
 
-/** What the page says after a change. A Member who cannot borrow has no Loans or Holds, so for them Saved books are all of My Books. */
-export function savedMessage(saved: boolean, accountType: AccountType): string {
-  if (!saved) return "Removed from Saved";
-  return canBorrow(accountType) ? "Saved to My Books" : "Saved";
+/** What the page says after a change: all Account Types now have My Books. */
+export function savedMessage(saved: boolean, _accountType: AccountType): string {
+  return saved ? "Saved to My Books" : "Removed from Saved";
 }
 
 /** The Save button of the Book page and what it does: toggles the Book in the Member's Saved books. */

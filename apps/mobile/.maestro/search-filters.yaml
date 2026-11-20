@@ -257,16 +257,18 @@ appId: ph.edu.umak.libras
     visible: "5 results · older editions folded in"
     timeout: 15000
 
-# The Book page shows the Subject under the call number.
+# The Book page shows the Subject as a pill tag in the header above the call number.
 - tapOn: ${output.algorithms}
 - extendedWaitUntil:
     visible:
       id: book-subject
     timeout: 15000
-- assertVisible: "Subject: Computer Science"
 - assertVisible:
     id: book-subject
-    below:
+    text: "Computer Science"
+- assertVisible:
+    id: book-subject
+    above:
       id: book-call-number
 - takeScreenshot: search-filters-book-subject
 - tapOn:

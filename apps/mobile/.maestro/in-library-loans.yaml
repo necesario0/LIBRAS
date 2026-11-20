@@ -1,0 +1,105 @@
+# A Visitor signs in, sees My Books with Loans and Saved (no Holds), borrows an
+# available Book for in-library use, has it confirmed within weekday library
+# hours (10:00 AM -> due 7:00 PM same day), and sees the closing time on both
+# Successfully Borrowed and My Books > Loans (non-renewable, with attention dot).
+# Also checks outside library hours checkout is refused at the API.
+appId: ph.edu.umak.libras
+---
+- launchApp:
+    clearState: true
+- runScript: scripts/create-in-library-loan.js
+
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 30000
+- tapOn:
+    id: welcome-sign-in
+- tapOn:
+    id: sign-in-email
+- retry:
+    maxRetries: 3
+    commands:
+      - eraseText: 80
+      - inputText: ${output.email}
+      - assertVisible: ${output.email}
+- tapOn:
+    id: sign-in-password
+- inputText: ${output.password}
+- hideKeyboard
+- tapOn:
+    id: sign-in-continue
+- extendedWaitUntil:
+    visible:
+      id: tab-my-books
+    timeout: 20000
+
+# Search for the available Book and open it: Borrow explains in-library hours.
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: ${output.bookWord}
+- extendedWaitUntil:
+    visible: ${output.bookTitle}
+    timeout: 15000
+- tapOn: ${output.bookTitle}
+- extendedWaitUntil:
+    visible:
+      id: book-sheet
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: book-borrow
+    direction: DOWN
+    timeout: 15000
+- assertVisible: ".*In-library use only \\(return before closing\\).*"
+- takeScreenshot: visitor-book-borrow
+
+# Tap Borrow -> opens Digital ID with in-library wording -> Librarian confirms at 10:00 AM Manila.
+- tapOn:
+    id: book-borrow
+- extendedWaitUntil:
+    visible:
+      id: digital-id-code
+    timeout: 15000
+- assertVisible: ".*same-day in-library use during library hours.*"
+- runScript: scripts/confirm-in-library-loan.js
+
+# Successfully Borrowed opens with the same-day 7:00 PM closing time.
+- extendedWaitUntil:
+    visible:
+      id: borrowed-card
+    timeout: 20000
+- assertVisible:
+    id: borrowed-due
+    text: "Nov 20, 2026, 7:00 PM"
+- assertVisible:
+    id: borrowed-time-left
+    text: "Until 7:00 PM"
+- assertVisible:
+    id: borrowed-count
+    text: "1 of 3"
+- takeScreenshot: visitor-borrowed
+- tapOn:
+    id: borrowed-my-loans
+
+# My Books opens on Loans (no Holds segment), with closing time and no Renew button.
+- extendedWaitUntil:
+    visible:
+      id: loans-current
+    timeout: 15000
+- assertVisible:
+    id: my-books-loans
+- assertVisible:
+    id: my-books-saved
+- assertNotVisible:
+    id: my-books-holds
+- assertVisible: "Current - 1 of 3"
+- assertVisible:
+    id: loan-due
+    text: "(Return by|Was due) Nov 20, 2026, 7:00 PM"
+- assertVisible:
+    id: tab-my-books-dot
+- assertVisible: "In-library Loans cannot be renewed. Please return it before closing."
+- assertNotVisible:
+    id: loan-renew
+- takeScreenshot: visitor-in-library-loan

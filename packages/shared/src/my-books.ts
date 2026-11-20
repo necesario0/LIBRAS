@@ -1,5 +1,5 @@
 import type { Hold } from "./holds.ts";
-import { isCurrentLoan, libraryDaysBetween } from "./loans.ts";
+import { hasExactDueTime, isCurrentLoan, libraryDaysBetween } from "./loans.ts";
 import type { Loan } from "./loans.ts";
 
 /**
@@ -24,12 +24,17 @@ export type MyBooksAttention = Readonly<Record<CirculationSegment, boolean>>;
 export function myBooksAttention({ loans, holds, now }: { loans: readonly Loan[]; holds: readonly Hold[]; now: Date }): MyBooksAttention {
   const today = now.toISOString();
   return {
-    loans: loans.some((loan) => isCurrentLoan(loan) && (loan.overdue || libraryDaysBetween(today, loan.dueAt) === 1)),
+    loans: loans.some(
+      (loan) =>
+        isCurrentLoan(loan) &&
+        (loan.overdue || libraryDaysBetween(today, loan.dueAt) === 1 || (hasExactDueTime(loan.dueAt) && libraryDaysBetween(today, loan.dueAt) === 0)),
+    ),
     holds: holds.some((hold) => hold.status === "ready"),
   };
 }
 
-/** My Books opens on Holds when a Hold is ready for pickup, since the Pickup Window is the easiest thing to miss, and on Loans otherwise. */
-export function myBooksStartSegment(holds: readonly Hold[]): CirculationSegment {
+/** My Books opens on Holds when a Hold is ready for pickup (unless in-library-only), and on Loans otherwise. */
+export function myBooksStartSegment(holds: readonly Hold[], options?: { inLibraryOnly?: boolean }): CirculationSegment {
+  if (options?.inLibraryOnly) return "loans";
   return holds.some((hold) => hold.status === "ready") ? "holds" : "loans";
 }

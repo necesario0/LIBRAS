@@ -133,14 +133,14 @@ describe("Holds: placing one", () => {
   });
 
   for (const accountType of ["visitor", "alumni"] as const) {
-    it(`refuses a Member whose Account Type is ${accountType}: it cannot borrow`, async () => {
+    it(`refuses a Hold from ${accountType}: in-library-only accounts cannot place Holds`, async () => {
       const bookId = await h.addBook(`No Hold For ${accountType}`);
       const member = await createTestMemberOfType(h.api(), accountType);
 
       const response = await placeHold(member.accessToken, bookId);
 
       assert.equal(response.status, 403);
-      assert.equal((await response.json()).error.code, "cannot_borrow");
+      assert.equal((await response.json()).error.code, "in_library_only");
       assert.deepEqual(await myHolds(member), []);
     });
   }

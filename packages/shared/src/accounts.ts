@@ -32,12 +32,30 @@ export function isUmakEmail(email: string): boolean {
 }
 
 /**
- * Whether an Account Type may borrow. Visitor and Alumni may not (their Loan Policy limit is zero).
- *
- * SEAM: the Loan Policy rows (limit per Account Type) are the real source of this answer. Until the
- * app reads them, the app and the API derive "cannot borrow" from the Account Type here; when the
- * Loan Policy is exposed, replace the body with `loanLimit > 0` and keep the callers.
+ * Whether an Account Type may borrow for in-library use only (same day, within
+ * library hours) rather than take-home borrowing.
  */
-export function canBorrow(accountType: AccountType): boolean {
-  return accountType !== "visitor" && accountType !== "alumni";
+export function isInLibraryOnlyAccount(accountType: AccountType): boolean {
+  return accountType === "visitor" || accountType === "alumni";
+}
+
+/**
+ * Whether an Account Type may place Holds. Take-home Account Types (UMAK
+ * Student, Faculty, NTP / Employee) may; in-library-only Account Types
+ * (Visitor, Alumni) borrow available Copies at the desk during library hours.
+ */
+export function canPlaceHold(accountType: AccountType): boolean {
+  return !isInLibraryOnlyAccount(accountType);
+}
+
+/**
+ * Whether an Account Type may borrow. UMAK Student, Faculty and NTP / Employee
+ * borrow for multiple days; Visitor and Alumni borrow for in-library use within
+ * library hours.
+ *
+ * SEAM: the Loan Policy rows (`loan_limit`, `in_library_only`) in the database
+ * are the source of truth when loaded from the API.
+ */
+export function canBorrow(_accountType: AccountType): boolean {
+  return true;
 }

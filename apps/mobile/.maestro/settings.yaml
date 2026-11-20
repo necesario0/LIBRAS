@@ -150,7 +150,10 @@ appId: ph.edu.umak.libras
 - takeScreenshot: settings-sign-out-all-dialog
 - tapOn:
     id: sign-out-all-dialog-cancel
-- assertNotVisible: "Sign out of all devices?"
+- extendedWaitUntil:
+    notVisible:
+      id: sign-out-all-dialog
+    timeout: 5000
 - assertVisible:
     id: settings-sign-out-all
 

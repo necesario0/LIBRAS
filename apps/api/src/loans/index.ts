@@ -1,4 +1,4 @@
-import { LOAN_MESSAGES, RETURN_MESSAGES, isLoanOverdue, loanDueAt } from "@libras/shared";
+import { LOAN_MESSAGES, RETURN_MESSAGES, inLibraryLoanDueAt, isLoanOverdue, loanDueAt } from "@libras/shared";
 import type { DeskLoan, ReturnedLoan } from "@libras/shared";
 import type { AppDeps } from "../app.ts";
 import { createAuditLog } from "../audit/index.ts";
@@ -126,8 +126,12 @@ async function confirmOnce(deps: AppDeps, librarian: Identity, memberId: string,
 
       const copy = await lockCopy(tx, { code });
       if (!copy) throw new AppError(404, "copy_not_found", LOAN_MESSAGES.copyNotFound);
-      if (member.loan_limit === 0 || member.loan_period_days === null) {
+      if (member.loan_limit === 0 || (!member.in_library_only && member.loan_period_days === null)) {
         throw new AppError(403, "cannot_borrow", LOAN_MESSAGES.cannotBorrow);
+      }
+      const dueAt = member.in_library_only ? inLibraryLoanDueAt(checkedOutAt) : loanDueAt(checkedOutAt, member.loan_period_days as number);
+      if (dueAt === null) {
+        throw new AppError(409, "library_closed", LOAN_MESSAGES.libraryClosed);
       }
       // Under the Member's lock: a return fixing a Fine, or a settle, is wholly before or after this.
       await requireGoodStanding({ scope: tx, memberId: member.user_id, now: checkedOutAt, messages: LOAN_MESSAGES.notInGoodStanding });
@@ -140,7 +144,6 @@ async function confirmOnce(deps: AppDeps, librarian: Identity, memberId: string,
       }
       await takeCopy(tx, copy, member, checkedOutAt);
 
-      const dueAt = loanDueAt(checkedOutAt, member.loan_period_days);
       const inserted = await tx.query<{ id: string }>(
         `insert into public.loans (copy_id, member_id, confirmed_by, checked_out_at, due_at)
          values ($1, $2, $3, $4, $5)

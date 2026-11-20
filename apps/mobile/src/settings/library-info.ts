@@ -1,3 +1,5 @@
+import { SATURDAY_HOURS, WEEKDAY_HOURS } from "@libras/shared";
+
 /**
  * What Library info shows: hours, location and contact, as static text until
  * the library supplies the real ones (spec #42, Q24). Every value marked
@@ -20,8 +22,8 @@ export const LIBRARY_INFO: readonly LibraryInfoSection[] = [
   {
     title: "Opening hours",
     facts: [
-      { label: "Monday to Friday", value: "8:00 AM to 7:00 PM", toConfirm: true },
-      { label: "Saturday", value: "8:00 AM to 12:00 PM", toConfirm: true },
+      { label: "Monday to Friday", value: WEEKDAY_HOURS.label, toConfirm: true },
+      { label: "Saturday", value: SATURDAY_HOURS.label, toConfirm: true },
       { label: "Sunday and holidays", value: "Closed", toConfirm: true },
     ],
   },

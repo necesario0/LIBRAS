@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { RENEWAL_REASONS, counted, formatLibraryDate, formatPesos } from "@libras/shared";
+import { RENEWAL_REASONS, counted, formatLibraryDate, formatLoanDueAt, formatPesos } from "@libras/shared";
 import type { Loan } from "@libras/shared";
 import { BookCover } from "../components/BookCover";
 import { RowAction, RowActions, RowConfirmation, RowConfirmationEmphasis } from "../components/RowConfirmation";
@@ -66,7 +66,7 @@ export function LoanRow({ loan, onRenew }: LoanRowProps) {
           {loan.returnedAt === null ? (
             <>
               <Text style={[styles.dates, styles.due, loan.overdue && styles.overdue]} testID="loan-due">
-                {`${loan.overdue ? "Was due" : "Return by"} ${formatLibraryDate(loan.dueAt)}`}
+                {`${loan.overdue ? "Was due" : "Return by"} ${formatLoanDueAt(loan.dueAt)}`}
               </Text>
               {loan.fine !== null ? (
                 <Text style={[styles.dates, styles.fine]} testID="loan-fine">

@@ -9,19 +9,20 @@ import { colors, fontFamily, fontSize } from "../theme/tokens";
  */
 export function ConsentText() {
   const router = useRouter();
-  const open = () => router.push("/terms");
+  const openTerms = () => router.push({ pathname: "/terms", params: { doc: "terms" } });
+  const openPrivacy = () => router.push({ pathname: "/terms", params: { doc: "privacy" } });
   return (
     <Text style={styles.text} testID="consent-text">
       {"By continuing, you agree to libras "}
-      <Text style={styles.link} accessibilityRole="link" onPress={open}>
+      <Text style={styles.link} accessibilityRole="link" onPress={openTerms}>
         Consumer Terms
       </Text>
       {" and "}
-      <Text style={styles.link} accessibilityRole="link" onPress={open}>
+      <Text style={styles.link} accessibilityRole="link" onPress={openTerms}>
         Usage Policy
       </Text>
       {", and acknowledge their "}
-      <Text style={styles.link} accessibilityRole="link" onPress={open}>
+      <Text style={styles.link} accessibilityRole="link" onPress={openPrivacy}>
         Privacy policy
       </Text>
     </Text>

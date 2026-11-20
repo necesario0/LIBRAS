@@ -88,6 +88,7 @@ appId: ph.edu.umak.libras
 - tapOn:
     id: email-continue
 - assertVisible: "Accept the terms to create your account."
+- takeScreenshot: sign-up-terms-error
 - tapOn:
     id: email-accept-terms
 - tapOn:

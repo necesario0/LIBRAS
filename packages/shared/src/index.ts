@@ -46,9 +46,20 @@ export {
   UMAK_EMAIL_DOMAIN,
   accountTypeSchema,
   canBorrow,
+  canPlaceHold,
+  isInLibraryOnlyAccount,
   isUmakEmail,
   requiresUmakEmail,
 } from "./accounts.ts";
+export {
+  LIBRARY_HOURS_SUMMARY,
+  SATURDAY_HOURS,
+  WEEKDAY_HOURS,
+  inLibraryLoanDueAt,
+  isWithinLibraryHours,
+  libraryHoursOn,
+} from "./library-hours.ts";
+export type { DailySchedule, LibraryHoursWindow } from "./library-hours.ts";
 export type { AccountType } from "./accounts.ts";
 export { memberCollege, memberFullName } from "./members.ts";
 export { loanPolicyHelp } from "./loan-policy-help.ts";
@@ -192,6 +203,9 @@ export {
   formatLibraryDate,
   formatLibraryDateTime,
   formatLibraryDay,
+  formatLibraryTime,
+  formatLoanDueAt,
+  hasExactDueTime,
   libraryDaysBetween,
   isCurrentLoan,
   isLoanOverdue,
@@ -296,3 +310,12 @@ export type {
   PushSettingsResponse,
   SignOutRequest,
 } from "./push.ts";
+export {
+  BOOK_SHEET_TOP_RATIO,
+  bookSheetSnapBounds,
+  clampBookSheetTop,
+  resolveBookSheetRelease,
+} from "./book-sheet.ts";
+export type { BookSheetPosition, BookSheetSnapBounds } from "./book-sheet.ts";
+export { POLICY_DOCUMENTS, policyDocumentKind } from "./policies.ts";
+export type { PolicyDocumentKind } from "./policies.ts";

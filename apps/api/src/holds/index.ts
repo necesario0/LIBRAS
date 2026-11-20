@@ -1,4 +1,4 @@
-import { GOOD_STANDING_MESSAGES, HOLD_MESSAGES, canBorrow } from "@libras/shared";
+import { GOOD_STANDING_MESSAGES, HOLD_MESSAGES, canPlaceHold } from "@libras/shared";
 import type { CopyStatus, Hold, HoldStatus, MemberProfile } from "@libras/shared";
 import type { AppDeps } from "../app.ts";
 import type { Identity } from "../auth/auth-provider.ts";
@@ -57,12 +57,14 @@ function toHold(row: HoldRow): Hold {
  * holders each lock one Copy only.
  */
 export async function placeHold(deps: AppDeps, member: MemberProfile, bookId: string): Promise<Hold> {
-  if (!canBorrow(member.accountType)) throw new AppError(403, "cannot_borrow", HOLD_MESSAGES.cannotBorrow);
+  if (!canPlaceHold(member.accountType)) throw new AppError(403, "in_library_only", HOLD_MESSAGES.inLibraryNoHolds);
   const placedAt = deps.clock.now();
   try {
     return await withTransaction(deps.db, async (tx) => {
       // First, as every writer does: a return fixing this Member's Fine, or a settle, is wholly before or after this.
-      await lockMember(tx, member.id);
+      const policy = await lockMember(tx, member.id);
+      if (policy.loan_limit === 0) throw new AppError(403, "cannot_borrow", HOLD_MESSAGES.cannotBorrow);
+      if (policy.in_library_only) throw new AppError(403, "in_library_only", HOLD_MESSAGES.inLibraryNoHolds);
       const book = await tx.query("select 1 from public.books where id = $1", [bookId]);
       if (!book.rows[0]) throw new AppError(404, "book_not_found", "We could not find this Book. It may have been removed from the catalog.");
       await requireGoodStanding({ scope: tx, memberId: member.id, now: placedAt, messages: GOOD_STANDING_MESSAGES });

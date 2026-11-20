@@ -3,6 +3,7 @@ import type { AccountType } from "./accounts.ts";
 import { deskSessionTokenSchema } from "./desk.ts";
 import type { DeskMember } from "./desk.ts";
 import type { LoanFine } from "./fines.ts";
+import { LIBRARY_HOURS_SUMMARY, LIBRARY_UTC_OFFSET_HOURS } from "./library-hours.ts";
 import { SCAN_INPUT_PATTERN } from "./scan.ts";
 import { GOOD_STANDING_REFUSALS } from "./standing.ts";
 import type { GoodStandingRefusal } from "./standing.ts";
@@ -12,12 +13,7 @@ import type { GoodStandingRefusal } from "./standing.ts";
  * and a return time. Only a Librarian confirming it at the desk creates one.
  */
 
-/**
- * The library's time zone as a fixed offset from UTC: Philippine Standard Time,
- * which has no daylight saving. Due dates and the dates a Member reads are days
- * of the library's calendar, wherever the phone or the server is.
- */
-export const LIBRARY_UTC_OFFSET_HOURS = 8;
+export { LIBRARY_UTC_OFFSET_HOURS };
 
 const HOUR_MS = 3_600_000;
 const DAY_MS = 24 * HOUR_MS;
@@ -51,12 +47,31 @@ export function formatLibraryDate(iso: string): string {
   return `${formatLibraryDay(iso)}, ${shifted.getUTCFullYear()}`;
 }
 
-/** "Nov 19, 2026, 4:05 PM": the library's calendar day and time of day of an ISO 8601 time. */
-export function formatLibraryDateTime(iso: string): string {
+/** "4:05 PM": the time of day in the library's time zone on a 12-hour clock. */
+export function formatLibraryTime(iso: string): string {
   const shifted = new Date(Date.parse(iso) + OFFSET_MS);
   const hours = shifted.getUTCHours();
   const minutes = String(shifted.getUTCMinutes()).padStart(2, "0");
-  return `${formatLibraryDate(iso)}, ${hours % 12 === 0 ? 12 : hours % 12}:${minutes} ${hours < 12 ? "AM" : "PM"}`;
+  return `${hours % 12 === 0 ? 12 : hours % 12}:${minutes} ${hours < 12 ? "AM" : "PM"}`;
+}
+
+/** "Nov 19, 2026, 4:05 PM": the library's calendar day and time of day of an ISO 8601 time. */
+export function formatLibraryDateTime(iso: string): string {
+  return `${formatLibraryDate(iso)}, ${formatLibraryTime(iso)}`;
+}
+
+/**
+ * True when a Loan's due timestamp is a specific closing hour (same-day in-library
+ * Loans) rather than the `23:59:59.999` end of day used by multi-day take-home Loans.
+ */
+export function hasExactDueTime(dueAtIso: string): boolean {
+  const shifted = new Date(Date.parse(dueAtIso) + OFFSET_MS);
+  return !(shifted.getUTCHours() === 23 && shifted.getUTCMinutes() === 59);
+}
+
+/** Formats a Loan's due timestamp with its closing hour for in-library Loans or date only for multi-day Loans. */
+export function formatLoanDueAt(dueAtIso: string): string {
+  return hasExactDueTime(dueAtIso) ? formatLibraryDateTime(dueAtIso) : formatLibraryDate(dueAtIso);
 }
 
 /** Whole library days from the day of `fromIso` to the day of `toIso`: 7 from a checkout on Nov 12 to a due date of Nov 19. */
@@ -103,7 +118,7 @@ export interface Loan {
  * (`overdue_loan`; when it is this Loan, `loan_overdue` comes first) or they
  * have an unsettled Fine.
  */
-export const RENEWAL_REFUSALS = ["loan_overdue", "renewal_limit_reached", "hold_waiting", ...GOOD_STANDING_REFUSALS] as const;
+export const RENEWAL_REFUSALS = ["loan_overdue", "not_renewable", "renewal_limit_reached", "hold_waiting", ...GOOD_STANDING_REFUSALS] as const;
 export type RenewalRefusal = (typeof RENEWAL_REFUSALS)[number];
 
 /**
@@ -117,6 +132,7 @@ export type LoanRenewal = { renewable: true; dueAt: string; last: boolean } | { 
 /** What My Loans shows in place of the Renew button of a Loan that cannot be renewed. */
 export const RENEWAL_REASONS: Readonly<Record<RenewalRefusal, string>> = {
   loan_overdue: "Overdue Loans cannot be renewed. Please return it to the library desk.",
+  not_renewable: "In-library Loans cannot be renewed. Please return it before closing.",
   renewal_limit_reached: "Already renewed. It cannot be renewed again.",
   hold_waiting: "Another Member is waiting for this Book, so it cannot be renewed.",
   overdue_loan: "You have another Loan that is overdue. Renewals can be made again once it is returned and its Fine is settled.",
@@ -131,6 +147,7 @@ export const RENEWAL_MESSAGES = {
   /** A refusal of the Renewal itself. The Loans list said it could be renewed, so something changed since. */
   refused: {
     loan_overdue: "Your Loan was not renewed: it is now past its due date. Please return the Copy to the library desk.",
+    not_renewable: "Your Loan was not renewed: in-library Loans cannot be renewed. Please return the Copy before closing.",
     renewal_limit_reached: "Your Loan was not renewed: it has already been renewed, and it cannot be renewed again.",
     hold_waiting: "Your Loan was not renewed: another Member is now waiting for this Book. Please return the Copy by its due date.",
     // Good standing: the same words My Loans shows for the Loan (`RENEWAL_REASONS`).
@@ -161,20 +178,23 @@ export interface MyLoansResponse {
   loans: Loan[];
   /** The Loan Policy limit of the Member's Account Type: how many Copies they may have out at once. Zero means they cannot borrow. */
   loanLimit: number;
-  /** The Loan Policy loan period in days, or null for an Account Type that cannot borrow. */
+  /** The Loan Policy loan period in days, or null for in-library-only / non-borrowing Account Types. */
   loanPeriodDays: number | null;
+  /** True when Copies may only be borrowed for same-day in-library use within library hours. */
+  inLibraryOnly: boolean;
 }
 
 /**
  * `GET /members/me/loan-policy`: the Loan Policy of the signed-in Member's
  * Account Type, as the library has set it. Help and policies words it for the
- * Member. A `loanLimit` of zero means the Account Type cannot borrow; then
- * `loanPeriodDays` is null and the Fine amounts are zero.
+ * Member. A `loanLimit` of zero means the Account Type cannot borrow; when
+ * `inLibraryOnly` is true, Copies may only be borrowed for same-day use inside the library.
  */
 export interface MemberLoanPolicyResponse {
   accountType: AccountType;
   loanLimit: number;
   loanPeriodDays: number | null;
+  inLibraryOnly: boolean;
   /** How many times one Loan may be renewed. */
   renewalLimit: number;
   /** The Fine for each day a Loan is late, in centavos. */
@@ -218,6 +238,7 @@ export const LOAN_MESSAGES = {
     "This Member's visit to the desk has timed out or ended, so no Loan was recorded. Ask the Member to show their Digital ID again and scan it, then scan the Copy.",
   copyNotFound: "No Copy has this barcode or accession number. Scan it again, or type the accession number printed on the Copy.",
   cannotBorrow: "This Member's Account Type cannot borrow, so no Loan was recorded. They may use the Copy inside the library.",
+  libraryClosed: `The library is closed right now, so an in-library Loan cannot be recorded. In-library Loans are available during library hours (${LIBRARY_HOURS_SUMMARY}).`,
   limitReached: "This Member is at their loan limit, so no Loan was recorded. A Copy must be returned before they borrow another.",
   copyOnLoan:
     "This Copy is already on Loan, so no Loan was recorded. If it has come back, choose Done with this Member and scan it again to record its return.",

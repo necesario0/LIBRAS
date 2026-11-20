@@ -1,4 +1,4 @@
-import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
 import { myBooksStartSegment } from "@libras/shared";
@@ -35,8 +35,9 @@ function segmentParam(value: string | string[] | undefined): MyBooksSegment | un
  */
 export default function MyBooksScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
   const params = useLocalSearchParams<{ segment?: string }>();
-  const { loans, holds, canBorrow, attention, reload } = useMyBooks();
+  const { loans, holds, canBorrow, inLibraryOnly, attention, reload } = useMyBooks();
   const screenTop = useScreenTop();
   const tabBarSpace = useTabBarSpace();
   const [chosen, setChosen] = useState<MyBooksSegment | undefined>(undefined);
@@ -59,7 +60,17 @@ export default function MyBooksScreen() {
     router.setParams({ segment: undefined });
   }, [linked, router]);
 
-  // Each visit fetches again and, once that is back, opens on what is urgent; leaving the tab forgets the choice.
+  // Clear the chosen segment when the Member moves to another tab, not when opening a modal (such as a Book) over it.
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("state", () => {
+      const state = navigation.getState();
+      const active = state?.routes[state.index]?.name;
+      if (active !== "my-books") setChosen(undefined);
+    });
+    return unsubscribe;
+  }, [navigation]);
+
+  // Each visit fetches again and, once that is back, opens on what is urgent; leaving to another tab forgets the choice.
   useFocusEffect(
     useCallback(() => {
       let visiting = true;
@@ -69,25 +80,32 @@ export default function MyBooksScreen() {
       return () => {
         visiting = false;
         setFresh(false);
-        setChosen(undefined);
+        const state = navigation.getState();
+        const active = state?.routes[state.index]?.name;
+        if (active !== "my-books") setChosen(undefined);
         showMessage(undefined);
       };
-    }, [reload, showMessage]),
+    }, [navigation, reload, showMessage]),
   );
 
   const saved = canBorrow === false;
-  const start = holds.status === "loaded" ? myBooksStartSegment(holds.holds) : holds.status === "error" ? "loans" : undefined;
+  const start = holds.status === "loaded" ? myBooksStartSegment(holds.holds, { inLibraryOnly }) : holds.status === "error" ? "loans" : undefined;
   useEffect(() => {
     // Kept once decided, so cancelling the ready Hold does not move the Member to Loans under their finger.
     if (fresh && chosen === undefined && start !== undefined) setChosen(start);
   }, [fresh, chosen, start]);
-  const selected = chosen ?? linked ?? start;
+  const selected = inLibraryOnly && (chosen ?? linked ?? start) === "holds" ? "loans" : (chosen ?? linked ?? start);
 
-  const segments: readonly Segment<MyBooksSegment>[] = [
-    { key: "loans", label: "Loans", dot: attention.loans, testID: "my-books-loans" },
-    { key: "holds", label: "Holds", dot: attention.holds, testID: "my-books-holds" },
-    { key: "saved", label: "Saved", dot: false, testID: "my-books-saved" },
-  ];
+  const segments: readonly Segment<MyBooksSegment>[] = inLibraryOnly
+    ? [
+        { key: "loans", label: "Loans", dot: attention.loans, testID: "my-books-loans" },
+        { key: "saved", label: "Saved", dot: false, testID: "my-books-saved" },
+      ]
+    : [
+        { key: "loans", label: "Loans", dot: attention.loans, testID: "my-books-loans" },
+        { key: "holds", label: "Holds", dot: attention.holds, testID: "my-books-holds" },
+        { key: "saved", label: "Saved", dot: false, testID: "my-books-saved" },
+      ];
 
   return (
     <View style={styles.screen}>

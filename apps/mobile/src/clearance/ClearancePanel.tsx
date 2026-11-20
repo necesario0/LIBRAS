@@ -1,5 +1,5 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
-import { counted, formatLibraryDate, formatPesos, goodStandingNotice, plural } from "@libras/shared";
+import { counted, formatLibraryDate, formatLoanDueAt, formatPesos, goodStandingNotice, plural } from "@libras/shared";
 import type { Clearance, GoodStanding } from "@libras/shared";
 import { StatusPill } from "../components/StatusPill";
 import type { PillTone } from "../components/StatusPill";
@@ -54,7 +54,7 @@ function Blockers({ clearance, goodStanding }: { clearance: Clearance; goodStand
               key={loan.loanId}
               testID={`profile-clearance-loan-${loan.loanId}`}
               title={loan.bookTitle}
-              note={`Copy ${loan.accessionNumber} - ${loan.overdue ? "overdue, was due" : "due"} ${formatLibraryDate(loan.dueAt)}`}
+              note={`Copy ${loan.accessionNumber} - ${loan.overdue ? "overdue, was due" : "due"} ${formatLoanDueAt(loan.dueAt)}`}
               alert={loan.overdue}
             />
           ))}

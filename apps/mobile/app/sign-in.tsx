@@ -81,7 +81,7 @@ export default function SignInScreen() {
       >
         <Wordmark />
         <View style={styles.book}>
-          <BookIllustration width={292} height={197} />
+          <BookIllustration width={292} height={178} />
         </View>
         <Text style={styles.tagline} accessibilityRole="header">
           Every shelf, within reach.
@@ -143,13 +143,13 @@ export default function SignInScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.white },
   content: { flexGrow: 1, alignItems: "center", paddingBottom: spacing.xl },
-  book: { marginTop: 1 },
+  book: { marginTop: spacing.lg },
   tagline: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.hero,
     color: colors.black,
     textAlign: "center",
-    marginTop: -15,
+    marginTop: spacing.md,
     paddingHorizontal: spacing.screen,
   },
   form: { alignSelf: "stretch", paddingHorizontal: spacing.screen, marginTop: spacing.xs, gap: spacing.sm },
