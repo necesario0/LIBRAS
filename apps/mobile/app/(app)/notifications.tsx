@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { NOTIFICATION_MESSAGES, notificationDestination } from "@libras/shared";
 import type { MemberNotification } from "@libras/shared";
 import { api } from "../../src/api";
@@ -35,6 +36,7 @@ export default function NotificationsScreen() {
   const router = useRouter();
   const { request } = useAuth();
   const screenTop = useScreenTop();
+  const insets = useSafeAreaInsets();
   const [state, setState] = useState<InboxState>({ status: "loading" });
   const [markingAll, setMarkingAll] = useState(false);
   const [toast, setToast] = useState<string | undefined>();
@@ -159,7 +161,7 @@ export default function NotificationsScreen() {
       {state.status === "loaded" ? (
         <FlatList
           style={styles.list}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={{ paddingBottom: insets.bottom + spacing.xxl }}
           data={state.notifications}
           keyExtractor={(entry) => entry.id}
           renderItem={({ item }) => <NotificationRow notification={item} now={now} onOpen={(entry) => void open(entry)} />}
@@ -179,7 +181,7 @@ export default function NotificationsScreen() {
         />
       ) : null}
 
-      {toast === undefined ? null : <Toast message={toast} bottom={spacing.xxl} testID="notifications-toast" />}
+      {toast === undefined ? null : <Toast message={toast} bottom={insets.bottom + spacing.xxl} testID="notifications-toast" />}
     </View>
   );
 }
@@ -190,7 +192,6 @@ const styles = StyleSheet.create({
   markAllOff: { color: colors.textMuted },
   spinner: { marginTop: spacing.xxl },
   list: { flex: 1, marginTop: spacing.md },
-  listContent: { paddingBottom: spacing.xxl },
   more: { marginVertical: spacing.lg },
   failed: { alignItems: "center", gap: spacing.sm, marginTop: spacing.xxl, paddingHorizontal: spacing.home },
   failedText: { fontFamily: fontFamily.regular, fontSize: fontSize.small, lineHeight: lineHeightFor(fontSize.small), color: colors.textMuted, textAlign: "center" },
