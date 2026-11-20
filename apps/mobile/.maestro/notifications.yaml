@@ -79,6 +79,7 @@ appId: ph.edu.umak.libras
 - assertVisible:
     id: holds-segment
 - assertVisible: ${output.heldTitle}
+- takeScreenshot: notifications-opened-hold
 
 # Back on Home the badge counts one fewer.
 - runFlow: subflows/leave-search.yaml
@@ -104,6 +105,7 @@ appId: ph.edu.umak.libras
       id: announcement-title
     timeout: 15000
 - assertVisible: ${output.announcementTitle}
+- takeScreenshot: notifications-opened-announcement
 - tapOn:
     id: announcement-back
 - extendedWaitUntil:
@@ -128,6 +130,7 @@ appId: ph.edu.umak.libras
       id: loans-current
     timeout: 15000
 - assertVisible: ${output.loanTitle}
+- takeScreenshot: notifications-opened-loan
 
 # Back on Home the badge is gone.
 - runFlow: subflows/leave-search.yaml
@@ -139,6 +142,7 @@ appId: ph.edu.umak.libras
     timeout: 15000
 - assertNotVisible:
     id: home-bell-badge
+- takeScreenshot: home-bell-all-read
 
 - runFlow: subflows/sign-out.yaml
 - extendedWaitUntil:
