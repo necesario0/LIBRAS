@@ -20,7 +20,9 @@ import type {
   MemberSignInResponse,
   MyHoldsResponse,
   MyLoansResponse,
+  MyNotificationsResponse,
   MySavedBooksResponse,
+  NotificationsUnreadResponse,
   PasswordResetRequestedResponse,
   PlaceHoldResponse,
   PushSettingsChange,
@@ -163,6 +165,23 @@ export function createApiClient({ baseUrl, fetch: fetchImpl = fetch, timeoutMs =
         headers: { "Content-Type": "application/json", ...bearer(accessToken) },
         body: JSON.stringify({ token }),
       }),
+    /** A page of the Member's Notifications, newest first; `before` is the `nextCursor` of the page before. */
+    getNotifications: (accessToken: string, before?: string) =>
+      request<MyNotificationsResponse>(`/members/me/notifications${before === undefined ? "" : `?before=${encodeURIComponent(before)}`}`, {
+        headers: bearer(accessToken),
+      }),
+    /** How many of the Member's Notifications are unread: the badge on the Home bell. */
+    getUnreadNotifications: (accessToken: string) =>
+      request<NotificationsUnreadResponse>("/members/me/notifications/unread", { headers: bearer(accessToken) }),
+    /** Marks one Notification read (again is harmless) and answers the unread count. `notification_not_found` (404). */
+    markNotificationRead: (accessToken: string, id: string) =>
+      request<NotificationsUnreadResponse>(`/members/me/notifications/${encodeURIComponent(id)}/read`, {
+        method: "POST",
+        headers: bearer(accessToken),
+      }),
+    /** Marks every Notification of the Member read and answers the unread count. */
+    markAllNotificationsRead: (accessToken: string) =>
+      request<NotificationsUnreadResponse>("/members/me/notifications/read-all", { method: "POST", headers: bearer(accessToken) }),
     /** The Member's own Loans, current ones first, with the loan limit and loan period of their Loan Policy. */
     getLoans: (accessToken: string) => request<MyLoansResponse>("/members/me/loans", { headers: bearer(accessToken) }),
     /**

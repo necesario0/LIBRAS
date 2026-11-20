@@ -12,6 +12,7 @@ import { SearchResultRow } from "../../../src/home/BookResultRow";
 import { AnnouncementBanner } from "../../../src/home/AnnouncementBanner";
 import { HomeHeader } from "../../../src/home/HomeHeader";
 import { HomeShelves, ShelvesFailed } from "../../../src/home/HomeShelves";
+import { NotificationBell } from "../../../src/home/NotificationBell";
 import { SearchBar } from "../../../src/home/SearchBar";
 import { NoResults, SearchFailed } from "../../../src/home/SearchMessage";
 import { FiltersSheet } from "../../../src/search/FiltersSheet";
@@ -22,6 +23,7 @@ import { SearchModeBar } from "../../../src/search/SearchModeBar";
 import { Suggestions } from "../../../src/search/Suggestions";
 import { useRecentSearches } from "../../../src/search/useRecentSearches";
 import { useSuggestions } from "../../../src/search/useSuggestions";
+import { useUnreadNotifications } from "../../../src/notifications/useUnreadNotifications";
 import { colors, fontFamily, fontSize, spacing } from "../../../src/theme/tokens";
 import { DEFAULT_CATALOG_SEARCH_FILTERS, activeFilterCount, memberCollege, subjectFilterOptions } from "@libras/shared";
 import type { CatalogSearchResponse } from "@libras/shared";
@@ -39,7 +41,10 @@ function resultCount(response: CatalogSearchResponse): string {
  * search bar, then the running Announcement as a banner (nothing when none
  * runs), then the shelves (New arrivals, Popular in your college,
  * Available now in your top Subject). Loans, Holds and the Digital ID have
- * their own tabs, so Home is about finding Books. There is no bell and no menu.
+ * their own tabs, so Home is about finding Books. There is no menu. The bell at
+ * the right of the header opens the Notifications screen, with a badge for the
+ * unread count, read again whenever Home comes into view or the app returns to
+ * the foreground.
  *
  * Tapping the search bar turns Home into search mode (it is a state of Home,
  * not another route): the bar moves up with a Cancel button, the tab bar steps
@@ -73,6 +78,7 @@ export default function HomeScreen() {
   // The shelves are read again each time Home comes into view, so they follow what was borrowed meanwhile.
   const home = useFocusedFetch(request, api.getHome, "The shelves could not be loaded.");
   const subjects = useFetch(request, api.getSubjects, "The Subjects could not be loaded. Close the filters and try again.");
+  const unread = useUnreadNotifications();
 
   // Search mode can stay open under another screen (Home is left through a Book sheet's links): the bar is hidden only while Home itself is showing.
   const homeShowing = useIsFocused();
@@ -138,10 +144,12 @@ export default function HomeScreen() {
             accessibilityRole="button"
             accessibilityLabel="Open Profile"
             onPress={() => router.navigate("/profile")}
+            style={styles.profile}
             testID="home-profile"
           >
             <HomeHeader firstName={member.firstName} />
           </Pressable>
+          <NotificationBell unread={unread} onPress={() => router.push("/notifications")} />
         </View>
         <View style={styles.search}>
           <SearchBar onPress={() => setSearchOn(true)} />
@@ -224,7 +232,8 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.white },
-  header: { flexDirection: "row", alignItems: "center", paddingHorizontal: spacing.home },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm, paddingHorizontal: spacing.home },
+  profile: { flexShrink: 1 },
   search: { paddingHorizontal: spacing.home, marginTop: 10 },
   banner: { marginBottom: -spacing.md },
   modeBar: { paddingHorizontal: spacing.home, paddingVertical: 4 },

@@ -283,3 +283,13 @@ export function TrashIcon(props: OutlineIconProps) {
     </Outline>
   );
 }
+
+/** A bell: the notification inbox, at the right of the Home header (approved Tier 3 preview `bell`). */
+export function BellIcon(props: OutlineIconProps) {
+  return (
+    <Outline {...props}>
+      <Path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15z" />
+      <Path d="M10 20.5a2 2 0 0 0 4 0" />
+    </Outline>
+  );
+}
