@@ -1,0 +1,95 @@
+# Home shows shelves of Books under the search bar. A UMAK Student (CCIS) who has
+# borrowed a Law Book sees New arrivals (newest first, the two editions of a work
+# folded into the newer one), Popular in CCIS (the Book they borrowed) and
+# Available now in Law (their top Subject: only Law Books with a Copy on the
+# shelf, so the Law Book whose only Copy is out is left out). A shelf's cover
+# opens that Book's page, and closing the page returns to Home.
+# Needs the end-to-end API on port 3000 (npm run e2e starts it).
+appId: ph.edu.umak.libras
+---
+- launchApp:
+    clearState: true
+- runScript: scripts/create-shelves.js
+
+# Sign in (a UMAK Student of CCIS).
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 30000
+- tapOn:
+    id: welcome-sign-in
+- tapOn:
+    id: sign-in-email
+- inputText: ${output.email}
+- tapOn:
+    id: sign-in-password
+- inputText: ${output.password}
+- hideKeyboard
+- tapOn:
+    id: sign-in-continue
+- extendedWaitUntil:
+    visible: "Hi, Cobby"
+    timeout: 20000
+
+# New arrivals: the newest Books first. The 2nd edition stands for its work, the 1st edition is folded away.
+- extendedWaitUntil:
+    visible:
+      id: shelf-new_arrivals-title
+    timeout: 20000
+- assertVisible: "New arrivals"
+- assertVisible:
+    id: shelf-new_arrivals-book-${output.handbookNewId}
+- assertVisible:
+    id: shelf-new_arrivals-book-${output.statutesId}
+- assertNotVisible:
+    id: shelf-new_arrivals-book-${output.handbookOldId}
+- takeScreenshot: home-shelf-new-arrivals
+
+# Popular in CCIS: what their college borrowed lately, so the Law Book is on it.
+- scrollUntilVisible:
+    element:
+      id: shelf-popular-title
+    direction: DOWN
+- assertVisible: "Popular in CCIS"
+- assertVisible:
+    id: shelf-popular-book-${output.statutesId}
+- takeScreenshot: home-shelf-popular
+
+# Available now in Law: only Law Books with a Copy on the shelf.
+- scrollUntilVisible:
+    element:
+      id: shelf-available_now-title
+    direction: DOWN
+- assertVisible: "Available now in Law"
+- assertVisible:
+    id: shelf-available_now-book-${output.statutesId}
+- assertNotVisible:
+    id: shelf-available_now-book-${output.ledgerId}
+- assertNotVisible:
+    id: shelf-available_now-book-${output.primerId}
+- takeScreenshot: home-shelf-available-now
+
+# A cover opens the Book's page; closing it returns to Home with the shelves.
+- tapOn:
+    id: shelf-available_now-book-${output.statutesId}
+- extendedWaitUntil:
+    visible:
+      id: book-sheet
+    timeout: 15000
+- assertVisible: ${output.statutesTitle}
+- assertVisible:
+    id: book-subject
+    text: "Law"
+- tapOn:
+    id: book-close
+- extendedWaitUntil:
+    visible:
+      id: home-shelves
+    timeout: 10000
+- assertNotVisible:
+    id: book-sheet
+
+# Sign out is reached from the Profile tab.
+- runFlow: subflows/sign-out.yaml
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 20000

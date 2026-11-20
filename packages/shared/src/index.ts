@@ -46,11 +46,24 @@ export {
   UMAK_EMAIL_DOMAIN,
   accountTypeSchema,
   canBorrow,
+  canPlaceHold,
+  isInLibraryOnlyAccount,
   isUmakEmail,
   requiresUmakEmail,
 } from "./accounts.ts";
+export {
+  LIBRARY_HOURS_SUMMARY,
+  SATURDAY_HOURS,
+  WEEKDAY_HOURS,
+  inLibraryLoanDueAt,
+  isWithinLibraryHours,
+  libraryHoursOn,
+} from "./library-hours.ts";
+export type { DailySchedule, LibraryHoursWindow } from "./library-hours.ts";
 export type { AccountType } from "./accounts.ts";
-export { memberFullName } from "./members.ts";
+export { memberCollege, memberFullName } from "./members.ts";
+export { loanPolicyHelp } from "./loan-policy-help.ts";
+export type { LoanPolicyHelp, PolicyFact } from "./loan-policy-help.ts";
 export type {
   MemberMeResponse,
   MemberProfile,
@@ -117,6 +130,8 @@ export type {
   RequestPasswordResetRequest,
 } from "./password-reset.ts";
 export { PASSWORD_CHANGE_MESSAGES, changePasswordSchema } from "./password-change.ts";
+export { ACCOUNT_DELETION_MESSAGES, deleteAccountSchema, notClearedNotice } from "./account-deletion.ts";
+export type { DeleteAccountRequest, NotClearedNotice } from "./account-deletion.ts";
 export type { ChangePasswordRequest } from "./password-change.ts";
 export { buildTrie, searchTrie } from "./search/flat-trie.ts";
 export type { FlatTrie, TrieMatch } from "./search/flat-trie.ts";
@@ -134,11 +149,38 @@ export {
   CATALOG_SEARCH_MAX_LIMIT,
   CATALOG_SEARCH_MAX_QUERY_LENGTH,
   CATALOG_SEARCH_MESSAGES,
+  CATALOG_SORT_LABELS,
+  DEFAULT_CATALOG_SEARCH_FILTERS,
+  MOST_BORROWED_WINDOW_DAYS,
+  PUBLISHED_YEAR_MAX,
+  PUBLISHED_YEAR_MIN,
+  activeFilterCount,
+  bookAvailabilityLabel,
   bookIdSchema,
   COPY_STATUSES,
   catalogSearchQuerySchema,
+  catalogSearchQueryString,
+  contentsChapters,
+  libraryYear,
+  publishedYears,
 } from "./catalog.ts";
-export type { BookDetail, BookDetailResponse, BookSearchResult, CatalogSearchQuery, CatalogSearchResponse, CopyStatus } from "./catalog.ts";
+export type {
+  BookDetail,
+  BookDetailResponse,
+  BookSearchResult,
+  CatalogSearchCriteria,
+  CatalogSearchFilters,
+  CatalogSearchQuery,
+  CatalogSearchResponse,
+  CatalogSearchRow,
+  CatalogSubjectsResponse,
+  CopyStatus,
+  PublishedFilter,
+} from "./catalog.ts";
+export { COLLEGE_SUBJECTS, SUBJECTS, SUBJECT_LC_CLASSES, subjectFilterOptions, subjectFor, subjectSchema } from "./subjects.ts";
+export type { Subject } from "./subjects.ts";
+export { CATALOG_SORTS, arrangeCatalogResults, workKey } from "./search/editions.ts";
+export type { ArrangeOptions, ArrangedRow, CatalogSort, EditionCandidate } from "./search/editions.ts";
 export {
   HOLD_MESSAGES,
   HOLD_STATUSES,
@@ -161,6 +203,9 @@ export {
   formatLibraryDate,
   formatLibraryDateTime,
   formatLibraryDay,
+  formatLibraryTime,
+  formatLoanDueAt,
+  hasExactDueTime,
   libraryDaysBetween,
   isCurrentLoan,
   isLoanOverdue,
@@ -175,6 +220,7 @@ export type {
   EndDeskSessionRequest,
   Loan,
   LoanRenewal,
+  MemberLoanPolicyResponse,
   MyLoansResponse,
   RecordReturnRequest,
   RecordReturnResponse,
@@ -182,6 +228,10 @@ export type {
   RenewalRefusal,
   ReturnedLoan,
 } from "./loans.ts";
+export { SAVED_BOOK_MESSAGES } from "./saved-books.ts";
+export type { MySavedBooksResponse, SaveBookResponse, SavedBook } from "./saved-books.ts";
+export { myBooksAttention, myBooksStartSegment } from "./my-books.ts";
+export type { CirculationSegment, MyBooksAttention, MyBooksSegment } from "./my-books.ts";
 export { FINE_MESSAGES, FINE_OUTCOMES, SETTLE_AT_RETURN_MINUTES, formatPesos, settleFineRequestSchema } from "./fines.ts";
 export type { FineOutcome, FineSettlement, LoanFine, SettleFineRequest, SettleFineResponse } from "./fines.ts";
 export { readEventStream } from "./event-stream.ts";
@@ -195,3 +245,95 @@ export {
   sendScanRequestSchema,
 } from "./scanner.ts";
 export type { DeskScannerEventName, DeskScannerEvents, PairScannerResponse, ScannerStatusResponse } from "./scanner.ts";
+export {
+  ANNOUNCEMENT_BANNER_MIN_WIDTH,
+  ANNOUNCEMENT_BODY_MAX_LENGTH,
+  ANNOUNCEMENT_IMAGE_MAX_BYTES,
+  ANNOUNCEMENT_IMAGE_TYPES,
+  ANNOUNCEMENT_MESSAGES,
+  ANNOUNCEMENT_STATUSES,
+  ANNOUNCEMENT_TITLE_MAX_LENGTH,
+  ANNOUNCEMENT_URL_MAX_LENGTH,
+  announcementDatesLine,
+  announcementDetailsSchema,
+  announcementLinkInputSchema,
+  announcementLinkSite,
+  announcementOverlapMessage,
+  formatAnnouncementDay,
+  isAnnouncementWebLink,
+  libraryDayOf,
+  libraryDayStart,
+  nextLibraryDay,
+} from "./announcements.ts";
+export type {
+  Announcement,
+  AnnouncementBooksResponse,
+  AnnouncementDetails,
+  AnnouncementImage,
+  AnnouncementLink,
+  AnnouncementLinkInput,
+  AnnouncementResponse,
+  AnnouncementStatus,
+  DeskAnnouncementsResponse,
+  LibraryDay,
+  MemberAnnouncement,
+  ParsedAnnouncementDetails,
+} from "./announcements.ts";
+export { pickSuggestions } from "./search/suggestions.ts";
+export type { CatalogSuggestion, SuggestionSource } from "./search/suggestions.ts";
+export { RECENT_SEARCHES_LIMIT, addRecentSearch, removeRecentSearch } from "./recent-searches.ts";
+export {
+  CATALOG_SUGGEST_LIMIT,
+  CATALOG_SUGGEST_MESSAGES,
+  CATALOG_SUGGEST_MIN_LENGTH,
+  catalogSuggestQuerySchema,
+} from "./catalog.ts";
+export type { CatalogSuggestionsResponse } from "./catalog.ts";
+export { HOME_SHELF_KINDS, HOME_SHELF_LENGTH, homeShelfCopy, topSubject } from "./home.ts";
+export type { HomeResponse, HomeShelf, HomeShelfKind, HomeShelfScope } from "./home.ts";
+export {
+  PUSH_KINDS,
+  PUSH_MESSAGES,
+  pushDestination,
+  pushDeviceRequestSchema,
+  pushSettingsChangeSchema,
+  pushTokenSchema,
+  signOutRequestSchema,
+} from "./push.ts";
+export type {
+  PushData,
+  PushDestination,
+  PushDeviceRequest,
+  PushKind,
+  PushSettings,
+  PushSettingsChange,
+  PushSettingsResponse,
+  SignOutRequest,
+} from "./push.ts";
+export {
+  BOOK_SHEET_TOP_RATIO,
+  bookSheetSnapBounds,
+  clampBookSheetTop,
+  resolveBookSheetRelease,
+} from "./book-sheet.ts";
+export type { BookSheetPosition, BookSheetSnapBounds } from "./book-sheet.ts";
+export { POLICY_DOCUMENTS, policyDocumentKind } from "./policies.ts";
+export type { PolicyDocumentKind } from "./policies.ts";
+export {
+  NOTIFICATIONS_PAGE_SIZE,
+  NOTIFICATION_MESSAGES,
+  UNREAD_BADGE_MAX,
+  bellLabel,
+  notificationAge,
+  notificationDestination,
+  notificationIdSchema,
+  notificationsQuerySchema,
+  unreadBadgeText,
+} from "./notifications.ts";
+export type {
+  MemberNotification,
+  MyNotificationsResponse,
+  NotificationKind,
+  NotificationSubject,
+  NotificationsUnreadResponse,
+} from "./notifications.ts";

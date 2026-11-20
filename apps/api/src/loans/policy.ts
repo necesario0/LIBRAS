@@ -9,6 +9,7 @@ export interface MemberPolicyRow extends FinePolicy {
   account_type: AccountType;
   loan_limit: number;
   loan_period_days: number | null;
+  in_library_only: boolean;
   renewal_limit: number;
 }
 
@@ -22,7 +23,7 @@ export interface MemberPolicyRow extends FinePolicy {
  */
 export async function memberPolicy(scope: IdentityScope, memberId: string, { lock }: { lock: boolean }): Promise<MemberPolicyRow> {
   const { rows } = await scope.query<MemberPolicyRow>(
-    `select m.user_id, m.account_type, p.loan_limit, p.loan_period_days, p.renewal_limit,
+    `select m.user_id, m.account_type, p.loan_limit, p.loan_period_days, p.in_library_only, p.renewal_limit,
             p.fine_daily_rate_centavos, p.fine_cap_centavos
        from public.members m
        join public.loan_policies p on p.account_type = m.account_type

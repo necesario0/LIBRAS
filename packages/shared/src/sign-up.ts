@@ -18,7 +18,7 @@ export const SIGN_UP_MESSAGES = {
   nameTooLong: "Use at most 60 characters.",
   usernameInvalid: "Use 3 to 30 letters, numbers, dots or underscores.",
   contactNumberInvalid: "Enter a valid contact number, or leave it empty.",
-  studentNumberInvalid: "Enter your student number, for example K12256165.",
+  studentNumberInvalid: "Enter your student number, for example K12256165 or A12256165.",
   collegeRequired: "Select your college.",
   facultyNumberInvalid: "Enter your faculty number.",
   employeeNumberInvalid: "Enter your employee number.",
@@ -76,14 +76,14 @@ export const verificationCodeSchema = z
   .regex(new RegExp(`^\\d{${VERIFICATION_CODE_LENGTH}}$`), { error: SIGN_UP_MESSAGES.codeInvalid });
 
 /** The colleges in the Figma college list. A data change, not a code change, when UMAK adds one. */
-export const UMAK_COLLEGES = ["CLAS", "CHK", "CBFS", "CCIS", "CITE", "CITE-HSU", "CGPP", "CCSE", "CET"] as const;
+export const UMAK_COLLEGES = ["CLAS", "CHK", "CBFS", "CCIS", "CITE", "CITE-HSU", "CGPP", "CCSE", "CET", "SOL", "IOPsy", "ION"] as const;
 export const umakCollegeSchema = z.enum(UMAK_COLLEGES, { error: SIGN_UP_MESSAGES.collegeRequired });
 export type UmakCollege = z.infer<typeof umakCollegeSchema>;
 
-/** `K` and 7 to 9 digits, as in K12256165. Stored in capitals. The real format is pending the library's confirmation. */
+/** `K` or `A` (both are used on campus) and 7 to 9 digits, as in K12256165 or A12256165. Stored in capitals. */
 export const studentNumberSchema = trimmed
   .toUpperCase()
-  .regex(/^K\d{7,9}$/, { error: SIGN_UP_MESSAGES.studentNumberInvalid });
+  .regex(/^[AK]\d{7,9}$/, { error: SIGN_UP_MESSAGES.studentNumberInvalid });
 
 /** What only a UMAK Student gives at sign-up. */
 export const umakStudentDetailsSchema = z.object({

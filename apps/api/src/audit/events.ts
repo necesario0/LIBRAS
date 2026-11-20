@@ -1,4 +1,15 @@
 import { z } from "zod";
+import { accountTypeSchema } from "@libras/shared";
+
+/** What the audit log keeps of an Announcement as it was saved: what every Member sees and where its link sends them. */
+const announcementData = z.strictObject({
+  title: z.string().max(120),
+  firstDay: z.iso.date(),
+  lastDay: z.iso.date(),
+  link: z.enum(["none", "book", "web"]),
+  /** The linked Book's id or the web address; null with no link. */
+  linkTarget: z.string().max(500).nullable(),
+});
 
 /**
  * The whitelist of audit events: every type the log accepts, with the exact
@@ -55,6 +66,46 @@ export const AUDIT_EVENTS = {
    * holds an unlocked phone is guessing here, so the address is kept.
    */
   password_change_failed: {
+    /** The Member's account id. */
+    subject: z.uuid(),
+    data: z.strictObject({
+      /** The client address the sign-in limiter counts, when known. */
+      clientAddress: z.string().max(64).nullable(),
+    }),
+  },
+  /**
+   * A signed-in Member chose "Sign out of all devices" in Settings. Every
+   * session of the account was ended, the one that asked included. `actorId` is the Member.
+   */
+  signed_out_all_devices: {
+    /** The Member's account id. */
+    subject: z.uuid(),
+    data: z.strictObject({
+      /** The client address that asked, when known. */
+      clientAddress: z.string().max(64).nullable(),
+    }),
+  },
+  /**
+   * A cleared Member deleted their account in Settings (ADR 0011): their sign-in, Saved books and personal
+   * data are gone, their Holds cancelled, and their Loans and Fines kept on the Member record with no
+   * personal data. `actorId` is the Member. Nothing personal is recorded, only the id.
+   */
+  account_deleted: {
+    /** The Member's id, which their kept Loans and Fines still name. */
+    subject: z.uuid(),
+    data: z.strictObject({
+      accountType: accountTypeSchema,
+      /** How many waiting or ready Holds were cancelled. */
+      holdsCancelled: z.number().int().nonnegative(),
+      /** The client address that asked, when known. */
+      clientAddress: z.string().max(64).nullable(),
+    }),
+  },
+  /**
+   * A signed-in Member gave a wrong password to delete their account (the same refusal the sign-in limiter
+   * counts). `actorId` is the Member.
+   */
+  account_deletion_failed: {
     /** The Member's account id. */
     subject: z.uuid(),
     data: z.strictObject({
@@ -203,6 +254,46 @@ export const AUDIT_EVENTS = {
       pickupEndsAt: z.iso.datetime(),
       /** When the API recorded the expiry, ISO 8601. */
       expiredAt: z.iso.datetime(),
+    }),
+  },
+  /**
+   * A Librarian created an Announcement: a poster shown to every Member from
+   * its first to its last day. `actorId` is the Librarian.
+   */
+  announcement_created: {
+    /** The Announcement's id. */
+    subject: z.uuid(),
+    data: announcementData,
+  },
+  /** A Librarian edited a running or scheduled Announcement. `actorId` is the Librarian. */
+  announcement_edited: {
+    /** The Announcement's id. */
+    subject: z.uuid(),
+    data: announcementData.extend({
+      /** A new poster image replaced the old one (a new crop alone is not a new image). */
+      imageReplaced: z.boolean(),
+    }),
+  },
+  /** A Librarian ended the running Announcement early: it stopped showing at `endsAt`. `actorId` is the Librarian. */
+  announcement_ended: {
+    /** The Announcement's id. */
+    subject: z.uuid(),
+    data: z.strictObject({
+      title: z.string().max(120),
+      /** The moment it was ended, ISO 8601. */
+      endsAt: z.iso.datetime(),
+      /** The last day it was meant to show until then. */
+      plannedLastDay: z.iso.date(),
+    }),
+  },
+  /** A Librarian deleted a scheduled Announcement before it started. `actorId` is the Librarian. */
+  announcement_deleted: {
+    /** The Announcement's id. */
+    subject: z.uuid(),
+    data: z.strictObject({
+      title: z.string().max(120),
+      firstDay: z.iso.date(),
+      lastDay: z.iso.date(),
     }),
   },
 } as const;

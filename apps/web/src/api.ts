@@ -1,5 +1,11 @@
 import type {
+  Announcement,
+  AnnouncementBooksResponse,
+  AnnouncementDetails,
+  AnnouncementResponse,
+  BookSearchResult,
   ConfirmLoanResponse,
+  DeskAnnouncementsResponse,
   IdentifyMemberResponse,
   RecordReturnResponse,
   RefreshSessionResponse,
@@ -37,7 +43,8 @@ export async function send(path: string, init: RequestInit & { session?: Session
     return await fetch(`${API_BASE}${path}`, {
       ...rest,
       headers: {
-        ...(rest.body === undefined ? {} : { "content-type": "application/json" }),
+        // A form (an Announcement with its poster) sets its own multipart type and boundary.
+        ...(rest.body === undefined || rest.body instanceof FormData ? {} : { "content-type": "application/json" }),
         ...(session ? { authorization: `Bearer ${session.accessToken}` } : {}),
         ...headers,
       },
@@ -213,4 +220,63 @@ export async function unpairScanner(deskId: string): Promise<boolean> {
   if (!response) return false;
   if (!response.ok) throw await failure(response);
   return true;
+}
+
+/** The Announcements for the desk page. Returns undefined when the Librarian's session is gone. Throws ApiError. */
+export async function listAnnouncements(): Promise<DeskAnnouncementsResponse | undefined> {
+  const response = await authorized("/desk/announcements");
+  if (!response) return undefined;
+  if (!response.ok) throw await failure(response);
+  return (await response.json()) as DeskAnnouncementsResponse;
+}
+
+/** The desk page's form: the details as JSON, and the poster file when there is a new one. */
+function announcementForm(details: AnnouncementDetails, image: Blob | undefined): FormData {
+  const form = new FormData();
+  form.set("details", JSON.stringify(details));
+  if (image) form.set("image", image, "poster");
+  return form;
+}
+
+/**
+ * Saves an Announcement: a new one (`id` undefined, `image` required) or an edit
+ * of a running or scheduled one (`image` only when it replaces the poster).
+ * Resolves with it as saved, or undefined when the Librarian's session is gone.
+ * Throws ApiError with the reason to show: `announcement_overlap` (naming the
+ * Announcement in the way), `invalid_request`, `book_not_found`, an
+ * `announcement_image_*` refusal, `announcement_past`, `announcement_changed`,
+ * `announcement_not_found` or `unreachable`.
+ */
+export async function saveAnnouncement(id: string | undefined, details: AnnouncementDetails, image: Blob | undefined): Promise<Announcement | undefined> {
+  const response = await authorized(id === undefined ? "/desk/announcements" : `/desk/announcements/${id}`, {
+    method: id === undefined ? "POST" : "PUT",
+    body: announcementForm(details, image),
+  });
+  if (!response) return undefined;
+  if (!response.ok) throw await failure(response);
+  return ((await response.json()) as AnnouncementResponse).announcement;
+}
+
+/** Ends the running Announcement now. Resolves with false when the Librarian's session is gone. Throws ApiError. */
+export async function endAnnouncement(id: string): Promise<boolean> {
+  const response = await authorized(`/desk/announcements/${id}/end`, { method: "POST" });
+  if (!response) return false;
+  if (!response.ok) throw await failure(response);
+  return true;
+}
+
+/** Deletes a scheduled Announcement. Resolves with false when the Librarian's session is gone. Throws ApiError. */
+export async function deleteAnnouncement(id: string): Promise<boolean> {
+  const response = await authorized(`/desk/announcements/${id}`, { method: "DELETE" });
+  if (!response) return false;
+  if (!response.ok) throw await failure(response);
+  return true;
+}
+
+/** Books to link an Announcement to, best match first. Undefined when the Librarian's session is gone. Throws ApiError. */
+export async function findBooksToLink(query: string, signal?: AbortSignal): Promise<BookSearchResult[] | undefined> {
+  const response = await authorized(`/desk/announcements/books?q=${encodeURIComponent(query)}`, { signal });
+  if (!response) return undefined;
+  if (!response.ok) throw await failure(response);
+  return ((await response.json()) as AnnouncementBooksResponse).books;
 }

@@ -1,6 +1,16 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { formatLibraryDate, formatLibraryDateTime, formatLibraryDay, isLoanOverdue, libraryDaysBetween, loanDueAt } from "../src/index.ts";
+import {
+  formatLibraryDate,
+  formatLibraryDateTime,
+  formatLibraryDay,
+  formatLibraryTime,
+  formatLoanDueAt,
+  hasExactDueTime,
+  isLoanOverdue,
+  libraryDaysBetween,
+  loanDueAt,
+} from "../src/index.ts";
 
 describe("a Loan's due date", () => {
   it("is the end of the library day (UTC+8) that many days after the checkout day", () => {
@@ -38,6 +48,16 @@ describe("printing a date of the library's calendar", () => {
     assert.equal(formatLibraryDateTime("2026-11-13T08:05:00.000Z"), "Nov 13, 2026, 4:05 PM");
     assert.equal(formatLibraryDateTime("2026-11-13T16:30:00.000Z"), "Nov 14, 2026, 12:30 AM");
     assert.equal(formatLibraryDateTime("2026-11-13T04:00:00.000Z"), "Nov 13, 2026, 12:00 PM");
+    assert.equal(formatLibraryTime("2026-11-20T11:00:00.000Z"), "7:00 PM");
+    assert.equal(formatLibraryTime("2026-11-21T04:00:00.000Z"), "12:00 PM");
+  });
+
+  it("includes closing hour when a due date has an exact time rather than end-of-day", () => {
+    assert.equal(hasExactDueTime("2026-11-19T15:59:59.999Z"), false);
+    assert.equal(formatLoanDueAt("2026-11-19T15:59:59.999Z"), "Nov 19, 2026");
+
+    assert.equal(hasExactDueTime("2026-11-20T11:00:00.000Z"), true);
+    assert.equal(formatLoanDueAt("2026-11-20T11:00:00.000Z"), "Nov 20, 2026, 7:00 PM");
   });
 
   it("counts whole library days between two times", () => {

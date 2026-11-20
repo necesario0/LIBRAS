@@ -17,10 +17,11 @@ appId: ph.edu.umak.libras
     id: visitor-id-number
 - inputText: ${output.idNumber}
 - hideKeyboard
-- tapOn:
-    id: visitor-id-type
-- tapOn:
-    id: visitor-id-type-option-Passport
+- runFlow:
+    file: subflows/pick-option.yaml
+    env:
+      FIELD: visitor-id-type
+      OPTION: Passport
 - tapOn:
     id: visitor-institution
 - inputText: Far Eastern University

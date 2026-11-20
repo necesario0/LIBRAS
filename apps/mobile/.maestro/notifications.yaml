@@ -1,0 +1,146 @@
+# The notification inbox: a UMAK Student has three unread Notifications (a running
+# Announcement, a ready Hold and a Loan due tomorrow; scripts/create-notifications.js).
+# The bell at the right of the Home header shows a badge of 3 and opens the
+# Notifications screen, newest first, each unread with a dot. Tapping one marks it
+# read and opens the screen its push notification opens: the Hold opens My Books on
+# Holds, the Announcement the Announcement screen. Mark all as read clears the dots
+# and, back on Home, the badge. None of it needs push notifications set up.
+# Needs the end-to-end API on port 3000 (npm run e2e starts it).
+appId: ph.edu.umak.libras
+---
+- launchApp:
+    clearState: true
+- runScript: scripts/create-notifications.js
+
+# The UMAK Student signs in. The emulator sometimes doubles the first character
+# typed after a tap: check and retype.
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 30000
+- tapOn:
+    id: welcome-sign-in
+- tapOn:
+    id: sign-in-email
+- retry:
+    maxRetries: 3
+    commands:
+      - eraseText: 80
+      - inputText: ${output.email}
+      - assertVisible: ${output.email}
+- tapOn:
+    id: sign-in-password
+- inputText: ${output.password}
+- hideKeyboard
+- tapOn:
+    id: sign-in-continue
+
+# The bell, with the unread count.
+- extendedWaitUntil:
+    visible:
+      id: home-bell
+    timeout: 20000
+- extendedWaitUntil:
+    visible:
+      id: home-bell-badge
+      text: "3"
+    timeout: 15000
+- takeScreenshot: home-bell
+
+# The Notifications screen: back, Mark all as read, and the three, unread.
+- tapOn:
+    id: home-bell
+- extendedWaitUntil:
+    visible:
+      id: notifications-list
+    timeout: 15000
+- assertVisible: "Notifications"
+- assertVisible:
+    id: notifications-back
+- assertVisible:
+    id: notifications-mark-all
+- assertVisible: "Your Loan is due tomorrow"
+- assertVisible: '"${output.loanTitle}" is due tomorrow, .*'
+- assertVisible: "Your Hold is ready"
+- assertVisible: '"${output.heldTitle}" is set aside for you at the library desk until .*'
+- assertVisible: "New from the library"
+- assertVisible: ${output.announcementTitle}
+- assertVisible:
+    id: notification-unread
+- assertVisible: "Just now|[0-9]+ minutes? ago"
+- takeScreenshot: notifications-list
+
+# The ready Hold opens My Books on Holds.
+- tapOn:
+    id: notification-holdReady
+- extendedWaitUntil:
+    visible:
+      id: hold-pickup
+    timeout: 15000
+- assertVisible:
+    id: holds-segment
+- assertVisible: ${output.heldTitle}
+
+# Back on Home the badge counts one fewer.
+- runFlow: subflows/leave-search.yaml
+- tapOn:
+    id: tab-home
+- extendedWaitUntil:
+    visible:
+      id: home-bell-badge
+      text: "2"
+    timeout: 15000
+
+# The Announcement opens the Announcement screen; back returns to the list.
+- tapOn:
+    id: home-bell
+- extendedWaitUntil:
+    visible:
+      id: notification-announcement
+    timeout: 15000
+- tapOn:
+    id: notification-announcement
+- extendedWaitUntil:
+    visible:
+      id: announcement-title
+    timeout: 15000
+- assertVisible: ${output.announcementTitle}
+- tapOn:
+    id: announcement-back
+- extendedWaitUntil:
+    visible:
+      id: notifications-list
+    timeout: 10000
+
+# Mark all as read: no dot is left.
+- tapOn:
+    id: notifications-mark-all
+- extendedWaitUntil:
+    notVisible:
+      id: notification-unread
+    timeout: 10000
+- takeScreenshot: notifications-all-read
+
+# A read Notification still opens its screen: the Loan opens My Books on Loans.
+- tapOn:
+    id: notification-loanDueTomorrow
+- extendedWaitUntil:
+    visible:
+      id: loans-current
+    timeout: 15000
+- assertVisible: ${output.loanTitle}
+
+# Back on Home the badge is gone.
+- runFlow: subflows/leave-search.yaml
+- tapOn:
+    id: tab-home
+- extendedWaitUntil:
+    visible:
+      id: home-bell
+    timeout: 15000
+- assertNotVisible:
+    id: home-bell-badge
+
+- runFlow: subflows/sign-out.yaml
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 20000

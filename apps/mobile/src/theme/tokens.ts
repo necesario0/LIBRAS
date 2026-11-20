@@ -9,6 +9,8 @@ export const colors = {
   white: "#FFFFFF",
   /** Main text. */
   black: "#000000",
+  /** Wordmark ink (deep university navy). */
+  brandInk: "#111C4E",
   /** Primary action and brand blue (Figma "progress bar"). */
   primary: "#005DC3",
   /** Text field and card fill. */
@@ -39,7 +41,7 @@ export const colors = {
   panelBorder: "rgba(0,0,0,0.32)",
   /** The highlighted word of a heading ("Show this to the librarian", Figma 617:3265). */
   highlight: "#FFA800",
-  /** The greeting's second line on Home ("Whats on your mind"). */
+  /** The greeting's second line on Home ("What’s on your mind"). */
   textFaint: "#AFAFAF",
   /** Shadow of the Home search bar (Figma: black at 25%). */
   shadow: "#000000",
@@ -69,23 +71,37 @@ export const colors = {
   confirm: "#F9B233",
   /** The dimmed screen behind a dialog (Figma 928:14986). */
   scrim: "rgba(0,0,0,0.55)",
+  /** The hairline around the floating tab bar (black at 6%). */
+  hairline: "rgba(0,0,0,0.06)",
+  /** The circled cross that empties the search field. */
+  clearField: "#B9B9B9",
   /** The lighter spine drawn over a placeholder Book cover. */
   coverSpine: "rgba(255,255,255,0.35)",
+  /** The chosen option of the Sort menu (approved Tier 3 preview). */
+  menuChosen: "#FFF6E0",
 } as const;
 
-/** Raised cards (Figma 617:3265: x 0, y 7, blur 17.9, black 25%). */
-export const cardShadow = "0px 7px 17.9px rgba(0, 0, 0, 0.25)";
+/** The floating tab bar (approved Tier 3 preview: x 0, y 6, blur 18, black 18%). */
+export const tabBarShadow = "0px 6px 18px rgba(0, 0, 0, 0.18)";
 
 /** The rows of the Profile menu (Figma 921:13989: x 0, y 4, blur 6.5, black 25%). */
 export const menuRowShadow = "0px 4px 6.5px rgba(0, 0, 0, 0.25)";
-/** The action row of My Account, "Change password" (Figma 580:1832): a tighter shadow than the Profile menu rows. */
-export const actionRowShadow = "0px 4px 2px rgba(0, 0, 0, 0.25)";
+
+/** A menu that pops up over the screen, such as Sort (approved Tier 3 preview: x 0, y 10, blur 30, black 20%). */
+export const popupMenuShadow = "0px 10px 30px rgba(0, 0, 0, 0.2)";
+
+/** The chosen Published choice of the Filters sheet (approved Tier 3 preview: x 0, y 1, blur 3, black 15%). */
+export const segmentShadow = "0px 1px 3px rgba(0, 0, 0, 0.15)";
+
+/** The knob of an on and off switch (approved Tier 3 preview: x 0, y 1, blur 3, black 30%). */
+export const switchKnobShadow = "0px 1px 3px rgba(0, 0, 0, 0.3)";
 
 /** Montserrat is the only family. Keys are the names registered with `useFonts`. */
 export const fontFamily = {
   regular: "Montserrat_400Regular",
   medium: "Montserrat_500Medium",
   semiBold: "Montserrat_600SemiBold",
+  bold: "Montserrat_700Bold",
   extraLight: "Montserrat_200ExtraLight",
   /** The Book page's call number and its label (Figma: IBM Plex Mono and Roboto Mono). */
   monoLabel: "IBMPlexMono_400Regular",
@@ -97,20 +113,48 @@ export const fontSize = {
   display: 40,
   heading: 36,
   hero: 35,
-  /** "Show this to the librarian", and the title on the Book page. */
+  /** "Show this to the librarian", and the title of the password screens. */
   headline: 32,
+  /** "Show this to the librarian" on the Digital ID tab (approved Tier 3 preview). */
+  idHeading: 30,
   title: 26,
   /** The greeting on Home. */
   large: 24,
+  /** The Member's name on Profile (approved Tier 3 preview). */
+  name: 22,
+  /** The title on the Book page (approved Tier 3 preview). */
+  bookTitle: 21,
   subheading: 20,
   body: 16,
   note: 15,
   label: 14,
   small: 13,
   caption: 12,
+  /** The tags of the Book page: edition, year and availability (approved Tier 3 preview). */
+  tag: 11,
+  /** Search mode (approved Tier 3 preview): the list label, the text link, a list row and the empty state heading. */
+  listLabel: 10.5,
+  action: 12.5,
+  listRow: 14.5,
+  emptyTitle: 17,
+  /** Search results (approved Tier 3 preview): the count line and "Also in N older editions", then a result's year line. */
+  resultNote: 11.5,
+  resultMeta: 11,
+  /** The LC classes next to a Subject in the Filters sheet. */
+  lcClasses: 9.5,
   /** The line under the greeting on Home. */
   micro: 10,
 } as const;
+
+/**
+ * The line height for a text of `size`: 1.25 times it, rounded up. Montserrat's
+ * descenders ("g", "y") reach below a line any tighter, and Android cuts them
+ * off, so every text that sets a line height takes it from here. React Native
+ * scales it with the phone's font size, as it does the text.
+ */
+export function lineHeightFor(size: number): number {
+  return Math.ceil(size * 1.25);
+}
 
 export const typography = {
   display: { fontFamily: fontFamily.regular, fontSize: fontSize.display },
@@ -170,10 +214,18 @@ export const radii = {
   cover: 10,
   /** A small Book cover in a list row (search results, Loans, Holds). */
   coverSmall: 6,
+  /** The Save button and the toast (approved Tier 3 preview). */
+  pillButton: 22,
   /** The call number pill of the Book page (Figma 1187:1479). */
   callNumber: 43,
   /** The edition and availability tags of the Book page. */
   tag: 39,
+  /** The floating tab bar. */
+  tabBar: 35,
+  /** The segment control of My Books. */
+  segments: 22,
+  /** A segment of My Books, and the small outlined button of a list row (Renew, Cancel Hold). */
+  segment: 18,
   /** The grabber at the top of the Book page's sheet (Figma 609:1159). */
   grabber: 58,
   /** The rounded rectangle buttons of the account frames: Log out (Figma 580:1741), Cancel and Save changes (580:1842, 580:1845). */
@@ -182,8 +234,25 @@ export const radii = {
   roundAction: 23,
   /** The success dialog of the password screens (Figma 928:14987). */
   dialog: 28,
+  /** The round icon behind an empty state message (64 pt). */
+  iconRing: 32,
+  /** The Sort, Available now and Filters chips above search results (34 pt). */
+  chip: 17,
+  /** The Sort menu, and one option in it. */
+  popupMenu: 16,
+  menuOption: 10,
+  /** The Published choices of the Filters sheet, and the chosen one. */
+  publishedChoices: 14,
+  publishedChoice: 11,
+  /** An on and off switch (28 pt high). */
+  switch: 14,
+  switchKnob: 11,
+  /** A removable filter chip under the search controls (28 pt high). */
+  filterChip: 14,
   /** The round logo of the wordmark (31 pt). */
   logo: 16,
+  /** The square gold accent dot beside the wordmark. */
+  wordmarkDot: 2,
   /** The terms checkbox of sign-up. */
   checkbox: 6,
   /** A radio button (24 pt). */
@@ -217,8 +286,20 @@ export const outlineActionHeight = 54;
 /** Height of the Home search bar. */
 export const searchBarHeight = 46;
 
+/**
+ * The floating tab bar of the signed-in screens (approved Tier 3 preview): 70 pt
+ * high, 14 pt in from each side and at least 18 pt above the bottom edge.
+ */
+export const tabBar = { height: 70, side: 14, bottom: 18, icon: 25, dot: 10 } as const;
+
 /** The status bar area of a Figma phone frame. Screens position their content from below it. */
 export const statusBarHeight = 62;
 
 /** The cover colours of the design's book placeholders (Figma Search C). A Book without a cover picture takes one by its id. */
 export const bookCovers = ["#801A1A", "#3366B2", "#738C4D", "#E5C773", "#2B2B33", "#33998C"] as const;
+
+/** A Book on a Home shelf (approved Tier 3 preview): the cover is 96 by 140 and the title and author sit under it in the same width. */
+export const shelfCover = { width: 96, height: 140 } as const;
+
+/** The title printed on a Home shelf cover: white, except on the pale yellow cover, where white could not be read. */
+export const coverInk = { light: "#FFFFFF", dark: "#2B2B33", darkOn: "#E5C773" } as const;

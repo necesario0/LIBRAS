@@ -1,0 +1,24 @@
+# With no Announcement running there is no banner and no placeholder: Home goes straight from the search bar to
+# the shelves. Needs the end-to-end API on port 3000 (npm run e2e starts it).
+appId: ph.edu.umak.libras
+---
+- launchApp:
+    clearState: true
+- runScript:
+    file: scripts/create-announcement.js
+    env:
+      MODE: none
+- runFlow: subflows/visitor-sign-in.yaml
+
+- extendedWaitUntil:
+    visible:
+      id: shelf-new_arrivals-title
+    timeout: 20000
+- assertNotVisible:
+    id: home-announcement
+- takeScreenshot: home-no-announcement
+
+- runFlow: subflows/sign-out.yaml
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 20000

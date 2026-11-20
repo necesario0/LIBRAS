@@ -18,8 +18,8 @@ export function renewedDueAt(dueAt: Date, loanPeriodDays: number): Date {
 export interface RenewalFacts {
   /** The Loan, as its row reads: the current due date and how often it was renewed. */
   loan: { due_at: Date; renewal_count: number };
-  /** The Member's Loan Policy. `loan_period_days` is null for an Account Type that cannot borrow. */
-  policy: { renewal_limit: number; loan_period_days: number | null };
+  /** The Member's Loan Policy. `loan_period_days` is null for an in-library-only or non-borrowing Account Type. */
+  policy: { renewal_limit: number; loan_period_days: number | null; in_library_only?: boolean };
   /** Another Member's Hold on the Book is waiting. */
   holdWaiting: boolean;
   /** Why the Member is not in Good standing (`goodStandingRefusal`), or null when they are. */
@@ -37,7 +37,10 @@ export interface RenewalFacts {
  */
 export function renewalOf({ loan, policy, holdWaiting, notInGoodStanding, now }: RenewalFacts): LoanRenewal {
   if (isLoanOverdue(loan.due_at, now)) return { renewable: false, reason: "loan_overdue" };
-  if (policy.loan_period_days === null || loan.renewal_count >= policy.renewal_limit) {
+  if (policy.in_library_only || policy.loan_period_days === null || policy.renewal_limit <= 0) {
+    return { renewable: false, reason: "not_renewable" };
+  }
+  if (loan.renewal_count >= policy.renewal_limit) {
     return { renewable: false, reason: "renewal_limit_reached" };
   }
   if (holdWaiting) return { renewable: false, reason: "hold_waiting" };

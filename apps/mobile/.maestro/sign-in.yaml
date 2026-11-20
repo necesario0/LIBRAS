@@ -13,9 +13,10 @@ appId: ph.edu.umak.libras
 - extendedWaitUntil:
     visible: "SIGN  UP"
     timeout: 30000
+- takeScreenshot: welcome
 - tapOn:
     id: welcome-sign-in
-- assertVisible: "The library for problem solver"
+- assertVisible: "Every shelf, within reach."
 - takeScreenshot: sign-in-empty
 
 # Nothing entered: each field says what is missing, and no request is made.
@@ -166,7 +167,7 @@ appId: ph.edu.umak.libras
 - takeScreenshot: forgot-password-updated
 - tapOn:
     id: password-updated-action
-- assertVisible: "The library for problem solver"
+- assertVisible: "Every shelf, within reach."
 - assertNotVisible: "Hi, Cobby"
 
 # Sign-in still holds the email, and the new password signs the Member in.

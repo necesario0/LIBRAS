@@ -1,0 +1,42 @@
+# A new Visitor with no Notifications and no running Announcement: the Home bell has
+# no badge, and the Notifications screen says in one line what will show there.
+# Needs the end-to-end API on port 3000 (npm run e2e starts it).
+appId: ph.edu.umak.libras
+---
+- launchApp:
+    clearState: true
+- runScript:
+    file: scripts/create-announcement.js
+    env:
+      MODE: none
+- runFlow: subflows/visitor-sign-in.yaml
+
+- extendedWaitUntil:
+    visible:
+      id: home-bell
+    timeout: 15000
+- assertNotVisible:
+    id: home-bell-badge
+- tapOn:
+    id: home-bell
+- extendedWaitUntil:
+    visible:
+      id: notifications-empty
+    timeout: 15000
+- assertVisible: "Ready Holds, Loans due soon and library Announcements show up here."
+- assertNotVisible:
+    id: notifications-mark-all
+- takeScreenshot: notifications-empty
+
+# Back returns to Home.
+- tapOn:
+    id: notifications-back
+- extendedWaitUntil:
+    visible:
+      id: home-shelves
+    timeout: 10000
+
+- runFlow: subflows/sign-out.yaml
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 20000

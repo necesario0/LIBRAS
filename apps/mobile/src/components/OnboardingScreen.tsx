@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { ComponentRef, ReactNode } from "react";
 import { Keyboard, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useScreenTop } from "../hooks/useScreenTop";
@@ -7,8 +7,8 @@ import { colors, fontFamily, fontSize, spacing } from "../theme/tokens";
 import { BookIllustration } from "./BookIllustration";
 import { ConsentText } from "./ConsentText";
 import { KeyboardAvoiding } from "./KeyboardAvoiding";
+import { PopupFloorContext } from "./PopupFloor";
 import { StepProgress } from "./StepProgress";
-import { Wordmark } from "./Wordmark";
 
 /** True while the on-screen keyboard is up. */
 export function useKeyboardVisible(): boolean {
@@ -41,34 +41,37 @@ export function OnboardingScreen({ step, formGap, children }: OnboardingScreenPr
   const insets = useSafeAreaInsets();
   const screenTop = useScreenTop();
   const keyboardVisible = useKeyboardVisible();
+  // An open select list stops above the footer, which never moves.
+  const footer = useRef<ComponentRef<typeof View>>(null);
 
   return (
-    <KeyboardAvoiding style={styles.screen}>
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={[styles.content, { paddingTop: screenTop + 5 }]}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        <Wordmark />
-        <View style={styles.book}>
-          <BookIllustration width={133} height={90} />
-        </View>
-        <Text style={styles.heading} numberOfLines={1} adjustsFontSizeToFit accessibilityRole="header">
-          Create your profile
-        </Text>
-        <Text style={styles.subtitle}>create an account so you can manage your book journey</Text>
-        <View style={[styles.form, { marginTop: formGap }]}>{children}</View>
-      </ScrollView>
-      {keyboardVisible ? null : (
-        <View style={[styles.footer, { paddingBottom: insets.bottom + 25 }]}>
-          <View style={styles.progress}>
-            <StepProgress step={step} />
+    <PopupFloorContext value={footer}>
+      <KeyboardAvoiding style={styles.screen}>
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={[styles.content, { paddingTop: screenTop + 5 }]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.book}>
+            <BookIllustration width={133} height={90} />
           </View>
-          <ConsentText />
-        </View>
-      )}
-    </KeyboardAvoiding>
+          <Text style={styles.heading} numberOfLines={1} adjustsFontSizeToFit accessibilityRole="header">
+            Create your profile
+          </Text>
+          <Text style={styles.subtitle}>create an account so you can manage your book journey</Text>
+          <View style={[styles.form, { marginTop: formGap }]}>{children}</View>
+        </ScrollView>
+        {keyboardVisible ? null : (
+          <View ref={footer} style={[styles.footer, { paddingBottom: insets.bottom + 25 }]}>
+            <View style={styles.progress}>
+              <StepProgress step={step} />
+            </View>
+            <ConsentText />
+          </View>
+        )}
+      </KeyboardAvoiding>
+    </PopupFloorContext>
   );
 }
 
@@ -76,7 +79,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.white },
   scroll: { flex: 1 },
   content: { flexGrow: 1, paddingBottom: spacing.lg },
-  book: { alignSelf: "center", marginTop: 21 },
+  book: { alignSelf: "center" },
   heading: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.heading,

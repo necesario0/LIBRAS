@@ -1,6 +1,7 @@
 import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { createApp } from "../app.ts";
+import { announcementFiles } from "../announcements/storage.ts";
 import type { AppOptions } from "../app.ts";
 import type { AccountAdmin, AuthProvider } from "../auth/auth-provider.ts";
 import { SupabaseAuthAdmin } from "../auth/supabase-auth-admin.ts";
@@ -13,6 +14,7 @@ import type { Logger } from "../logger.ts";
 import { runSweep, startSweeper } from "../sweep.ts";
 import type { SweepResult } from "../sweep.ts";
 import { CapturingEmailSender } from "./capturing-email-sender.ts";
+import { CapturingPushSender } from "./capturing-push-sender.ts";
 import { FakeClock } from "./fake-clock.ts";
 
 export interface TestApi {
@@ -22,6 +24,8 @@ export interface TestApi {
   clock: FakeClock;
   /** Every email the API sent. Nothing leaves the machine. */
   emails: CapturingEmailSender;
+  /** Every push notification the API sent. Nothing leaves the machine. */
+  pushes: CapturingPushSender;
   /** The API's connection to the real local PostgreSQL, for arranging the data a test needs. */
   db: Database;
   /**
@@ -74,12 +78,13 @@ export async function startTestApi(options: TestApiOptions = {}): Promise<TestAp
   const db = createDatabase(options.databaseUrl ?? process.env.TEST_DATABASE_URL ?? LOCAL_DATABASE_URL, logger);
   const clock = new FakeClock();
   const emails = new CapturingEmailSender();
+  const pushes = new CapturingPushSender();
   const config = loadConfig();
   const realAuth = new SupabaseAuth({ url: config.supabaseUrl, publishableKey: config.supabasePublishableKey });
   const auth = options.wrapAuth ? options.wrapAuth(realAuth) : realAuth;
   const realAccounts = new SupabaseAuthAdmin({ url: config.supabaseUrl, secretKey: config.supabaseSecretKey });
   const accounts = options.wrapAccounts ? options.wrapAccounts(realAccounts) : realAccounts;
-  const deps = { db, auth, accounts, clock, email: emails, logger };
+  const deps = { db, auth, accounts, clock, email: emails, logger, files: announcementFiles(config), push: pushes };
   const { app, stop } = createApp(deps, options);
 
   const sweeper = options.sweepIntervalMs === undefined ? undefined : startSweeper(deps, options.sweepIntervalMs);
@@ -94,6 +99,7 @@ export async function startTestApi(options: TestApiOptions = {}): Promise<TestAp
     baseUrl: `http://127.0.0.1:${port}`,
     clock,
     emails,
+    pushes,
     db,
     sweepPickupWindows: () => expireDueHolds(deps),
     sweep: () => runSweep(deps),

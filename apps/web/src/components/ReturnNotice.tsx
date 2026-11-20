@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { counted, formatLibraryDate, formatLibraryDateTime, formatPesos } from "@libras/shared";
+import { counted, formatLibraryDate, formatLibraryDateTime, formatLoanDueAt, formatPesos } from "@libras/shared";
 import type { FineOutcome, FineSettlement, LoanFine, ReturnedLoan, SettleFineResponse } from "@libras/shared";
 import { FineActions } from "./FineActions.tsx";
 import { FinePanel } from "./FinePanel.tsx";
@@ -33,11 +33,11 @@ export function ReturnNotice({ loan, settleFine }: { loan: ReturnedLoan; settleF
           </span>
           {loan.late ? (
             <span className="loan-notice__late" data-testid="desk-return-late">
-              {`Returned late - was due ${formatLibraryDate(loan.dueAt)}`}
+              {`Returned late - was due ${formatLoanDueAt(loan.dueAt)}`}
             </span>
           ) : (
             <span className="loan-notice__copy" data-testid="desk-return-due">
-              {`Returned on time - due ${formatLibraryDate(loan.dueAt)}`}
+              {`Returned on time - due ${formatLoanDueAt(loan.dueAt)}`}
             </span>
           )}
         </div>

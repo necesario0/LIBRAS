@@ -54,8 +54,15 @@ export function loanFixtureRoutes(router: Router, deps: AppDeps): void {
   };
 
   router.post("/e2e/loans", async (req, res) => {
-    const { email, bookId, daysAgo = 0 } = (req.body ?? {}) as { email?: unknown; bookId?: unknown; daysAgo?: unknown };
-    if (typeof email !== "string" || typeof bookId !== "string" || typeof daysAgo !== "number" || !Number.isInteger(daysAgo) || daysAgo < 0) {
+    const { email, bookId, daysAgo = 0, at } = (req.body ?? {}) as { email?: unknown; bookId?: unknown; daysAgo?: unknown; at?: unknown };
+    if (
+      typeof email !== "string" ||
+      typeof bookId !== "string" ||
+      typeof daysAgo !== "number" ||
+      !Number.isInteger(daysAgo) ||
+      daysAgo < 0 ||
+      (at !== undefined && (typeof at !== "string" || Number.isNaN(Date.parse(at))))
+    ) {
       res.status(400).json({ error: { code: "invalid_request", message: "Not a Loan fixture." } });
       return;
     }
@@ -81,7 +88,8 @@ export function loanFixtureRoutes(router: Router, deps: AppDeps): void {
       return;
     }
 
-    const then = { ...deps, clock: { now: () => new Date(deps.clock.now().getTime() - daysAgo * DAY_MS) } };
+    const baseTime = typeof at === "string" ? new Date(at) : deps.clock.now();
+    const then = { ...deps, clock: { now: () => new Date(baseTime.getTime() - daysAgo * DAY_MS) } };
     // As at the desk: the Digital ID is scanned (a desk session starts), then the Copy, then the Librarian is done.
     const librarian = { userId: await librarianId(), email: FIXTURE_LIBRARIAN.email };
     const { code } = await currentDigitalId(then, memberId);

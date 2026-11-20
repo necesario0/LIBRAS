@@ -1,0 +1,324 @@
+# Saved books. A UMAK Student with nothing yet sees the empty states of Loans, Holds
+# and Saved, each with "Search the catalog", which opens search mode on Home. The
+# Student saves two Books from their pages (the button toggles), finds them under
+# My Books > Saved, newest first, with their availability, removes one and takes
+# it back with Undo, and opens a Saved book. A Visitor can save too: their tab is
+# "Saved" with no segments.
+# Needs the end-to-end API on port 3000 (npm run e2e starts it).
+appId: ph.edu.umak.libras
+---
+- launchApp:
+    clearState: true
+- runScript: scripts/create-saved-books.js
+
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 30000
+- tapOn:
+    id: welcome-sign-in
+- tapOn:
+    id: sign-in-email
+- retry:
+    maxRetries: 3
+    commands:
+      - eraseText: 80
+      - inputText: ${output.email}
+      - assertVisible: ${output.email}
+- tapOn:
+    id: sign-in-password
+- inputText: ${output.password}
+- hideKeyboard
+- tapOn:
+    id: sign-in-continue
+- extendedWaitUntil:
+    visible:
+      id: search-(open|input)
+    timeout: 20000
+
+# Empty Loans: one line and Search the catalog, which opens search mode.
+- runFlow: subflows/leave-search.yaml
+- tapOn:
+    id: tab-my-books
+- extendedWaitUntil:
+    visible:
+      id: loans-empty
+    timeout: 15000
+- assertVisible: "No Loans yet"
+- assertVisible: "Search the catalog"
+- takeScreenshot: saved-books-loans-empty
+- tapOn:
+    id: loans-empty-search
+- extendedWaitUntil:
+    visible:
+      id: search-input
+    timeout: 10000
+- assertNotVisible:
+    id: tab-my-books
+
+# Empty Holds.
+- runFlow: subflows/leave-search.yaml
+- tapOn:
+    id: tab-my-books
+- tapOn:
+    id: my-books-holds
+- extendedWaitUntil:
+    visible:
+      id: holds-empty
+    timeout: 15000
+- assertVisible: "No Holds yet"
+- takeScreenshot: saved-books-holds-empty
+- tapOn:
+    id: holds-empty-search
+- extendedWaitUntil:
+    visible:
+      id: search-input
+    timeout: 10000
+
+# Empty Saved.
+- runFlow: subflows/leave-search.yaml
+- tapOn:
+    id: tab-my-books
+- tapOn:
+    id: my-books-saved
+- extendedWaitUntil:
+    visible:
+      id: saved-empty
+    timeout: 15000
+- assertVisible: "No Saved books yet"
+- assertVisible: "Tap Save on any Book to keep it here for later."
+- takeScreenshot: saved-books-saved-empty
+- tapOn:
+    id: saved-empty-search
+- extendedWaitUntil:
+    visible:
+      id: search-input
+    timeout: 10000
+
+# Save the first Book from its page; the button toggles.
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: ${output.firstWord}
+- extendedWaitUntil:
+    visible: ${output.firstTitle}.*
+    timeout: 15000
+- tapOn: ${output.firstTitle}.*
+- extendedWaitUntil:
+    visible:
+      id: book-save
+    timeout: 15000
+- assertVisible:
+    id: book-save-label
+    text: "Save"
+# Save shares the top row with the close button, to its left, so no empty band sits above the cover.
+- assertVisible:
+    id: book-save
+    leftOf:
+      id: book-close
+- takeScreenshot: saved-books-book-unsaved
+- tapOn:
+    id: book-save
+- extendedWaitUntil:
+    visible: "Saved to My Books"
+    timeout: 10000
+- assertVisible:
+    id: book-save-label
+    text: "Saved"
+- takeScreenshot: saved-books-book-saved
+- tapOn:
+    id: book-save
+- extendedWaitUntil:
+    visible: "Removed from Saved"
+    timeout: 10000
+- assertVisible:
+    id: book-save-label
+    text: "Save"
+- tapOn:
+    id: book-save
+- extendedWaitUntil:
+    visible:
+      id: book-save-label
+      text: "Saved"
+    timeout: 10000
+- tapOn:
+    id: book-close
+- extendedWaitUntil:
+    visible:
+      id: search-results
+    timeout: 10000
+
+# Save the second Book, then reopen its page: it still says Saved.
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: ${output.secondWord}
+- extendedWaitUntil:
+    visible: ${output.secondTitle}.*
+    timeout: 15000
+- tapOn: ${output.secondTitle}.*
+- extendedWaitUntil:
+    visible:
+      id: book-save
+    timeout: 15000
+- tapOn:
+    id: book-save
+- extendedWaitUntil:
+    visible:
+      id: book-save-label
+      text: "Saved"
+    timeout: 10000
+- tapOn:
+    id: book-close
+- extendedWaitUntil:
+    visible:
+      id: search-results
+    timeout: 10000
+- tapOn: ${output.secondTitle}.*
+- extendedWaitUntil:
+    visible:
+      id: book-save-label
+      text: "Saved"
+    timeout: 15000
+- tapOn:
+    id: book-close
+
+# My Books > Saved lists both, newest first, each with its availability.
+- runFlow: subflows/leave-search.yaml
+- tapOn:
+    id: tab-my-books
+- tapOn:
+    id: my-books-saved
+- extendedWaitUntil:
+    visible:
+      id: saved-list
+    timeout: 15000
+- assertVisible: ${output.firstTitle}
+- assertVisible: ${output.secondTitle}
+- assertVisible: "2 of 3 available"
+- assertVisible: "None available"
+- assertVisible:
+    id: saved-title
+    index: 0
+    text: ${output.secondTitle}
+- assertNotVisible:
+    id: my-books-saved-dot
+- takeScreenshot: saved-books-list
+
+# The bookmark removes a Book and offers Undo.
+- tapOn:
+    id: saved-remove
+    index: 0
+- extendedWaitUntil:
+    visible: "Removed from Saved"
+    timeout: 10000
+- assertNotVisible: ${output.secondTitle}
+- takeScreenshot: saved-books-undo
+- tapOn:
+    id: saved-undo
+- extendedWaitUntil:
+    visible: ${output.secondTitle}
+    timeout: 10000
+- assertVisible: ${output.firstTitle}
+
+# Removing both gives the empty state again.
+- tapOn:
+    id: saved-remove
+    index: 0
+- tapOn:
+    id: saved-remove
+    index: 0
+- extendedWaitUntil:
+    visible:
+      id: saved-empty
+    timeout: 10000
+
+# Undo of the last removal brings the Book back; opening it from the list shows Saved.
+- tapOn:
+    id: saved-undo
+- extendedWaitUntil:
+    visible:
+      id: saved-list
+    timeout: 10000
+- tapOn:
+    id: saved-open
+    index: 0
+- extendedWaitUntil:
+    visible:
+      id: book-save-label
+      text: "Saved"
+    timeout: 15000
+- tapOn:
+    id: book-close
+- extendedWaitUntil:
+    visible:
+      id: saved-list
+    timeout: 10000
+
+# A Visitor can save a Book. Their tab is "Saved", with no segments.
+- runFlow: subflows/sign-out.yaml
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 20000
+- tapOn:
+    id: welcome-sign-in
+- tapOn:
+    id: sign-in-email
+- retry:
+    maxRetries: 3
+    commands:
+      - eraseText: 80
+      - inputText: ${output.visitorEmail}
+      - assertVisible: ${output.visitorEmail}
+- tapOn:
+    id: sign-in-password
+- inputText: ${output.visitorPassword}
+- hideKeyboard
+- tapOn:
+    id: sign-in-continue
+- extendedWaitUntil:
+    visible:
+      id: search-(open|input)
+    timeout: 20000
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: ${output.firstWord}
+- extendedWaitUntil:
+    visible: ${output.firstTitle}.*
+    timeout: 15000
+- tapOn: ${output.firstTitle}.*
+- extendedWaitUntil:
+    visible:
+      id: book-save
+    timeout: 15000
+- tapOn:
+    id: book-save
+- extendedWaitUntil:
+    visible:
+      id: book-save-label
+      text: "Saved"
+    timeout: 10000
+- tapOn:
+    id: book-close
+- runFlow: subflows/leave-search.yaml
+- tapOn:
+    id: tab-my-books
+- extendedWaitUntil:
+    visible:
+      id: my-books-saved
+    timeout: 15000
+- tapOn:
+    id: my-books-saved
+- extendedWaitUntil:
+    visible:
+      id: saved-list
+    timeout: 15000
+- assertVisible: "My Books"
+- assertVisible: ${output.firstTitle}
+- assertVisible:
+    id: my-books-loans
+- assertNotVisible:
+    id: my-books-holds
+- assertVisible:
+    id: my-books-saved
+- takeScreenshot: saved-books-visitor

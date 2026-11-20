@@ -12,17 +12,11 @@ import type { AuthorizedRequest } from "../auth/authorized-request";
 export type FetchState<T extends object> = { status: "loading" } | ({ status: "loaded" } & T) | { status: "error"; message: string };
 
 /**
- * Fetches with the Member's session whenever the screen comes into focus (so a
- * screen shows what changed while another one was open) and again on `reload`.
- * An answer that arrives after a newer fetch started is dropped, and a failed
- * refresh keeps what is already shown. `failure` is the message for an error
- * that is not the API's own.
+ * Fetches with the Member's session on `reload`. An answer that arrives after
+ * a newer fetch started is dropped, and a failed refresh keeps what is already
+ * shown. `failure` is the message for an error that is not the API's own.
  */
-export function useFocusedFetch<T extends object>(
-  request: AuthorizedRequest,
-  fetch: (accessToken: string) => Promise<T>,
-  failure: string,
-) {
+export function useFetch<T extends object>(request: AuthorizedRequest, fetch: (accessToken: string) => Promise<T>, failure: string) {
   const [state, setState] = useState<FetchState<T>>({ status: "loading" });
   const requestRef = useRef(request);
   requestRef.current = request;
@@ -42,11 +36,26 @@ export function useFocusedFetch<T extends object>(
     }
   }, [failure]);
 
+  return { state, reload };
+}
+
+/**
+ * `useFetch` that also fetches whenever the screen comes into focus, so a
+ * screen shows what changed while another one was open.
+ */
+export function useFocusedFetch<T extends object>(
+  request: AuthorizedRequest,
+  fetch: (accessToken: string) => Promise<T>,
+  failure: string,
+) {
+  const fetched = useFetch(request, fetch, failure);
+  const { reload } = fetched;
+
   useFocusEffect(
     useCallback(() => {
       void reload();
     }, [reload]),
   );
 
-  return { state, reload };
+  return fetched;
 }

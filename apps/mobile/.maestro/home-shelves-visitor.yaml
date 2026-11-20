@@ -1,0 +1,67 @@
+# A Visitor has no college and cannot borrow, so Home gives them the library-wide
+# shelves: Popular in the library (the Books borrowed most by every Member) and
+# On the shelf now (Books with a Copy to read in the library today). The shelf of
+# New arrivals is the same for everyone.
+# Needs the end-to-end API on port 3000 (npm run e2e starts it).
+appId: ph.edu.umak.libras
+---
+- launchApp:
+    clearState: true
+- runScript: scripts/create-shelves.js
+
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 30000
+- tapOn:
+    id: welcome-sign-in
+- tapOn:
+    id: sign-in-email
+- inputText: ${output.visitorEmail}
+- tapOn:
+    id: sign-in-password
+- inputText: ${output.visitorPassword}
+- hideKeyboard
+- tapOn:
+    id: sign-in-continue
+- extendedWaitUntil:
+    visible:
+      id: shelf-new_arrivals-title
+    timeout: 20000
+- assertVisible: "New arrivals"
+
+# The library-wide versions, with the Visitor's wording.
+- scrollUntilVisible:
+    element:
+      id: shelf-popular-title
+    direction: DOWN
+- assertVisible: "Popular in the library"
+- assertVisible: "Most borrowed in the last 6 months"
+- assertNotVisible: "Popular in CCIS"
+- scrollUntilVisible:
+    element:
+      id: shelf-available_now-title
+    direction: DOWN
+- assertVisible: "On the shelf now"
+- assertVisible: "You can borrow these for in-library use today"
+- assertNotVisible: "Available now in Law"
+- takeScreenshot: home-shelves-visitor
+
+# The Law Book was borrowed in the window and has a Copy left, so it heads both shelves; it opens its page.
+- tapOn:
+    id: shelf-available_now-book-${output.statutesId}
+- extendedWaitUntil:
+    visible:
+      id: book-sheet
+    timeout: 15000
+- assertVisible: ${output.statutesTitle}
+- tapOn:
+    id: book-close
+- extendedWaitUntil:
+    visible:
+      id: home-shelves
+    timeout: 10000
+
+- runFlow: subflows/sign-out.yaml
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 20000

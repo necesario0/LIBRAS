@@ -1,6 +1,6 @@
-# A signed-in Member searches the catalog from Home: an exact word, a word with
-# a typo, a Book with no Copy available, a search that finds nothing (which is
-# not an error), and a search that cannot run (which is).
+# A signed-in Member searches the catalog from Home (search mode): an exact
+# word, a word with a typo, a Book with no Copy available and a search that
+# finds nothing (which is not an error). Search mode itself is in search-mode.yaml.
 # Needs the end-to-end API on port 3000 (npm run e2e starts it).
 appId: ph.edu.umak.libras
 ---
@@ -27,22 +27,25 @@ appId: ph.edu.umak.libras
 - tapOn:
     id: sign-in-continue
 
-# Home: the greeting and the search bar, and none of the recommendation sections.
+# Home: the greeting, the search bar and the shelves (home-shelves.yaml checks those), and none of the old recommendation sections.
 - extendedWaitUntil:
     visible: "Hi, Cobby"
     timeout: 20000
 - assertVisible:
-    id: search-input
-- assertVisible:
-    id: search-hint
+    id: search-open
+- extendedWaitUntil:
+    visible:
+      id: home-shelves
+    timeout: 20000
 - assertNotVisible: "Book of the month!"
 - assertNotVisible: "You might also like these"
 - takeScreenshot: home-idle
 
 # An exact word finds the Book and shows how many Copies are available.
-- tapOn:
-    id: search-input
-- inputText: ${output.word}
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: ${output.word}
 - extendedWaitUntil:
     visible: ${output.title}
     timeout: 15000
@@ -52,16 +55,20 @@ appId: ph.edu.umak.libras
 - takeScreenshot: search-results
 
 # A typo still finds it.
-- eraseText: 40
-- inputText: ${output.typo}
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: ${output.typo}
 - extendedWaitUntil:
     visible: ${output.title}
     timeout: 15000
 - assertVisible: "2 of 3 available"
 
 # A Book whose only Copy is on loan says so.
-- eraseText: 40
-- inputText: ${output.other}
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: ${output.other}
 - extendedWaitUntil:
     visible: ${output.loanTitle}
     timeout: 15000
@@ -69,8 +76,10 @@ appId: ph.edu.umak.libras
 - takeScreenshot: search-none-available
 
 # Nothing matches: a clear "no books found", not an error.
-- eraseText: 40
-- inputText: ${output.nothing}
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: ${output.nothing}
 - extendedWaitUntil:
     visible: "No books found"
     timeout: 15000
@@ -78,14 +87,17 @@ appId: ph.edu.umak.libras
 - assertNotVisible: ${output.title}
 - takeScreenshot: search-no-results
 
-# Clearing the search brings the hint back.
-- eraseText: 60
+# Cancel leaves search mode: Home with its search bar and the tab bar again.
+- tapOn:
+    id: search-cancel
 - extendedWaitUntil:
     visible:
-      id: search-hint
+      id: search-open
     timeout: 10000
+- assertVisible:
+    id: tab-home
 
-# Sign out is reached from the profile in the Home header.
+# Sign out is reached from the Profile tab.
 - runFlow: subflows/sign-out.yaml
 - extendedWaitUntil:
     visible: "SIGN  UP"

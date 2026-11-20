@@ -36,10 +36,11 @@ appId: ph.edu.umak.libras
     id: student-number
 - inputText: ${output.studentNumber}
 - hideKeyboard
-- tapOn:
-    id: student-college
-- tapOn:
-    id: student-college-option-CCIS
+- runFlow:
+    file: subflows/pick-option.yaml
+    env:
+      FIELD: student-college
+      OPTION: CCIS
 - tapOn:
     id: student-continue
 
@@ -87,6 +88,7 @@ appId: ph.edu.umak.libras
 - tapOn:
     id: email-continue
 - assertVisible: "Accept the terms to create your account."
+- takeScreenshot: sign-up-terms-error
 - tapOn:
     id: email-accept-terms
 - tapOn:

@@ -68,8 +68,11 @@ describe("GET /catalog/books/:id", () => {
       publicationYear: 1960,
       isbn: "9780061120084",
       lcCallNumber: "PS3562.E353 T6 1960",
+      subject: "Literature",
       availableCopies: 1,
       totalCopies: 1,
+      summary: null,
+      contents: null,
     });
   });
 
@@ -99,8 +102,11 @@ describe("GET /catalog/books/:id", () => {
       publicationYear: null,
       isbn: null,
       lcCallNumber: null,
+      subject: null,
       availableCopies: 0,
       totalCopies: 0,
+      summary: null,
+      contents: null,
     });
   });
 

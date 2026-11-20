@@ -1,9 +1,10 @@
 # A UMAK Student places a Hold on a Book whose only Copy is out with another
 # Member. The Librarian records the return (the end-to-end API does it, as the
 # desk page would): the Hold becomes ready, and the app shows it with the end of
-# the Pickup Window on the Holds screen, on Home and on the Book page. The Member
-# shows the Digital ID, the Librarian lends the set-aside Copy, and the Hold is
-# listed as borrowed.
+# the Pickup Window in the Holds segment of My Books, which now opens on Holds,
+# and on the Book page; the My Books tab and its Holds segment get a dot. The
+# Member shows the Digital ID, the Librarian lends the set-aside Copy, and the
+# Hold is listed as borrowed, with the dot gone.
 # Needs the end-to-end API on port 3000 (npm run e2e starts it).
 appId: ph.edu.umak.libras
 ---
@@ -36,11 +37,12 @@ appId: ph.edu.umak.libras
 # The Book's only Copy is out: the Member places a Hold.
 - extendedWaitUntil:
     visible:
-      id: home-holds
+      id: search-(open|input)
     timeout: 20000
-- tapOn:
-    id: search-input
-- inputText: ${output.heldWord}
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: ${output.heldWord}
 - extendedWaitUntil:
     visible: ${output.heldTitle}
     timeout: 15000
@@ -68,24 +70,32 @@ appId: ph.edu.umak.libras
     visible:
       id: search-results
     timeout: 10000
-- tapOn:
-    id: search-input
-- eraseText: 40
-- hideKeyboard
-- extendedWaitUntil:
-    visible: "1 waiting"
-    timeout: 15000
+# A waiting Hold earns no dot.
+- runFlow: subflows/leave-search.yaml
+- assertNotVisible:
+    id: tab-my-books-dot
 
 # The Copy comes back at the desk: the Hold is dispatched and the Member is emailed.
 - runScript: scripts/return-held-copy.js
 
-# The Holds screen shows the Hold as ready, with the end of the Pickup Window.
+# My Books opens on Holds: the Hold is ready, with the end of the Pickup Window.
+# The tab and the Holds segment have a dot; Loans does not.
+- runFlow: subflows/leave-search.yaml
 - tapOn:
-    id: home-holds
+    id: tab-my-books
 - extendedWaitUntil:
     visible:
       id: hold-pickup
     timeout: 15000
+- assertVisible:
+    id: holds-segment
+- runFlow: subflows/leave-search.yaml
+- assertVisible:
+    id: tab-my-books-dot
+- assertVisible:
+    id: my-books-holds-dot
+- assertNotVisible:
+    id: my-books-loans-dot
 - assertVisible: ${output.heldTitle}
 - assertVisible: "Ready for pickup"
 - assertVisible: "A Copy is set aside for you"
@@ -103,18 +113,23 @@ appId: ph.edu.umak.libras
 - assertVisible:
     id: hold-pickup
 
-# Home counts it as ready.
+# The row's Show my Digital ID opens the Digital ID tab.
 - tapOn:
-    id: holds-back
+    id: hold-digital-id
 - extendedWaitUntil:
-    visible: "1 ready for pickup"
+    visible:
+      id: digital-id-code
     timeout: 15000
-- takeScreenshot: hold-ready-home
+- assertVisible: "Show this to the librarian"
 
-# The Book page says until when the Copy is set aside, and leads to the Digital ID.
+# The Book page says until when the Copy is set aside, and leads to the Holds segment and to the Digital ID.
+- runFlow: subflows/leave-search.yaml
 - tapOn:
-    id: search-input
-- inputText: ${output.heldWord}
+    id: tab-home
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: ${output.heldWord}
 - extendedWaitUntil:
     visible: ${output.heldTitle}
     timeout: 15000
@@ -132,6 +147,36 @@ appId: ph.edu.umak.libras
 - assertVisible: "You have a Hold on this Book: ready for pickup"
 - assertVisible: "A Copy is set aside for you until [A-Z][a-z]{2} [0-9]{1,2}, 20[0-9]{2}, [0-9]{1,2}:[0-9]{2} (AM|PM). Show your Digital ID at the library desk to borrow it."
 - takeScreenshot: hold-ready-book
+- tapOn:
+    id: hold-see-all
+- extendedWaitUntil:
+    visible:
+      id: hold-pickup
+    timeout: 15000
+- assertVisible:
+    id: holds-segment
+- assertNotVisible:
+    id: book-sheet
+- runFlow: subflows/leave-search.yaml
+- tapOn:
+    id: tab-home
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: ${output.heldWord}
+- extendedWaitUntil:
+    visible: ${output.heldTitle}
+    timeout: 15000
+- tapOn: ${output.heldTitle}
+- extendedWaitUntil:
+    visible:
+      id: book-sheet
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: hold-digital-id
+    direction: DOWN
+    timeout: 15000
 
 # The Member shows the Digital ID, and the Librarian lends the set-aside Copy.
 - tapOn:
@@ -149,24 +194,27 @@ appId: ph.edu.umak.libras
 - assertVisible: ${output.heldTitle}
 - takeScreenshot: hold-ready-borrowed
 
-# The Hold is over: Home has no active Hold, and the Holds screen lists it as borrowed.
-# Home still shows the search from before the Digital ID: clear it to see the summary.
+# The Hold is over: My Books opens on Loans with the new Loan, the dot is gone,
+# and the Holds segment lists the Hold as borrowed.
 - tapOn:
     id: borrowed-home
 - extendedWaitUntil:
     visible:
-      id: search-input
+      id: search-(open|input)
     timeout: 15000
+- runFlow: subflows/leave-search.yaml
 - tapOn:
-    id: search-input
-- eraseText: 40
-- hideKeyboard
+    id: tab-my-books
 - extendedWaitUntil:
-    visible: "No active Holds"
+    visible:
+      id: loans-current
     timeout: 15000
-- assertVisible: "1 current Loan"
+- assertVisible: "Current - 1 of 3"
+- runFlow: subflows/leave-search.yaml
+- assertNotVisible:
+    id: tab-my-books-dot
 - tapOn:
-    id: home-holds
+    id: my-books-holds
 - extendedWaitUntil:
     visible:
       id: holds-past

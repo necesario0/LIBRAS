@@ -1,0 +1,1295 @@
+<title>LIBRAS Tier 3 Preview</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=IBM+Plex+Mono&display=swap">
+<style>
+/* Layout: a review bench - screen list, the live phone, and the decisions behind the screen on show */
+:root {
+  /* Page chrome (theme-aware) */
+  --bg: #F3F5F9;
+  --fg: #0E1726;
+  --muted: #5B6474;
+  --line: #DCE1EA;
+  --panel: #FFFFFF;
+  --accent: #005DC3;
+  --accent-soft: #E8F1FB;
+  --flag: #8A5A00;
+  --flag-soft: #FFF4DA;
+  --bezel: #16181D;
+  --font: "Montserrat", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", monospace;
+
+  /* The app's own tokens (apps/mobile/src/theme/tokens.ts). The app is light-only, so these never change with the theme. */
+  --a-white: #FFFFFF;
+  --a-black: #000000;
+  --a-primary: #005DC3;
+  --a-surface: #F0F0F0;
+  --a-muted: #747474;
+  --a-faint: #AFAFAF;
+  --a-accent: #FCBF49;
+  --a-error: #FF4A4A;
+  --a-danger: #B3261E;
+  --a-danger-s: #FDECEC;
+  --a-border: #D9D9D9;
+  --a-selected: #CEF2FF;
+  --a-success: #12B76A;
+  --a-success-s: #E5F6EC;
+  --a-pill: #F1F1F3;
+  --a-callnum: #9DCCFF;
+  --a-avail-s: #C7FFD5;
+  --a-avail-t: #188132;
+  --a-highlight: #FFA800;
+  --a-confirm: #F9B233;
+  --a-dismiss: #D93025;
+  --a-ink: #1A1A1F;
+  --a-subtle: #737885;
+  --a-body: #6E6E6E;
+  --a-scrim: rgba(0, 0, 0, 0.5);
+  --a-toast: #1A1A1F;
+  --a-sort-on: #FFF6E0;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0C1018; --fg: #E7EBF3; --muted: #9AA5B8; --line: #263043; --panel: #141A25;
+    --accent: #6AAEF5; --accent-soft: #15263C; --flag: #F5C56A; --flag-soft: #2E2410; --bezel: #000000;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0C1018; --fg: #E7EBF3; --muted: #9AA5B8; --line: #263043; --panel: #141A25;
+  --accent: #6AAEF5; --accent-soft: #15263C; --flag: #F5C56A; --flag-soft: #2E2410; --bezel: #000000;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 56px;
+}
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.wrap { max-width: 1320px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
+.top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; }
+.brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.logo { width: 38px; height: 38px; border-radius: 50%; background: var(--a-primary); color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 18px; flex: none; }
+.brand h1 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.2; }
+.brand p { margin: 0; color: var(--muted); font-size: 13px; }
+.switch { display: inline-flex; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 4px; gap: 4px; }
+.switch button { border: 0; background: transparent; padding: 8px 16px; border-radius: 999px; font-weight: 500; font-size: 13px; color: var(--muted); }
+.switch button[aria-selected="true"] { background: var(--accent); color: #fff; }
+
+.bench { display: grid; grid-template-columns: 230px auto minmax(0, 1fr); gap: 28px; align-items: start; }
+.screens { display: flex; flex-direction: column; gap: 18px; position: sticky; top: 16px; }
+.screens h2, .notes h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); margin: 0 0 6px; font-weight: 600; }
+.group { display: flex; flex-direction: column; gap: 2px; }
+.scn { text-align: left; border: 0; background: transparent; padding: 7px 10px; border-radius: 8px; font-size: 13px; color: var(--fg); }
+.scn:hover { background: var(--accent-soft); }
+.scn[aria-current="true"] { background: var(--accent); color: #fff; }
+.seg-ctl { display: grid; grid-template-columns: 1fr 1fr; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 3px; gap: 3px; }
+.seg-ctl button { border: 0; background: transparent; border-radius: 7px; padding: 6px 4px; font-size: 12px; font-weight: 500; color: var(--muted); }
+.seg-ctl button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+.check { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--muted); }
+
+.stage { position: sticky; top: 16px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.stage .hint { margin: 0; font-size: 12px; color: var(--muted); text-align: center; max-width: 360px; }
+.phone-wrap { --s: 1; width: calc(390px * var(--s)); height: calc(844px * var(--s)); }
+.phone { width: 390px; height: 844px; padding: 10px; border-radius: 56px; background: var(--bezel); transform: scale(var(--s)); transform-origin: top left; box-shadow: 0 30px 60px -20px rgba(14, 23, 38, 0.35); }
+
+.notes { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 22px 24px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.notes h2 { margin: 0; font-size: 22px; letter-spacing: -0.02em; font-weight: 600; text-wrap: balance; }
+.notes ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 8px; }
+.notes li { max-width: 62ch; }
+.q { font-family: var(--mono); font-size: 11px; color: var(--accent); white-space: nowrap; }
+.decide { background: var(--flag-soft); border-radius: 12px; padding: 14px 16px; }
+.decide h3 { color: var(--flag); }
+.decide li::marker { color: var(--flag); }
+.try { font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 14px; }
+
+@media (max-width: 1080px) {
+  .bench { grid-template-columns: 1fr; }
+  .stage { position: static; order: -1; }
+  .screens { position: static; }
+  .group { flex-direction: row; flex-wrap: wrap; gap: 4px; }
+  .scn { border: 1px solid var(--line); background: var(--panel); }
+}
+
+/* ---------- The phone screen (app tokens only) ---------- */
+.screen { position: relative; width: 370px; height: 824px; border-radius: 46px; overflow: hidden; background: var(--a-white); color: var(--a-black); font-family: var(--font); font-size: 14px; line-height: 1.3; }
+.sb { height: 50px; display: flex; align-items: center; justify-content: space-between; padding: 6px 30px 0 34px; font-weight: 600; font-size: 15px; }
+.sb .ic { display: flex; gap: 6px; align-items: center; }
+.view { position: absolute; top: 50px; left: 0; right: 0; bottom: 0; overflow-y: auto; padding: 4px 18px 120px; scrollbar-width: none; }
+.view::-webkit-scrollbar { display: none; }
+.view.no-tabs { padding-bottom: 40px; }
+
+.tabbar { position: absolute; left: 14px; right: 14px; bottom: 18px; height: 70px; background: var(--a-white); border-radius: 35px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18); border: 1px solid rgba(0, 0, 0, 0.06); display: grid; grid-template-columns: repeat(4, 1fr); z-index: 5; }
+.tab { position: relative; border: 0; background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 11.5px; font-weight: 500; color: var(--a-black); }
+.tab.on { color: var(--a-primary); }
+.tab .dot { position: absolute; top: 12px; left: calc(50% + 7px); width: 10px; height: 10px; border-radius: 50%; background: var(--a-error); border: 2px solid var(--a-white); }
+
+.hh { display: flex; align-items: center; gap: 8px; margin-top: 6px; border: 0; background: transparent; padding: 0; text-align: left; }
+.avatar { width: 50px; height: 50px; border-radius: 50%; background: var(--a-accent); display: grid; place-items: center; flex: none; overflow: hidden; }
+.greet { font-weight: 600; font-size: 24px; letter-spacing: -1.44px; line-height: 24px; }
+.prompt { font-weight: 600; font-size: 10px; letter-spacing: -0.6px; color: var(--a-faint); }
+.sbar { margin-top: 14px; height: 46px; border: 1px solid var(--a-black); border-radius: 65px; display: flex; align-items: center; padding: 0 10px 0 14px; box-shadow: 0 4px 4px rgba(0, 0, 0, 0.25); color: var(--a-muted); width: 100%; background: var(--a-white); text-align: left; font-size: 14px; gap: 8px; }
+.sbar span { flex: 1; }
+.sbar svg { color: var(--a-black); }
+
+.banner { display: block; width: 100%; margin-top: 20px; aspect-ratio: 2 / 1; border-radius: 24px; border: 0; padding: 0; background-color: var(--a-primary); background-repeat: no-repeat; box-shadow: 0 7px 17.9px rgba(0, 0, 0, 0.25); }
+.shelf { margin-top: 24px; }
+.shelf h3 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -0.9px; }
+.shelf .sub { margin: 2px 0 0; font-size: 11px; color: var(--a-muted); }
+.shelf-row { display: flex; gap: 12px; overflow-x: auto; margin: 10px -18px 0; padding: 0 18px 6px; scrollbar-width: none; }
+.shelf-row::-webkit-scrollbar { display: none; }
+.card { flex: none; width: 96px; border: 0; background: transparent; padding: 0; text-align: left; display: flex; flex-direction: column; gap: 5px; }
+.card .t { font-size: 11.5px; font-weight: 500; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.card .a { font-size: 10px; color: var(--a-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.cover { position: relative; flex: none; border-radius: 10px; overflow: hidden; color: #fff; display: flex; align-items: flex-end; padding: 8px 7px 8px 16px; font-weight: 600; letter-spacing: -0.2px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18); }
+.cover::before { content: ""; position: absolute; left: 6px; top: 0; bottom: 0; width: 5px; background: rgba(255, 255, 255, 0.35); }
+.cover.dark { color: #2B2B33; }
+.cover.dark::before { background: rgba(0, 0, 0, 0.12); }
+.cover span { position: relative; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* Search mode */
+.sm-top { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+.sm-field { flex: 1; height: 46px; border: 1.5px solid var(--a-primary); border-radius: 65px; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 14px; box-shadow: 0 0 0 4px rgba(0, 93, 195, 0.12); }
+.sm-field input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font-size: 15px; color: var(--a-black); }
+.sm-field input::placeholder { color: var(--a-muted); }
+.iconbtn { border: 0; background: transparent; padding: 4px; display: grid; place-items: center; color: var(--a-muted); border-radius: 50%; }
+.cancel { border: 0; background: transparent; font-weight: 500; font-size: 14px; color: var(--a-black); padding: 6px 2px; }
+.label { font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--a-muted); }
+.list-head { display: flex; justify-content: space-between; align-items: center; margin: 20px 0 6px; }
+.linkbtn { border: 0; background: transparent; color: var(--a-primary); font-size: 12.5px; font-weight: 500; padding: 4px 0; }
+.hist, .sugg { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--a-pill); }
+.hist button.go, .sugg button.go { flex: 1; border: 0; background: transparent; text-align: left; padding: 0; font-size: 14.5px; display: flex; align-items: center; gap: 12px; min-width: 0; }
+.hist svg, .sugg svg { color: var(--a-muted); flex: none; }
+.sugg .kind { font-size: 10.5px; color: var(--a-muted); margin-left: auto; padding-left: 8px; }
+.sugg b { font-weight: 600; }
+.sugg .txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.ctrl { display: flex; gap: 8px; margin: 14px -18px 0; padding: 0 18px; overflow-x: auto; scrollbar-width: none; position: relative; }
+.ctrl::-webkit-scrollbar { display: none; }
+.chip { flex: none; height: 34px; padding: 0 10px; border-radius: 17px; border: 1px solid var(--a-border); background: var(--a-white); font-size: 12px; font-weight: 500; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; color: var(--a-black); }
+.chip.on { background: var(--a-accent); border-color: var(--a-black); }
+.fchips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.fchip { height: 28px; border-radius: 14px; background: var(--a-selected); color: var(--a-primary); font-size: 12px; font-weight: 500; display: inline-flex; align-items: center; gap: 2px; padding: 0 4px 0 10px; border: 0; }
+.count { font-size: 11.5px; color: var(--a-muted); margin: 14px 0 2px; }
+.res { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid var(--a-pill); }
+.res .open { flex: 1; display: flex; gap: 12px; border: 0; background: transparent; text-align: left; padding: 0; min-width: 0; }
+.res .tx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.res .tt { font-weight: 500; font-size: 14px; line-height: 1.25; }
+.res .au { font-size: 12px; color: var(--a-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.res .meta { font-size: 11px; color: var(--a-body); }
+.older { border: 0; background: transparent; color: var(--a-primary); font-size: 11.5px; font-weight: 500; padding: 4px 0 0; text-align: left; }
+.older-list { margin: 2px 0 0 48px; display: flex; flex-direction: column; }
+.older-list .res { padding: 8px 0; }
+.pill { flex: none; border-radius: 12px; padding: 3px 8px; font-size: 10px; font-weight: 500; white-space: nowrap; }
+.pill.ok { background: var(--a-success-s); color: var(--a-success); }
+.pill.none { background: var(--a-pill); color: var(--a-black); }
+.pill.info { background: var(--a-selected); color: var(--a-primary); }
+.pill.avail { background: var(--a-avail-s); color: var(--a-avail-t); }
+.pill.neutral { background: var(--a-pill); color: var(--a-muted); }
+.pill.danger { background: var(--a-danger-s); color: var(--a-danger); }
+
+.menu { position: absolute; top: 42px; left: 0; width: 230px; background: var(--a-white); border-radius: 16px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2); padding: 8px; z-index: 6; }
+.menu .label { padding: 6px 10px 4px; display: block; }
+.menu button { width: 100%; border: 0; background: transparent; text-align: left; padding: 11px 10px; border-radius: 10px; font-size: 14.5px; display: flex; justify-content: space-between; align-items: center; }
+.menu button.on { background: var(--a-sort-on); }
+
+.empty { text-align: center; padding: 48px 12px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.empty .ring { width: 64px; height: 64px; border-radius: 50%; background: var(--a-surface); display: grid; place-items: center; color: var(--a-muted); }
+.empty h4 { margin: 4px 0 0; font-size: 17px; font-weight: 600; }
+.empty p { margin: 0; color: var(--a-muted); font-size: 13px; max-width: 250px; }
+
+/* Overlays */
+.scrim { position: absolute; inset: 0; background: var(--a-scrim); z-index: 10; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; max-height: 86%; overflow-y: auto; background: var(--a-white); border-radius: 38px 38px 0 0; padding: 10px 22px 30px; z-index: 11; scrollbar-width: none; }
+.grab { width: 44px; height: 5px; border-radius: 58px; background: var(--a-border); margin: 0 auto 14px; }
+.sheet h4 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.8px; }
+.sheet-head { display: flex; justify-content: space-between; align-items: center; }
+.fsec { margin-top: 20px; display: flex; flex-direction: column; gap: 8px; }
+.fsec .sl { font-size: 12px; color: var(--a-muted); }
+.opts { display: flex; flex-wrap: wrap; gap: 6px; }
+.opt { border: 1px solid var(--a-border); background: var(--a-white); border-radius: 16px; padding: 6px 11px; font-size: 12.5px; display: inline-flex; gap: 6px; align-items: baseline; }
+.opt small { font-family: var(--mono); font-size: 9.5px; color: var(--a-muted); }
+.opt.on { background: var(--a-accent); border-color: var(--a-black); }
+.opt.on small { color: var(--a-black); }
+.segs { display: grid; grid-template-columns: repeat(4, 1fr); background: var(--a-surface); border-radius: 14px; padding: 3px; gap: 3px; }
+.segs button { border: 0; background: transparent; border-radius: 11px; padding: 8px 2px; font-size: 11.5px; font-weight: 500; }
+.segs button.on { background: var(--a-white); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15); }
+.range { display: flex; gap: 10px; align-items: center; font-size: 12.5px; }
+.range input { width: 84px; height: 38px; border: 0; border-radius: 81px; background: var(--a-surface); padding: 0 14px; font-size: 14px; }
+.toggle-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.toggle-row .tl { font-size: 14.5px; font-weight: 500; }
+.toggle-row .td { font-size: 11.5px; color: var(--a-muted); }
+.sw { flex: none; width: 46px; height: 28px; border-radius: 14px; background: var(--a-border); position: relative; border: 0; padding: 0; transition: background 0.15s; }
+.sw::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: var(--a-white); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); transition: left 0.15s; }
+.sw.on { background: var(--a-primary); }
+.sw.on::after { left: 21px; }
+.primary { width: 100%; height: 48px; border: 0; border-radius: 28px; background: var(--a-primary); color: var(--a-white); font-weight: 600; font-size: 15px; margin-top: 22px; }
+.cta { width: 100%; height: 57px; border: 0; border-radius: 34px; background: var(--a-accent); color: var(--a-black); font-weight: 600; font-size: 17px; }
+
+.bk-top { display: flex; gap: 16px; }
+.bk-top .tx { flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.bk-title { font-size: 21px; font-weight: 600; letter-spacing: -0.8px; line-height: 1.15; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag { border-radius: 39px; padding: 4px 10px; font-size: 11px; font-weight: 500; border: 1px solid var(--a-border); }
+.tag.avail { background: var(--a-avail-s); border-color: var(--a-avail-s); color: var(--a-avail-t); }
+.tag.none { background: var(--a-pill); border-color: var(--a-pill); color: var(--a-muted); }
+.callnum { display: inline-flex; gap: 8px; align-items: center; background: var(--a-callnum); border-radius: 43px; padding: 6px 14px; font-family: var(--mono); font-size: 12px; }
+.save { border: 1px solid var(--a-border); background: var(--a-white); border-radius: 22px; height: 38px; padding: 0 12px; display: inline-flex; gap: 6px; align-items: center; font-size: 13px; font-weight: 500; }
+.save.on { background: var(--a-accent); border-color: var(--a-black); }
+.panel { border: 1px solid rgba(0, 0, 0, 0.32); border-radius: 12px; padding: 12px 14px; font-size: 13px; color: var(--a-subtle); }
+
+.h-screen { font-weight: 600; font-size: 36px; letter-spacing: -2.16px; line-height: 1; margin: 10px 0 0; }
+.h-push { display: flex; align-items: center; gap: 12px; margin-top: 6px; }
+.h-push h2 { margin: 0; font-weight: 600; font-size: 26px; letter-spacing: -1.4px; }
+.back { width: 40px; height: 40px; border-radius: 50%; border: 0; background: var(--a-accent); display: grid; place-items: center; color: var(--a-black); flex: none; }
+.mb-seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 18px; background: var(--a-surface); border-radius: 22px; padding: 4px; }
+.mb-seg button { position: relative; border: 1px solid transparent; background: transparent; height: 36px; border-radius: 18px; font-size: 13.5px; font-weight: 500; }
+.mb-seg button.on { background: var(--a-accent); border-color: var(--a-black); }
+.mb-seg .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--a-error); margin-left: 5px; vertical-align: middle; }
+.row { display: flex; gap: 12px; align-items: flex-start; padding: 14px 0; border-bottom: 1px solid var(--a-pill); }
+.row .tx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.row .tt { font-weight: 500; font-size: 14px; line-height: 1.25; }
+.row .au { font-size: 12px; color: var(--a-muted); }
+.row .when { font-size: 12px; color: var(--a-ink); }
+.row .acts { display: flex; gap: 8px; margin-top: 6px; }
+.small-btn { border: 1px solid var(--a-black); background: var(--a-white); border-radius: 18px; height: 32px; padding: 0 14px; font-size: 12.5px; font-weight: 500; }
+.small-btn.fill { background: var(--a-accent); }
+.bm { border: 0; background: transparent; color: var(--a-black); padding: 4px; }
+.sv-open { flex: 1; display: flex; gap: 12px; border: 0; background: transparent; text-align: left; padding: 0; min-width: 0; }
+.ctrl-wrap { position: relative; }
+.ready { background: var(--a-success-s); border-radius: 16px; padding: 0 14px; margin-top: 12px; border-bottom: 0; }
+
+.did-h { font-size: 30px; line-height: 1.1; letter-spacing: -1.6px; margin: 14px 0 6px; font-weight: 400; }
+.did-h em { font-style: normal; color: var(--a-highlight); }
+.did-sub { margin: 0; font-size: 13px; color: var(--a-body); }
+.ticket { margin-top: 22px; border: 2px dashed var(--a-border); border-radius: 15px; padding: 22px 16px 18px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.code { font-family: var(--mono); font-size: 15px; letter-spacing: 0.18em; }
+.ttl { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--a-body); }
+.bright { display: flex; gap: 8px; align-items: center; margin-top: 16px; font-size: 12px; color: var(--a-muted); background: var(--a-surface); border-radius: 12px; padding: 10px 12px; }
+.who { text-align: center; font-size: 13px; }
+.who b { display: block; font-size: 16px; font-weight: 600; letter-spacing: -0.4px; }
+
+.ident { display: flex; gap: 10px; align-items: center; margin-top: 18px; }
+.ident .nm { font-size: 22px; letter-spacing: -1.3px; line-height: 1.2; }
+.ident .fc { font-size: 12.5px; color: var(--a-muted); letter-spacing: -0.4px; }
+.prow { display: flex; align-items: center; gap: 12px; width: 100%; border: 0; background: var(--a-white); border-radius: 25px; padding: 12px 16px; font-size: 15px; box-shadow: 0 4px 6.5px rgba(0, 0, 0, 0.25); text-align: left; }
+.prow .chev { margin-left: auto; color: var(--a-muted); }
+.pmenu { display: flex; flex-direction: column; gap: 14px; margin: 22px 6px 0; }
+.clear-panel { border: 1px solid rgba(0, 0, 0, 0.32); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
+.clear-panel .hd { display: flex; justify-content: space-between; align-items: center; font-weight: 500; }
+.clear-panel p { margin: 0; font-size: 12.5px; color: var(--a-subtle); }
+.signout { margin: 22px 6px 0; width: calc(100% - 12px); border: 1px solid var(--a-error); color: var(--a-error); background: var(--a-white); border-radius: 25px; padding: 10px; font-size: 16px; }
+
+.sgroup { border: 1px solid var(--a-border); border-radius: 16px; overflow: hidden; }
+.srow { display: flex; align-items: center; gap: 12px; padding: 13px 14px; width: 100%; border: 0; background: var(--a-white); text-align: left; font-size: 14.5px; }
+.srow + .srow { border-top: 1px solid var(--a-pill); }
+.srow .sd { display: block; font-size: 11.5px; color: var(--a-muted); }
+.srow .end { margin-left: auto; color: var(--a-muted); font-size: 12.5px; display: flex; align-items: center; gap: 4px; }
+.srow.red { color: var(--a-danger); }
+.slabel { margin: 22px 4px 8px; }
+.foot { text-align: center; font-size: 11.5px; color: var(--a-muted); margin-top: 22px; }
+.note { font-size: 11.5px; color: var(--a-muted); margin: 8px 4px 0; }
+.facts { border: 1px solid var(--a-border); border-radius: 16px; overflow: hidden; margin-top: 14px; }
+.fact { display: flex; justify-content: space-between; gap: 12px; padding: 12px 14px; font-size: 13.5px; }
+.fact + .fact { border-top: 1px solid var(--a-pill); }
+.fact b { font-weight: 600; text-align: right; }
+.para { font-size: 13px; color: var(--a-body); margin: 12px 4px 0; }
+
+.dialog { position: absolute; left: 22px; right: 22px; top: 50%; transform: translateY(-50%); background: var(--a-white); border-radius: 28px; padding: 24px 22px 20px; z-index: 11; display: flex; flex-direction: column; gap: 10px; }
+.dialog h4 { margin: 0; font-size: 20px; font-weight: 600; color: var(--a-ink); letter-spacing: -0.6px; }
+.dialog p { margin: 0; font-size: 13.5px; color: var(--a-subtle); }
+.dialog .btns { display: flex; gap: 10px; margin-top: 10px; }
+.dialog .btns button { flex: 1; height: 46px; border-radius: 23px; font-size: 14.5px; font-weight: 500; }
+.b-out { border: 1px solid var(--a-dismiss); color: var(--a-dismiss); background: var(--a-white); }
+.b-yes { border: 0; background: var(--a-confirm); color: var(--a-black); }
+.b-red { border: 0; background: var(--a-danger); color: var(--a-white); }
+.field { height: 44px; border: 0; border-radius: 81px; background: var(--a-surface); padding: 0 16px; font-size: 14px; width: 100%; }
+
+.poster-full { width: 100%; border-radius: 16px; display: block; margin-top: 16px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15); }
+.zoom { font-size: 11px; color: var(--a-muted); text-align: center; margin-top: 6px; }
+.ann-title { font-size: 24px; font-weight: 600; letter-spacing: -1px; margin: 16px 0 2px; line-height: 1.15; }
+.ann-dates { font-size: 12px; color: var(--a-muted); }
+.ann-body { font-size: 14px; color: var(--a-body); margin: 12px 0 20px; }
+
+.toast { position: absolute; left: 50%; bottom: 104px; transform: translateX(-50%); background: var(--a-toast); color: var(--a-white); border-radius: 22px; padding: 10px 16px; font-size: 13px; display: flex; gap: 14px; align-items: center; white-space: nowrap; z-index: 20; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3); }
+.toast button { border: 0; background: transparent; color: var(--a-accent); font-weight: 600; padding: 0; }
+.toast.low { bottom: 30px; }
+
+/* ---------- Desk page mock ---------- */
+.desk-intro { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+.desk-intro .notes { gap: 12px; }
+.desk-frame { border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: var(--a-white); color: var(--a-black); box-shadow: 0 20px 50px -24px rgba(14, 23, 38, 0.35); }
+.desk-scroll { overflow-x: auto; }
+.desk { min-width: 980px; font-family: var(--font); }
+.dbar { display: flex; align-items: center; gap: 28px; padding: 14px 28px; border-bottom: 1px solid #E4E4E4; }
+.dbar .dbrand { display: flex; align-items: center; gap: 10px; font-size: 20px; }
+.dbar .dbrand .logo { width: 32px; height: 32px; font-size: 15px; }
+.dbar nav { display: flex; gap: 6px; }
+.dbar nav span { padding: 8px 14px; border-radius: 999px; font-size: 14px; color: var(--a-muted); }
+.dbar nav span.on { background: #E8F1FB; color: var(--a-primary); font-weight: 500; }
+.dbar .me { margin-left: auto; font-size: 13px; color: var(--a-muted); }
+.dbody { display: grid; grid-template-columns: 380px 1fr; gap: 0; }
+.dlist { border-right: 1px solid #E4E4E4; padding: 24px; display: flex; flex-direction: column; gap: 14px; background: #FAFBFC; }
+.dlist h2, .dform h2 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.6px; }
+.dlist .dl-head { display: flex; justify-content: space-between; align-items: center; }
+.dbtn { border: 0; background: var(--a-primary); color: #fff; border-radius: 999px; height: 40px; padding: 0 18px; font-size: 14px; font-weight: 500; }
+.dbtn.ghost { background: transparent; color: var(--a-black); border: 1px solid #D9D9D9; }
+.dbtn.warn { background: transparent; color: #D92D2D; border: 1px solid #F3B7B7; }
+.dbtn:disabled { opacity: 0.45; cursor: not-allowed; }
+.dgroup { display: flex; flex-direction: column; gap: 8px; }
+.dgroup > .label { margin-top: 4px; }
+.acard { display: flex; gap: 12px; align-items: center; background: #fff; border: 1px solid #E4E4E4; border-radius: 12px; padding: 10px; }
+.acard .thumb { width: 96px; aspect-ratio: 2 / 1; border-radius: 8px; flex: none; background-size: 100% auto; background-repeat: no-repeat; }
+.acard .ai { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.acard .an { font-weight: 600; font-size: 13.5px; }
+.acard .ad { font-size: 12px; color: var(--a-muted); }
+.acard .aa { display: flex; gap: 6px; margin-top: 4px; }
+.acard .aa button { border: 1px solid #D9D9D9; background: #fff; border-radius: 999px; font-size: 11.5px; padding: 3px 10px; white-space: nowrap; }
+.acard .aa button.end { color: #D92D2D; border-color: #F3B7B7; }
+.acard.past { opacity: 0.7; }
+.dform { padding: 24px 28px 28px; display: flex; flex-direction: column; gap: 18px; }
+.steps { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 28px; }
+.fl { display: flex; flex-direction: column; gap: 6px; }
+.fl label { font-size: 13px; font-weight: 500; }
+.fl .help { font-size: 11.5px; color: var(--a-muted); }
+.fl input[type="text"], .fl textarea, .fl input[type="date"] { border: 0; background: var(--a-surface); border-radius: 12px; padding: 10px 14px; font-size: 14px; width: 100%; }
+.fl textarea { min-height: 72px; resize: vertical; }
+.dates { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.err { background: #FDECEC; color: #B92424; border-radius: 10px; padding: 10px 12px; font-size: 12.5px; }
+.okmsg { background: #E7F5EC; color: #1D7A46; border-radius: 10px; padding: 10px 12px; font-size: 12.5px; }
+.crop { position: relative; width: 100%; overflow: hidden; border-radius: 10px; background-size: 100% 100%; touch-action: none; user-select: none; }
+.crop .frame { position: absolute; outline: 2px solid var(--a-accent); box-shadow: 0 0 0 2000px rgba(0, 0, 0, 0.55); cursor: grab; border-radius: 2px; }
+.crop .frame:active { cursor: grabbing; }
+.crop .frame::after { content: "Shown on Home"; position: absolute; left: 8px; top: 8px; background: var(--a-accent); color: #000; font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
+.upl { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 12px; color: var(--a-muted); }
+.upl label.dbtn { display: inline-flex; align-items: center; cursor: pointer; height: 34px; font-size: 13px; white-space: nowrap; flex: none; }
+.lk { display: inline-flex; background: var(--a-surface); border-radius: 12px; padding: 3px; gap: 3px; align-self: flex-start; }
+.lk button { border: 0; background: transparent; border-radius: 9px; padding: 6px 14px; font-size: 13px; }
+.lk button.on { background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15); font-weight: 500; }
+.mlink { align-self: stretch; text-align: center; background: var(--a-accent); border-radius: 18px; padding: 8px; font-size: 12px; font-weight: 600; }
+.crop-box { max-width: 380px; display: flex; flex-direction: column; gap: 8px; }
+.upl input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.mini { background: #fff; border: 1px solid #E4E4E4; border-radius: 22px; padding: 14px 12px; display: flex; flex-direction: column; gap: 8px; }
+.mini .mb { width: 100%; aspect-ratio: 2 / 1; border-radius: 14px; background-repeat: no-repeat; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); }
+.mini .ms { height: 10px; border-radius: 6px; background: var(--a-surface); }
+.mini .ms.short { width: 60%; }
+.mini .mh { display: flex; gap: 6px; align-items: center; font-size: 11px; font-weight: 600; }
+.mini .mh i { width: 20px; height: 20px; border-radius: 50%; background: var(--a-accent); display: inline-block; }
+.dactions { display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #E4E4E4; padding-top: 16px; }
+.audit { font-size: 11.5px; color: var(--a-muted); }
+
+@media (max-width: 900px) { .desk-intro { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .sw, .sw::after { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">L</div>
+      <div>
+        <h1>LIBRAS Tier 3 preview</h1>
+        <p>What we plan to build, for your approval before any code. Styles come from the app; layout follows the decisions from our review.</p>
+      </div>
+    </div>
+    <div class="switch" role="tablist" aria-label="Which product">
+      <button role="tab" id="v-mobile" aria-selected="true" data-view="mobile">Mobile app</button>
+      <button role="tab" id="v-desk" aria-selected="false" data-view="desk">Desk page</button>
+    </div>
+  </header>
+
+  <main id="mobile" class="bench">
+    <nav class="screens" aria-label="Screens">
+      <div>
+        <h2>View as</h2>
+        <div class="seg-ctl" id="role">
+          <button data-role="student" aria-pressed="true">UMAK Student</button>
+          <button data-role="visitor" aria-pressed="false">Visitor</button>
+        </div>
+      </div>
+      <div id="scn-list"></div>
+    </nav>
+    <section class="stage" id="stage">
+      <div class="phone-wrap" id="pw"><div class="phone"><div class="screen" id="screen" aria-label="Phone preview"></div></div></div>
+      <p class="hint">The phone is clickable: tabs, search (try "data structures"), Sort, Filters, Save, My Books, Settings.</p>
+    </section>
+    <aside class="notes" id="notes" aria-live="polite"></aside>
+  </main>
+
+  <main id="desk" hidden>
+    <div style="display:flex;flex-direction:column;gap:20px">
+      <div class="desk-intro">
+        <section class="notes">
+          <h2>Announcements on the desk page</h2>
+          <ul>
+            <li>A new <b>Announcements</b> page beside the desk. Any Librarian can create, edit and end one; every change goes to the audit log. <span class="q">Q10</span></li>
+            <li>The poster image is required, the title is required (read by screen readers, not drawn on the banner), the body and the Book link are optional. <span class="q">Q20</span></li>
+            <li>The crop frame is fixed at 2:1 and shows exactly what Members see on Home. Drag it. The detail screen always shows the uncropped poster. <span class="q">Q21</span></li>
+            <li>Only one runs at a time: date ranges cannot overlap, so later ones queue as Scheduled. "End now" stops the running one early. <span class="q">Q22</span></li>
+          </ul>
+        </section>
+        <section class="notes">
+          <h3>Try it</h3>
+          <ul>
+            <li>Drag the yellow frame up and down; the Home preview on the right follows.</li>
+            <li>Upload one of your own pubmats with <b>Replace image</b>. It stays in your browser; nothing is sent anywhere.</li>
+            <li>The dates start overlapping Library Week, so Schedule is blocked. Move the start to Nov 29 or later.</li>
+          </ul>
+          <ul>
+            <li>One optional link: a Book (View book) or a web page such as a sign-up form or a Facebook post. A web link must start with https://, its button names the site ("Open forms.gle"), and it opens in the Member's own browser, not inside LIBRAS.</li>
+          </ul>
+        </section>
+      </div>
+      <div class="desk-frame"><div class="desk-scroll"><div class="desk" id="deskapp"></div></div></div>
+    </div>
+  </main>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  /* ---------------- Icons ---------------- */
+  const I = (d, s = 22, extra = "") => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}>${d}</svg>`;
+  const ic = {
+    home: (s) => I('<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>', s),
+    books: (s) => I('<path d="M5 4h4v16H5zM10 4h4v16h-4z"/><path d="m15 5 3.8-1 2.7 15.5-3.8 1z"/>', s),
+    id: (s) => I('<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M7 9v6M9.5 9v6M12 9v6M15 9v6M17 9v6"/>', s),
+    user: (s) => I('<circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="10" r="3.2"/><path d="M6 18.5c1.4-2.2 3.5-3.3 6-3.3s4.6 1.1 6 3.3"/>', s),
+    search: (s) => I('<circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/>', s),
+    x: (s) => I('<path d="M6 6l12 12M18 6 6 18"/>', s),
+    xc: (s) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#B9B9B9"/><path d="M8.5 8.5l7 7M15.5 8.5l-7 7" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>`,
+    clock: (s) => I('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', s),
+    book: (s) => I('<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/>', s),
+    person: (s) => I('<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>', s),
+    sort: (s) => I('<path d="M7 4v16M3.5 16.5 7 20l3.5-3.5M17 20V4M13.5 7.5 17 4l3.5 3.5"/>', s),
+    sliders: (s) => I('<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>', s),
+    down: (s) => I('<path d="m6 9 6 6 6-6"/>', s),
+    chev: (s) => I('<path d="m9 6 6 6-6 6"/>', s),
+    left: (s) => I('<path d="M15 6l-6 6 6 6"/>', s),
+    check: (s) => I('<path d="m5 12.5 4.5 4.5L19 7.5"/>', s),
+    bm: (s) => I('<path d="M6 3h12v18l-6-4.5L6 21z"/>', s),
+    bmf: (s) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4.5L6 21z" fill="currentColor" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>`,
+    sun: (s) => I('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>', s),
+    gear: (s) => I('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>', s),
+    help: (s) => I('<circle cx="12" cy="12" r="9.5"/><path d="M9.5 9.2a2.6 2.6 0 0 1 5 .9c0 1.7-2.5 2.3-2.5 3.9M12 17.2v.1"/>', s),
+    key: (s) => I('<circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M17 6l3 3M15 8l2 2"/>', s),
+    shield: (s) => I('<path d="M12 3 4.5 6v6c0 4.5 3.2 7.8 7.5 9 4.3-1.2 7.5-4.5 7.5-9V6z"/><path d="m8.8 12 2.2 2.2 4.4-4.4"/>', s),
+    bell: (s) => I('<path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>', s),
+    trash: (s) => I('<path d="M4 7h16M9 7V4h6v3M6.5 7l1 13h9l1-13"/>', s),
+    devices: (s) => I('<rect x="3" y="4" width="13" height="10" rx="1.5"/><rect x="15" y="9" width="6" height="11" rx="1.5"/><path d="M6 18h7"/>', s),
+    pin: (s) => I('<path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>', s),
+    history: (s) => I('<path d="M3.5 12a8.5 8.5 0 1 0 2.5-6"/><path d="M3 4v4h4M12 8v4l3 2"/>', s),
+    doc: (s) => I('<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/>', s),
+    signal: () => `<svg width="18" height="12" viewBox="0 0 18 12" aria-hidden="true"><rect x="0" y="8" width="3" height="4" rx="1" fill="#000"/><rect x="5" y="5.5" width="3" height="6.5" rx="1" fill="#000"/><rect x="10" y="3" width="3" height="9" rx="1" fill="#000"/><rect x="15" y="0" width="3" height="12" rx="1" fill="#000"/></svg>`,
+    battery: () => `<svg width="27" height="13" viewBox="0 0 27 13" aria-hidden="true"><rect x="0.5" y="0.5" width="23" height="12" rx="3.5" fill="none" stroke="#000" opacity="0.4"/><rect x="2" y="2" width="20" height="9" rx="2" fill="#000"/><rect x="25" y="4.5" width="1.5" height="4" rx="0.7" fill="#000" opacity="0.4"/></svg>`,
+  };
+
+  /* ---------------- Posters (SVG images standing in for uploaded pubmats) ---------------- */
+  function poster(o) {
+    const esc = (t) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+    const items = o.items.map((t, i) => `<text x="90" y="${680 + i * 62}" font-size="30" fill="${o.listInk}" font-weight="600">${esc(t)}</text><circle cx="68" cy="${670 + i * 62}" r="7" fill="${o.dot}"/>`).join("");
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1000" viewBox="0 0 800 1000" font-family="Montserrat, Arial, Helvetica, sans-serif">
+      <rect width="800" height="1000" fill="${o.bg}"/>
+      <circle cx="700" cy="120" r="210" fill="${o.blob}" opacity="0.9"/>
+      <circle cx="90" cy="520" r="120" fill="${o.blob}" opacity="0.35"/>
+      <rect x="604" y="440" width="40" height="110" rx="6" fill="${o.book1}"/><rect x="650" y="420" width="36" height="130" rx="6" fill="${o.book2}"/><rect x="692" y="455" width="46" height="95" rx="6" fill="${o.book3}"/>
+      <text x="56" y="88" font-size="22" letter-spacing="4" fill="${o.ink}" font-weight="600">UNIVERSITY OF MAKATI  ·  UNIVERSITY LIBRARY</text>
+      <text x="52" y="290" font-size="112" font-weight="800" fill="${o.ink}" letter-spacing="-4">${esc(o.t1)}</text>
+      <text x="52" y="400" font-size="${o.t2size || 100}" font-weight="800" fill="${o.hl}" letter-spacing="-4">${esc(o.t2)}</text>
+      <text x="56" y="470" font-size="36" font-weight="600" fill="${o.ink}">${esc(o.date)}</text>
+      <rect x="40" y="600" width="720" height="${o.items.length * 62 + 40}" rx="28" fill="${o.listBg}"/>
+      ${items}
+      <text x="56" y="960" font-size="26" font-weight="700" fill="${o.hl}">${esc(o.tag)}</text>
+    </svg>`;
+    return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+  }
+  const P = {
+    week: poster({ bg: "#005DC3", blob: "#0B4E9C", ink: "#FFFFFF", hl: "#FCBF49", book1: "#FCBF49", book2: "#FFFFFF", book3: "#FF8A3D", listBg: "#FFFFFF", listInk: "#0B2E5C", dot: "#FCBF49",
+      t1: "LIBRARY", t2: "WEEK 2026", date: "November 17 to 28", items: ["Book fair at the library lobby", "Thesis writing clinic, Room 204", "Meet the authors, AVR, Nov 25", "Free orientation for first years"], tag: "#UMakReads" }),
+    clinic: poster({ bg: "#FCBF49", blob: "#F7A928", ink: "#1A1A1F", hl: "#005DC3", book1: "#005DC3", book2: "#1A1A1F", book3: "#FFFFFF", listBg: "#1A1A1F", listInk: "#FFFFFF", dot: "#FCBF49",
+      t1: "THESIS", t2: "WRITING CLINIC", t2size: 82, date: "Dec 1 to 5  ·  Room 204", items: ["One-on-one with a librarian", "APA 7th edition citations", "Finding sources in the catalog"], tag: "Sign up at the desk" }),
+    holiday: poster({ bg: "#188132", blob: "#126A28", ink: "#FFFFFF", hl: "#FCBF49", book1: "#FCBF49", book2: "#FFFFFF", book3: "#C7FFD5", listBg: "#FFFFFF", listInk: "#0F4D1E", dot: "#188132",
+      t1: "HOLIDAY", t2: "HOURS", date: "Dec 15 to Jan 4", items: ["Mon to Fri, 9:00 AM to 3:00 PM", "Closed Dec 24, 25, 31 and Jan 1", "Return slots open all day"], tag: "Happy holidays!" }),
+    binding: poster({ bg: "#2B2B33", blob: "#3A3A45", ink: "#FFFFFF", hl: "#9DCCFF", book1: "#9DCCFF", book2: "#FFFFFF", book3: "#FCBF49", listBg: "#FFFFFF", listInk: "#2B2B33", dot: "#9DCCFF",
+      t1: "THESIS", t2: "BINDING", date: "Deadline: November 7", items: ["Submit two bound copies", "Include the signed approval sheet"], tag: "University Library" }),
+    welcome: poster({ bg: "#801A1A", blob: "#6A1414", ink: "#FFFFFF", hl: "#FCBF49", book1: "#FCBF49", book2: "#FFFFFF", book3: "#E5C773", listBg: "#FFFFFF", listInk: "#801A1A", dot: "#FCBF49",
+      t1: "WELCOME,", t2: "FIRST YEARS", t2size: 92, date: "August 11 to 29", items: ["Library tours every hour", "Sign up for LIBRAS on your phone"], tag: "#UMakReads" }),
+  };
+
+  /* ---------------- Sample catalog (examples, not the real catalog) ---------------- */
+  const COVERS = ["#801A1A", "#3366B2", "#738C4D", "#E5C773", "#2B2B33", "#33998C"];
+  const SUBJECTS = {
+    "Computer Science": "QA75–76, Q334–342",
+    "Mathematics": "QA1–74, QA77–939",
+    "Electrical and Computer Engineering": "TK",
+    "Business and Commerce": "HF",
+    "Nursing": "RT",
+    "Philippine Law": "KPM",
+    "History of Asia": "DS",
+    "Psychology": "BF",
+    "American Literature": "PS",
+  };
+  const COLLEGE_SUBJECTS = ["Computer Science", "Mathematics", "Electrical and Computer Engineering"];
+  const B = (id, title, ed, year, authors, lc, subject, avail, copies, borrows, added) => ({ id, title, ed, year, authors, lc, subject, avail, copies, borrows, added });
+  const BOOKS = [
+    B("b1", "Data Structures and Algorithms in Java", "6th edition", 2014, ["Goodrich, Michael T.", "Tamassia, Roberto"], "QA76.73.J38 G66 2014", "Computer Science", 2, 4, 41, 120),
+    B("b2", "Data Structures and Algorithms in Java", "5th edition", 2010, ["Goodrich, Michael T.", "Tamassia, Roberto"], "QA76.73.J38 G66 2010", "Computer Science", 1, 2, 12, 900),
+    B("b3", "Algorithms", "4th edition", 2011, ["Sedgewick, Robert", "Wayne, Kevin"], "QA76.6 .S435 2011", "Computer Science", 1, 3, 37, 400),
+    B("b4", "Algorithms", "2nd edition", 1988, ["Sedgewick, Robert"], "QA76.6 .S435 1988", "Computer Science", 0, 1, 3, 3000),
+    B("b5", "Introduction to Algorithms", "4th edition", 2022, ["Cormen, Thomas H.", "Leiserson, Charles E.", "Rivest, Ronald L.", "Stein, Clifford"], "QA76.6 .C662 2022", "Computer Science", 0, 3, 52, 10),
+    B("b6", "Database System Concepts", "7th edition", 2020, ["Silberschatz, Abraham", "Korth, Henry F.", "Sudarshan, S."], "QA76.9.D3 S5637 2020", "Computer Science", 3, 3, 29, 60),
+    B("b7", "Computer Networking: A Top-Down Approach", "8th edition", 2021, ["Kurose, James F.", "Ross, Keith W."], "TK5105.875.I57 K88 2021", "Electrical and Computer Engineering", 1, 2, 18, 8),
+    B("b8", "Discrete Mathematics and Its Applications", "8th edition", 2019, ["Rosen, Kenneth H."], "QA39.3 .R67 2019", "Mathematics", 2, 5, 33, 300),
+    B("b9", "Principles of Marketing", "18th edition", 2020, ["Kotler, Philip", "Armstrong, Gary"], "HF5415 .K636 2020", "Business and Commerce", 2, 2, 15, 200),
+    B("b10", "Fundamentals of Nursing", "10th edition", 2021, ["Potter, Patricia A.", "Perry, Anne Griffin"], "RT41 .F86 2021", "Nursing", 1, 2, 22, 5),
+    B("b11", "Readings in Philippine History", null, 2018, ["Candelaria, John Lee P.", "Alporha, Veronica C."], "DS668 .C36 2018", "History of Asia", 4, 6, 45, 14),
+    B("b12", "The 1987 Constitution of the Republic of the Philippines: A Commentary", "2009 edition", 2009, ["Bernas, Joaquin G."], "KPM1744 .B47 2009", "Philippine Law", 1, 1, 9, 1200),
+    B("b13", "Calculus: Early Transcendentals", "9th edition", 2020, ["Stewart, James", "Clegg, Daniel", "Watson, Saleem"], "QA303.2 .S73 2020", "Mathematics", 0, 3, 27, 250),
+    B("b14", "Clean Code", null, 2008, ["Martin, Robert C."], "QA76.76.C73 M37 2008", "Computer Science", 1, 2, 24, 700),
+    B("b15", "Psychology", "13th edition", 2021, ["Myers, David G.", "DeWall, C. Nathan"], "BF121 .M98 2021", "Psychology", 2, 2, 11, 20),
+    B("b16", "Operating System Concepts", "10th edition", 2018, ["Silberschatz, Abraham", "Galvin, Peter B.", "Gagne, Greg"], "QA76.76.O63 S5583 2018", "Computer Science", 0, 2, 31, 500),
+    B("b17", "To Kill a Mockingbird", null, 1960, ["Lee, Harper"], "PS3562.E353 T6 1960", "American Literature", 1, 1, 6, 1500),
+    B("b18", "Artificial Intelligence: A Modern Approach", "4th edition", 2020, ["Russell, Stuart", "Norvig, Peter"], "Q335 .R86 2020", "Computer Science", 2, 3, 20, 3),
+  ];
+  const byId = Object.fromEntries(BOOKS.map((b, i) => [b.id, { ...b, color: COVERS[i % COVERS.length] }]));
+  BOOKS.forEach((b, i) => { b.color = COVERS[i % COVERS.length]; });
+
+  const YEAR = 2026;
+  const HISTORY = ["data structures", "kurose networking", "philippine history", "rosen discrete", "nursing fundamentals"];
+  const PEOPLE = {
+    student: { first: "Cobby", full: "COBBY BALDONADO", email: "cbaldonado.k12256165@umak.edu.ph", type: "UMAK Student · CCIS", code: "K1225 6165" },
+    visitor: { first: "Jamie", full: "JAMIE CRUZ", email: "jamie.cruz@example.com", type: "Visitor", code: "V0042 1187" },
+  };
+
+  /* ---------------- State ---------------- */
+  const fresh = () => ({
+    role: S ? S.role : "student",
+    cleared: S ? S.cleared : false,
+    tab: "home", push: null,
+    search: { on: false, q: "", submitted: false, sort: "best", sortOpen: false, avail: false, subjects: [], year: "any", from: 2016, to: YEAR, latest: true, expanded: [] },
+    sheet: null, dialog: null, seg: "holds",
+    saved: ["b8", "b6", "b17"], history: HISTORY.slice(), toast: null,
+  });
+  let S = null;
+  S = fresh();
+
+  /* ---------------- Helpers ---------------- */
+  const h = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const authorsLine = (a) => a.map((x) => x.split(",").reverse().join(" ").trim()).join(", ");
+  const shortAuthor = (a) => a[0].split(",")[0] + (a.length > 1 ? " et al." : "");
+  const isVisitor = () => S.role === "visitor";
+  function cover(b, w, h2, fs) {
+    const dark = b.color === "#E5C773" ? " dark" : "";
+    return `<div class="cover${dark}" style="width:${w}px;height:${h2}px;background:${b.color};font-size:${fs}px;border-radius:${w < 60 ? 6 : 10}px;${w < 60 ? "padding:4px 3px 4px 10px" : ""}">${w >= 60 ? `<span>${h(b.title)}</span>` : ""}</div>`;
+  }
+  const availPill = (b) => b.avail > 0 ? `<span class="pill ok">${b.avail} of ${b.copies} available</span>` : `<span class="pill none">None available</span>`;
+
+  function lev(a, b) {
+    const m = a.length, n = b.length; const d = Array.from({ length: m + 1 }, (_, i) => [i]);
+    for (let j = 1; j <= n; j++) d[0][j] = j;
+    for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    return d[m][n];
+  }
+  const words = (s) => s.toLowerCase().replace(/[^a-z0-9.\s]/g, " ").split(/\s+/).filter(Boolean);
+  function hit(tok, hay) {
+    if (hay.includes(tok)) return true;
+    if (tok.length < 4) return false;
+    return words(hay).some((w) => Math.abs(w.length - tok.length) <= 1 && lev(w, tok) <= 1);
+  }
+  function score(b, q) {
+    const toks = words(q); if (!toks.length) return 0;
+    const t = b.title.toLowerCase(), a = b.authors.join(" ").toLowerCase(), c = b.lc.toLowerCase();
+    let s = 0;
+    for (const k of toks) { if (hit(k, t)) s += 3; else if (hit(k, a)) s += 2; else if (c.includes(k)) s += 1; else return 0; }
+    if (t.includes(q.toLowerCase().trim())) s += 4;
+    return s + b.borrows / 100;
+  }
+  const workKey = (b) => b.title.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim() + "|" + b.authors[0];
+
+  function results() {
+    const f = S.search;
+    let list = BOOKS.map((b) => ({ b, s: score(b, f.q) })).filter((x) => x.s > 0);
+    if (f.subjects.length) list = list.filter((x) => f.subjects.includes(x.b.subject));
+    if (f.year === "5") list = list.filter((x) => x.b.year >= YEAR - 5);
+    if (f.year === "10") list = list.filter((x) => x.b.year >= YEAR - 10);
+    if (f.year === "custom") list = list.filter((x) => x.b.year >= f.from && x.b.year <= f.to);
+    let rows;
+    if (f.latest) {
+      const groups = new Map();
+      for (const x of list) { const k = workKey(x.b); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(x); }
+      rows = [...groups.values()].map((g) => { g.sort((p, q) => q.b.year - p.b.year); return { ...g[0], older: g.slice(1).map((y) => y.b), s: Math.max(...g.map((y) => y.s)) }; });
+    } else rows = list.map((x) => ({ ...x, older: [] }));
+    if (f.avail) rows = rows.filter((x) => x.b.avail > 0);
+    const sorters = { best: (p, q) => q.s - p.s, newest: (p, q) => q.b.year - p.b.year, az: (p, q) => p.b.title.localeCompare(q.b.title), borrowed: (p, q) => q.b.borrows - p.b.borrows };
+    rows.sort(sorters[f.sort]);
+    return rows;
+  }
+  function suggestions(q) {
+    const s = q.trim().toLowerCase(); if (s.length < 2) return [];
+    const starts = (txt) => txt.toLowerCase().split(/[\s,:]+/).some((w) => w.startsWith(s)) || txt.toLowerCase().includes(s);
+    const titles = [...new Set(BOOKS.map((b) => b.title))].filter(starts).slice(0, 3).map((t) => ({ kind: "Title", text: t, id: BOOKS.find((b) => b.title === t).id }));
+    const authors = [...new Set(BOOKS.flatMap((b) => b.authors))].filter(starts).slice(0, 5 - titles.length).map((a) => ({ kind: "Author", text: a }));
+    return [...titles, ...authors].slice(0, 5);
+  }
+  const mark = (text, q) => {
+    const i = text.toLowerCase().indexOf(q.trim().toLowerCase());
+    if (i < 0 || !q.trim()) return h(text);
+    return h(text.slice(0, i)) + "<b>" + h(text.slice(i, i + q.trim().length)) + "</b>" + h(text.slice(i + q.trim().length));
+  };
+  const SORTS = { best: "Best match", newest: "Newest edition", az: "Title A to Z", borrowed: "Most borrowed" };
+  const YEAR_OPTS = [["any", "Any time"], ["5", "Last 5 years"], ["10", "Last 10 years"], ["custom", "Custom"]];
+  const YEARS = Object.fromEntries(YEAR_OPTS);
+  const filterCount = () => S.search.subjects.length + (S.search.year !== "any" ? 1 : 0) + (S.search.latest ? 0 : 1);
+
+  /* ---------------- Screens ---------------- */
+  const statusBar = () => `<div class="sb"><span>9:41</span><span class="ic">${ic.signal()}${ic.battery()}</span></div>`;
+
+  function tabBar() {
+    const v = isVisitor();
+    const dot = !v; // a Hold is ready and a Loan is due tomorrow in the sample
+    const t = (key, icon, label, extra = "") => `<button class="tab${S.tab === key ? " on" : ""}" data-a="tab" data-v="${key}" aria-label="${label}"${S.tab === key ? ' aria-current="page"' : ""}>${icon(25)}<span>${label}</span>${extra}</button>`;
+    return `<nav class="tabbar">${t("home", ic.home, "Home")}${t("mybooks", v ? ic.bm : ic.books, v ? "Saved" : "My Books", dot ? '<span class="dot" aria-label="needs attention"></span>' : "")}${t("id", ic.id, "Digital ID")}${t("profile", ic.user, "Profile")}</nav>`;
+  }
+
+  const avatar = (size = 50) => `<span class="avatar" style="width:${size}px;height:${size}px">${ic.person(size * 0.5)}</span>`;
+
+  function shelf(title, sub, books) {
+    return `<section class="shelf"><h3>${h(title)}</h3><p class="sub">${h(sub)}</p><div class="shelf-row">${books.map((b) => `<button class="card" data-a="book" data-v="${b.id}">${cover(b, 96, 140, 11)}<span class="t">${h(b.title)}</span><span class="a">${h(shortAuthor(b.authors))}</span></button>`).join("")}</div></section>`;
+  }
+
+  function homeView() {
+    const p = PEOPLE[S.role];
+    const v = isVisitor();
+    const newest = [...BOOKS].sort((a, b) => a.added - b.added).slice(0, 6);
+    const popular = [...BOOKS].filter((b) => v || COLLEGE_SUBJECTS.includes(b.subject)).sort((a, b) => b.borrows - a.borrows).filter((b, i, arr) => arr.findIndex((x) => workKey(x) === workKey(b)) === i).slice(0, 6);
+    const availNow = [...BOOKS].filter((b) => b.avail > 0 && (v || b.subject === "Computer Science")).sort((a, b) => b.borrows - a.borrows).filter((b, i, arr) => arr.findIndex((x) => workKey(x) === workKey(b)) === i).slice(0, 6);
+    return `<div class="view">
+      <button class="hh" data-a="tab" data-v="profile" aria-label="Open Profile">${avatar()}<span><span class="greet" style="display:block">Hi, ${h(p.first)}</span><span class="prompt">What's on your mind</span></span></button>
+      <button class="sbar" data-a="search-open"><span>what's on your mind</span>${ic.search(22)}</button>
+      <button class="banner" data-a="push" data-v="announcement" aria-label="Announcement: Library Week 2026. Open it." style="background-image:url('${P.week}');background-size:100% auto;background-position:0 28%"></button>
+      ${shelf("New arrivals", "Added to the catalog this month", newest)}
+      ${shelf(v ? "Popular in the library" : "Popular in CCIS", v ? "Most borrowed this term" : "Most borrowed by CCIS students this term", popular)}
+      ${shelf(v ? "On the shelf now" : "Available now in Computer Science", v ? "You can read these in the library today" : "Your top Subject, from what you have borrowed", availNow)}
+    </div>`;
+  }
+
+  function searchView() {
+    const f = S.search;
+    return `<div class="view no-tabs" id="sv">
+      <div class="sm-top">
+        <div class="sm-field">${ic.search(20)}<input id="q" type="search" value="${h(f.q)}" placeholder="Title, author, ISBN or call number" autocomplete="off" aria-label="Search the catalog" enterkeyhint="search">${f.q ? `<button class="iconbtn" data-a="q-clear" aria-label="Clear">${ic.xc(20)}</button>` : ""}</div>
+        <button class="cancel" data-a="search-close">Cancel</button>
+      </div>
+      <div id="sp">${searchPanel()}</div>
+    </div>`;
+  }
+
+  function searchPanel() {
+    const f = S.search;
+    if (!f.submitted && !f.q.trim()) {
+      if (!S.history.length) return `<div class="empty"><div class="ring">${ic.history(28)}</div><h4>No recent searches</h4><p>Your last 10 searches show here. They stay on this phone and are cleared when you sign out.</p></div>`;
+      return `<div class="list-head"><span class="label">Recent searches</span><button class="linkbtn" data-a="hist-clear">Clear all</button></div>
+        ${S.history.map((t, i) => `<div class="hist"><button class="go" data-a="hist-go" data-v="${i}">${ic.clock(18)}<span>${h(t)}</span></button><button class="iconbtn" data-a="hist-del" data-v="${i}" aria-label="Remove ${h(t)}">${ic.x(16)}</button></div>`).join("")}`;
+    }
+    if (!f.submitted) {
+      const sg = suggestions(f.q);
+      if (!sg.length) return `<p class="count" style="margin-top:20px">Press search to look for “${h(f.q)}” in titles, authors, ISBNs and call numbers.</p>`;
+      return `<div class="list-head"><span class="label">Suggestions</span></div>${sg.map((x) => `<div class="sugg"><button class="go" data-a="${x.kind === "Title" ? "book" : "sugg-author"}" data-v="${h(x.kind === "Title" ? x.id : x.text)}">${x.kind === "Title" ? ic.book(18) : ic.person(18)}<span class="txt">${mark(x.text, f.q)}</span><span class="kind">${x.kind}</span></button></div>`).join("")}`;
+    }
+    const rows = results();
+    const chips = [
+      ...f.subjects.map((s) => `<button class="fchip" data-a="rm-subject" data-v="${h(s)}">${h(s)} ${ic.x(14)}</button>`),
+      f.year !== "any" ? `<button class="fchip" data-a="rm-year">${f.year === "custom" ? `${f.from} to ${f.to}` : YEARS[f.year]} ${ic.x(14)}</button>` : "",
+      !f.latest ? `<button class="fchip" data-a="rm-latest">All editions ${ic.x(14)}</button>` : "",
+    ].join("");
+    const n = filterCount();
+    return `<div class="ctrl-wrap"><div class="ctrl">
+        <button class="chip on" data-a="sort-open" aria-expanded="${f.sortOpen}" aria-label="Sort: ${SORTS[f.sort]}">${ic.sort(15)}${SORTS[f.sort]}${ic.down(14)}</button>
+        <button class="chip${f.avail ? " on" : ""}" data-a="avail" aria-pressed="${f.avail}">${f.avail ? ic.check(14) : ""}Available now</button>
+        <button class="chip${n ? " on" : ""}" data-a="filters">${ic.sliders(15)}Filters${n ? ` (${n})` : ""}</button>
+      </div>
+      ${f.sortOpen ? `<div class="menu" role="menu"><span class="label">Sort by</span>${Object.entries(SORTS).map(([k, v]) => `<button role="menuitemradio" aria-checked="${f.sort === k}" class="${f.sort === k ? "on" : ""}" data-a="sort" data-v="${k}">${v}${f.sort === k ? ic.check(18) : ""}</button>`).join("")}</div>` : ""}</div>
+      ${chips ? `<div class="fchips">${chips}</div>` : ""}
+      <p class="count">${rows.length} ${rows.length === 1 ? "result" : "results"}${f.latest ? " · older editions folded in" : ""}</p>
+      ${rows.length ? rows.map((r) => resultRow(r.b, r.older)).join("") : `<div class="empty"><div class="ring">${ic.search(26)}</div><h4>No Books match</h4><p>Try fewer filters or another spelling.</p>${n || f.avail ? `<button class="small-btn" data-a="reset">Clear filters</button>` : ""}</div>`}`;
+  }
+
+  function resultRow(b, older = [], nested = false) {
+    const open = S.search.expanded.includes(b.id);
+    return `<div>${`<div class="res"><button class="open" data-a="book" data-v="${b.id}">${cover(b, 36, 52, 0)}<span class="tx"><span class="tt">${h(b.title)}${b.ed ? `, ${h(b.ed)}` : ""}</span><span class="au">${h(authorsLine(b.authors))}</span><span class="meta">${b.year} · ${h(b.subject)}</span></span></button>${availPill(b)}</div>`}
+      ${!nested && older.length ? `<button class="older" data-a="older" data-v="${b.id}" aria-expanded="${open}">${open ? "Hide" : "Also in"} ${older.length} older edition${older.length > 1 ? "s" : ""} ${open ? "" : "›"}</button>` : ""}
+      ${open ? `<div class="older-list">${older.map((o) => resultRow(o, [], true)).join("")}</div>` : ""}</div>`;
+  }
+
+  function filterSheet() {
+    const f = S.search;
+    const present = new Set(BOOKS.map((b) => b.subject));
+    const opt = (s) => `<button class="opt${f.subjects.includes(s) ? " on" : ""}" data-a="subject" data-v="${h(s)}" aria-pressed="${f.subjects.includes(s)}">${h(s)} <small>${SUBJECTS[s]}</small></button>`;
+    const mine = COLLEGE_SUBJECTS.filter((s) => present.has(s));
+    const rest = Object.keys(SUBJECTS).filter((s) => present.has(s) && !mine.includes(s));
+    const count = results().length;
+    return `<div class="scrim" data-a="sheet-close"></div><div class="sheet" role="dialog" aria-label="Filters"><div class="grab"></div>
+      <div class="sheet-head"><h4>Filters</h4><button class="linkbtn" data-a="reset">Reset</button></div>
+      <div class="fsec"><span class="label">Subject</span>
+        ${!isVisitor() ? `<span class="sl">For CCIS</span><div class="opts">${mine.map(opt).join("")}</div><span class="sl">All Subjects</span><div class="opts">${rest.map(opt).join("")}</div>` : `<div class="opts">${[...mine, ...rest].map(opt).join("")}</div>`}
+      </div>
+      <div class="fsec"><span class="label">Published</span>
+        <div class="segs">${YEAR_OPTS.map(([k, v]) => `<button class="${f.year === k ? "on" : ""}" data-a="year" data-v="${k}" aria-pressed="${f.year === k}">${v}</button>`).join("")}</div>
+        ${f.year === "custom" ? `<div class="range"><span>From</span><input id="yf" inputmode="numeric" value="${f.from}" aria-label="From year"><span>to</span><input id="yt" inputmode="numeric" value="${f.to}" aria-label="To year"></div>` : ""}
+      </div>
+      <div class="fsec"><div class="toggle-row"><span><span class="tl">Latest edition only</span><br><span class="td">Older editions of the same book fold into one row.</span></span><button class="sw${f.latest ? " on" : ""}" data-a="latest" role="switch" aria-checked="${f.latest}" aria-label="Latest edition only"></button></div></div>
+      <button class="primary" data-a="sheet-close">Show ${count} ${count === 1 ? "result" : "results"}</button>
+    </div>`;
+  }
+
+  function bookSheet(id) {
+    const b = BOOKS.find((x) => x.id === id);
+    const saved = S.saved.includes(id);
+    const v = isVisitor();
+    const action = v
+      ? `<div class="panel">Visitors can read this Book in the library but cannot borrow it. Ask at the desk.</div>`
+      : b.avail > 0 ? `<button class="cta">Borrow</button>` : `<button class="cta">Place a Hold</button>`;
+    return `<div class="scrim" data-a="sheet-close"></div><div class="sheet" role="dialog" aria-label="${h(b.title)}"><div class="grab"></div>
+      <div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="save${saved ? " on" : ""}" data-a="save" data-v="${b.id}" aria-pressed="${saved}">${saved ? ic.bmf(18) : ic.bm(18)} ${saved ? "Saved" : "Save"}</button></div>
+      <div class="bk-top">${cover(b, 112, 164, 13)}<div class="tx"><span class="bk-title">${h(b.title)}</span><span class="au" style="font-size:13px;color:var(--a-muted)">${h(authorsLine(b.authors))}</span>
+        <div class="tags">${b.ed ? `<span class="tag">${h(b.ed)}</span>` : ""}<span class="tag">${b.year}</span><span class="tag ${b.avail ? "avail" : "none"}">${b.avail ? `${b.avail} of ${b.copies} available` : "None available"}</span></div></div></div>
+      <div style="margin-top:16px;display:flex;flex-direction:column;gap:10px;align-items:flex-start"><span class="callnum">CALL NO. ${h(b.lc)}</span><span style="font-size:12.5px;color:var(--a-body)">Subject: <b style="color:var(--a-black);font-weight:500">${h(b.subject)}</b></span></div>
+      <div style="margin-top:20px">${action}</div>
+    </div>`;
+  }
+
+  function myBooksView() {
+    const v = isVisitor();
+    const seg = v ? "saved" : S.seg;
+    const head = `<h2 class="h-screen">${v ? "Saved books" : "My Books"}</h2>`;
+    const segs = v ? "" : `<div class="mb-seg" role="tablist">${[["loans", "Loans", true], ["holds", "Holds", true], ["saved", "Saved", false]].map(([k, l, d]) => `<button role="tab" class="${seg === k ? "on" : ""}" aria-selected="${seg === k}" data-a="seg" data-v="${k}">${l}${d ? '<span class="dot" aria-hidden="true"></span>' : ""}</button>`).join("")}</div>`;
+    let body = "";
+    if (seg === "loans") {
+      const cc = byId.b14, calc = byId.b13;
+      body = `${loanRow(cc, "Due tomorrow, Thu, Nov 19", "info", "Due tomorrow")}${loanRow(calc, "Due Tue, Nov 24", "neutral", "On loan")}`;
+    } else if (seg === "holds") {
+      const ia = byId.b5, os = byId.b16;
+      body = `<div class="row ready">${cover(ia, 36, 52, 0)}<div class="tx"><span class="tt">${h(ia.title)}, ${h(ia.ed)}</span><span class="au">${h(shortAuthor(ia.authors))}</span><span class="when">Pick up by <b>Thu, Nov 19, 5:00 PM</b></span><div class="acts"><button class="small-btn fill" data-a="tab" data-v="id">Show my Digital ID</button></div></div><span class="pill avail">Ready for pickup</span></div>
+        <div class="row">${cover(os, 36, 52, 0)}<div class="tx"><span class="tt">${h(os.title)}, ${h(os.ed)}</span><span class="au">${h(shortAuthor(os.authors))}</span><span class="when">2nd in line</span><div class="acts"><button class="small-btn">Cancel Hold</button></div></div><span class="pill info">Waiting</span></div>`;
+    } else {
+      body = S.saved.length
+        ? S.saved.map((id) => { const b = BOOKS.find((x) => x.id === id); return `<div class="row"><button class="sv-open" data-a="book" data-v="${b.id}">${cover(b, 36, 52, 0)}<span class="tx"><span class="tt">${h(b.title)}${b.ed ? `, ${h(b.ed)}` : ""}</span><span class="au">${h(shortAuthor(b.authors))}</span><span style="margin-top:4px">${availPill(b)}</span></span></button><button class="bm" data-a="unsave" data-v="${b.id}" aria-label="Remove from Saved">${ic.bmf(22)}</button></div>`; }).join("")
+        : `<div class="empty"><div class="ring">${ic.bm(28)}</div><h4>No Saved books yet</h4><p>Tap Save on any Book to keep it here for later.</p><button class="primary" style="width:auto;padding:0 24px;margin-top:6px" data-a="go-search">Search the catalog</button></div>`;
+    }
+    return `<div class="view">${head}${segs}${body}</div>`;
+  }
+  function loanRow(b, when, tone, label) {
+    return `<div class="row">${cover(b, 36, 52, 0)}<div class="tx"><span class="tt">${h(b.title)}${b.ed ? `, ${h(b.ed)}` : ""}</span><span class="au">${h(shortAuthor(b.authors))}</span><span class="when">${when}</span><div class="acts"><button class="small-btn">Renew</button></div></div><span class="pill ${tone}">${label}</span></div>`;
+  }
+
+  function barcode() {
+    let x = 0, seed = 7, bars = "";
+    const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+    while (x < 268) { const w = 1 + Math.floor(rnd() * 3.2); if (rnd() > 0.42) bars += `<rect x="${x}" y="0" width="${w}" height="96" fill="#000"/>`; x += w + (rnd() > 0.5 ? 1 : 2); }
+    return `<svg width="270" height="96" viewBox="0 0 270 96" role="img" aria-label="Digital ID barcode">${bars}</svg>`;
+  }
+  function idView() {
+    const p = PEOPLE[S.role];
+    return `<div class="view">
+      <h2 class="did-h">Show this to the <em>librarian</em></h2>
+      <p class="did-sub">${isVisitor() ? "Show it at the desk when you visit. Visitors read in the library." : "The librarian scans it to lend you a Book or set aside your Hold."}</p>
+      <div class="ticket">${barcode()}<span class="code">${p.code}</span><span class="ttl">${ic.clock(16)} New code in <b id="ttl">0:42</b></span></div>
+      <div class="who" style="margin-top:18px"><b>${h(p.full)}</b>${h(p.type)}</div>
+      <div class="bright">${ic.sun(18)} Your screen is at full brightness and stays on while this is open.</div>
+    </div>`;
+  }
+
+  function profileView() {
+    const p = PEOPLE[S.role];
+    const clr = S.cleared || isVisitor()
+      ? `<div class="clear-panel"><div class="hd">Clearance <span class="pill avail">Cleared</span></div><p>No Loans out and no unsettled Fines.</p></div>`
+      : `<div class="clear-panel"><div class="hd">Clearance <span class="pill danger">Not cleared</span></div><p>2 Loans still out. You are cleared once they are returned.</p></div>`;
+    const row = (icon, label, a, v = "") => `<button class="prow" data-a="${a}" data-v="${v}">${icon(22)}<span>${label}</span><span class="chev">${ic.chev(18)}</span></button>`;
+    return `<div class="view">
+      <h2 class="h-screen">Profile</h2>
+      <div class="ident">${avatar(70)}<div><div class="nm">${h(p.full)}</div><div class="fc">${h(p.email)}</div><div class="fc">${h(p.type)}</div></div></div>
+      <div class="pmenu">
+        ${row(ic.person, "My account", "noop")}
+        ${clr}
+        ${row(ic.key, "Change password", "noop")}
+        ${row(ic.gear, "Settings", "push", "settings")}
+        ${row(ic.help, "Help and policies", "push", "help")}
+      </div>
+      <button class="signout">Sign out</button>
+    </div>`;
+  }
+
+  function pushHead(title) { return `<div class="h-push"><button class="back" data-a="pop" aria-label="Back">${ic.left(20)}</button><h2>${h(title)}</h2></div>`; }
+
+  function settingsView() {
+    const sw = (k, on, label, d) => `<div class="srow"><span><span>${label}</span><span class="sd">${d}</span></span><span class="end"><button class="sw${on ? " on" : ""}" data-a="pref" data-v="${k}" role="switch" aria-checked="${on}" aria-label="${label}"></button></span></div>`;
+    const pr = S.prefs || (S.prefs = { hold: true, due: true, overdue: true, ann: false });
+    return `<div class="view no-tabs">${pushHead("Settings")}
+      <div class="slabel label">Push notifications</div>
+      <div class="sgroup">
+        ${sw("hold", pr.hold, "Hold ready for pickup", "So you don't miss your Pickup Window")}
+        ${sw("due", pr.due, "Loan due tomorrow", "The evening before")}
+        ${sw("overdue", pr.overdue, "Loan overdue", "Once, on the first day")}
+        ${sw("ann", pr.ann, "Announcements", "When the library posts one")}
+      </div>
+      <p class="note">Loan notice emails are always sent, whatever you choose here.</p>
+      <div class="slabel label">Privacy and security</div>
+      <div class="sgroup">
+        <button class="srow" data-a="hist-clear-toast">${ic.history(20)}<span>Clear search history<span class="sd">${S.history.length} recent searches on this phone</span></span></button>
+        <button class="srow" data-a="dialog" data-v="signout-all">${ic.devices(20)}<span>Sign out of all devices<span class="sd">For a lost or shared phone</span></span></button>
+      </div>
+      <div class="slabel label">Library</div>
+      <div class="sgroup"><button class="srow" data-a="push" data-v="library">${ic.pin(20)}<span>Library info<span class="sd">Hours, location and contact</span></span><span class="end">${ic.chev(18)}</span></button></div>
+      <div class="slabel label">Account</div>
+      <div class="sgroup"><button class="srow red" data-a="dialog" data-v="delete">${ic.trash(20)}<span>Delete my account</span></button></div>
+      <p class="foot">LIBRAS for Android · version 0.1.0</p>
+    </div>`;
+  }
+
+  function helpView() {
+    const v = isVisitor();
+    return `<div class="view no-tabs">${pushHead("Help and policies")}
+      <div class="slabel label">How borrowing works for ${v ? "Visitors" : "UMAK Students"}</div>
+      ${v ? `<div class="facts"><div class="fact"><span>Borrowing</span><b>Not available</b></div><div class="fact"><span>Reading in the library</span><b>Yes, show your Digital ID</b></div><div class="fact"><span>Saved books</span><b>Yes</b></div></div>`
+        : `<div class="facts">
+          <div class="fact"><span>Books at a time</span><b>3</b></div>
+          <div class="fact"><span>Loan period</span><b>7 days</b></div>
+          <div class="fact"><span>Renewals</span><b>1 per Loan, adds 7 days</b></div>
+          <div class="fact"><span>Late Fine</span><b>₱5 a day, up to ₱300 per Loan</b></div>
+        </div>
+        <p class="para">A Renewal is refused once a Loan is overdue, while someone else has a Hold on the Book, or while you have an overdue Loan or an unsettled Fine.</p>
+        <p class="para">When a Copy you placed a Hold on comes back, we set it aside for you. Pick it up before the time shown on your Hold or it goes to the next person in line.</p>`}
+      <div class="slabel label">Policies</div>
+      <div class="sgroup">
+        <button class="srow">${ic.doc(20)}<span>Terms and Conditions</span><span class="end">${ic.chev(18)}</span></button>
+        <button class="srow">${ic.shield(20)}<span>Privacy Policy</span><span class="end">${ic.chev(18)}</span></button>
+      </div>
+    </div>`;
+  }
+
+  function libraryView() {
+    return `<div class="view no-tabs">${pushHead("Library info")}
+      <div class="slabel label">Opening hours</div>
+      <div class="facts"><div class="fact"><span>Monday to Friday</span><b>8:00 AM to 7:00 PM</b></div><div class="fact"><span>Saturday</span><b>8:00 AM to 12:00 PM</b></div><div class="fact"><span>Sunday and holidays</span><b>Closed</b></div></div>
+      <div class="slabel label">Where</div>
+      <div class="facts"><div class="fact"><span>University Library</span><b>Building and floor to confirm</b></div><div class="fact"><span>Campus</span><b>J.P. Rizal Ext., West Rembo, Taguig</b></div></div>
+      <div class="slabel label">Contact</div>
+      <div class="facts"><div class="fact"><span>Email</span><b>library@umak.edu.ph</b></div><div class="fact"><span>Phone</span><b>To confirm</b></div></div>
+      <p class="note">Example values. The library supplies the real hours and contacts before release.</p>
+    </div>`;
+  }
+
+  function announcementView() {
+    return `<div class="view no-tabs">${pushHead("Announcement")}
+      <img class="poster-full" src="${P.week}" alt="Library Week 2026 poster: book fair, thesis writing clinic, meet the authors and free orientation, November 17 to 28.">
+      <p class="zoom">Pinch to zoom</p>
+      <h3 class="ann-title">Library Week 2026</h3>
+      <span class="ann-dates">Nov 17 to Nov 28 · University Library</span>
+      <p class="ann-body">A week of events at the library: a book fair in the lobby, a thesis writing clinic and a talk with Filipino authors. This week's featured title is Readings in Philippine History.</p>
+      <button class="cta" data-a="book" data-v="b11">View book</button>
+    </div>`;
+  }
+
+  function dialogView() {
+    if (S.dialog === "signout-all") return `<div class="scrim" data-a="dialog-close"></div><div class="dialog" role="alertdialog" aria-label="Sign out of all devices"><h4>Sign out of all devices?</h4><p>Every phone signed in to your account, this one included, will need your password again.</p><div class="btns"><button class="b-out" data-a="dialog-close">Cancel</button><button class="b-yes" data-a="dialog-close">Sign out all</button></div></div>`;
+    if (S.dialog === "delete") {
+      if (!S.cleared && !isVisitor()) return `<div class="scrim" data-a="dialog-close"></div><div class="dialog" role="alertdialog" aria-label="Return your books first"><h4>Return your books first</h4><p>You can delete your account once you are cleared. You still have 2 Loans out: Clean Code and Calculus: Early Transcendentals.</p><div class="btns"><button class="b-out" data-a="dialog-close">Close</button><button class="b-yes" data-a="see-loans">See My Loans</button></div></div>`;
+      return `<div class="scrim" data-a="dialog-close"></div><div class="dialog" role="alertdialog" aria-label="Delete your account"><h4>Delete your account?</h4><p>Your profile, Saved books and sign-in are deleted for good. The library keeps your past Loans and Fines without your name.</p><input class="field" type="password" placeholder="Enter your password to confirm" aria-label="Password" id="delpw"><div class="btns"><button class="b-out" data-a="dialog-close">Cancel</button><button class="b-red" data-a="dialog-close">Delete account</button></div></div>`;
+    }
+    return "";
+  }
+
+  /* ---------------- Notes per screen ---------------- */
+  const NOTES = {
+    home: { t: "Home", see: [
+      ["No burger and no drawer. Four tabs: Home, My Books, Digital ID, Profile. Search is the bar at the top, not a tab.", "Q1"],
+      ["The bell is hidden until the notification inbox exists, so nothing on screen leads nowhere.", "Q12"],
+      ["The banner is the running Announcement: a poster a Librarian uploaded and cropped to 2:1 on the desk page. Tap it for the full poster. With none running, the banner is not there.", "Q9, Q11, Q21"],
+      ["Three shelves from catalog and Loan data: New arrivals, Popular in your college, Available now in your top Subject. A Visitor gets library-wide versions.", "Q6"],
+      ["Loans, Holds and the Digital ID card moved to their own tabs, so Home is about finding books.", "Q6"],
+    ], decide: ["The greeting's second line reads \"Whats on your mind\" in today's app. The preview adds the apostrophe; say if you want to keep the Figma text."] },
+    announcement: { t: "Announcement", see: [
+      ["The full poster, never cropped, with pinch to zoom: pubmats carry a lot of small text.", "Q21"],
+      ["The title is the heading and what screen readers announce. The body and the link button only show when the Librarian added them. The link is a Book (View book) or a web page (Open forms.gle), which opens in the phone's browser.", "Q20"],
+      ["The tab bar hides on screens pushed on top of a tab, to give the content the full height.", ""],
+    ], decide: ["Back moves to the top left on every pushed screen. Today's app puts it to the right of the title; top left is where Android and iOS users reach for it."] },
+    recent: { t: "Search: recent searches", see: [
+      ["Tapping the bar turns Home into search mode. Cancel or the Android back button returns to Home.", "Q2"],
+      ["The last 10 searches, on this phone only. Remove one, or clear all. Signing out wipes them.", "Q14"],
+      ["The tab bar hides while searching so the keyboard has room.", ""],
+    ] },
+    suggest: { t: "Search: suggestions", see: [
+      ["After 2 letters, up to 5 titles and authors from the same typo-tolerant index.", "Q15"],
+      ["A title opens its Book. An author runs a search for that author. Accession numbers and barcodes never appear here, though they stay searchable.", "Q15"],
+    ], tryIt: "Type \"algo\", \"silber\" or \"kuros\" (typo) in the phone." },
+    results: { t: "Search: results", see: [
+      ["One row of controls: Sort, the one-tap Available now chip, and Filters with a count of what is on.", "Q3, Q4"],
+      ["Active filters show as chips you can remove one by one.", "Q4"],
+      ["Latest edition only folds older editions into \"Also in N older editions\". Same work means the same title and the same first author.", "Q16"],
+      ["The availability pill keeps today's wording: \"2 of 4 available\", \"None available\".", ""],
+    ], decide: [
+      "Latest edition only starts switched on in this preview. Should it start off?",
+      "With editions folded, Available now looks at the newest edition. The alternative is to count a row as available when any of its editions has a Copy on the shelf.",
+    ], tryIt: "Search \"data structures\" or \"algorithms\", then open the older editions, sort, and switch Available now on." },
+    sort: { t: "Search: sort", see: [["Four options: Best match, Newest edition, Title A to Z, Most borrowed. Oldest first and Z to A are gone.", "Q3"]] },
+    filters: { t: "Search: filters", see: [
+      ["Subject comes from the Book's LC call number. Each option shows the LC classes it covers so the mapping can be checked.", "Q4, Q17"],
+      ["Your college's Subjects come first. Subjects with no Book in the catalog are not listed.", "Q5, Q17"],
+      ["Published: any time, last 5 years, last 10 years, or a custom range.", "Q4"],
+      ["The button shows how many results the filters leave, live.", ""],
+    ] },
+    book: { t: "Book page", see: [
+      ["Today's Book page with one addition: Save, top right. A Saved book goes to My Books › Saved.", "Q7"],
+      ["Saving sets no Copy aside and queues nobody, so Visitors can save too. They see no Borrow or Place a Hold.", "Q7"],
+      ["Subject is shown under the call number, so Members learn what the filter means.", "Q17"],
+    ], decide: ["Save lives on the Book page only, to keep result rows simple. Do you also want a bookmark on each result row?"] },
+    mybooks: { t: "My Books", see: [
+      ["Three segments: Loans, Holds, Saved.", "Q13"],
+      ["It opens on Holds here because a Hold is ready: the Pickup Window is the easiest thing to miss.", "Q13"],
+      ["A dot on the tab when a Hold is ready, or a Loan is due tomorrow or overdue. Nothing else earns a dot.", "Q13"],
+      ["Saved: the bookmark removes a Book. Remove them all to see the empty state with Search the catalog.", "Q13"],
+    ] },
+    "mybooks-visitor": { t: "Saved books (Visitor)", see: [
+      ["Visitors and Alumni cannot borrow or place Holds, so the tab is labelled Saved and shows only Saved books, with no segments.", "Q13"],
+    ] },
+    id: { t: "Digital ID", see: [
+      ["Its own tab, the same for every Account Type. The Visitor reading pass will live here later.", "Q19"],
+      ["Full brightness and screen kept awake while open, so the scan works first time.", "Q24"],
+      ["The code changes every 60 seconds, as today.", ""],
+    ] },
+    profile: { t: "Profile", see: [
+      ["Rows in this order: My account, Clearance, Change password, Settings, Help and policies, then Sign out.", "Q18, Q25"],
+      ["Help, Settings and Sign out moved here from the drawer.", "Q1"],
+    ] },
+    settings: { t: "Settings", see: [
+      ["Push notifications, one switch per kind. Built only if time allows after the rest; without it this section is not shown.", "Q24"],
+      ["Loan notice emails stay mandatory, because a Fine is only fair if the Member was told.", "Q18"],
+      ["Clear search history, Sign out of all devices, Library info, and Delete my account at the bottom.", "Q24, Q25"],
+      ["No dark mode, and no text-size setting: the app follows the phone's font size instead.", "Q24"],
+    ] },
+    delete: { t: "Delete my account", see: [
+      ["Refused until the Member is cleared: no Loan out, no unsettled Fine. Tick \"Member is cleared\" on the left to see the other dialog.", "Q24"],
+      ["Past Loans and Fines stay in the library's records without the Member's name.", "Q24"],
+    ] },
+    "signout-all": { t: "Sign out of all devices", see: [["Ends every session of the account, this phone included.", "Q24"]] },
+    help: { t: "Help and policies", see: [
+      ["The numbers are read live from the Member's Loan Policy: 3 books, 7 days, 1 Renewal, ₱5 a day up to ₱300. The Figma text hard-coded them.", "Q18"],
+      ["A Visitor's version says plainly that they cannot borrow.", "Q18"],
+    ] },
+    library: { t: "Library info", see: [["Hours, location and contact, static in the app at first.", "Q24"]], decide: ["The values shown are examples. Who on the library side gives us the real hours, floor and phone number?"] },
+  };
+
+  function noteKey() {
+    if (S.dialog) return S.dialog;
+    if (S.sheet === "filters") return "filters";
+    if (S.sheet) return "book";
+    if (S.push) return S.push;
+    if (S.tab === "home" && S.search.on) {
+      if (S.search.sortOpen) return "sort";
+      if (S.search.submitted) return "results";
+      return S.search.q.trim() ? "suggest" : "recent";
+    }
+    if (S.tab === "mybooks") return isVisitor() ? "mybooks-visitor" : "mybooks";
+    return S.tab;
+  }
+
+  function renderNotes() {
+    const n = NOTES[noteKey()] || NOTES.home;
+    document.getElementById("notes").innerHTML = `<h2>${h(n.t)}</h2>
+      <div><h3>What you're seeing</h3><ul>${n.see.map(([t, q]) => `<li>${h(t)}${q ? ` <span class="q">${q}</span>` : ""}</li>`).join("")}</ul></div>
+      ${n.decide ? `<div class="decide"><h3>Decide while reviewing</h3><ul>${n.decide.map((t) => `<li>${h(t)}</li>`).join("")}</ul></div>` : ""}
+      ${n.tryIt ? `<p class="try">Try it: ${h(n.tryIt)}</p>` : ""}`;
+    document.querySelectorAll("#scn-list .scn").forEach((b) => b.setAttribute("aria-current", String(b.dataset.key === noteKey())));
+  }
+
+  /* ---------------- Render ---------------- */
+  const screen = document.getElementById("screen");
+  function render() {
+    let view, tabs = true;
+    if (S.push === "announcement") { view = announcementView(); tabs = false; }
+    else if (S.push === "settings") { view = settingsView(); tabs = false; }
+    else if (S.push === "help") { view = helpView(); tabs = false; }
+    else if (S.push === "library") { view = libraryView(); tabs = false; }
+    else if (S.tab === "home" && S.search.on) { view = searchView(); tabs = false; }
+    else if (S.tab === "home") view = homeView();
+    else if (S.tab === "mybooks") view = myBooksView();
+    else if (S.tab === "id") view = idView();
+    else view = profileView();
+    let overlay = "";
+    if (S.sheet === "filters") overlay = filterSheet();
+    else if (S.sheet) overlay = bookSheet(S.sheet);
+    overlay += dialogView();
+    const toast = S.toast ? `<div class="toast${tabs ? "" : " low"}" role="status">${h(S.toast.text)}${S.toast.undo ? `<button data-a="undo">Undo</button>` : ""}</div>` : "";
+    screen.innerHTML = statusBar() + view + (tabs ? tabBar() : "") + overlay + toast;
+    renderNotes();
+  }
+  function renderPanel() { const sp = document.getElementById("sp"); if (sp) sp.innerHTML = searchPanel(); renderNotes(); const clr = screen.querySelector(".sm-field .iconbtn"); const field = screen.querySelector(".sm-field"); if (field && !clr && S.search.q) field.insertAdjacentHTML("beforeend", `<button class="iconbtn" data-a="q-clear" aria-label="Clear">${ic.xc(20)}</button>`); if (clr && !S.search.q) clr.remove(); }
+
+  let toastTimer;
+  function toast(text, undo) { S.toast = { text, undo }; clearTimeout(toastTimer); toastTimer = setTimeout(() => { S.toast = null; render(); }, 3200); }
+
+  function runSearch(q) {
+    S.search.q = q; S.search.submitted = true; S.search.sortOpen = false; S.search.expanded = [];
+    const t = q.trim(); if (t) { S.history = [t, ...S.history.filter((x) => x.toLowerCase() !== t.toLowerCase())].slice(0, 10); }
+  }
+
+  /* ---------------- Events ---------------- */
+  screen.addEventListener("click", (e) => {
+    const el = e.target.closest("[data-a]"); if (!el || !screen.contains(el)) return;
+    const a = el.dataset.a, v = el.dataset.v;
+    const f = S.search;
+    switch (a) {
+      case "tab": S.tab = v; S.push = null; S.sheet = null; S.dialog = null; f.on = false; if (v === "mybooks") S.seg = "holds"; break;
+      case "push": S.push = v; S.sheet = null; break;
+      case "pop": S.push = S.push === "library" ? "settings" : null; break;
+      case "search-open": f.on = true; f.q = ""; f.submitted = false; render(); focusQ(); return;
+      case "search-close": f.on = false; f.q = ""; f.submitted = false; f.sortOpen = false; break;
+      case "q-clear": f.q = ""; f.submitted = false; render(); focusQ(); return;
+      case "hist-go": runSearch(S.history[+v]); break;
+      case "hist-del": S.history.splice(+v, 1); break;
+      case "hist-clear": S.history = []; break;
+      case "hist-clear-toast": S.history = []; toast("Search history cleared"); break;
+      case "sugg-author": runSearch(v.split(",")[0]); break;
+      case "sort-open": f.sortOpen = !f.sortOpen; break;
+      case "sort": f.sort = v; f.sortOpen = false; break;
+      case "avail": f.avail = !f.avail; break;
+      case "filters": S.sheet = "filters"; f.sortOpen = false; break;
+      case "subject": f.subjects = f.subjects.includes(v) ? f.subjects.filter((x) => x !== v) : [...f.subjects, v]; break;
+      case "year": f.year = v; break;
+      case "latest": f.latest = !f.latest; break;
+      case "reset": f.subjects = []; f.year = "any"; f.latest = true; f.avail = false; break;
+      case "rm-subject": f.subjects = f.subjects.filter((x) => x !== v); break;
+      case "rm-year": f.year = "any"; break;
+      case "rm-latest": f.latest = true; break;
+      case "older": f.expanded = f.expanded.includes(v) ? f.expanded.filter((x) => x !== v) : [...f.expanded, v]; break;
+      case "book": S.sheet = v; break;
+      case "sheet-close": S.sheet = null; break;
+      case "save": if (S.saved.includes(v)) { S.saved = S.saved.filter((x) => x !== v); toast("Removed from Saved"); } else { S.saved = [v, ...S.saved]; toast(isVisitor() ? "Saved" : "Saved to My Books"); } break;
+      case "unsave": { const i = S.saved.indexOf(v); S.saved = S.saved.filter((x) => x !== v); S.lastRemoved = { v, i }; toast("Removed from Saved", true); break; }
+      case "undo": if (S.lastRemoved) { S.saved.splice(S.lastRemoved.i, 0, S.lastRemoved.v); S.lastRemoved = null; } S.toast = null; break;
+      case "seg": S.seg = v; break;
+      case "go-search": S.tab = "home"; f.on = true; f.q = ""; f.submitted = false; render(); focusQ(); return;
+      case "pref": S.prefs[v] = !S.prefs[v]; break;
+      case "dialog": S.dialog = v; break;
+      case "dialog-close": S.dialog = null; break;
+      case "see-loans": S.dialog = null; S.push = null; S.tab = "mybooks"; S.seg = "loans"; break;
+      default: return;
+    }
+    render();
+  });
+  screen.addEventListener("input", (e) => {
+    if (e.target.id === "q") { S.search.q = e.target.value; S.search.submitted = false; S.search.sortOpen = false; renderPanel(); }
+    if (e.target.id === "yf" || e.target.id === "yt") {
+      const n = parseInt(e.target.value, 10);
+      if (!Number.isNaN(n) && n >= 1000 && n <= YEAR) { S.search[e.target.id === "yf" ? "from" : "to"] = n; const btn = screen.querySelector(".sheet .primary"); const c = results().length; if (btn) btn.textContent = `Show ${c} ${c === 1 ? "result" : "results"}`; }
+    }
+  });
+  screen.addEventListener("keydown", (e) => {
+    if (e.target.id === "q" && e.key === "Enter") { e.preventDefault(); runSearch(e.target.value); render(); }
+  });
+  function focusQ() { const q = document.getElementById("q"); if (q) { q.focus({ preventScroll: true }); q.setSelectionRange(q.value.length, q.value.length); } }
+
+  /* ---------------- Scenario list ---------------- */
+  const SC = [
+    ["Home", [
+      ["home", "Home", () => {}],
+      ["announcement", "Announcement detail", () => { S.push = "announcement"; }],
+    ]],
+    ["Search", [
+      ["recent", "Recent searches", () => { S.search.on = true; }],
+      ["suggest", "Suggestions while typing", () => { S.search.on = true; S.search.q = "algo"; }],
+      ["results", "Results", () => { S.search.on = true; runSearch("data structures"); S.search.q = "data structures"; }],
+      ["sort", "Sort menu", () => { S.search.on = true; runSearch("algorithms"); S.search.sortOpen = true; }],
+      ["filters", "Filters sheet", () => { S.search.on = true; runSearch("algorithms"); S.search.subjects = ["Computer Science"]; S.sheet = "filters"; }],
+      ["book", "Book page with Save", () => { S.sheet = "b6"; }],
+    ]],
+    ["My Books", [
+      ["mybooks", "Loans, Holds, Saved", () => { S.tab = "mybooks"; S.seg = "holds"; }],
+      ["mybooks-saved-empty", "Saved, empty", () => { S.tab = "mybooks"; S.seg = "saved"; S.saved = []; }],
+    ]],
+    ["Digital ID", [["id", "Digital ID", () => { S.tab = "id"; }]]],
+    ["Profile", [
+      ["profile", "Profile", () => { S.tab = "profile"; }],
+      ["settings", "Settings", () => { S.tab = "profile"; S.push = "settings"; }],
+      ["delete", "Delete my account", () => { S.tab = "profile"; S.push = "settings"; S.dialog = "delete"; }],
+      ["help", "Help and policies", () => { S.tab = "profile"; S.push = "help"; }],
+      ["library", "Library info", () => { S.tab = "profile"; S.push = "library"; }],
+    ]],
+  ];
+  function buildList() {
+    document.getElementById("scn-list").innerHTML = SC.map(([g, items]) => `<div><h2>${g}</h2><div class="group">${items.map(([k, l]) => `<button class="scn" data-key="${k === "mybooks" && isVisitor() ? "mybooks-visitor" : k === "mybooks-saved-empty" ? "-" : k}" data-scn="${k}">${l}</button>`).join("")}</div></div>`).join("")
+      + `<label class="check"><input type="checkbox" id="cleared" ${S.cleared ? "checked" : ""}> Member is cleared</label>`;
+  }
+  document.getElementById("scn-list").addEventListener("click", (e) => {
+    const b = e.target.closest(".scn"); if (!b) return;
+    S = fresh();
+    if (S.prefs === undefined) S.prefs = { hold: true, due: true, overdue: true, ann: false };
+    for (const [, items] of SC) for (const [k, , fn] of items) if (k === b.dataset.scn) fn();
+    render();
+    if (b.dataset.scn === "recent" || b.dataset.scn === "suggest") focusQ();
+  });
+  document.getElementById("scn-list").addEventListener("change", (e) => { if (e.target.id === "cleared") { S.cleared = e.target.checked; render(); } });
+  document.getElementById("role").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-role]"); if (!b) return;
+    S.role = b.dataset.role;
+    document.querySelectorAll("#role button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+    S.sheet = null; S.dialog = null; buildList(); render();
+  });
+
+  /* ---------------- Digital ID countdown ---------------- */
+  let left = 42;
+  setInterval(() => { left = left <= 0 ? 59 : left - 1; const t = document.getElementById("ttl"); if (t) t.textContent = `0:${String(left).padStart(2, "0")}`; }, 1000);
+
+  /* ---------------- Fit the phone ---------------- */
+  const pw = document.getElementById("pw"), stage = document.getElementById("stage");
+  function fit() {
+    const w = stage.clientWidth || 390;
+    const s = Math.min(1, w / 392, Math.max(0.62, (window.innerHeight - 70) / 844));
+    pw.style.setProperty("--s", String(Math.min(s, w / 392)));
+  }
+  window.addEventListener("resize", fit);
+
+  /* ---------------- Desk page ---------------- */
+  const D = { img: P.clinic, ratio: 0.8, pos: 0.32, start: "2026-11-26", end: "2026-12-05", title: "Thesis Writing Clinic", body: "One-on-one help with your thesis: citations, structure and finding sources. Sign up with the form.", linkKind: "web", link: "https://forms.gle/example-sign-up" };
+  const host = (u) => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return ""; } };
+  const linkButton = () => D.linkKind === "web" && host(D.link) ? `Open ${host(D.link)}` : D.linkKind === "book" && D.link.trim() ? "View book" : "";
+  const RUNNING = [
+    { t: "Library Week 2026", s: "2026-11-17", e: "2026-11-28", img: P.week, pos: 0.33, st: "run" },
+    { t: "Holiday hours", s: "2026-12-15", e: "2027-01-04", img: P.holiday, pos: 0.3, st: "sched" },
+    { t: "Thesis binding deadline", s: "2026-10-20", e: "2026-11-07", img: P.binding, pos: 0.3, st: "past" },
+    { t: "Welcome, first years", s: "2026-08-11", e: "2026-08-29", img: P.welcome, pos: 0.3, st: "past" },
+  ];
+  const fmt = (iso) => new Date(iso + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  function overlap() { if (!D.start || !D.end) return null; return RUNNING.filter((r) => r.st !== "past").find((r) => D.start <= r.e && D.end >= r.s) || null; }
+  function bgFor(img, ratio, pos) {
+    // ratio = width / height of the image. Taller than 2:1 crops vertically, wider crops sideways.
+    return ratio <= 2 ? `background-image:url('${img}');background-size:100% auto;background-position:0 ${pos * 100}%` : `background-image:url('${img}');background-size:auto 100%;background-position:${pos * 100}% 0`;
+  }
+  function deskHTML() {
+    const card = (r) => `<div class="acard${r.st === "past" ? " past" : ""}"><div class="thumb" style="${bgFor(r.img, 0.8, r.pos)}"></div><div class="ai"><span class="an">${h(r.t)}</span><span class="ad">${fmt(r.s)} to ${fmt(r.e)}</span><div class="aa">${r.st === "run" ? '<button>Edit</button><button class="end">End now</button>' : r.st === "sched" ? '<button>Edit</button><button class="end">Delete</button>' : '<button>Copy as new</button>'}</div></div></div>`;
+    const grp = (label, st) => `<div class="dgroup"><span class="label">${label}</span>${RUNNING.filter((r) => r.st === st).map(card).join("")}</div>`;
+    return `<div class="dbar"><span class="dbrand"><span class="logo">L</span>Libras</span><nav><span>Desk</span><span class="on">Announcements</span></nav><span class="me">Maria Santos · Librarian</span></div>
+      <div class="dbody">
+        <section class="dlist"><div class="dl-head"><h2>Announcements</h2><button class="dbtn">New</button></div>
+          <p class="audit" style="margin:0">One shows on Home at a time. Later ones wait their turn.</p>
+          ${grp("Showing now", "run")}${grp("Scheduled", "sched")}${grp("Past", "past")}
+        </section>
+        <section class="dform"><h2>New Announcement</h2>
+          <div class="steps">
+            <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+              <div class="fl"><label>Poster image</label><div class="crop-box">
+                <div class="crop" id="crop" style="aspect-ratio:${D.ratio};background-image:url('${D.img}')"><div class="frame" id="frame" tabindex="0" role="slider" aria-label="Crop position" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(D.pos * 100)}"></div></div>
+                <div class="upl"><span>JPG, PNG or WebP, up to 5 MB. Drag the frame to choose what shows on Home.</span><label class="dbtn ghost" for="file">Replace image<input id="file" type="file" accept="image/jpeg,image/png,image/webp"></label></div>
+              </div></div>
+              <div class="fl"><label for="d-title">Title</label><input id="d-title" type="text" value="${h(D.title)}"><span class="help">Required. Read aloud by screen readers and shown above the poster when opened. Not drawn on the banner.</span></div>
+              <div class="fl"><label for="d-body">Text <span class="help">(optional)</span></label><textarea id="d-body">${h(D.body)}</textarea></div>
+              <div class="fl"><label>Link <span class="help">(optional)</span></label>
+                <div class="lk" role="radiogroup" aria-label="Link type">${[["none", "No link"], ["book", "A Book"], ["web", "A web page"]].map(([k, l]) => `<button role="radio" aria-checked="${D.linkKind === k}" class="${D.linkKind === k ? "on" : ""}" data-lk="${k}">${l}</button>`).join("")}</div>
+                ${D.linkKind === "book" ? `<input id="d-link" type="text" placeholder="Search the catalog by title or call number" value="${h(D.link)}" aria-label="Book"><span class="help">Adds a View book button under the poster.</span>` : ""}
+                ${D.linkKind === "web" ? `<input id="d-link" type="text" placeholder="https://" value="${h(D.link)}" aria-label="Web address"><span class="help">Adds an Open link button that names the site. It opens in the Member's own browser. https addresses only.</span>` : ""}
+              </div>
+              <div class="dates"><div class="fl"><label for="d-start">Show from</label><input id="d-start" type="date" value="${h(D.start)}"></div><div class="fl"><label for="d-end">Until</label><input id="d-end" type="date" value="${h(D.end)}"></div></div>
+              <div id="d-check"></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <span class="label">On Home</span>
+              <div class="mini"><div class="mh"><i></i>Hi, Cobby</div><div class="ms"></div><div class="mb" id="mb"></div><div class="ms short"></div><div class="ms"></div></div>
+              <span class="label" style="margin-top:8px">When opened</span>
+              <div class="mini" style="gap:6px"><img src="${D.img}" alt="" style="width:100%;border-radius:10px" id="mfull"><b style="font-size:13px" id="mtitle">${h(D.title)}</b><span class="audit">Full poster, never cropped.</span><span class="mlink" id="mlink"${linkButton() ? "" : " hidden"}>${h(linkButton())}</span></div>
+            </div>
+          </div>
+          <div class="dactions"><span class="audit" style="margin-right:auto;align-self:center">Saved changes are recorded in the audit log.</span><button class="dbtn ghost">Cancel</button><button class="dbtn" id="d-go">Schedule</button></div>
+        </section>
+      </div>`;
+  }
+  function deskCheck() {
+    const box = document.getElementById("d-check"), go = document.getElementById("d-go");
+    const o = overlap();
+    if (!D.start || !D.end || D.end < D.start) { box.innerHTML = `<div class="err">Pick an end date on or after the start date.</div>`; go.disabled = true; return; }
+    if (o) { box.innerHTML = `<div class="err">These dates overlap “${h(o.t)}” (${fmt(o.s)} to ${fmt(o.e)}). Only one Announcement shows at a time: pick dates outside it, or end that one first.</div>`; go.disabled = true; return; }
+    if (D.linkKind === "web" && !(D.link.startsWith("https://") && host(D.link))) { box.innerHTML = `<div class="err">Enter a full web address that starts with https://, or choose No link.</div>`; go.disabled = true; return; }
+    if (!D.title.trim()) { box.innerHTML = `<div class="err">Add a title. Screen readers read it in place of the poster.</div>`; go.disabled = true; return; }
+    box.innerHTML = `<div class="okmsg">Shows on every Member's Home from ${fmt(D.start)} to ${fmt(D.end)}.</div>`; go.disabled = false;
+  }
+  function placeFrame() {
+    const crop = document.getElementById("crop"), fr = document.getElementById("frame"), mb = document.getElementById("mb");
+    if (!crop) return;
+    const W = crop.clientWidth, H = crop.clientHeight;
+    if (D.ratio <= 2) { const fh = W / 2; fr.style.cssText = `left:0;width:${W}px;height:${fh}px;top:${D.pos * (H - fh)}px`; }
+    else { const fw = H * 2; fr.style.cssText = `top:0;height:${H}px;width:${fw}px;left:${D.pos * (W - fw)}px`; }
+    fr.setAttribute("aria-valuenow", String(Math.round(D.pos * 100)));
+    mb.setAttribute("style", bgFor(D.img, D.ratio, D.pos));
+  }
+  function mountDesk() {
+    const root = document.getElementById("deskapp");
+    root.innerHTML = deskHTML();
+    placeFrame(); deskCheck();
+    const crop = document.getElementById("crop"), fr = document.getElementById("frame");
+    let drag = null;
+    fr.addEventListener("pointerdown", (e) => { drag = { x: e.clientX, y: e.clientY, pos: D.pos }; fr.setPointerCapture(e.pointerId); });
+    fr.addEventListener("pointermove", (e) => {
+      if (!drag) return;
+      const W = crop.clientWidth, H = crop.clientHeight;
+      const span = D.ratio <= 2 ? H - W / 2 : W - H * 2;
+      const delta = D.ratio <= 2 ? e.clientY - drag.y : e.clientX - drag.x;
+      D.pos = Math.min(1, Math.max(0, drag.pos + (span > 0 ? delta / span : 0))); placeFrame();
+    });
+    fr.addEventListener("pointerup", () => { drag = null; });
+    fr.addEventListener("keydown", (e) => { const k = { ArrowUp: -0.05, ArrowLeft: -0.05, ArrowDown: 0.05, ArrowRight: 0.05 }[e.key]; if (k) { e.preventDefault(); D.pos = Math.min(1, Math.max(0, D.pos + k)); placeFrame(); } });
+    document.getElementById("file").addEventListener("change", (e) => {
+      const file = e.target.files && e.target.files[0]; if (!file) return;
+      const box = document.getElementById("d-check");
+      if (!/^image\/(jpeg|png|webp)$/.test(file.type)) { box.innerHTML = `<div class="err">Use a JPG, PNG or WebP image.</div>`; return; }
+      if (file.size > 5 * 1024 * 1024) { box.innerHTML = `<div class="err">That image is ${(file.size / 1048576).toFixed(1)} MB. The limit is 5 MB.</div>`; return; }
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => { D.img = reader.result; D.ratio = img.naturalWidth / img.naturalHeight; D.pos = 0.5; mountDesk(); };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+  window.addEventListener("resize", placeFrame);
+  document.getElementById("deskapp").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-lk]"); if (!b) return;
+    if (b.dataset.lk !== D.linkKind) { D.linkKind = b.dataset.lk; D.link = D.linkKind === "web" ? "https://" : ""; mountDesk(); }
+  });
+  document.getElementById("deskapp").addEventListener("input", (e) => {
+    if (e.target.id === "d-title") { D.title = e.target.value; document.getElementById("mtitle").textContent = D.title || "Untitled"; }
+    if (e.target.id === "d-body") D.body = e.target.value;
+    if (e.target.id === "d-link") { D.link = e.target.value; const m = document.getElementById("mlink"); m.textContent = linkButton(); m.hidden = !linkButton(); }
+    if (e.target.id === "d-start") D.start = e.target.value;
+    if (e.target.id === "d-end") D.end = e.target.value;
+    deskCheck();
+  });
+
+  /* ---------------- View switch ---------------- */
+  let deskMounted = false;
+  document.querySelector(".switch").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-view]"); if (!b) return;
+    const desk = b.dataset.view === "desk";
+    document.getElementById("mobile").hidden = desk;
+    document.getElementById("desk").hidden = !desk;
+    document.querySelectorAll(".switch button").forEach((x) => x.setAttribute("aria-selected", String(x === b)));
+    if (desk && !deskMounted) { mountDesk(); deskMounted = true; } else if (desk) placeFrame();
+    if (!desk) fit();
+  });
+
+  S.prefs = { hold: true, due: true, overdue: true, ann: false };
+  buildList(); render(); fit();
+})();
+</script>

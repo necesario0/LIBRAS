@@ -1,26 +1,30 @@
 import { useLocalSearchParams } from "expo-router";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, Animated, PanResponder, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { bookSheetSnapBounds, clampBookSheetTop, resolveBookSheetRelease } from "@libras/shared";
+import type { BookSheetPosition } from "@libras/shared";
 import { useAuth, useMember } from "../../../src/auth/AuthContext";
 import { BookInfo } from "../../../src/book/BookInfo";
 import { useBook } from "../../../src/catalog/useBook";
 import { useClearance } from "../../../src/clearance/useClearance";
 import { Button } from "../../../src/components/Button";
+import { Toast } from "../../../src/components/Toast";
 import { CloseIcon } from "../../../src/components/icons";
 import { useGoBack } from "../../../src/hooks/useGoBack";
 import { HoldAction } from "../../../src/holds/HoldAction";
 import { BorrowAction } from "../../../src/loans/BorrowAction";
+import { SaveAction } from "../../../src/saved-books/SaveAction";
 import { colors, fontFamily, fontSize, radii, spacing } from "../../../src/theme/tokens";
 
-/** The sheet starts this far down the screen: 200 pt of the 874 pt Figma frame. */
-const SHEET_TOP = 200 / 874;
+/** How long the message after saving or removing stays. */
+const MESSAGE_MS = 2500;
 
 /**
- * A Book, opened from a search result: the Figma "Book detail" sheet (node
- * 609:1066) over the screen that opened it. Its details and how many Copies
- * exist and are available come from the API. Borrow shows when a Copy is
- * available and opens the Digital ID; the Hold action shows when none is. A
- * Member who is not in Good standing is told why in place of either.
+ * A Book, opened from a search result or shelf: the Figma "Book detail" sheet
+ * (node 609:1066) over the screen that opened it. Dragging the top grabber up
+ * expands the sheet to fullscreen; dragging it down returns to the default
+ * height or dismisses the sheet.
  */
 export default function BookScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -33,49 +37,172 @@ export default function BookScreen() {
   const { state: standing } = useClearance(request);
   const goodStanding = standing.status === "loaded" ? standing.goodStanding : undefined;
   const close = useGoBack();
+  const [message, setMessage] = useState<string | undefined>(undefined);
+  const messageTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const showMessage = useCallback((text: string) => {
+    clearTimeout(messageTimer.current);
+    setMessage(text);
+    messageTimer.current = setTimeout(() => setMessage(undefined), MESSAGE_MS);
+  }, []);
+  useEffect(() => () => clearTimeout(messageTimer.current), []);
+
+  const bounds = useMemo(() => bookSheetSnapBounds(height), [height]);
+  const [position, setPosition] = useState<Exclude<BookSheetPosition, "closed">>("default");
+  const positionRef = useRef<Exclude<BookSheetPosition, "closed">>("default");
+  positionRef.current = position;
+  const boundsRef = useRef(bounds);
+  boundsRef.current = bounds;
+
+  const sheetTop = useRef(new Animated.Value(bounds.defaultTop)).current;
+  const currentTop = useRef(bounds.defaultTop);
+  const dragStartTop = useRef(bounds.defaultTop);
+  const scrollY = useRef(0);
+  const closingRef = useRef(false);
+  const closeRef = useRef(close);
+  closeRef.current = close;
+
+  useEffect(() => {
+    const sub = sheetTop.addListener(({ value }) => {
+      currentTop.current = value;
+    });
+    return () => sheetTop.removeListener(sub);
+  }, [sheetTop]);
+
+  useEffect(() => {
+    if (closingRef.current) return;
+    const target = positionRef.current === "expanded" ? bounds.fullTop : bounds.defaultTop;
+    sheetTop.setValue(target);
+    currentTop.current = target;
+  }, [bounds.defaultTop, bounds.fullTop, sheetTop]);
+
+  const snapTo = useCallback(
+    (next: BookSheetPosition) => {
+      const b = boundsRef.current;
+      if (next === "closed") {
+        if (closingRef.current) return;
+        closingRef.current = true;
+        Animated.timing(sheetTop, { toValue: b.closedTop, duration: 180, useNativeDriver: false }).start(() => {
+          closeRef.current();
+        });
+        return;
+      }
+      setPosition(next);
+      positionRef.current = next;
+      const toValue = next === "expanded" ? b.fullTop : b.defaultTop;
+      Animated.spring(sheetTop, { toValue, useNativeDriver: false, bounciness: 3, speed: 16 }).start();
+    },
+    [sheetTop],
+  );
+
+  const dismiss = useCallback(() => {
+    if (closingRef.current) return;
+    closingRef.current = true;
+    closeRef.current();
+  }, []);
+
+  const makeDragResponder = (allowMove: (dx: number, dy: number) => boolean) =>
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gesture) => allowMove(gesture.dx, gesture.dy),
+      onMoveShouldSetPanResponderCapture: (_, gesture) => allowMove(gesture.dx, gesture.dy),
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderGrant: () => {
+        dragStartTop.current = currentTop.current;
+        sheetTop.stopAnimation((value) => {
+          dragStartTop.current = value;
+          currentTop.current = value;
+        });
+      },
+      onPanResponderMove: (_, gesture) => {
+        const next = clampBookSheetTop(dragStartTop.current + gesture.dy, boundsRef.current.closedTop);
+        sheetTop.setValue(next);
+      },
+      onPanResponderRelease: (_, gesture) => {
+        const b = boundsRef.current;
+        const releaseTop = clampBookSheetTop(dragStartTop.current + gesture.dy, b.closedTop);
+        snapTo(
+          resolveBookSheetRelease({
+            state: positionRef.current,
+            top: releaseTop,
+            velocityY: gesture.vy,
+            height: b.closedTop,
+          }),
+        );
+      },
+      onPanResponderTerminate: () => {
+        snapTo(positionRef.current);
+      },
+    });
+
+  const handlePan = useRef(makeDragResponder((dx, dy) => Math.abs(dy) > 8 && Math.abs(dy) > Math.abs(dx))).current;
+  const bodyPan = useRef(makeDragResponder((dx, dy) => scrollY.current <= 1 && dy > 10 && Math.abs(dy) > Math.abs(dx))).current;
+
+  const span = Math.max(1, bounds.defaultTop);
+  const topRadius = sheetTop.interpolate({ inputRange: [0, span], outputRange: [0, radii.sheet], extrapolate: "clamp" });
+  const topInsetPadding = sheetTop.interpolate({ inputRange: [0, span], outputRange: [insets.top, 0], extrapolate: "clamp" });
 
   return (
     <View style={styles.screen}>
-      <Pressable accessibilityLabel="Close" onPress={close} style={{ height: height * SHEET_TOP }} testID="book-backdrop" />
-      <View style={styles.sheet} testID="book-sheet">
-        <View style={styles.grabber} />
-        <View style={styles.close}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={close} hitSlop={8} testID="book-close">
-            <CloseIcon />
-          </Pressable>
+      {position === "expanded" ? null : (
+        <Pressable accessibilityLabel="Close" onPress={dismiss} style={StyleSheet.absoluteFill} testID="book-backdrop" />
+      )}
+      <Animated.View
+        style={[
+          styles.sheet,
+          { top: sheetTop, borderTopLeftRadius: topRadius, borderTopRightRadius: topRadius },
+        ]}
+        testID="book-sheet"
+      >
+        <Animated.View style={[styles.handleArea, { paddingTop: topInsetPadding }]} {...handlePan.panHandlers} testID="book-grabber">
+          <View style={styles.grabber} />
+          <View style={styles.top}>
+            {state.status === "loaded" ? (
+              <SaveAction bookId={state.book.id} accountType={member.accountType} initiallySaved={state.saved} onMessage={showMessage} />
+            ) : null}
+            <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={dismiss} hitSlop={8} testID="book-close">
+              <CloseIcon />
+            </Pressable>
+          </View>
+        </Animated.View>
+        <View style={styles.body} {...bodyPan.panHandlers}>
+          <ScrollView
+            contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.xl }]}
+            onScroll={(event) => {
+              scrollY.current = event.nativeEvent.contentOffset.y;
+            }}
+            scrollEventThrottle={16}
+            showsVerticalScrollIndicator={false}
+          >
+            {state.status === "loading" ? <ActivityIndicator color={colors.primary} style={styles.spinner} testID="book-loading" /> : null}
+            {state.status === "loaded" ? (
+              <>
+                <BookInfo book={state.book} accountType={member.accountType} />
+                <BorrowAction book={state.book} accountType={member.accountType} goodStanding={goodStanding} />
+                <HoldAction book={state.book} accountType={member.accountType} goodStanding={goodStanding} />
+              </>
+            ) : null}
+            {state.status === "missing" ? (
+              <View style={styles.message} testID="book-missing">
+                <Text style={styles.messageTitle} accessibilityRole="header">
+                  Book not found
+                </Text>
+                <Text style={styles.messageBody}>{state.message}</Text>
+                <Button label="Back to search" radius={radii.formButton} onPress={dismiss} testID="book-missing-back" />
+              </View>
+            ) : null}
+            {state.status === "error" ? (
+              <View style={[styles.message, styles.failed]} testID="book-error">
+                <Text style={[styles.messageTitle, styles.failedTitle]} accessibilityRole="alert">
+                  This Book did not open
+                </Text>
+                <Text style={styles.messageBody}>{state.message}</Text>
+                <Button label="Try again" radius={radii.formButton} onPress={retry} testID="book-retry" />
+              </View>
+            ) : null}
+          </ScrollView>
         </View>
-        <ScrollView
-          contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.xl }]}
-          showsVerticalScrollIndicator={false}
-        >
-          {state.status === "loading" ? <ActivityIndicator color={colors.primary} style={styles.spinner} testID="book-loading" /> : null}
-          {state.status === "loaded" ? (
-            <>
-              <BookInfo book={state.book} accountType={member.accountType} />
-              <BorrowAction book={state.book} accountType={member.accountType} goodStanding={goodStanding} />
-              <HoldAction book={state.book} accountType={member.accountType} goodStanding={goodStanding} />
-            </>
-          ) : null}
-          {state.status === "missing" ? (
-            <View style={styles.message} testID="book-missing">
-              <Text style={styles.messageTitle} accessibilityRole="header">
-                Book not found
-              </Text>
-              <Text style={styles.messageBody}>{state.message}</Text>
-              <Button label="Back to search" radius={radii.formButton} onPress={close} testID="book-missing-back" />
-            </View>
-          ) : null}
-          {state.status === "error" ? (
-            <View style={[styles.message, styles.failed]} testID="book-error">
-              <Text style={[styles.messageTitle, styles.failedTitle]} accessibilityRole="alert">
-                This Book did not open
-              </Text>
-              <Text style={styles.messageBody}>{state.message}</Text>
-              <Button label="Try again" radius={radii.formButton} onPress={retry} testID="book-retry" />
-            </View>
-          ) : null}
-        </ScrollView>
-      </View>
+        {message === undefined ? null : <Toast message={message} bottom={insets.bottom + spacing.xl} testID="book-toast" />}
+      </Animated.View>
     </View>
   );
 }
@@ -83,19 +210,24 @@ export default function BookScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   sheet: {
-    flex: 1,
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: colors.white,
-    borderTopLeftRadius: radii.sheet,
-    borderTopRightRadius: radii.sheet,
     elevation: 24,
     shadowColor: colors.shadow,
     shadowOpacity: 0.25,
     shadowRadius: 27,
     shadowOffset: { width: 9, height: 4 },
+    overflow: "hidden",
   },
+  handleArea: { backgroundColor: colors.white },
   grabber: { alignSelf: "center", marginTop: 10, width: 56, height: 10, borderRadius: radii.grabber, backgroundColor: colors.grabber },
-  close: { position: "absolute", right: 20, top: 20, zIndex: 1 },
-  content: { paddingTop: 42, paddingHorizontal: spacing.xl, gap: spacing.xl },
+  // Save and the close button share the row under the grabber (Save alone at the top right in the approved preview).
+  top: { flexDirection: "row", justifyContent: "flex-end", alignItems: "center", gap: spacing.md, paddingHorizontal: 20, paddingTop: 2, paddingBottom: 4 },
+  body: { flex: 1 },
+  content: { paddingTop: spacing.md, paddingHorizontal: spacing.xl, gap: spacing.xl },
   spinner: { marginTop: spacing.xxl },
   message: { borderWidth: 1, borderColor: colors.panelBorder, borderRadius: radii.panel, padding: spacing.lg, gap: spacing.sm, marginTop: spacing.xl },
   failed: { borderColor: colors.error },

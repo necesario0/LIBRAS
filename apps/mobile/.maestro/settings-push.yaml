@@ -1,0 +1,126 @@
+# The Push notifications section of Settings (ticket #54): four switches, Hold
+# ready, Loan due tomorrow and Loan overdue on and Announcements off for a new
+# Member, with the line that Loan notice emails are always sent. Tapping a
+# switch saves it with the API at once: the API holds the new values, and
+# Settings opened again shows them.
+#
+# The emulator build has no Firebase credentials, so the app never asks for
+# the notification permission and never registers the phone: this flow checks
+# the switches only. Receiving and tapping a real push is checked on a real
+# phone in the hosted verification (#55).
+# Needs the end-to-end API on port 3000 (npm run e2e starts it).
+appId: ph.edu.umak.libras
+---
+- launchApp:
+    clearState: true
+- runScript: scripts/create-members.js
+
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 30000
+- tapOn:
+    id: welcome-sign-in
+- tapOn:
+    id: sign-in-email
+- inputText: ${output.email}
+- tapOn:
+    id: sign-in-password
+- inputText: ${output.password}
+- hideKeyboard
+- tapOn:
+    id: sign-in-continue
+- extendedWaitUntil:
+    visible: "Hi, Cobby"
+    timeout: 20000
+# No permission dialog in a build without push notifications.
+- assertNotVisible: "Allow LIBRAS to send you notifications?"
+
+- tapOn:
+    id: tab-profile
+- scrollUntilVisible:
+    element:
+      id: profile-settings
+    direction: DOWN
+- tapOn:
+    id: profile-settings
+- extendedWaitUntil:
+    visible:
+      id: settings-push-holdReady
+    timeout: 10000
+
+# The defaults, in the preview's order and words.
+- assertVisible: "PUSH NOTIFICATIONS"
+- assertVisible:
+    id: settings-push-holdReady
+    checked: true
+- assertVisible: "Hold ready for pickup"
+- assertVisible: "So you don't miss your Pickup Window"
+- assertVisible:
+    id: settings-push-loanDueTomorrow
+    checked: true
+- assertVisible: "Loan due tomorrow"
+- assertVisible: "The day before it is due"
+- assertVisible:
+    id: settings-push-loanOverdue
+    checked: true
+- assertVisible: "Loan overdue"
+- assertVisible: "Once, on the first day"
+- assertVisible:
+    id: settings-push-announcement
+    checked: false
+- assertVisible: "Announcements"
+- assertVisible: "When the library posts one"
+- assertVisible:
+    id: settings-push-note
+    text: "Loan notice emails are always sent, whatever you choose here."
+- assertNotVisible:
+    id: settings-push-blocked
+- assertVisible: "PRIVACY AND SECURITY"
+- takeScreenshot: settings-push
+
+# Announcements on, Hold ready off: each switch moves at once and is saved.
+- tapOn:
+    id: settings-push-announcement
+- assertVisible:
+    id: settings-push-announcement
+    checked: true
+- tapOn:
+    id: settings-push-holdReady
+- assertVisible:
+    id: settings-push-holdReady
+    checked: false
+- assertNotVisible:
+    id: settings-toast
+- takeScreenshot: settings-push-changed
+- runScript:
+    file: scripts/check-push-settings.js
+    env:
+      EMAIL: ${output.email}
+      PASSWORD: ${output.password}
+      EXPECTED: "holdReady=false,loanDueTomorrow=true,loanOverdue=true,announcement=true"
+
+# Settings opened again reads them from the API.
+- back
+- extendedWaitUntil:
+    visible:
+      id: profile-settings
+    timeout: 10000
+- tapOn:
+    id: profile-settings
+- extendedWaitUntil:
+    visible:
+      id: settings-push-holdReady
+    timeout: 10000
+- assertVisible:
+    id: settings-push-holdReady
+    checked: false
+- assertVisible:
+    id: settings-push-loanDueTomorrow
+    checked: true
+- assertVisible:
+    id: settings-push-loanOverdue
+    checked: true
+- assertVisible:
+    id: settings-push-announcement
+    checked: true
+

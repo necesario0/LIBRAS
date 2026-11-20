@@ -1,6 +1,7 @@
-# A UMAK Student places a Hold on a Book that has no available Copy, sees it on
-# Home and on the Holds screen, and cancels it. A Book with a Copy available has
-# no Hold action, and a Visitor is not offered one.
+# A UMAK Student places a Hold on a Book that has no available Copy, sees it in
+# the Holds segment of My Books, and cancels it. A waiting Hold puts no dot on
+# the My Books tab. A Book with a Copy available has no Hold action, and a
+# Visitor is not offered one: their tab is "Saved", with no segments.
 # Needs the end-to-end API on port 3000 (npm run e2e starts it).
 appId: ph.edu.umak.libras
 ---
@@ -30,25 +31,39 @@ appId: ph.edu.umak.libras
 - tapOn:
     id: sign-in-continue
 
-# With no Holds, Home says so.
+# With no Holds, My Books opens on Loans and its Holds segment says so. Nothing earns a dot.
+- runFlow: subflows/leave-search.yaml
 - extendedWaitUntil:
     visible:
-      id: home-holds
+      id: tab-my-books
     timeout: 20000
-- assertVisible: "My Holds"
-- assertVisible: "No active Holds"
-- takeScreenshot: holds-home-empty
+- runFlow: subflows/leave-search.yaml
+- tapOn:
+    id: tab-my-books
+- extendedWaitUntil:
+    visible:
+      id: loans-segment
+    timeout: 15000
+- assertVisible: "My Books"
+- runFlow: subflows/leave-search.yaml
+- assertNotVisible:
+    id: tab-my-books-dot
+- tapOn:
+    id: my-books-holds
+- extendedWaitUntil:
+    visible:
+      id: holds-empty
+    timeout: 15000
+- takeScreenshot: holds-my-books-empty
+- runFlow: subflows/leave-search.yaml
+- tapOn:
+    id: tab-home
 
 # A Book with a Copy available has no Hold action.
-- tapOn:
-    id: search-input
-# Typing can start before the keyboard is ready and lose the first letter; type until the whole word is in the field.
-- retry:
-    maxRetries: 3
-    commands:
-      - eraseText: 40
-      - inputText: ${output.openWord}
-      - assertVisible: ${output.openWord}
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: ${output.openWord}
 - extendedWaitUntil:
     visible: ${output.openTitle}
     timeout: 15000
@@ -57,7 +72,7 @@ appId: ph.edu.umak.libras
     visible:
       id: book-sheet
     timeout: 15000
-- assertVisible: "Available"
+- assertVisible: "[0-9]+ of [0-9]+ available"
 - assertNotVisible:
     id: hold-action
 - assertNotVisible:
@@ -71,15 +86,10 @@ appId: ph.edu.umak.libras
     visible:
       id: search-results
     timeout: 10000
-- tapOn:
-    id: search-input
-# Typing can start before the keyboard is ready and lose the first letter; type until the whole word is in the field.
-- retry:
-    maxRetries: 3
-    commands:
-      - eraseText: 40
-      - inputText: ${output.heldWord}
-      - assertVisible: ${output.heldWord}
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: ${output.heldWord}
 - extendedWaitUntil:
     visible: ${output.heldTitle}
     timeout: 15000
@@ -114,27 +124,26 @@ appId: ph.edu.umak.libras
       id: search-results
     timeout: 10000
 
-# Back on Home, with the search cleared, the summary counts the Hold.
+# The Holds segment lists it with its status, and the day it was placed in the
+# library's time zone: placed at 04:00 on Nov 11 in Manila, still Nov 10 in UTC.
+# A waiting Hold is not urgent: My Books still opens on Loans, with no dot.
+- runScript: scripts/hold-placed-at-night.js
+- runFlow: subflows/leave-search.yaml
 - tapOn:
-    id: search-input
-- eraseText: 40
+    id: tab-my-books
 - extendedWaitUntil:
     visible:
-      id: home-holds-summary
+      id: loans-segment
     timeout: 15000
-- assertVisible: "1 waiting"
-- takeScreenshot: holds-home-summary
-
-# The Holds screen lists it with its status, and the day it was placed in the
-# library's time zone: placed at 04:00 on Nov 11 in Manila, still Nov 10 in UTC.
-- runScript: scripts/hold-placed-at-night.js
+- runFlow: subflows/leave-search.yaml
+- assertNotVisible:
+    id: tab-my-books-dot
 - tapOn:
-    id: home-holds
+    id: my-books-holds
 - extendedWaitUntil:
     visible:
       id: holds-active
     timeout: 15000
-- assertVisible: "My Holds"
 - assertVisible: ${output.heldTitle}
 - assertVisible: "Waiting"
 - assertVisible: "Zxqy, Hana"
@@ -156,11 +165,7 @@ appId: ph.edu.umak.libras
 - assertNotVisible:
     id: holds-active
 - takeScreenshot: holds-cancelled
-- tapOn:
-    id: holds-back
-- extendedWaitUntil:
-    visible: "No active Holds"
-    timeout: 15000
+- runFlow: subflows/leave-search.yaml
 - runFlow: subflows/sign-out.yaml
 - extendedWaitUntil:
     visible: "SIGN  UP"
@@ -183,19 +188,37 @@ appId: ph.edu.umak.libras
 - hideKeyboard
 - tapOn:
     id: sign-in-continue
+
+# A Visitor borrows in-library only: My Books shows Loans and Saved, and no Holds.
+- extendedWaitUntil:
+    visible: "My Books"
+    timeout: 20000
+- runFlow: subflows/leave-search.yaml
+- tapOn:
+    id: tab-my-books
 - extendedWaitUntil:
     visible:
-      id: search-input
-    timeout: 20000
+      id: loans-empty
+    timeout: 15000
+- assertVisible: "My Books"
+- assertVisible:
+    id: my-books-loans
+- assertVisible:
+    id: my-books-saved
+- assertNotVisible:
+    id: my-books-holds
+- takeScreenshot: holds-visitor-saved
+- runFlow: subflows/leave-search.yaml
 - tapOn:
-    id: search-input
-# Typing can start before the keyboard is ready and lose the first letter; type until the whole word is in the field.
-- retry:
-    maxRetries: 3
-    commands:
-      - eraseText: 40
-      - inputText: ${output.heldWord}
-      - assertVisible: ${output.heldWord}
+    id: tab-home
+- extendedWaitUntil:
+    visible:
+      id: search-(open|input)
+    timeout: 20000
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: ${output.heldWord}
 - extendedWaitUntil:
     visible: ${output.heldTitle}
     timeout: 15000
@@ -206,7 +229,7 @@ appId: ph.edu.umak.libras
     timeout: 15000
 - assertVisible: "None available"
 - assertVisible:
-    id: cannot-borrow-note
+    id: in-library-unavailable-note
 - assertNotVisible:
     id: hold-action
 - assertNotVisible:

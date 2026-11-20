@@ -1,0 +1,259 @@
+# Search mode on Home: the bar opens it and Cancel and Android back close it
+# (the tab bar steps aside while it is open); recent searches (10, de-duplicated,
+# removable one by one or all at once, gone after sign-out); suggestions while
+# typing (a title opens its Book, an author runs a search).
+# Needs the end-to-end API on port 3000 (npm run e2e starts it).
+appId: ph.edu.umak.libras
+---
+- launchApp:
+    clearState: true
+- runScript:
+    file: scripts/create-members.js
+- runScript:
+    file: scripts/create-suggestions.js
+
+# Sign in.
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 30000
+- tapOn:
+    id: welcome-sign-in
+- tapOn:
+    id: sign-in-email
+- inputText: ${output.email}
+- tapOn:
+    id: sign-in-password
+- inputText: ${output.password}
+- hideKeyboard
+- tapOn:
+    id: sign-in-continue
+- extendedWaitUntil:
+    visible: "Hi, Cobby"
+    timeout: 20000
+
+# The bar opens search mode: Cancel, the field and the empty history, and no tab bar.
+- assertVisible:
+    id: tab-home
+- tapOn:
+    id: search-open
+- extendedWaitUntil:
+    visible:
+      id: search-cancel
+    timeout: 10000
+- assertVisible:
+    id: search-input
+- assertVisible:
+    id: recent-empty
+- assertVisible: "No recent searches"
+- assertNotVisible:
+    id: tab-home
+- takeScreenshot: search-mode-empty
+
+# Cancel returns to Home, and the tab bar is back.
+- tapOn:
+    id: search-cancel
+- extendedWaitUntil:
+    visible:
+      id: search-open
+    timeout: 10000
+- assertVisible:
+    id: tab-home
+- assertNotVisible:
+    id: search-cancel
+
+# Android back does the same.
+- tapOn:
+    id: search-open
+- extendedWaitUntil:
+    visible:
+      id: search-cancel
+    timeout: 10000
+- hideKeyboard
+- back
+- extendedWaitUntil:
+    visible:
+      id: search-open
+    timeout: 10000
+- assertVisible:
+    id: tab-home
+
+# Typing the start of a title word suggests the Book. Tapping it opens its page.
+- tapOn:
+    id: search-open
+- tapOn:
+    id: search-input
+- retry:
+    maxRetries: 3
+    commands:
+      - eraseText: 30
+      - inputText: ${output.prefix}
+      - assertVisible: ${output.prefix}
+- extendedWaitUntil:
+    visible:
+      id: suggestion-title
+    timeout: 15000
+- assertVisible: "SUGGESTIONS"
+- assertVisible: "Title"
+- takeScreenshot: search-mode-suggestions
+- tapOn:
+    id: suggestion-title
+- extendedWaitUntil:
+    visible:
+      id: book-sheet
+    timeout: 15000
+- assertVisible: ${output.title}
+- tapOn:
+    id: book-close
+- extendedWaitUntil:
+    visible:
+      id: search-input
+    timeout: 10000
+# Opening a Book from a suggestion is not a search: nothing was added to the history.
+- tapOn:
+    id: search-clear
+- assertVisible:
+    id: recent-empty
+
+# Typing the start of a surname suggests the author. Tapping it searches for them.
+- tapOn:
+    id: search-input
+- retry:
+    maxRetries: 3
+    commands:
+      - eraseText: 30
+      - inputText: ${output.surnamePrefix}
+      - assertVisible: ${output.surnamePrefix}
+- extendedWaitUntil:
+    visible:
+      id: suggestion-author
+    timeout: 15000
+- assertVisible: "Author"
+- assertVisible: ${output.author}
+- tapOn:
+    id: suggestion-author
+- extendedWaitUntil:
+    visible: ${output.title}
+    timeout: 15000
+- assertVisible: ${output.secondTitle}
+- assertVisible:
+    id: search-results
+- takeScreenshot: search-mode-author-results
+
+# The search is now the newest recent search.
+- tapOn:
+    id: search-clear
+- extendedWaitUntil:
+    visible:
+      id: recent-0
+    timeout: 10000
+- assertVisible: ${output.author}
+- takeScreenshot: search-mode-recent
+
+# A search typed in capitals is the same search: it moves to the top and is listed once.
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: ${output.word}
+- tapOn:
+    id: search-clear
+- extendedWaitUntil:
+    visible:
+      id: recent-1
+    timeout: 10000
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: ${output.wordUpper}
+- tapOn:
+    id: search-clear
+- extendedWaitUntil:
+    visible:
+      id: recent-1
+    timeout: 10000
+- assertNotVisible:
+    id: recent-2
+- assertVisible: ${output.wordUpper}
+
+# One search can be removed.
+- tapOn:
+    id: recent-remove-0
+- assertNotVisible: ${output.wordUpper}
+- assertVisible: ${output.author}
+- assertNotVisible:
+    id: recent-1
+
+# Eleven more searches: only the last ten stay, newest first.
+- evalScript: ${output.n = 0}
+- repeat:
+    times: 11
+    commands:
+      - evalScript: ${output.n = output.n + 1}
+      - runFlow:
+          file: subflows/search-for.yaml
+          env:
+            QUERY: zzqn${output.n}
+- tapOn:
+    id: search-clear
+- extendedWaitUntil:
+    visible:
+      id: recent-9
+    timeout: 10000
+- assertNotVisible:
+    id: recent-10
+- assertVisible: zzqn11
+- assertVisible: zzqn2
+- assertNotVisible: zzqn1
+- assertNotVisible: ${output.author}
+- takeScreenshot: search-mode-ten-recent
+
+# Tapping a recent search runs it.
+- tapOn:
+    id: recent-0
+- extendedWaitUntil:
+    visible:
+      id: search-no-results
+    timeout: 15000
+- assertVisible: "No books found"
+
+# Clear all empties the history.
+- tapOn:
+    id: search-clear
+- tapOn:
+    id: recent-clear
+- assertVisible:
+    id: recent-empty
+
+# A fresh search, then sign out: the history is gone when the Member signs back in.
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: ${output.word}
+- extendedWaitUntil:
+    visible: ${output.title}
+    timeout: 15000
+- runFlow: subflows/leave-search.yaml
+- runFlow: subflows/sign-out.yaml
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 20000
+- tapOn:
+    id: welcome-sign-in
+- tapOn:
+    id: sign-in-email
+- inputText: ${output.email}
+- tapOn:
+    id: sign-in-password
+- inputText: ${output.password}
+- hideKeyboard
+- tapOn:
+    id: sign-in-continue
+- extendedWaitUntil:
+    visible: "Hi, Cobby"
+    timeout: 20000
+- tapOn:
+    id: search-open
+- extendedWaitUntil:
+    visible:
+      id: recent-empty
+    timeout: 10000
+- assertNotVisible: ${output.word}

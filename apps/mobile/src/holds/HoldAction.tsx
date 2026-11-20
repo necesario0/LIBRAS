@@ -1,7 +1,7 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { HOLD_STATUS_LABELS, canBorrow, formatLibraryDateTime, goodStandingNotice } from "@libras/shared";
+import { HOLD_STATUS_LABELS, canPlaceHold, formatLibraryDateTime, goodStandingNotice } from "@libras/shared";
 import type { AccountType, BookDetail, GoodStanding } from "@libras/shared";
 import { useAuth } from "../auth/AuthContext";
 import { Button } from "../components/Button";
@@ -33,7 +33,7 @@ export function HoldAction({
   const [placing, setPlacing] = useState(false);
   const [failure, setFailure] = useState<string | undefined>(undefined);
 
-  if (!canBorrow(accountType) || book.availableCopies > 0) return null;
+  if (!canPlaceHold(accountType) || book.availableCopies > 0) return null;
   if (state.status === "loading") return null;
 
   const existing = state.status === "loaded" ? activeHolds(state.holds).find((hold) => hold.bookId === book.id) : undefined;
@@ -52,9 +52,9 @@ export function HoldAction({
             : "You are in the queue. You will be told when a Copy is set aside for you."}
         </Text>
         {existing.status === "ready" ? (
-          <Button label="Show my Digital ID" radius={radii.formButton} onPress={() => router.push("/digital-id")} testID="hold-digital-id" />
+          <Button label="Show my Digital ID" radius={radii.formButton} onPress={() => router.dismissTo("/digital-id")} testID="hold-digital-id" />
         ) : null}
-        <Button label="See my Holds" tone="muted" radius={radii.formButton} onPress={() => router.push("/holds")} testID="hold-see-all" />
+        <Button label="See my Holds" tone="muted" radius={radii.formButton} onPress={() => router.dismissTo({ pathname: "/my-books", params: { segment: "holds" } })} testID="hold-see-all" />
       </View>
     );
   }

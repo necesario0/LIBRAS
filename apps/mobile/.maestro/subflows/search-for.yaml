@@ -1,0 +1,22 @@
+# Searches the catalog for ${QUERY} from wherever the Member is on Home: opens
+# search mode when it is not open, types the query and presses the search key.
+# The results are under the bar when it returns.
+appId: ph.edu.umak.libras
+---
+- runFlow:
+    when:
+      visible:
+        id: search-open
+    commands:
+      - tapOn:
+          id: search-open
+- tapOn:
+    id: search-input
+# Typing can start before the keyboard is ready and lose the first letter; type until the whole query is in the field.
+- retry:
+    maxRetries: 3
+    commands:
+      - eraseText: 100
+      - inputText: ${QUERY}
+      - assertVisible: ${QUERY}
+- pressKey: Enter

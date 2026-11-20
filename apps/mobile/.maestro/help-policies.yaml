@@ -1,0 +1,130 @@
+# Help and policies, from the Profile tab. A UMAK Student reads the Loan Policy
+# the API holds for their Account Type: 3 books at a time, 7 days, 1 Renewal per
+# Loan, PHP 5 a day up to PHP 300. Terms and Conditions and Privacy Policy open
+# the terms. A Visitor is told plainly that they cannot borrow and what they can
+# do instead, with no Loan numbers.
+# Needs the end-to-end API on port 3000 (npm run e2e starts it).
+appId: ph.edu.umak.libras
+---
+- launchApp:
+    clearState: true
+- runScript: scripts/create-members.js
+- runScript: scripts/create-visitor.js
+
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 30000
+- tapOn:
+    id: welcome-sign-in
+- tapOn:
+    id: sign-in-email
+- inputText: ${output.email}
+- tapOn:
+    id: sign-in-password
+- inputText: ${output.password}
+- hideKeyboard
+- tapOn:
+    id: sign-in-continue
+- extendedWaitUntil:
+    visible: "Hi, Cobby"
+    timeout: 20000
+
+# A UMAK Student: the seeded Loan Policy numbers.
+- tapOn:
+    id: tab-profile
+- scrollUntilVisible:
+    element:
+      id: profile-help
+    direction: DOWN
+- tapOn:
+    id: profile-help
+- extendedWaitUntil:
+    visible:
+      id: help-policy
+    timeout: 15000
+- assertNotVisible:
+    id: tab-bar
+- assertVisible: "LOAN POLICY FOR UMAK STUDENT"
+- assertVisible: "Books at a time"
+- assertVisible: "3"
+- assertVisible: "Loan period"
+- assertVisible: "7 days"
+- assertVisible: "1 per Loan, adds 7 days"
+- assertVisible: "PHP 5 a day, up to PHP 300 per Loan"
+- takeScreenshot: help-umak-student
+
+# Terms and Conditions and Privacy Policy open the matching document directly; back returns here.
+- tapOn:
+    id: help-terms
+- extendedWaitUntil:
+    visible: "LIBRAS Terms and Conditions"
+    timeout: 10000
+- assertVisible: "Terms and policies"
+- assertVisible: "Acceptance of Terms"
+- tapOn:
+    id: terms-back
+- extendedWaitUntil:
+    visible:
+      id: help-policy
+    timeout: 10000
+- tapOn:
+    id: help-privacy
+- extendedWaitUntil:
+    visible: "LIBRAS Data Privacy Policy"
+    timeout: 10000
+- assertVisible: "Terms and policies"
+- back
+- extendedWaitUntil:
+    visible:
+      id: help-policy
+    timeout: 10000
+
+# The back button returns to Profile.
+- tapOn:
+    id: help-back
+- extendedWaitUntil:
+    visible:
+      id: profile-name
+    timeout: 10000
+
+# A Visitor: cannot borrow, and what they can do.
+- runFlow: subflows/sign-out.yaml
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 20000
+- tapOn:
+    id: welcome-sign-in
+- tapOn:
+    id: sign-in-email
+- inputText: ${output.visitorEmail}
+- tapOn:
+    id: sign-in-password
+- inputText: ${output.visitorPassword}
+- hideKeyboard
+- tapOn:
+    id: sign-in-continue
+- extendedWaitUntil:
+    visible: "Hi, Cobby"
+    timeout: 20000
+- tapOn:
+    id: tab-profile
+- scrollUntilVisible:
+    element:
+      id: profile-help
+    direction: DOWN
+- tapOn:
+    id: profile-help
+- extendedWaitUntil:
+    visible:
+      id: help-policy
+    timeout: 15000
+- assertVisible: "LOAN POLICY FOR VISITOR"
+- assertVisible: "Books at a time"
+- assertVisible: "3"
+- assertVisible: "In-library use only \\(same day\\)"
+- assertVisible: "Not allowed"
+- assertVisible: "Late Fine"
+- assertVisible: "PHP 5 a day, up to PHP 300 per Loan"
+- assertNotVisible:
+    id: help-cannot-borrow
+- takeScreenshot: help-visitor

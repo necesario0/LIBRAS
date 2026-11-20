@@ -15,11 +15,10 @@ import { KeyboardAvoiding } from "../../src/components/KeyboardAvoiding";
 import { useKeyboardVisible } from "../../src/components/OnboardingScreen";
 import { StepProgress } from "../../src/components/StepProgress";
 import { FieldError, TextField } from "../../src/components/TextField";
-import { Wordmark } from "../../src/components/Wordmark";
 import { useSignUp } from "../../src/sign-up/SignUpContext";
 import { DETAILS_ROUTE, buildSignUpRequest } from "../../src/sign-up/request";
 import { check } from "../../src/sign-up/validate";
-import { colors, fontFamily, fontSize, radii, spacing } from "../../src/theme/tokens";
+import { colors, fontFamily, fontSize, lineHeightFor, radii, spacing } from "../../src/theme/tokens";
 
 /** The server errors that belong to a field on an earlier step, and the step to go back to. */
 const EARLIER_STEP = {
@@ -89,9 +88,8 @@ export default function EmailScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <Wordmark />
-        <View style={styles.book}>
-          <BookIllustration width={173} height={117} />
+        <View>
+          <BookIllustration width={192} height={117} />
         </View>
         <Text style={styles.title} accessibilityRole="header">
           Almost finished, just a little more
@@ -146,26 +144,34 @@ export default function EmailScreen() {
 /** The tick that accepts the terms. Not in the Figma frames: the design only says "by continuing". */
 function TermsCheckbox({ checked, onToggle, error }: { checked: boolean; onToggle: () => void; error: string | undefined }) {
   const router = useRouter();
+  const openTerms = () => router.push({ pathname: "/terms", params: { doc: "terms" } });
+  const openPrivacy = () => router.push({ pathname: "/terms", params: { doc: "privacy" } });
   return (
-    <View style={styles.terms}>
-      <Pressable
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked }}
-        accessibilityLabel="Accept the terms"
-        onPress={onToggle}
-        hitSlop={8}
-        testID="email-accept-terms"
-        style={[styles.box, checked && styles.boxChecked]}
-      >
-        {checked ? <CheckIcon /> : null}
-      </Pressable>
-      <Text style={styles.termsText}>
-        {"I have read and accept the "}
-        <Text style={styles.termsLink} accessibilityRole="link" onPress={() => router.push("/terms")}>
-          Consumer Terms and Usage Policy
+    <View style={styles.termsGroup}>
+      <View style={styles.terms}>
+        <Pressable
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked }}
+          accessibilityLabel="Accept the terms"
+          onPress={onToggle}
+          hitSlop={8}
+          testID="email-accept-terms"
+          style={[styles.box, error !== undefined && !checked && styles.boxError, checked && styles.boxChecked]}
+        >
+          {checked ? <CheckIcon /> : null}
+        </Pressable>
+        <Text style={styles.termsText}>
+          {"I have read and accept the "}
+          <Text style={styles.termsLink} accessibilityRole="link" onPress={openTerms}>
+            Consumer Terms and Usage Policy
+          </Text>
+          {", and acknowledge the "}
+          <Text style={styles.termsLink} accessibilityRole="link" onPress={openPrivacy}>
+            Privacy policy
+          </Text>
+          {"."}
         </Text>
-        {", and acknowledge the Privacy policy."}
-      </Text>
+      </View>
       <FieldError message={error} testID="email-accept-terms-error" />
     </View>
   );
@@ -174,7 +180,6 @@ function TermsCheckbox({ checked, onToggle, error }: { checked: boolean; onToggl
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.white },
   content: { flexGrow: 1, alignItems: "center", paddingBottom: spacing.lg },
-  book: { marginTop: 17 },
   title: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.display,
@@ -185,7 +190,8 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   form: { alignSelf: "stretch", paddingHorizontal: 22, marginTop: 38, gap: spacing.xl },
-  terms: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: spacing.md },
+  termsGroup: { gap: spacing.xs + 1 },
+  terms: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   box: {
     width: 24,
     height: 24,
@@ -196,8 +202,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  boxError: { borderColor: colors.error },
   boxChecked: { backgroundColor: colors.primary, borderColor: colors.primary },
-  termsText: { flex: 1, fontFamily: fontFamily.regular, fontSize: fontSize.small, color: colors.textMuted },
+  termsText: { flex: 1, fontFamily: fontFamily.regular, fontSize: fontSize.small, lineHeight: lineHeightFor(fontSize.small), color: colors.textMuted },
   termsLink: { color: colors.black, textDecorationLine: "underline" },
   footer: { gap: spacing.xl + spacing.sm },
   progress: { marginHorizontal: 37 },

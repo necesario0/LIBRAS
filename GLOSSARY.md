@@ -21,6 +21,10 @@ _Avoid_: Guest, visiting researcher
 **Alumni**:
 A Member who graduated from the university. Has the same privileges as a Visitor (pending team confirmation).
 
+**Deleted Member**:
+A Member who deleted their own account once cleared. They can no longer sign in, and nothing about them is kept but their Account Type and their past Loans and Fines, which no longer say who they were.
+_Avoid_: Deactivated, archived, former user, anonymous user
+
 **Librarian**:
 A staff member who runs circulation. Not a Member.
 
@@ -80,6 +84,14 @@ _Avoid_: Extension, reborrow, reloan
 An email that tells a Member about the due dates of their Loans. There are three kinds: due tomorrow, now overdue, and still overdue, which repeats weekly up to four times. The overdue kinds state the Fine so far. A Member gets at most one Loan notice a day, covering all their Loans that need one, and none for a Loan after its Copy is returned.
 _Avoid_: Reminder, overdue email (it also covers Loans that are not overdue yet), alert
 
+**Push notification**:
+A message on a Member's phone, outside the app, about a Hold that is ready, a Loan due tomorrow, a Loan on its first overdue day, or a new Announcement. Each kind has its own switch in Settings; the first three start on and Announcements off. A tap opens the screen it is about. It never replaces a Loan notice, which is always emailed.
+_Avoid_: Alert, reminder, Loan notice (that is the email)
+
+**Notification**:
+An entry in a Member's notification inbox in the app, opened from the bell on Home. There is one for each event a Push notification is about: a Hold that is ready, a Loan due tomorrow, a Loan on its first overdue day, or a new Announcement. The inbox holds every kind whatever the push switches say, and needs no push setup on the phone. A Notification is unread until the Member opens it or marks all as read. Opening it leads to the same screen as its Push notification.
+_Avoid_: Alert, inbox item, Push notification (that is the message on the phone, outside the app)
+
 **Fine**:
 The peso amount a Member owes for one Loan returned late. It grows by the daily rate for every calendar day after the due date, up to the cap, and stops at the return, when the amount is fixed for good. A Fine is unsettled until a Librarian settles it.
 _Avoid_: Penalty, fee, charge, overdue fee
@@ -102,3 +114,17 @@ _Avoid_: Borrowing rules, limits
 
 **Reservation**:
 Not a concept in LIBRAS. The team decided not to build it.
+
+### Discovery
+
+**Subject**:
+The academic field of a Book, read from the class letters of its LC call number. A Book has at most one Subject; one without an LC call number has none.
+_Avoid_: Category, genre, department, college (when you mean the field)
+
+**Saved book**:
+A Book a Member keeps on their own private list to find again. Saving sets no Copy aside and puts the Member in no queue, so any Account Type may save.
+_Avoid_: Bookmark, wishlist, favorite, reservation
+
+**Announcement**:
+A notice a Librarian publishes to every Member as a poster image, shown on Home from its start date to its end date. No two Announcements run at the same time.
+_Avoid_: News, post, article, broadcast, bulletin, book of the month

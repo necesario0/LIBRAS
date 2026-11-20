@@ -7,6 +7,11 @@ import type { Clock } from "./clock.ts";
 import { cors } from "./cors.ts";
 import type { Database } from "./db.ts";
 import type { EmailSender } from "./email.ts";
+import type { FileStore } from "./announcements/storage.ts";
+import type { PushSender } from "./push/sender.ts";
+import { pushRouter } from "./routes/push.ts";
+import { notificationsRouter } from "./routes/notifications.ts";
+import { announcementsRouter } from "./routes/announcements.ts";
 import { createErrorHandler, notFoundHandler } from "./errors.ts";
 import type { Logger } from "./logger.ts";
 import { CatalogSearch } from "./catalog/catalog-search.ts";
@@ -18,6 +23,8 @@ import { digitalIdRouter } from "./routes/digital-id.ts";
 import { finesRouter } from "./routes/fines.ts";
 import { healthRouter } from "./routes/health.ts";
 import { holdsRouter } from "./routes/holds.ts";
+import { homeRouter } from "./routes/home.ts";
+import { savedBooksRouter } from "./routes/saved-books.ts";
 import { loansRouter } from "./routes/loans.ts";
 import { membersRouter } from "./routes/members.ts";
 import { passwordResetRouter } from "./routes/password-reset.ts";
@@ -26,7 +33,7 @@ import { scannerRouter } from "./routes/scanner.ts";
 import { staffRouter } from "./routes/staff.ts";
 import { sweepsRouter } from "./routes/sweeps.ts";
 
-/** Everything the API reaches outside itself. Tests swap the clock and the email sender. */
+/** Everything the API reaches outside itself. Tests swap the clock, the email sender and the push sender. */
 export interface AppDeps {
   db: Database;
   /** Accounts, passwords and sessions (Supabase Auth). */
@@ -36,6 +43,10 @@ export interface AppDeps {
   clock: Clock;
   email: EmailSender;
   logger: Logger;
+  /** Public files: Announcement posters (Supabase Storage, the `announcements` bucket). */
+  files: FileStore;
+  /** Push notifications to Members' phones (Expo's push service). */
+  push: PushSender;
 }
 
 export interface AppOptions {
@@ -100,12 +111,17 @@ export function createApp(deps: AppDeps, options: AppOptions = {}): LibrasApp {
   app.use(passwordResetRouter(deps, options.passwordResetLimit));
   app.use(digitalIdRouter(deps));
   app.use(holdsRouter(deps));
+  app.use(savedBooksRouter(deps));
+  app.use(pushRouter(deps));
+  app.use(notificationsRouter(deps));
   app.use(loansRouter(deps));
   app.use(finesRouter(deps));
   if (options.sweepSecret) app.use(sweepsRouter(deps, options.sweepSecret));
-  const catalog = new CatalogSearch(deps.db, deps.logger);
+  const catalog = new CatalogSearch(deps.db, deps.logger, deps.clock);
   app.use(scannerRouter(deps, scannerHub, pairingLimiter));
   app.use(catalogRouter(deps, catalog));
+  app.use(homeRouter(deps));
+  app.use(announcementsRouter(deps, catalog));
   if (options.warmCatalog) void catalog.warm();
 
   if (options.extraRoutes) {

@@ -1,6 +1,6 @@
 # A UMAK Student has a Copy out. The Librarian records its return at the desk (the
 # end-to-end API does it, as the desk page would): the Loan moves from Current to
-# Past Loans in My Loans with its return date, Home no longer counts it, and the
+# Past Loans in the Loans segment of My Books with its return date, and the
 # Book is available again in search and on its page.
 # Needs the end-to-end API on port 3000 (npm run e2e starts it).
 appId: ph.edu.umak.libras
@@ -33,26 +33,25 @@ appId: ph.edu.umak.libras
 - tapOn:
     id: sign-in-continue
 
-# The Copy is out: Home counts the Loan and search says none is available.
+# The Copy is out: search says none is available.
 - extendedWaitUntil:
     visible:
-      id: home-loans-summary
+      id: search-(open|input)
     timeout: 20000
-- assertVisible: "1 current Loan"
-- tapOn:
-    id: search-input
-- inputText: ${output.returnWord}
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: ${output.returnWord}
 - extendedWaitUntil:
     visible: ${output.returnTitle}
     timeout: 15000
 - assertVisible: "None available"
 - takeScreenshot: returns-search-out
-- eraseText: 40
-- hideKeyboard
 
-# My Loans lists it as current, with no past Loans yet.
+# The Loans segment of My Books lists it as current, with no past Loans yet.
+- runFlow: subflows/leave-search.yaml
 - tapOn:
-    id: home-loans
+    id: tab-my-books
 - extendedWaitUntil:
     visible:
       id: loans-current
@@ -63,18 +62,15 @@ appId: ph.edu.umak.libras
 - assertNotVisible: "Past Loans.*"
 - takeScreenshot: returns-loans-current
 
-# The Librarian records the return. Back on Home, the Loan is no longer counted.
+# The Librarian records the return. When the Member comes back to My Books it
+# shows the Loan under Past Loans, with the day it came back.
 - runScript: scripts/return-loan.js
+- runFlow: subflows/leave-search.yaml
 - tapOn:
-    id: loans-back
-- extendedWaitUntil:
-    visible: "No current Loans"
-    timeout: 15000
-- takeScreenshot: returns-home
-
-# My Loans now shows it under Past Loans, with the day it came back.
+    id: tab-home
+- runFlow: subflows/leave-search.yaml
 - tapOn:
-    id: home-loans
+    id: tab-my-books
 - extendedWaitUntil:
     visible:
       id: loans-past
@@ -90,17 +86,19 @@ appId: ph.edu.umak.libras
 - assertNotVisible:
     id: loans-current
 - takeScreenshot: returns-loans-past
+- runFlow: subflows/leave-search.yaml
 - tapOn:
-    id: loans-back
+    id: tab-home
 
 # The Book is available again in search and on its page, and Borrow is back.
 - extendedWaitUntil:
     visible:
-      id: home-loans-summary
+      id: search-(open|input)
     timeout: 15000
-- tapOn:
-    id: search-input
-- inputText: ${output.returnWord}
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: ${output.returnWord}
 - extendedWaitUntil:
     visible: "1 of 1 available"
     timeout: 15000

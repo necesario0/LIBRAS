@@ -19,8 +19,35 @@ appId: ph.edu.umak.libras
 - hideKeyboard
 - tapOn:
     id: faculty-college
+# The list opens over the form at a fixed height and stops above the step footer,
+# which stays put (the screenshot shows it; while the list is open Maestro sees
+# only the list). It scrolls inside itself: SOL, IOPsy and ION are below its fold.
+- extendedWaitUntil:
+    visible:
+      id: faculty-college-list
+    timeout: 5000
+- assertNotVisible:
+    id: faculty-college-option-ION
+- takeScreenshot: sign-up-college-open
+- swipe:
+    from:
+      id: faculty-college-list
+    direction: UP
+- assertVisible:
+    id: faculty-college-option-SOL
+- assertVisible:
+    id: faculty-college-option-IOPsy
+- assertVisible:
+    id: faculty-college-option-ION
+- takeScreenshot: sign-up-college-scrolled
 - tapOn:
-    id: faculty-college-option-CCIS
+    id: faculty-college-option-ION
+- extendedWaitUntil:
+    notVisible:
+      id: faculty-college-list
+    timeout: 5000
+- assertVisible: "ION"
+- assertVisible: "Step 2 of 4"
 - tapOn:
     id: faculty-continue
 

@@ -30,6 +30,7 @@ export const HOLD_MESSAGES = {
   invalidRequest: "Open the Book again and try placing the Hold from there.",
   invalidId: "This Hold could not be found. Open your Holds and try again.",
   cannotBorrow: "Your Account Type cannot borrow, so it cannot place Holds. You can still see which Copies are available and visit the library.",
+  inLibraryNoHolds: "In-library accounts cannot place Holds. You can borrow available Copies at the library desk during library hours.",
   copyAvailable: "A Copy of this Book is available now. Show your Digital ID to the librarian at the desk to borrow it instead of placing a Hold.",
   alreadyHeld: "You already have a Hold on this Book. You can see it in your Holds.",
   bookOnLoan: "You have a Copy of this Book on Loan, so you cannot place a Hold on it. You can see it in My Loans.",

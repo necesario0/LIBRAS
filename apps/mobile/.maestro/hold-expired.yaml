@@ -1,8 +1,8 @@
 # A UMAK Student's Hold becomes ready when the only Copy comes back, and the
 # Member does not come to the desk. The Pickup Window runs out: the end-to-end API
 # runs the expiry sweep, as the API's timer does, with nobody opening the app. The
-# app then shows the Hold as expired on the Holds screen, Home counts no active
-# Hold, and the Book page no longer sets a Copy aside: the Copy is available again.
+# app then shows the Hold as expired in the Holds segment of My Books, the My
+# Books dot is gone, and the Book page no longer sets a Copy aside: the Copy is available again.
 # Needs the end-to-end API on port 3000 (npm run e2e starts it).
 appId: ph.edu.umak.libras
 ---
@@ -35,11 +35,12 @@ appId: ph.edu.umak.libras
 # The Book's only Copy is out: the Member places a Hold.
 - extendedWaitUntil:
     visible:
-      id: home-holds
+      id: search-(open|input)
     timeout: 20000
-- tapOn:
-    id: search-input
-- inputText: ${output.heldWord}
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: ${output.heldWord}
 - extendedWaitUntil:
     visible: ${output.heldTitle}
     timeout: 15000
@@ -65,33 +66,40 @@ appId: ph.edu.umak.libras
       id: search-results
     timeout: 10000
 - tapOn:
-    id: search-input
-- eraseText: 40
-- hideKeyboard
+    id: search-cancel
 
-# The Copy comes back at the desk and is set aside for the Member.
+# The Copy comes back at the desk and is set aside for the Member: My Books opens on Holds, with a dot.
 - runScript: scripts/return-held-copy.js
-- extendedWaitUntil:
-    visible: "1 waiting"
-    timeout: 15000
+- runFlow: subflows/leave-search.yaml
 - tapOn:
-    id: home-holds
+    id: tab-my-books
 - extendedWaitUntil:
     visible:
       id: hold-pickup
     timeout: 15000
 - assertVisible: "Ready for pickup"
+- runFlow: subflows/leave-search.yaml
+- assertVisible:
+    id: tab-my-books-dot
 
-# The Pickup Window runs out and the sweep expires the Hold. The Holds screen
-# reads again when it is opened again.
+# The Pickup Window runs out and the sweep expires the Hold. My Books reads
+# again when it is opened again: the dot is gone and it opens on Loans.
 - runScript: scripts/expire-held-hold.js
+- runFlow: subflows/leave-search.yaml
 - tapOn:
-    id: holds-back
+    id: tab-home
+- runFlow: subflows/leave-search.yaml
+- tapOn:
+    id: tab-my-books
 - extendedWaitUntil:
-    visible: "No active Holds"
+    visible:
+      id: loans-segment
     timeout: 15000
+- runFlow: subflows/leave-search.yaml
+- assertNotVisible:
+    id: tab-my-books-dot
 - tapOn:
-    id: home-holds
+    id: my-books-holds
 - extendedWaitUntil:
     visible:
       id: holds-past
@@ -108,15 +116,17 @@ appId: ph.edu.umak.libras
 - takeScreenshot: hold-expired-list
 
 # The Copy is no longer set aside: the Book is available and offers no Hold.
+- runFlow: subflows/leave-search.yaml
 - tapOn:
-    id: holds-back
+    id: tab-home
 - extendedWaitUntil:
     visible:
-      id: search-input
+      id: search-(open|input)
     timeout: 15000
-- tapOn:
-    id: search-input
-- inputText: ${output.heldWord}
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: ${output.heldWord}
 - extendedWaitUntil:
     visible: ${output.heldTitle}
     timeout: 15000
@@ -126,7 +136,7 @@ appId: ph.edu.umak.libras
     visible:
       id: book-sheet
     timeout: 15000
-- assertVisible: "Available"
+- assertVisible: "[0-9]+ of [0-9]+ available"
 - assertNotVisible:
     id: hold-placed
 - assertNotVisible:

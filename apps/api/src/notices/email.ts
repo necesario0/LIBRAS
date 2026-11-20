@@ -1,4 +1,4 @@
-import { RENEWAL_REASONS, formatLibraryDate, formatPesos } from "@libras/shared";
+import { RENEWAL_REASONS, formatLibraryDate, formatLoanDueAt, formatPesos } from "@libras/shared";
 import type { LoanRenewal } from "@libras/shared";
 import type { EmailMessage } from "../email.ts";
 import type { FineRate } from "../fines/index.ts";
@@ -30,7 +30,7 @@ export interface LoanNoticeEmail {
 const isOverdue = (loan: NoticeLoan) => loan.slot.kind !== "due_tomorrow";
 
 /** "tomorrow" or "today": a due-tomorrow notice held back by the one-email-a-day rule goes out on the due day. */
-function dueWhen(loan: NoticeLoan, now: Date): string {
+export function dueWhen(loan: Pick<NoticeLoan, "dueAt">, now: Date): "tomorrow" | "today" {
   return libraryDayOf(loan.dueAt) > libraryDayOf(now) ? "tomorrow" : "today";
 }
 
@@ -45,7 +45,7 @@ function subjectOf({ loans, now }: LoanNoticeEmail): string {
 /** The lines about one Loan. */
 function paragraphOf(loan: NoticeLoan, now: Date): string {
   const copy = `"${loan.title}" (Copy ${loan.accessionNumber})`;
-  const due = formatLibraryDate(loan.dueAt.toISOString());
+  const due = formatLoanDueAt(loan.dueAt.toISOString());
   if (loan.slot.kind === "due_tomorrow") {
     const renewal = loan.renewal;
     const renew =

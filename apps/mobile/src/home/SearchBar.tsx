@@ -1,37 +1,24 @@
-import { StyleSheet, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text } from "react-native";
 import { SearchIcon } from "../components/icons";
 import { colors, fontFamily, fontSize, radii, searchBarHeight } from "../theme/tokens";
 
-interface SearchBarProps {
-  value: string;
-  onChangeText: (value: string) => void;
-  onSubmit: () => void;
-  maxLength: number;
-}
-
 /**
  * The Home search bar (Figma "iPhone 17 - 375", node 1032:2014): a 46-high pill
- * with a black outline and a soft shadow, the hint on the left, the magnifier on the right.
+ * with a black outline and a soft shadow, the hint on the left, the magnifier on
+ * the right. It is a button: tapping it opens search mode, where the typing happens.
  */
-export function SearchBar({ value, onChangeText, onSubmit, maxLength }: SearchBarProps) {
+export function SearchBar({ onPress }: { onPress: () => void }) {
   return (
-    <View style={styles.bar}>
-      <TextInput
-        value={value}
-        onChangeText={onChangeText}
-        onSubmitEditing={onSubmit}
-        placeholder="what’s on your mind"
-        placeholderTextColor={colors.textMuted}
-        accessibilityLabel="Search the catalog by title, author, ISBN or call number"
-        returnKeyType="search"
-        autoCapitalize="none"
-        autoCorrect={false}
-        maxLength={maxLength}
-        style={styles.input}
-        testID="search-input"
-      />
+    <Pressable
+      accessibilityRole="search"
+      accessibilityLabel="Search the catalog by title, author, ISBN or call number"
+      onPress={onPress}
+      style={styles.bar}
+      testID="search-open"
+    >
+      <Text style={styles.hint}>what’s on your mind</Text>
       <SearchIcon />
-    </View>
+    </Pressable>
   );
 }
 
@@ -53,12 +40,5 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 4,
   },
-  input: {
-    flex: 1,
-    height: "100%",
-    paddingVertical: 0,
-    fontFamily: fontFamily.regular,
-    fontSize: fontSize.label,
-    color: colors.black,
-  },
+  hint: { flex: 1, fontFamily: fontFamily.regular, fontSize: fontSize.label, color: colors.textMuted },
 });

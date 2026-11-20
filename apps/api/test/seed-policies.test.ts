@@ -5,21 +5,22 @@ import { startTestApi } from "../src/testing/index.ts";
 import type { TestApi } from "../src/testing/index.ts";
 
 /**
- * The placeholders of spec #2 (3 Copies for 7 days for the UMAK Account Types, none for Visitor and Alumni) and
- * spec #29 (one Renewal; a Fine of PHP 5 a day up to PHP 300 for the Account Types that borrow).
+ * The seeded Loan Policies: 3 Copies for 7 days (1 Renewal) for the UMAK
+ * Account Types, 3 Copies for same-day in-library use (no Renewals) for Visitor
+ * and Alumni, and PHP 5 a day up to PHP 300 for all Account Types.
  */
 const SPEC_POLICIES = [
-  { account_type: "alumni", loan_limit: 0, loan_period_days: null, renewal_limit: 1, fine_daily_rate_centavos: 0, fine_cap_centavos: 0 },
-  { account_type: "faculty", loan_limit: 3, loan_period_days: 7, renewal_limit: 1, fine_daily_rate_centavos: 500, fine_cap_centavos: 30000 },
-  { account_type: "ntp_employee", loan_limit: 3, loan_period_days: 7, renewal_limit: 1, fine_daily_rate_centavos: 500, fine_cap_centavos: 30000 },
-  { account_type: "umak_student", loan_limit: 3, loan_period_days: 7, renewal_limit: 1, fine_daily_rate_centavos: 500, fine_cap_centavos: 30000 },
-  { account_type: "visitor", loan_limit: 0, loan_period_days: null, renewal_limit: 1, fine_daily_rate_centavos: 0, fine_cap_centavos: 0 },
+  { account_type: "alumni", loan_limit: 3, loan_period_days: null, in_library_only: true, renewal_limit: 0, fine_daily_rate_centavos: 500, fine_cap_centavos: 30000 },
+  { account_type: "faculty", loan_limit: 3, loan_period_days: 7, in_library_only: false, renewal_limit: 1, fine_daily_rate_centavos: 500, fine_cap_centavos: 30000 },
+  { account_type: "ntp_employee", loan_limit: 3, loan_period_days: 7, in_library_only: false, renewal_limit: 1, fine_daily_rate_centavos: 500, fine_cap_centavos: 30000 },
+  { account_type: "umak_student", loan_limit: 3, loan_period_days: 7, in_library_only: false, renewal_limit: 1, fine_daily_rate_centavos: 500, fine_cap_centavos: 30000 },
+  { account_type: "visitor", loan_limit: 3, loan_period_days: null, in_library_only: true, renewal_limit: 0, fine_daily_rate_centavos: 500, fine_cap_centavos: 30000 },
 ];
 
 describe("seed script: Loan Policy and Pickup Window", () => {
   let api: TestApi;
   const policies = async () =>
-    (await api.db.query("select account_type, loan_limit, loan_period_days, renewal_limit, fine_daily_rate_centavos, fine_cap_centavos from public.loan_policies order by account_type::text")).rows;
+    (await api.db.query("select account_type, loan_limit, loan_period_days, in_library_only, renewal_limit, fine_daily_rate_centavos, fine_cap_centavos from public.loan_policies order by account_type::text")).rows;
   const pickupWindowHours = async () =>
     (await api.db.query<{ pickup_window_hours: number }>("select pickup_window_hours from public.library_settings")).rows.map(
       (row) => row.pickup_window_hours,

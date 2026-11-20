@@ -23,6 +23,7 @@ import { fileURLToPath } from "node:url";
 import type { PoolClient } from "pg";
 import { counted, formatLibraryDate, formatPesos, tokenize } from "@libras/shared";
 import { createApp } from "../src/app.ts";
+import { announcementFiles } from "../src/announcements/storage.ts";
 import { SupabaseAuth } from "../src/auth/supabase-auth.ts";
 import { SupabaseAuthAdmin } from "../src/auth/supabase-auth-admin.ts";
 import { systemClock } from "../src/clock.ts";
@@ -33,6 +34,7 @@ import { DISPATCH_SQL } from "../src/holds/dispatch.ts";
 import { consoleLogger } from "../src/logger.ts";
 import { generateCatalog } from "../src/seed/catalog-generator.ts";
 import { CapturingEmailSender } from "../src/testing/capturing-email-sender.ts";
+import { CapturingPushSender } from "../src/testing/capturing-push-sender.ts";
 import { TEST_BOOK_TITLE, TEST_EMAIL_PREFIX, backdateLoan, checkTier2, cleanupHostedChecks } from "./hosted-checks.ts";
 import { codeFromEmail, ntpEmployeeSignUpBody, facultySignUpBody, signInDirect, studentSignUpBody, visitorSignUpBody } from "../src/testing/members.ts";
 
@@ -111,6 +113,8 @@ async function startSignUpApp(db: Database) {
     clock: systemClock,
     email,
     logger: consoleLogger,
+    files: announcementFiles(config),
+    push: new CapturingPushSender(),
   });
   const server = await new Promise<Server>((resolve) => {
     const listening = app.listen(0, "127.0.0.1", () => resolve(listening));

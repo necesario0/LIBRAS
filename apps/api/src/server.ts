@@ -5,9 +5,11 @@ import { SupabaseAuthAdmin } from "./auth/supabase-auth-admin.ts";
 import { SupabaseAuth } from "./auth/supabase-auth.ts";
 import { systemClock } from "./clock.ts";
 import { loadConfig } from "./config.ts";
+import { announcementFiles } from "./announcements/storage.ts";
 import { createDatabase } from "./db.ts";
 import { BrevoEmailSender, ConsoleEmailSender } from "./email.ts";
 import { consoleLogger } from "./logger.ts";
+import { ExpoPushSender } from "./push/sender.ts";
 import { startSweeper } from "./sweep.ts";
 
 // Local development reads the repository's .env file. Hosted environments set real variables.
@@ -29,6 +31,8 @@ const deps = {
   clock: systemClock,
   email,
   logger,
+  files: announcementFiles(config),
+  push: new ExpoPushSender({ accessToken: config.expoAccessToken }),
 };
 
 const { app, stop } = createApp(deps, {

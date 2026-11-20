@@ -1,10 +1,9 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
-import { counted, formatLibraryDate, formatPesos, goodStandingNotice, plural } from "@libras/shared";
+import { counted, formatLibraryDate, formatLoanDueAt, formatPesos, goodStandingNotice, plural } from "@libras/shared";
 import type { Clearance, GoodStanding } from "@libras/shared";
-import { DollarSignIcon } from "../components/icons";
 import { StatusPill } from "../components/StatusPill";
 import type { PillTone } from "../components/StatusPill";
-import { colors, fontFamily, fontSize, menuRowShadow, radii, spacing } from "../theme/tokens";
+import { colors, fontFamily, fontSize, lineHeightFor, radii, spacing } from "../theme/tokens";
 import type { ClearanceState } from "./useClearance";
 
 interface ClearancePanelProps {
@@ -55,7 +54,7 @@ function Blockers({ clearance, goodStanding }: { clearance: Clearance; goodStand
               key={loan.loanId}
               testID={`profile-clearance-loan-${loan.loanId}`}
               title={loan.bookTitle}
-              note={`Copy ${loan.accessionNumber} - ${loan.overdue ? "overdue, was due" : "due"} ${formatLibraryDate(loan.dueAt)}`}
+              note={`Copy ${loan.accessionNumber} - ${loan.overdue ? "overdue, was due" : "due"} ${formatLoanDueAt(loan.dueAt)}`}
               alert={loan.overdue}
             />
           ))}
@@ -80,14 +79,13 @@ function Blockers({ clearance, goodStanding }: { clearance: Clearance; goodStand
 }
 
 /**
- * Clearance on Profile: whether the Member is cleared, and when not, the Loans
- * still out and the unsettled Fines in the way. It sits where the Figma
- * Profile frame has its "Fines" row (node 921:14028): the same white pill with
- * the dollar sign and a 16 pt label, with the status where the design has the
- * chevron, and the details below inside the same card. A Member who is not in
- * Good standing (which only a Member who is not cleared can be) reads first why
- * they cannot borrow, place a Hold or renew. The API works both out; this only
- * shows them.
+ * Clearance on Profile, between the My account and Change password rows: an
+ * outlined panel as in the approved Tier 3 preview, with "Clearance" and the
+ * status pill on one line and the details under it. Its text starts where the
+ * rows' icons do. When the Member is not cleared it lists the Loans still out
+ * and the unsettled Fines in the way; a Member who is not in Good standing
+ * (which only a Member who is not cleared can be) reads first why they cannot
+ * borrow, place a Hold or renew. The API works both out; this only shows them.
  */
 export function ClearancePanel({ state, onRetry }: ClearancePanelProps) {
   const loaded = state.status === "loaded" ? state : undefined;
@@ -102,19 +100,10 @@ export function ClearancePanel({ state, onRetry }: ClearancePanelProps) {
   return (
     <View style={styles.card} testID="profile-clearance">
       <View style={styles.header}>
-        <View style={styles.title}>
-          <DollarSignIcon />
-          <Text style={styles.label}>Clearance</Text>
-        </View>
-        {pill === undefined ? null : (
-          <StatusPill
-            label={pill.label}
-            tone={pill.tone}
-            size={fontSize.caption}
-            style={styles.pill}
-            testID="profile-clearance-status"
-          />
-        )}
+        <Text style={styles.label} accessibilityRole="header">
+          Clearance
+        </Text>
+        {pill === undefined ? null : <StatusPill label={pill.label} tone={pill.tone} testID="profile-clearance-status" />}
       </View>
 
       {state.status === "loading" ? <ActivityIndicator color={colors.primary} style={styles.spinner} testID="profile-clearance-loading" /> : null}
@@ -144,31 +133,37 @@ export function ClearancePanel({ state, onRetry }: ClearancePanelProps) {
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: radii.card, backgroundColor: colors.white, boxShadow: menuRowShadow, padding: spacing.inset, gap: spacing.md },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  title: { flexDirection: "row", alignItems: "center" },
-  label: { fontFamily: fontFamily.regular, fontSize: fontSize.body, letterSpacing: -0.96, lineHeight: 16, color: colors.black },
-  pill: { marginRight: spacing.xs },
-  spinner: { alignSelf: "center", paddingBottom: spacing.sm },
-  details: { gap: spacing.md, paddingHorizontal: spacing.xs, paddingBottom: spacing.xs },
+  // 15 pt in plus the 1 pt border: the text lines up with the icons of the rows above and below.
+  card: { borderWidth: 1, borderColor: colors.panelBorder, borderRadius: radii.panel, paddingVertical: spacing.md, paddingHorizontal: 15, gap: 6 },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.sm },
+  label: { fontFamily: fontFamily.medium, fontSize: fontSize.note, lineHeight: lineHeightFor(fontSize.note), color: colors.black },
+  spinner: { alignSelf: "flex-start", paddingVertical: spacing.xs },
+  details: { gap: spacing.md },
   standing: {
     fontFamily: fontFamily.medium,
     fontSize: fontSize.caption,
-    lineHeight: 18,
+    lineHeight: lineHeightFor(fontSize.caption) + 2,
     color: colors.danger,
     backgroundColor: colors.dangerSurface,
     borderRadius: radii.panel,
     padding: spacing.md,
   },
-  note: { fontFamily: fontFamily.regular, fontSize: fontSize.caption, lineHeight: 18, color: colors.textSecondary },
+  note: { fontFamily: fontFamily.regular, fontSize: fontSize.small, lineHeight: lineHeightFor(fontSize.small), color: colors.textSubtle },
   group: { gap: spacing.sm },
-  groupTitle: { fontFamily: fontFamily.semiBold, fontSize: fontSize.caption, letterSpacing: 0.6, textTransform: "uppercase", color: colors.textMuted },
+  groupTitle: {
+    fontFamily: fontFamily.semiBold,
+    fontSize: fontSize.caption,
+    lineHeight: lineHeightFor(fontSize.caption),
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+    color: colors.textMuted,
+  },
   line: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   lineText: { flex: 1, gap: 2 },
-  lineTitle: { fontFamily: fontFamily.medium, fontSize: fontSize.label, color: colors.black },
-  lineNote: { fontFamily: fontFamily.regular, fontSize: fontSize.caption, color: colors.textMuted },
+  lineTitle: { fontFamily: fontFamily.medium, fontSize: fontSize.label, lineHeight: lineHeightFor(fontSize.label), color: colors.black },
+  lineNote: { fontFamily: fontFamily.regular, fontSize: fontSize.caption, lineHeight: lineHeightFor(fontSize.caption), color: colors.textMuted },
   overdue: { fontFamily: fontFamily.semiBold, color: colors.danger },
-  amount: { fontFamily: fontFamily.semiBold, fontSize: fontSize.label, color: colors.danger },
+  amount: { fontFamily: fontFamily.semiBold, fontSize: fontSize.label, lineHeight: lineHeightFor(fontSize.label), color: colors.danger },
   retry: {
     alignSelf: "flex-start",
     height: 36,
@@ -178,5 +173,5 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: colors.surface,
   },
-  retryLabel: { fontFamily: fontFamily.medium, fontSize: fontSize.caption, color: colors.black },
+  retryLabel: { fontFamily: fontFamily.medium, fontSize: fontSize.caption, lineHeight: lineHeightFor(fontSize.caption), color: colors.black },
 });

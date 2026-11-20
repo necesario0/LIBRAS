@@ -4,7 +4,9 @@
 // catalog at POST /e2e/books (see catalog-fixture-routes.ts), and Visitor and Alumni Members
 // at POST /e2e/members (see member-fixture-routes.ts), and it can have a Librarian confirm a
 // Loan for a Member at POST /e2e/loans (see loan-fixture-routes.ts), and let a Hold's Pickup Window run out at
-// POST /e2e/holds/lapse (same file).
+// POST /e2e/holds/lapse (same file), and put an Announcement on Home or take them all away at
+// POST /e2e/announcements and /e2e/announcements/clear (see announcement-fixture-routes.ts), and give a
+// Member the Notification of a Loan notice at POST /e2e/notifications/loan (see notification-fixture-routes.ts).
 //
 //   node scripts/with-local-supabase.ts node src/testing/e2e-server.ts
 //
@@ -15,6 +17,7 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { createApp } from "../app.ts";
+import { announcementFiles } from "../announcements/storage.ts";
 import { SupabaseAuthAdmin } from "../auth/supabase-auth-admin.ts";
 import { SupabaseAuth } from "../auth/supabase-auth.ts";
 import { systemClock } from "../clock.ts";
@@ -23,9 +26,12 @@ import { createDatabase } from "../db.ts";
 import { consoleLogger } from "../logger.ts";
 import { startSweeper } from "../sweep.ts";
 import { CapturingEmailSender } from "./capturing-email-sender.ts";
+import { CapturingPushSender } from "./capturing-push-sender.ts";
+import { announcementFixtureRoutes } from "./announcement-fixture-routes.ts";
 import { catalogFixtureRoutes } from "./catalog-fixture-routes.ts";
 import { loanFixtureRoutes } from "./loan-fixture-routes.ts";
 import { memberFixtureRoutes } from "./member-fixture-routes.ts";
+import { notificationFixtureRoutes } from "./notification-fixture-routes.ts";
 import { mailboxRoutes } from "./mailbox-routes.ts";
 
 // Read the repository's .env first, so a NODE_ENV set there is seen by the check below.
@@ -48,6 +54,9 @@ const deps = {
   clock: systemClock,
   email: emails,
   logger: consoleLogger,
+  files: announcementFiles(config),
+  // Push notifications are captured too: an end-to-end run never reaches Expo's push service.
+  push: new CapturingPushSender(),
 };
 
 const { app, stop } = createApp(deps, {
@@ -56,6 +65,8 @@ const { app, stop } = createApp(deps, {
     catalogFixtureRoutes(router, deps, catalog);
     memberFixtureRoutes(router, deps);
     loanFixtureRoutes(router, deps);
+    announcementFixtureRoutes(router, deps);
+    notificationFixtureRoutes(router, deps);
   },
   warmCatalog: true,
   // Every request reaches this server from the same address, so the real

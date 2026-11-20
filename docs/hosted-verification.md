@@ -1,6 +1,34 @@
 # Verification on the hosted system
 
-Two parts. **Tier 2** (issue #40) is the rollout and verification checklist for Renewals, Forgot and Change password, Loan notices, Fines, Clearance and Good standing. The developer works through it in order. **Tier 1** (issue #20) holds the measurements taken on 2026-11-13.
+Three parts. **Tier 3** (spec #42) gathers the rollout steps of each Tier 3 ticket as it lands. **Tier 2** (issue #40) is the rollout and verification checklist for Renewals, Forgot and Change password, Loan notices, Fines, Clearance and Good standing. The developer works through it in order. **Tier 1** (issue #20) holds the measurements taken on 2026-11-13.
+
+# Tier 3: rollout steps (filled in ticket by ticket)
+
+Work as for Tier 2 below: Git Bash, an up-to-date `main`, `.env.hosted` in the repository root.
+
+## Announcements (#50)
+
+1. `npm run db:migrate:hosted -- --dry-run`. It worked if `20261119120000_announcements` is listed with no error. Then `npm run db:migrate:hosted` and type `apply`. The migration adds the `announcements` table, its four audit event types and the Storage bucket `announcements` (public read, 5 MB, JPEG only).
+2. Supabase > Storage: a bucket `announcements` marked Public, with no policies. It worked if `curl -s -o /dev/null -w "%{http_code}\n" -H "apikey: $SUPABASE_SECRET_KEY" "$SUPABASE_URL/storage/v1/bucket/announcements"` (values from `.env.hosted`) prints `200`. `npm run setup:hosted` checks the same in its database stage.
+3. Deploy the API, then the desk page (the order of section 3 below). Nothing new is set on Render: the API writes to Storage with `SUPABASE_URL` and `SUPABASE_SECRET_KEY`, which it already has.
+4. Render > `libras-api` > Logs of that deploy: `npm ci` ends without an error about `sharp` (the image library installs a prebuilt Linux x64 binary, no compiler). Checked before the merge in a `node:24-bookworm-slim` container with Render's own build command (`npm ci --workspace=@libras/api --omit=dev`): sharp 0.35.5 loaded and made both images with no metadata.
+5. Desk page > Announcements: create one for today with a poster, drag the frame, Publish now. It worked if the card shows the banner, and the banner's address (right click > Open image in new tab) shows the 2:1 cut. Then End now. Supabase > Storage > `announcements` holds one folder per Announcement.
+6. `npm run audit:verify:hosted -w @libras/api`: intact, with the `announcement_created` and `announcement_ended` entries.
+
+## Push notifications (#54)
+
+1. The owner's Firebase and Expo setup, a checklist of its own: [`docs/push-notifications.md`](push-notifications.md). It can be done before or after the steps below; until it is done the new APK simply gets no push notifications.
+2. `npm run db:migrate:hosted -- --dry-run`. It worked if `20261124100000_push_notifications` is listed with no error. Then `npm run db:migrate:hosted` and type `apply`. The migration adds `push_devices`, `push_settings` (a row for every existing Member, and a trigger for new ones), `push_sends` and `push_tickets`. Apply it before the API deploy: the API reads these tables at sign-out and at every Hold dispatch.
+3. Deploy the API, then build and install the APK (`npm run build:apk:hosted -w @libras/mobile`; it says whether push notifications are on). Nothing new is required on Render; `EXPO_ACCESS_TOKEN` only with Expo's enhanced security (step 6 of the checklist).
+4. On a real phone with the push APK (#55): sign in and allow notifications; Settings > Push notifications shows Hold ready, Loan due tomorrow and Loan overdue on and Announcements off. Switch Announcements on. Place a Hold on a Book whose only Copy is out, and return that Copy at the desk: within seconds a "Your Hold is ready" push arrives, and tapping it opens My Books on Holds. Publish an Announcement for today on the desk page: within about a minute (the sweep tick; up to five minutes while the API sleeps) a "New from the library" push arrives, and tapping it opens the Announcement. Switch Hold ready off and repeat the Hold: the email comes, no push.
+5. Sign out on the phone, then make another Hold ready for the same Member: no push reaches the phone.
+
+## Notification inbox (#62)
+
+1. `npm run db:migrate:hosted -- --dry-run`. It worked if `20261126100000_notifications` is listed with no error. Then `npm run db:migrate:hosted` and type `apply`. The migration adds `notifications` and `announcement_reads`, with row-level security. Apply it before the API deploy: the API writes a Notification at every Hold dispatch and Loan notice.
+2. Deploy the API, then build and install the APK. Nothing new is set on Render. The inbox needs no Firebase or Expo setup.
+3. On a real phone (#55), with an APK built with or without push notifications: Home shows a bell at the right of the header. Make a Hold ready for the Member (place a Hold on a Book whose only Copy is out, return that Copy at the desk) and publish an Announcement for today. It worked if, after going back to Home, the bell has a badge of 2. In Notifications, tapping "Your Hold is ready" opens My Books on Holds, and back on Home the badge reads 1. "Mark all as read" removes every dot, and back on Home the badge is gone.
+4. Settings > Push notifications: switch Hold ready off and make another Hold ready. It worked if no push arrives but the inbox still gets "Your Hold is ready".
 
 # Tier 2: rollout and verification checklist
 

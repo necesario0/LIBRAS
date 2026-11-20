@@ -69,6 +69,17 @@ describe("Sign-up for the other Account Types", () => {
         assert.ok(await signInDirect(body.email, body.password), "the new Member can sign in at once, with no approval step");
       });
 
+      for (const college of ["SOL", "IOPsy", "ION"] as const) {
+        it(`signs up with the college ${college}`, async () => {
+          const original = build();
+          const body = { ...original, details: { ...original.details, college } };
+
+          const { member } = await signUpAndVerify(body);
+
+          assert.equal(member.details.college, college);
+        });
+      }
+
       it("cannot sign in before the code is accepted", async () => {
         const body = build();
 

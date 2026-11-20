@@ -45,7 +45,16 @@ No Supabase key lives in the source. `npm run dev`, `npm test`, `npm run test:ap
 | `npm run db:status` | Show the local Supabase URLs and keys |
 | `npm run db:reset` | Recreate the local database from `supabase/migrations` |
 | `npm run db:stop` | Stop the local Supabase stack |
-| `npm run seed` | Create the demo Librarian (`librarian@libras.test`, local only), make sure the Loan Policy rows and the Pickup Window setting exist (existing values are kept), and write the sample catalog. Safe to run again |
+| `npm run seed` | Create the demo Librarian (`librarian@libras.test`, local only), make sure the Loan Policy rows and the Pickup Window setting exist (existing values are kept), and write the library's real catalog (see below). Safe to run again |
+
+### The library's catalog
+
+The demo catalog is the University Library's real collection, read from its accession list (the Excel workbook `2024-0807_LLC Official List`). The project owner supplies the file. **Never commit it**: the repository is public and the workbook also holds costs, sources of funds, cataloguer names and internal remarks. `.gitignore` covers `/data/` and every `.xlsx`, `.xls` and `.csv` file.
+
+1. Put the workbook at `data/library-catalog.xlsx` at the repository root (create the `data` folder).
+2. Run `npm run seed` with the local database started. It ends with a summary: Books, Copies, rows skipped and why, rows the workbook's colour legend marks for a look, and call numbers that look mistyped.
+
+`npm run seed -- --workbook <path>` reads the file from anywhere else. `npm run seed -- --sample-catalog` writes the generated sample catalog instead (the search benchmark and the tests use that one). Without the workbook the seed leaves the catalog as it is and says so. Running it again adds only Copies that are not there yet and never changes a Copy that exists, so a Copy on loan stays on loan.
 
 ## Run the tests and checks locally
 
@@ -100,7 +109,7 @@ The hosted system is three services, all on free tiers (ADR 0003):
 | --- | --- |
 | `npm run setup:hosted` | The guided setup wizard (`scripts/setup-hosted.sh`, launched by `scripts/run-setup-hosted.mjs` so Windows uses Git Bash, not WSL). Opens each dashboard, asks for each value, writes `.env.hosted` and the GitHub secrets, applies the migrations, creates the Librarian, checks the API and sends a test email |
 | `npm run db:migrate:hosted` | Applies `supabase/migrations` to the hosted database. It first lists the pending migrations and asks you to type `apply`. `-- --dry-run` only lists them. `-- --yes` skips the question. Safe to run again |
-| `npm run seed:hosted` | Creates (or resets) the Librarian from `SEED_LIBRARIAN_EMAIL` and `SEED_LIBRARIAN_PASSWORD` in `.env.hosted`, makes sure the Loan Policy rows and the Pickup Window setting exist (existing values are kept) and writes the sample catalog |
+| `npm run seed:hosted` | Creates (or resets) the Librarian from `SEED_LIBRARIAN_EMAIL` and `SEED_LIBRARIAN_PASSWORD` in `.env.hosted`, makes sure the Loan Policy rows and the Pickup Window setting exist (existing values are kept) and writes the library's catalog from `data/library-catalog.xlsx` (`-- --workbook <path>` for another place; see "The library's catalog") |
 | `npm run labels:hosted -- --title "text" [--books 1] [--copies 3]` | Writes `copy-labels.html`: printable Code 128 labels (85 x 36 mm, two per row on A4) for available Copies of a Book whose title contains the text, or for given barcodes (`npm run labels:hosted -- 3100078314 3100078315`). Open in Chrome, print at 100% scale. Reads the database only. `npm run labels` does the same on the local database |
 | `npm run verify:hosted -- member | search | dispatch | tier2 | backdate | cleanup` | Checks and measurements on the hosted system (`docs/hosted-verification.md`). Tier 1: search at 50 users, Hold dispatch on the hosted database. `member` makes the measurement Visitor and saves its login in `.env.hosted`; `dispatch` makes and then deletes test Members and sends Hold-ready mail only to a +alias of `SEED_LIBRARIAN_EMAIL`. Tier 2: `tier2` walks Renewal, the Loans list, a Fine and its settlement, Clearance, the Good standing refusals, the password reset reply, the sweep endpoint and the audit chain with one test Member and a test Book, then deletes them (needs `SWEEP_SECRET` in `.env.hosted`). `backdate <barcode> <days>` moves the open Loan of a Copy back by whole days for the demo on real phones (6 = due tomorrow, 10 = three days late, for a seven-day Loan) |
 | `npm run check:hosted` | Asks the hosted API for `/health` until it answers (up to five minutes, to cover Render waking up) |

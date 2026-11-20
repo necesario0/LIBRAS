@@ -1,0 +1,286 @@
+# Search results can be narrowed by Subject and by publication year from the
+# Filters sheet. A UMAK Student (CCIS) sees their college's Subjects first. The
+# button counts the results live, each filter that is on shows as a chip that
+# removes it, the Filters chip counts them, and when nothing matches "No Books
+# match" offers Clear filters. Each result and the Book page show the Subject.
+# Needs the end-to-end API on port 3000 (npm run e2e starts it).
+appId: ph.edu.umak.libras
+---
+- launchApp:
+    clearState: true
+- runScript:
+    file: scripts/create-members.js
+- runScript:
+    file: scripts/create-subjects.js
+
+# Sign in (a UMAK Student of CCIS).
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 30000
+- tapOn:
+    id: welcome-sign-in
+- tapOn:
+    id: sign-in-email
+- inputText: ${output.email}
+- tapOn:
+    id: sign-in-password
+- inputText: ${output.password}
+- hideKeyboard
+- tapOn:
+    id: sign-in-continue
+- extendedWaitUntil:
+    visible: "Hi, Cobby"
+    timeout: 20000
+
+# Five rows (the two Networks editions fold into one), each with its year and Subject.
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: ${output.word}
+- extendedWaitUntil:
+    visible: "5 results · older editions folded in"
+    timeout: 15000
+- assertVisible: "2019 · Computer Science"
+- assertVisible: "2022 · Law"
+- assertVisible: "2021"
+- assertVisible: "Filters"
+
+# The sheet: the CCIS Subjects first, each with its LC classes.
+- tapOn:
+    id: search-filters
+- extendedWaitUntil:
+    visible:
+      id: filters-sheet
+    timeout: 10000
+- extendedWaitUntil:
+    visible: "For CCIS"
+    timeout: 15000
+- assertVisible: "SUBJECT"
+- assertVisible:
+    id: "filter-subject-Computer Science"
+    below: "For CCIS"
+- assertVisible: "QA75-QA76.9, Q334-Q342"
+- assertVisible:
+    id: "filter-subject-Mathematics"
+    below: "For CCIS"
+- assertVisible: "All Subjects"
+- assertVisible:
+    text: "All Subjects"
+    below:
+      id: "filter-subject-Computer Science"
+- takeScreenshot: search-filters-sheet
+
+# Computer Science, then Law: the button counts the results live.
+- tapOn:
+    id: "filter-subject-Computer Science"
+- scrollUntilVisible:
+    element:
+      id: filters-show
+    direction: DOWN
+- extendedWaitUntil:
+    visible: "Show 1 result"
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: "filter-subject-Law"
+    direction: UP
+- assertVisible:
+    id: "filter-subject-Law"
+    below: "All Subjects"
+- tapOn:
+    id: "filter-subject-Law"
+- scrollUntilVisible:
+    element:
+      id: filters-show
+    direction: DOWN
+- extendedWaitUntil:
+    visible: "Show 2 results"
+    timeout: 15000
+- assertVisible: "PUBLISHED"
+- assertVisible: "Latest edition only"
+- takeScreenshot: search-filters-sheet-chosen
+- tapOn:
+    id: filters-show
+- extendedWaitUntil:
+    notVisible:
+      id: filters-sheet
+    timeout: 10000
+
+# The chips: Filters (2), one chip per Subject. A Book with no Subject drops out.
+- assertVisible: "Filters (2)"
+- assertVisible:
+    id: "search-filter-subject-Computer Science"
+- assertVisible:
+    id: "search-filter-subject-Law"
+- assertVisible: "2 results"
+- assertVisible: ${output.algorithms}
+- assertVisible: ${output.obligations}
+- assertNotVisible: ${output.pamphlet}
+- takeScreenshot: search-filters-chips
+
+# A chip removes its filter.
+- tapOn:
+    id: "search-filter-subject-Law"
+- extendedWaitUntil:
+    visible: "1 result"
+    timeout: 15000
+- assertVisible: "Filters (1)"
+- assertNotVisible: ${output.obligations}
+- tapOn:
+    id: "search-filter-subject-Computer Science"
+- extendedWaitUntil:
+    visible: "5 results · older editions folded in"
+    timeout: 15000
+- assertVisible: ${output.pamphlet}
+- assertNotVisible:
+    id: search-filter-chips
+
+# Published, custom years 2000 to 2005: the older Networks edition becomes the row.
+- tapOn:
+    id: search-filters
+- extendedWaitUntil:
+    visible:
+      id: filters-sheet
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      id: filter-published-custom
+    direction: DOWN
+- tapOn:
+    id: filter-published-custom
+# Tapping a year selects it, so typing replaces the whole year wherever the tap lands.
+# Typing can start before the keyboard is ready and lose the first digit: wait for it, and
+# on a retry tap the PUBLISHED label first so the field is left and the next tap selects again.
+- retry:
+    maxRetries: 3
+    commands:
+      - tapOn: "PUBLISHED"
+      - tapOn:
+          id: filter-published-from
+      - waitForAnimationToEnd:
+          timeout: 3000
+      - inputText: "2000"
+      - assertVisible:
+          id: filter-published-from
+          text: "2000"
+- retry:
+    maxRetries: 3
+    commands:
+      - tapOn: "PUBLISHED"
+      - tapOn:
+          id: filter-published-to
+      - waitForAnimationToEnd:
+          timeout: 3000
+      - inputText: "2005"
+      - assertVisible:
+          id: filter-published-to
+          text: "2005"
+- scrollUntilVisible:
+    element:
+      id: filters-show
+    direction: DOWN
+- extendedWaitUntil:
+    visible: "Show 1 result"
+    timeout: 15000
+- tapOn:
+    id: filters-show
+- extendedWaitUntil:
+    visible: "${output.networks}, 3rd ed."
+    timeout: 15000
+- assertNotVisible: "${output.networks}, 5th ed."
+- assertVisible: "2000 to 2005"
+- assertVisible: "Filters (1)"
+
+# With Law as well nothing matches: "No Books match" and Clear filters.
+- tapOn:
+    id: search-filters
+- extendedWaitUntil:
+    visible: "All Subjects"
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: "filter-subject-Law"
+    direction: DOWN
+- tapOn:
+    id: "filter-subject-Law"
+- scrollUntilVisible:
+    element:
+      id: filters-show
+    direction: DOWN
+- extendedWaitUntil:
+    visible: "Show 0 results"
+    timeout: 15000
+- tapOn:
+    id: filters-show
+- extendedWaitUntil:
+    visible: "No Books match"
+    timeout: 15000
+- assertVisible: "Try fewer filters or another spelling."
+- assertVisible: "Filters (2)"
+- takeScreenshot: search-filters-no-match
+- tapOn:
+    id: search-clear-filters
+- extendedWaitUntil:
+    visible: "5 results · older editions folded in"
+    timeout: 15000
+- assertVisible: "Filters"
+- assertNotVisible: "Filters (2)"
+
+# Latest edition only, from the sheet: off shows every edition and an "All editions" chip.
+- tapOn:
+    id: search-filters
+- extendedWaitUntil:
+    visible:
+      id: filters-sheet
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      id: filter-latest-edition
+    direction: DOWN
+- assertVisible:
+    id: filter-latest-edition
+    checked: true
+- tapOn:
+    id: filter-latest-edition
+- extendedWaitUntil:
+    visible: "Show 6 results"
+    timeout: 15000
+- tapOn:
+    id: filters-show
+- extendedWaitUntil:
+    visible: "6 results"
+    timeout: 15000
+- assertVisible: "All editions"
+- assertVisible: "Filters (1)"
+- tapOn: "All editions"
+- extendedWaitUntil:
+    visible: "5 results · older editions folded in"
+    timeout: 15000
+
+# The Book page shows the Subject as a pill tag in the header above the call number.
+- tapOn: ${output.algorithms}
+- extendedWaitUntil:
+    visible:
+      id: book-subject
+    timeout: 15000
+- assertVisible:
+    id: book-subject
+    text: "Computer Science"
+- assertVisible:
+    id: book-subject
+    above:
+      id: book-call-number
+- takeScreenshot: search-filters-book-subject
+- tapOn:
+    id: book-close
+
+# Leave search mode and sign out.
+- extendedWaitUntil:
+    visible:
+      id: search-cancel
+    timeout: 10000
+- runFlow: subflows/leave-search.yaml
+- runFlow: subflows/sign-out.yaml
+- extendedWaitUntil:
+    visible: "SIGN  UP"
+    timeout: 20000

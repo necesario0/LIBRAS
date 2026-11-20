@@ -3,6 +3,7 @@ import type {
   AlumniDetails,
   FacultyDetails,
   NtpEmployeeDetails,
+  UmakCollege,
   UmakStudentDetails,
   VisitorDetails,
 } from "./sign-up.ts";
@@ -62,4 +63,17 @@ export interface MemberSignInResponse {
  */
 export function memberFullName(name: { firstName: string; middleName?: string | null; lastName: string }): string {
   return [name.firstName, name.middleName, name.lastName].filter((part) => part !== undefined && part !== null && part !== "").join(" ");
+}
+
+/** The UMAK college a Member gave at sign-up (UMAK Students, Faculty and NTP / Employees), or null for an Account Type that has none. */
+export function memberCollege(member: MemberProfile): UmakCollege | null {
+  switch (member.accountType) {
+    case "umak_student":
+    case "faculty":
+    case "ntp_employee":
+      return member.details.college;
+    case "visitor":
+    case "alumni":
+      return null;
+  }
 }

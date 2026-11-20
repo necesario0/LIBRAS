@@ -1,83 +1,73 @@
 import { StyleSheet, Text, View } from "react-native";
-import { ACCOUNT_TYPE_LABELS, canBorrow } from "@libras/shared";
+import { ACCOUNT_TYPE_LABELS, bookAvailabilityLabel, canBorrow, isInLibraryOnlyAccount } from "@libras/shared";
 import type { AccountType, BookDetail } from "@libras/shared";
 import { BookCover } from "../components/BookCover";
-import { colors, fontFamily, fontSize, radii, spacing } from "../theme/tokens";
+import { BookTexts } from "./BookTexts";
+import { colors, fontFamily, fontSize, lineHeightFor, radii, spacing } from "../theme/tokens";
 
-/** The pill under the author: whether a Copy can be borrowed now. */
-export function availabilityPill(book: Pick<BookDetail, "availableCopies" | "totalCopies">): string {
-  if (book.totalCopies === 0) return "No copies";
-  return book.availableCopies === 0 ? "None available" : "Available";
-}
+/** The cover on the Book page (approved Tier 3 preview). */
+const COVER = { width: 112, height: 164 } as const;
 
-/** "1 copy" or "3 copies". */
-function copiesLabel(count: number): string {
-  return count === 1 ? "1 copy" : `${count} copies`;
-}
-
-function Stat({ value, label }: { value: string; label: string }) {
+/** A tag under the authors: the edition, the year, availability, or the Subject. */
+function Tag({ label, tone = "plain", testID }: { label: string; tone?: "plain" | "available" | "none" | "subject"; testID: string }) {
   return (
-    <View style={styles.stat}>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
+    <View style={[styles.tag, tone === "available" && styles.availableTag, tone === "none" && styles.noneTag, tone === "subject" && styles.subjectTag]}>
+      <Text
+        style={[
+          styles.tagText,
+          tone === "available" && styles.availableText,
+          tone === "none" && styles.noneText,
+          tone === "subject" && styles.subjectText,
+        ]}
+        testID={testID}
+      >
+        {label}
+      </Text>
     </View>
   );
 }
 
 /**
- * The body of the Book sheet (Figma 609:1066): call number, cover, title,
- * authors, availability pill, the figures, details, and the note for an Account
- * Type that cannot borrow. The Figma genre tag, page count and description have
- * no field in the catalog yet, so they are not shown; the edition takes the
- * genre tag's place and the number of Copies the page count's.
+ * The body of the Book sheet, laid out as the approved Tier 3 preview (style
+ * from Figma 609:1066): the cover beside the title, the authors and the tags
+ * (edition, year, how many Copies are available, and the Subject pill), then
+ * the call number, the ISBN, the summary and contents, and the note for an
+ * Account Type that cannot borrow. The title and the authors wrap as far as they need to; the tags
+ * always come after them, never over them.
  */
 export function BookInfo({ book, accountType }: { book: BookDetail; accountType: AccountType }) {
   const available = book.availableCopies > 0;
   return (
     <>
-      {book.lcCallNumber === null ? null : (
-        <View style={styles.callNumber} testID="book-call-number">
-          <Text style={styles.callNumberLabel}>Call number</Text>
-          <View style={styles.callNumberPill}>
-            <Text style={styles.callNumberText}>{book.lcCallNumber}</Text>
+      <View style={styles.top}>
+        <View style={styles.header}>
+          <View style={styles.cover}>
+            <BookCover id={book.id} width={COVER.width} height={COVER.height} radius={radii.cover} />
           </View>
-        </View>
-      )}
-
-      <View style={styles.header}>
-        <View style={styles.cover}>
-          <BookCover id={book.id} width={121} height={179} radius={radii.cover} />
-        </View>
-        <View style={styles.headerText}>
-          <Text style={styles.title} testID="book-detail-title">
-            {book.title}
-          </Text>
-          <Text style={styles.authors} testID="book-detail-authors">
-            {book.authors.length > 0 ? book.authors.join("; ") : "Unknown author"}
-          </Text>
-          <View style={styles.tags}>
-            {book.edition === null ? null : (
-              <View style={[styles.tag, styles.editionTag]} testID="book-edition">
-                <Text style={[styles.tagText, styles.editionText]}>{book.edition}</Text>
-              </View>
-            )}
-            <View style={[styles.tag, available ? styles.availableTag : styles.noneTag]} testID="book-availability-pill">
-              <Text style={[styles.tagText, available ? styles.availableText : styles.noneText]}>{availabilityPill(book)}</Text>
+          <View style={styles.headerText}>
+            <Text style={styles.title} testID="book-detail-title">
+              {book.title}
+            </Text>
+            <Text style={styles.authors} testID="book-detail-authors">
+              {book.authors.length > 0 ? book.authors.join("; ") : "Unknown author"}
+            </Text>
+            <View style={styles.tags}>
+              {book.edition === null ? null : <Tag label={book.edition} testID="book-edition" />}
+              {book.publicationYear === null ? null : <Tag label={String(book.publicationYear)} testID="book-year" />}
+              <Tag label={bookAvailabilityLabel(book)} tone={available ? "available" : "none"} testID="book-availability-pill" />
+              {book.subject === null ? null : <Tag label={book.subject} tone="subject" testID="book-subject" />}
             </View>
           </View>
         </View>
-      </View>
 
-      <View style={styles.stats} testID="book-stats">
-        {book.publicationYear === null ? null : (
-          <>
-            <Stat value={String(book.publicationYear)} label="published" />
-            <View style={styles.divider} />
-          </>
+        {book.lcCallNumber === null ? null : (
+          <View style={styles.classification}>
+            <View style={styles.callNumber} testID="book-call-number">
+              <Text style={styles.callNumberLabel}>CALL NO.</Text>
+              <Text style={styles.callNumberText}>{book.lcCallNumber}</Text>
+            </View>
+          </View>
         )}
-        <Stat value={copiesLabel(book.totalCopies)} label="in the library" />
-        <View style={styles.divider} />
-        <Stat value={String(book.availableCopies)} label="available" />
       </View>
 
       {book.isbn === null ? null : (
@@ -87,7 +77,9 @@ export function BookInfo({ book, accountType }: { book: BookDetail; accountType:
         </View>
       )}
 
-      {canBorrow(accountType) ? null : (
+      <BookTexts book={book} />
+
+      {!canBorrow(accountType) ? (
         <View style={styles.note} testID="cannot-borrow-note">
           <Text style={styles.noteTitle} accessibilityRole="header">
             {`${ACCOUNT_TYPE_LABELS[accountType]} accounts cannot borrow`}
@@ -96,26 +88,23 @@ export function BookInfo({ book, accountType }: { book: BookDetail; accountType:
             You can look at every book and see which Copies are available, to plan a visit to the library. Borrowing is for UMAK Students, Faculty and NTP / Employees.
           </Text>
         </View>
-      )}
+      ) : isInLibraryOnlyAccount(accountType) && book.availableCopies === 0 ? (
+        <View style={styles.note} testID="in-library-unavailable-note">
+          <Text style={styles.noteTitle} accessibilityRole="header">
+            {`${ACCOUNT_TYPE_LABELS[accountType]} in-library borrowing`}
+          </Text>
+          <Text style={styles.noteBody}>
+            No Copy is available on the shelf right now. You can save this Book and borrow it at the desk for in-library reading once a Copy is returned.
+          </Text>
+        </View>
+      ) : null}
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  callNumber: { alignItems: "center", gap: 5, alignSelf: "center", width: 164, marginBottom: spacing.xs },
-  callNumberLabel: { fontFamily: fontFamily.monoLabel, fontSize: fontSize.body, color: colors.black, letterSpacing: -0.64 },
-  callNumberPill: {
-    alignSelf: "stretch",
-    minHeight: 25,
-    borderRadius: radii.callNumber,
-    backgroundColor: colors.callNumber,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-  },
-  callNumberText: { fontFamily: fontFamily.mono, fontSize: fontSize.body, color: colors.black, letterSpacing: -0.64, textAlign: "center" },
-  header: { flexDirection: "row", alignItems: "center", gap: 9 },
+  top: { gap: spacing.lg },
+  header: { flexDirection: "row", alignItems: "flex-start", gap: spacing.lg },
   cover: {
     borderRadius: radii.cover,
     elevation: 4,
@@ -125,27 +114,48 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 4 },
   },
-  headerText: { flex: 1, gap: 6 },
-  title: { fontFamily: fontFamily.medium, fontSize: fontSize.headline, lineHeight: 26, letterSpacing: -2.56, color: colors.black },
-  authors: { fontFamily: fontFamily.extraLight, fontSize: fontSize.subheading, letterSpacing: -0.8, color: colors.textMuted },
-  tags: { flexDirection: "row", flexWrap: "wrap", gap: 5, alignItems: "center" },
-  tag: { height: 20, borderRadius: radii.tag, paddingHorizontal: 10, justifyContent: "center" },
-  tagText: { fontFamily: fontFamily.regular, fontSize: fontSize.micro, letterSpacing: -0.4 },
-  editionTag: { backgroundColor: colors.selected },
-  editionText: { color: colors.primary },
-  availableTag: { backgroundColor: colors.availableSurface },
+  headerText: { flex: 1, minWidth: 0, gap: 6 },
+  title: {
+    fontFamily: fontFamily.semiBold,
+    fontSize: fontSize.bookTitle,
+    lineHeight: lineHeightFor(fontSize.bookTitle),
+    letterSpacing: -0.8,
+    color: colors.black,
+  },
+  authors: { fontFamily: fontFamily.regular, fontSize: fontSize.small, lineHeight: lineHeightFor(fontSize.small), color: colors.textMuted },
+  tags: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 2 },
+  tag: {
+    borderRadius: radii.tag,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.inset - 1,
+    paddingVertical: 3,
+    maxWidth: "100%",
+  },
+  tagText: { fontFamily: fontFamily.medium, fontSize: fontSize.tag, lineHeight: lineHeightFor(fontSize.tag), color: colors.black },
+  availableTag: { backgroundColor: colors.availableSurface, borderColor: colors.availableSurface },
   availableText: { color: colors.availableText },
-  noneTag: { backgroundColor: colors.pill },
+  noneTag: { backgroundColor: colors.pill, borderColor: colors.pill },
   noneText: { color: colors.textMuted },
-  stats: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 24 },
-  stat: { alignItems: "center", gap: 2 },
-  statValue: { fontFamily: fontFamily.regular, fontSize: fontSize.large, letterSpacing: -0.96, color: colors.black },
-  statLabel: { fontFamily: fontFamily.regular, fontSize: fontSize.body, letterSpacing: -0.64, color: colors.textFaint },
-  divider: { width: 1, height: 44, backgroundColor: colors.border },
+  subjectTag: { backgroundColor: colors.selected, borderColor: colors.selected },
+  subjectText: { fontFamily: fontFamily.semiBold, color: colors.brandInk },
+  classification: { alignItems: "flex-start", gap: 10 },
+  callNumber: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    borderRadius: radii.callNumber,
+    backgroundColor: colors.callNumber,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
+  callNumberLabel: { fontFamily: fontFamily.monoLabel, fontSize: fontSize.caption, lineHeight: lineHeightFor(fontSize.caption), color: colors.black },
+  callNumberText: { fontFamily: fontFamily.mono, fontSize: fontSize.caption, lineHeight: lineHeightFor(fontSize.caption), color: colors.black },
   details: { gap: 7 },
-  detailsHeading: { fontFamily: fontFamily.regular, fontSize: fontSize.body, letterSpacing: -0.64, color: colors.black },
-  detailsBody: { fontFamily: fontFamily.regular, fontSize: fontSize.body, letterSpacing: -0.64, color: colors.textBody },
+  detailsHeading: { fontFamily: fontFamily.regular, fontSize: fontSize.body, lineHeight: lineHeightFor(fontSize.body), letterSpacing: -0.64, color: colors.black },
+  detailsBody: { fontFamily: fontFamily.regular, fontSize: fontSize.body, lineHeight: lineHeightFor(fontSize.body), letterSpacing: -0.64, color: colors.textBody },
   note: { borderWidth: 1, borderColor: colors.panelBorder, borderRadius: radii.panel, padding: spacing.lg, gap: spacing.sm },
-  noteTitle: { fontFamily: fontFamily.semiBold, fontSize: fontSize.body, color: colors.black },
-  noteBody: { fontFamily: fontFamily.regular, fontSize: fontSize.label, color: colors.textSecondary },
+  noteTitle: { fontFamily: fontFamily.semiBold, fontSize: fontSize.body, lineHeight: lineHeightFor(fontSize.body), color: colors.black },
+  noteBody: { fontFamily: fontFamily.regular, fontSize: fontSize.label, lineHeight: lineHeightFor(fontSize.label), color: colors.textSecondary },
 });

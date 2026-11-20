@@ -13,10 +13,11 @@ appId: ph.edu.umak.libras
       ACCOUNT_TYPE: alumni
 
 # Step 2: the graduation year comes from a list; the contact number is optional.
-- tapOn:
-    id: alumni-year
-- tapOn:
-    id: alumni-year-option-2025-2026
+- runFlow:
+    file: subflows/pick-option.yaml
+    env:
+      FIELD: alumni-year
+      OPTION: 2025-2026
 - tapOn:
     id: alumni-id-number
 - inputText: ${output.idNumber}

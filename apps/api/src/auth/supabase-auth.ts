@@ -100,6 +100,10 @@ export class SupabaseAuth implements AuthProvider {
     await this.#request("POST", "/logout?scope=local", { accessToken });
   }
 
+  async signOutEverywhere(accessToken: string): Promise<void> {
+    await this.#request("POST", "/logout?scope=global", { accessToken });
+  }
+
   async changePassword(accessToken: string, newPassword: string): Promise<boolean> {
     const body = await this.#request("PUT", "/user", { accessToken, body: { password: newPassword } });
     return body !== undefined;

@@ -6,6 +6,9 @@ import type { CopyRow } from "../copies/index.ts";
 import type { Tx } from "../db.ts";
 import type { EmailMessage } from "../email.ts";
 import { MEMBER_NAME_SQL } from "../members/profile.ts";
+import { recordNotifications } from "../notifications/index.ts";
+import { pushEvents } from "../push/index.ts";
+import type { PushContent } from "../push/index.ts";
 
 /** What dispatch needs to know about the Copy it places. */
 export type DispatchableCopy = Omit<CopyRow, "status">;
@@ -155,17 +158,34 @@ export function holdReadyEmail(dispatch: Pick<HoldDispatch, "bookTitle" | "picku
   };
 }
 
+/** The push notification a Member gets when their Hold is ready, and the words of its Notification. */
+export function holdReadyPush(dispatch: Pick<HoldDispatch, "bookTitle" | "pickupEndsAt">): PushContent {
+  return {
+    title: "Your Hold is ready",
+    body: `"${dispatch.bookTitle}" is set aside for you at the library desk until ${formatLibraryDateTime(dispatch.pickupEndsAt.toISOString())}.`,
+  };
+}
+
 /**
- * Tells the Member their Hold is ready. Call it after the transaction of
- * `dispatchCopy` has committed, never inside it: an email cannot be rolled
- * back. A failure to send is logged and not thrown, because the Hold is ready
- * whether or not the email leaves, and the app shows it.
+ * Tells the Member their Hold is ready: an email, a Notification in the app's
+ * inbox, and a push notification to each of their phones when they have it
+ * switched on. Call it after the transaction of `dispatchCopy` has committed,
+ * never inside it: none of them can be rolled back. A failure of any is logged
+ * and not thrown, and does not stop the others, because the Hold is ready
+ * whether or not they reach the Member, and the app shows it. The Notification
+ * and the push go at most once per Hold, however many times this is called.
  */
-export async function announceDispatch(deps: Pick<AppDeps, "email" | "logger">, dispatch: HoldDispatch | null): Promise<void> {
+export async function announceDispatch(
+  deps: Pick<AppDeps, "db" | "clock" | "email" | "logger" | "push">,
+  dispatch: HoldDispatch | null,
+): Promise<void> {
   if (!dispatch) return;
   try {
     await deps.email.send({ to: dispatch.memberEmail, ...holdReadyEmail(dispatch) });
   } catch (error) {
     deps.logger.error(`The Hold-ready email for Hold ${dispatch.holdId} could not be sent`, error);
   }
+  const words = holdReadyPush(dispatch);
+  await recordNotifications(deps, "holdReady", [{ memberId: dispatch.memberId, occasion: dispatch.holdId, ...words, about: { holdId: dispatch.holdId } }]);
+  await pushEvents(deps, "holdReady", [{ memberId: dispatch.memberId, occasion: dispatch.holdId }], () => words);
 }

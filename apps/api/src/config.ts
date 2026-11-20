@@ -25,6 +25,11 @@ export interface Config {
   sweepSecret: string | undefined;
   /** The email service. Required in production; elsewhere unset means emails are printed to the console. */
   email: EmailConfig | undefined;
+  /**
+   * An Expo access token for push notifications (`EXPO_ACCESS_TOKEN`). Optional: Expo's push
+   * service needs it only when the Expo project turns on enhanced security for push notifications.
+   */
+  expoAccessToken: string | undefined;
 }
 
 /** Brevo: transactional email over HTTPS (the README says why). */
@@ -145,6 +150,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     corsAllowedOrigins: corsOrigins(env),
     sweepSecret: sweepSecret(env),
     email: emailConfig(env),
+    expoAccessToken: env.EXPO_ACCESS_TOKEN || undefined,
   };
 }
 

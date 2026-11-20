@@ -1,0 +1,254 @@
+import { CATALOG_SORTS, CATALOG_SORT_LABELS, activeFilterCount } from "@libras/shared";
+import type { CatalogSearchFilters, CatalogSort } from "@libras/shared";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
+import { BackHandler, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import type { ReactNode } from "react";
+import { CheckIcon, ChevronDownIcon, CrossIcon, SlidersIcon, SortIcon } from "../components/OutlineIcons";
+import { publishedLabel } from "./FiltersSheet";
+import { colors, fontFamily, fontSize, popupMenuShadow, radii, spacing } from "../theme/tokens";
+
+/** The chips' height, and how far below their top the Sort menu opens. */
+const CHIP_HEIGHT = 34;
+const MENU_TOP = CHIP_HEIGHT + 8;
+
+function Chip({
+  on,
+  label,
+  onPress,
+  icon,
+  trailing,
+  testID,
+  expanded,
+}: {
+  on: boolean;
+  label: string;
+  onPress?: () => void;
+  icon?: ReactNode;
+  trailing?: ReactNode;
+  testID: string;
+  expanded?: boolean;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected: on, expanded, disabled: onPress === undefined }}
+      disabled={onPress === undefined}
+      onPress={onPress}
+      style={[styles.chip, on && styles.chipOn]}
+      testID={testID}
+    >
+      {icon}
+      <Text style={styles.chipText}>{label}</Text>
+      {trailing}
+    </Pressable>
+  );
+}
+
+/** One filter that is on, under the controls: tapping it turns that filter off. */
+function FilterChip({ label, onRemove, testID }: { label: string; onRemove: () => void; testID: string }) {
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={`Remove ${label}`} onPress={onRemove} style={styles.filterChip} testID={testID}>
+      <Text style={styles.filterChipText}>{label}</Text>
+      <CrossIcon color={colors.primary} size={14} />
+    </Pressable>
+  );
+}
+
+/**
+ * The row under the search bar in search results (approved Tier 3 preview):
+ * the Sort chip, which opens a menu of the four orders just under it; the
+ * one-tap Available now chip; and the Filters chip, which opens the Filters
+ * sheet and says how many of its filters are on. The menu closes on a choice,
+ * on the Sort chip, or on Android back.
+ *
+ * Under the row, each filter of the sheet that is on shows as a chip that
+ * removes it: each Subject, the Published years, and "All editions" when
+ * Latest edition only is off.
+ *
+ * The menu opens over the results. It is not a child of the row but its next
+ * sibling, placed by the row's position: Android leaves a view drawn outside
+ * its parent's bounds out of the accessibility tree, so a menu hanging below
+ * the row could be seen and tapped but never reached by TalkBack (or Maestro).
+ * The parent must therefore reach as far down as the menu (Home's search-mode
+ * content fills the screen) and must not clip it.
+ */
+export function SearchControls({
+  filters,
+  onChange,
+  onOpenFilters,
+}: {
+  filters: CatalogSearchFilters;
+  onChange: (change: Partial<CatalogSearchFilters>) => void;
+  onOpenFilters: () => void;
+}) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  // Where the row sits in its parent, so the menu can open just under the Sort chip.
+  const [rowAt, setRowAt] = useState<{ x: number; y: number } | null>(null);
+  const filterCount = activeFilterCount(filters);
+
+  // Android back closes the menu first (Home's own handler, registered earlier, would leave search mode).
+  useFocusEffect(
+    useCallback(() => {
+      if (!menuOpen) return undefined;
+      const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
+        setMenuOpen(false);
+        return true;
+      });
+      return () => subscription.remove();
+    }, [menuOpen]),
+  );
+
+  const choose = (sort: CatalogSort) => {
+    setMenuOpen(false);
+    if (sort !== filters.sort) onChange({ sort });
+  };
+
+  return (
+    <>
+      <View onLayout={(event) => setRowAt({ x: event.nativeEvent.layout.x, y: event.nativeEvent.layout.y })}>
+        {/* "handled", like the results around it: with the default, Android before API 30 may take the first tap on a chip to put the keyboard away. */}
+        <ScrollView
+          horizontal
+          keyboardShouldPersistTaps="handled"
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.row}
+          style={styles.scroller}
+        >
+          <Chip
+            on
+            label={CATALOG_SORT_LABELS[filters.sort]}
+            onPress={() => setMenuOpen(!menuOpen)}
+            expanded={menuOpen}
+            icon={<SortIcon color={colors.black} size={15} />}
+            trailing={<ChevronDownIcon color={colors.black} size={14} />}
+            testID="search-sort"
+          />
+          <Chip
+            on={filters.availableNow}
+            label="Available now"
+            onPress={() => {
+              setMenuOpen(false);
+              onChange({ availableNow: !filters.availableNow });
+            }}
+            icon={filters.availableNow ? <CheckIcon color={colors.black} size={14} /> : undefined}
+            testID="search-available-now"
+          />
+          <Chip
+            on={filterCount > 0}
+            label={filterCount > 0 ? `Filters (${filterCount})` : "Filters"}
+            onPress={() => {
+              setMenuOpen(false);
+              onOpenFilters();
+            }}
+            icon={<SlidersIcon color={colors.black} size={15} />}
+            testID="search-filters"
+          />
+        </ScrollView>
+
+        {filterCount > 0 ? (
+          <View style={styles.filterChips} testID="search-filter-chips">
+            {filters.subjects.map((subject) => (
+              <FilterChip
+                key={subject}
+                label={subject}
+                onRemove={() => onChange({ subjects: filters.subjects.filter((chosen) => chosen !== subject) })}
+                testID={`search-filter-subject-${subject}`}
+              />
+            ))}
+            {filters.published.kind === "any" ? null : (
+              <FilterChip label={publishedLabel(filters.published)} onRemove={() => onChange({ published: { kind: "any" } })} testID="search-filter-published" />
+            )}
+            {filters.latestEditionOnly ? null : (
+              <FilterChip label="All editions" onRemove={() => onChange({ latestEditionOnly: true })} testID="search-filter-all-editions" />
+            )}
+          </View>
+        ) : null}
+      </View>
+
+      {menuOpen && rowAt !== null ? (
+        <View style={[styles.menu, { left: rowAt.x, top: rowAt.y + MENU_TOP }]} accessibilityRole="menu" testID="search-sort-menu">
+          <Text style={styles.menuLabel}>SORT BY</Text>
+          {CATALOG_SORTS.map((sort) => {
+            const chosen = sort === filters.sort;
+            return (
+              <Pressable
+                key={sort}
+                accessibilityRole="menuitem"
+                accessibilityState={{ checked: chosen }}
+                onPress={() => choose(sort)}
+                style={[styles.option, chosen && styles.optionChosen]}
+                testID={`search-sort-${sort}`}
+              >
+                <Text style={styles.optionText}>{CATALOG_SORT_LABELS[sort]}</Text>
+                {chosen ? <CheckIcon color={colors.black} size={18} /> : null}
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+    </>
+  );
+}
+
+const styles = StyleSheet.create({
+  // The chips scroll sideways edge to edge, so the row reaches past the screen's side gutter.
+  scroller: { marginHorizontal: -spacing.home },
+  row: { gap: spacing.sm, paddingHorizontal: spacing.home },
+  chip: {
+    height: CHIP_HEIGHT,
+    paddingHorizontal: spacing.inset,
+    borderRadius: radii.chip,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.white,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  chipOn: { backgroundColor: colors.accent, borderColor: colors.black },
+  chipText: { fontFamily: fontFamily.medium, fontSize: fontSize.caption, lineHeight: 16, color: colors.black },
+  filterChips: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 10 },
+  filterChip: {
+    height: 28,
+    borderRadius: radii.filterChip,
+    backgroundColor: colors.selected,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    paddingLeft: 10,
+    paddingRight: spacing.xs,
+  },
+  filterChipText: { fontFamily: fontFamily.medium, fontSize: fontSize.caption, lineHeight: 16, color: colors.primary },
+  // Above the count and the results that follow it, so the open menu covers them.
+  menu: {
+    position: "absolute",
+    zIndex: 1,
+    width: 230,
+    backgroundColor: colors.white,
+    borderRadius: radii.popupMenu,
+    padding: spacing.sm,
+    // Android draws an outer boxShadow from 9 (API 28) on; before that the menu would have no edge over the results.
+    ...(Platform.OS === "android" && Platform.Version < 28 ? { elevation: 8 } : { boxShadow: popupMenuShadow }),
+  },
+  menuLabel: {
+    fontFamily: fontFamily.semiBold,
+    fontSize: fontSize.listLabel,
+    lineHeight: 15,
+    letterSpacing: 0.84,
+    color: colors.textMuted,
+    paddingHorizontal: spacing.inset,
+    paddingTop: 6,
+    paddingBottom: spacing.xs,
+  },
+  option: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 11,
+    paddingHorizontal: spacing.inset,
+    borderRadius: radii.menuOption,
+  },
+  optionChosen: { backgroundColor: colors.menuChosen },
+  optionText: { fontFamily: fontFamily.regular, fontSize: fontSize.listRow, lineHeight: 19, color: colors.black },
+});

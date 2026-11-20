@@ -1,22 +1,35 @@
+import { catalogSearchQueryString } from "@libras/shared";
 import type {
   ApiErrorBody,
   BookDetailResponse,
   CancelHoldResponse,
+  CatalogSearchFilters,
   CatalogSearchResponse,
+  CatalogSubjectsResponse,
+  CatalogSuggestionsResponse,
   ChangePasswordRequest,
   CheckPasswordResetCodeRequest,
   ClearanceResponse,
   CompletePasswordResetRequest,
+  DeleteAccountRequest,
   DigitalIdResponse,
   HealthResponse,
+  HomeResponse,
+  MemberLoanPolicyResponse,
   MemberMeResponse,
   MemberSignInResponse,
   MyHoldsResponse,
   MyLoansResponse,
+  MyNotificationsResponse,
+  MySavedBooksResponse,
+  NotificationsUnreadResponse,
   PasswordResetRequestedResponse,
   PlaceHoldResponse,
+  PushSettingsChange,
+  PushSettingsResponse,
   RefreshSessionResponse,
   RenewLoanResponse,
+  SaveBookResponse,
   RequestPasswordResetRequest,
   ResendSignUpCodeRequest,
   SignInRequest,
@@ -101,13 +114,20 @@ export function createApiClient({ baseUrl, fetch: fetchImpl = fetch, timeoutMs =
     /**
      * Searches the catalog by title or author (typos are tolerated) or by ISBN,
      * accession number or call number. Needs a signed-in Member's access token.
-     * No match is a normal answer with an empty `results`, not an error.
+     * No match is a normal answer with an empty `results`, not an error. `filters` sorts the
+     * results, keeps only what is on the shelf now, narrows by Subject and year, and folds older editions.
      */
-    searchCatalog: (accessToken: string, query: string, limit?: number) =>
-      request<CatalogSearchResponse>(
-        `/catalog/search?q=${encodeURIComponent(query)}${limit === undefined ? "" : `&limit=${limit}`}`,
-        { headers: { Authorization: `Bearer ${accessToken}` } },
-      ),
+    searchCatalog: (accessToken: string, query: string, filters: CatalogSearchFilters, limit?: number) =>
+      request<CatalogSearchResponse>(`/catalog/search?${catalogSearchQueryString(query, filters, limit)}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }),
+    /** Up to 5 title and author suggestions for a query of at least 2 characters (`invalid_request`, 400, when it is shorter). */
+    suggestCatalog: (accessToken: string, query: string) =>
+      request<CatalogSuggestionsResponse>(`/catalog/suggestions?q=${encodeURIComponent(query)}`, { headers: bearer(accessToken) }),
+    /** The Subjects that have at least one Book in the catalog, in table order: the options of the Filters sheet. */
+    getSubjects: (accessToken: string) => request<CatalogSubjectsResponse>("/catalog/subjects", { headers: bearer(accessToken) }),
+    /** What Home shows besides the search bar: the shelves (the Announcement joins them later). A shelf with no Books is not in the answer. */
+    getHome: (accessToken: string) => request<HomeResponse>("/home", { headers: bearer(accessToken) }),
     /** One Book with its details and how many Copies exist and are available. `book_not_found` (404) when there is no such Book. */
     getBook: (accessToken: string, id: string) =>
       request<BookDetailResponse>(`/catalog/books/${encodeURIComponent(id)}`, { headers: bearer(accessToken) }),
@@ -121,6 +141,47 @@ export function createApiClient({ baseUrl, fetch: fetchImpl = fetch, timeoutMs =
     /** Takes the Member out of a Book's queue. Failures: `hold_not_found` (404), `hold_not_cancellable` (409). */
     cancelHold: (accessToken: string, holdId: string) =>
       request<CancelHoldResponse>(`/holds/${encodeURIComponent(holdId)}/cancel`, { method: "POST", headers: bearer(accessToken) }),
+    /** The Member's own Saved books, newest first, with each Book's availability. */
+    getSavedBooks: (accessToken: string) => request<MySavedBooksResponse>("/members/me/saved-books", { headers: bearer(accessToken) }),
+    /** Saves a Book (saving again changes nothing). `book_not_found` (404) when there is no such Book. */
+    saveBook: (accessToken: string, bookId: string) =>
+      request<SaveBookResponse>(`/members/me/saved-books/${encodeURIComponent(bookId)}`, { method: "PUT", headers: bearer(accessToken) }),
+    /** Takes a Book off the Member's Saved books (succeeds when it was not there). */
+    unsaveBook: (accessToken: string, bookId: string) =>
+      request<SaveBookResponse>(`/members/me/saved-books/${encodeURIComponent(bookId)}`, { method: "DELETE", headers: bearer(accessToken) }),
+    /** Which kinds of push notification the Member gets. */
+    getPushSettings: (accessToken: string) => request<PushSettingsResponse>("/members/me/push-settings", { headers: bearer(accessToken) }),
+    /** Turns the named push notification switches on or off; answers all of them. */
+    changePushSettings: (accessToken: string, change: PushSettingsChange) =>
+      request<PushSettingsResponse>("/members/me/push-settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...bearer(accessToken) },
+        body: JSON.stringify(change),
+      }),
+    /** This phone gets the signed-in Member's push notifications (repeating it is harmless). */
+    registerPushDevice: (accessToken: string, token: string) =>
+      request<null>("/members/me/push-device", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...bearer(accessToken) },
+        body: JSON.stringify({ token }),
+      }),
+    /** A page of the Member's Notifications, newest first; `before` is the `nextCursor` of the page before. */
+    getNotifications: (accessToken: string, before?: string) =>
+      request<MyNotificationsResponse>(`/members/me/notifications${before === undefined ? "" : `?before=${encodeURIComponent(before)}`}`, {
+        headers: bearer(accessToken),
+      }),
+    /** How many of the Member's Notifications are unread: the badge on the Home bell. */
+    getUnreadNotifications: (accessToken: string) =>
+      request<NotificationsUnreadResponse>("/members/me/notifications/unread", { headers: bearer(accessToken) }),
+    /** Marks one Notification read (again is harmless) and answers the unread count. `notification_not_found` (404). */
+    markNotificationRead: (accessToken: string, id: string) =>
+      request<NotificationsUnreadResponse>(`/members/me/notifications/${encodeURIComponent(id)}/read`, {
+        method: "POST",
+        headers: bearer(accessToken),
+      }),
+    /** Marks every Notification of the Member read and answers the unread count. */
+    markAllNotificationsRead: (accessToken: string) =>
+      request<NotificationsUnreadResponse>("/members/me/notifications/read-all", { method: "POST", headers: bearer(accessToken) }),
     /** The Member's own Loans, current ones first, with the loan limit and loan period of their Loan Policy. */
     getLoans: (accessToken: string) => request<MyLoansResponse>("/members/me/loans", { headers: bearer(accessToken) }),
     /**
@@ -131,6 +192,22 @@ export function createApiClient({ baseUrl, fetch: fetchImpl = fetch, timeoutMs =
       request<RenewLoanResponse>(`/loans/${encodeURIComponent(loanId)}/renew`, { method: "POST", headers: bearer(accessToken) }),
     /** Whether the Member is cleared, with the Loans still out and the unsettled Fines that stand in the way. */
     getClearance: (accessToken: string) => request<ClearanceResponse>("/members/me/clearance", { headers: bearer(accessToken) }),
+    /** The Loan Policy of the Member's Account Type: loan limit and period, renewal limit, daily Fine rate and Fine cap. */
+    getLoanPolicy: (accessToken: string) =>
+      request<MemberLoanPolicyResponse>("/members/me/loan-policy", { headers: bearer(accessToken) }),
+    /** Ends every session of the Member's account, this one included. The app signs out locally afterwards. */
+    signOutAllDevices: (accessToken: string) =>
+      request<null>("/members/me/sign-out-all", { method: "POST", headers: bearer(accessToken) }),
+    /**
+     * Deletes the Member's account, confirmed with their password (only when cleared). Failures:
+     * `not_cleared` (409, with the Clearance reason), `password_incorrect` (403), `too_many_attempts` (429).
+     */
+    deleteAccount: (accessToken: string, body: DeleteAccountRequest) =>
+      request<null>("/members/me/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...bearer(accessToken) },
+        body: JSON.stringify(body),
+      }),
     /** Starts a sign-up: the API emails a verification code. */
     signUp: (body: SignUpRequest) => post<SignUpCodeSentResponse>("/members/sign-up", body),
     /** Accepts the emailed code: the account is active from here on. */
@@ -166,9 +243,12 @@ export function createApiClient({ baseUrl, fetch: fetchImpl = fetch, timeoutMs =
     signIn: (body: SignInRequest) => post<MemberSignInResponse>("/members/sign-in", body),
     /** Swaps a refresh token for a new session. A refresh token works once. */
     refreshSession: (refreshToken: string) => post<RefreshSessionResponse>("/auth/refresh", { refreshToken }),
-    /** Ends the session on the server. Never fails for a session that is already gone. */
-    signOut: (accessToken: string) =>
-      request<null>("/auth/sign-out", { method: "POST", headers: bearer(accessToken) }),
+    /**
+     * Ends the session on the server. Never fails for a session that is already gone. With this phone's
+     * push token the phone also stops getting push notifications; that works without a session.
+     */
+    signOut: (accessToken: string | undefined, pushToken?: string) =>
+      post<null>("/auth/sign-out", pushToken === undefined ? {} : { pushToken }, accessToken),
     /** The signed-in Member's profile. `not_signed_in` (401) when the access token no longer works. */
     getMe: (accessToken: string) => request<MemberMeResponse>("/members/me", { headers: bearer(accessToken) }),
     /** The Member's Digital ID for the current 60-second window. */
