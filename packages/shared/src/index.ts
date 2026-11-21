@@ -53,8 +53,10 @@ export {
 } from "./accounts.ts";
 export {
   LIBRARY_HOURS_SUMMARY,
+  RETURN_AT_DESK_NOTICE,
   SATURDAY_HOURS,
   WEEKDAY_HOURS,
+  clockLabel,
   inLibraryLoanDueAt,
   isWithinLibraryHours,
   libraryHoursOn,
@@ -155,6 +157,7 @@ export {
   PUBLISHED_YEAR_MAX,
   PUBLISHED_YEAR_MIN,
   activeFilterCount,
+  anyFilterOn,
   bookAvailabilityLabel,
   bookIdSchema,
   COPY_STATUSES,
@@ -162,6 +165,7 @@ export {
   catalogSearchQueryString,
   contentsChapters,
   libraryYear,
+  publishedFilterLabel,
   publishedYears,
 } from "./catalog.ts";
 export type {
