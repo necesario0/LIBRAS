@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { DEFAULT_CATALOG_SEARCH_FILTERS, activeFilterCount, catalogSearchQuerySchema, catalogSearchQueryString } from "../src/catalog.ts";
+import {
+  DEFAULT_CATALOG_SEARCH_FILTERS,
+  activeFilterCount,
+  anyFilterOn,
+  catalogSearchQuerySchema,
+  catalogSearchQueryString,
+  publishedFilterLabel,
+} from "../src/catalog.ts";
 import type { CatalogSearchFilters } from "../src/catalog.ts";
 
 /** What the API reads from the query string the app sends. */
@@ -53,18 +60,42 @@ describe("the Subject and Published filters in the search query string", () => {
 });
 
 describe("activeFilterCount: the number on the Filters chip", () => {
-  it("is 0 at the defaults, and does not count Sort or Available now", () => {
+  it("is 0 at the defaults, and does not count Sort, Available now or Published (they have their own chips)", () => {
     assert.equal(activeFilterCount(DEFAULT_CATALOG_SEARCH_FILTERS), 0);
     assert.equal(activeFilterCount(filters({ sort: "title", availableNow: true })), 0);
+    assert.equal(activeFilterCount(filters({ published: { kind: "last", years: 10 } })), 0);
+    assert.equal(activeFilterCount(filters({ published: { kind: "between", from: 2000, to: 2010 } })), 0);
   });
 
-  it("counts each Subject, a Published choice, and all editions", () => {
+  it("counts each Subject and all editions", () => {
     assert.equal(activeFilterCount(filters({ subjects: ["Law", "Nursing"] })), 2);
-    assert.equal(activeFilterCount(filters({ published: { kind: "last", years: 10 } })), 1);
     assert.equal(activeFilterCount(filters({ latestEditionOnly: false })), 1);
     assert.equal(
       activeFilterCount(filters({ subjects: ["Law"], published: { kind: "between", from: 2000, to: 2010 }, latestEditionOnly: false })),
-      3,
+      2,
     );
+  });
+});
+
+describe("anyFilterOn: whether Clear filters has something to clear", () => {
+  it("is false at the defaults and for a sort alone", () => {
+    assert.equal(anyFilterOn(DEFAULT_CATALOG_SEARCH_FILTERS), false);
+    assert.equal(anyFilterOn(filters({ sort: "borrowed" })), false);
+  });
+
+  it("is true for Available now, a Published choice, a Subject or all editions", () => {
+    assert.equal(anyFilterOn(filters({ availableNow: true })), true);
+    assert.equal(anyFilterOn(filters({ published: { kind: "last", years: 5 } })), true);
+    assert.equal(anyFilterOn(filters({ subjects: ["Law"] })), true);
+    assert.equal(anyFilterOn(filters({ latestEditionOnly: false })), true);
+  });
+});
+
+describe("publishedFilterLabel: the words on the Published chip", () => {
+  it("names each choice", () => {
+    assert.equal(publishedFilterLabel({ kind: "any" }), "Any time");
+    assert.equal(publishedFilterLabel({ kind: "last", years: 5 }), "Last 5 years");
+    assert.equal(publishedFilterLabel({ kind: "last", years: 10 }), "Last 10 years");
+    assert.equal(publishedFilterLabel({ kind: "between", from: 2000, to: 2005 }), "2000 to 2005");
   });
 });

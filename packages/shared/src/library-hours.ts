@@ -17,20 +17,33 @@ export interface DailySchedule {
   readonly label: string;
 }
 
-/** Weekday (Mon-Fri) and Saturday schedules, in minutes after midnight (UTC+8). Sunday is closed (null). */
-export const WEEKDAY_HOURS: DailySchedule = {
-  openMinutes: 8 * 60,
-  closeMinutes: 19 * 60,
-  label: "8:00 AM to 7:00 PM",
-};
+/** A time of day given in minutes after midnight, as the library writes it: "8:00 AM", "12:00 PM", "7:30 PM". */
+export function clockLabel(minutes: number): string {
+  const hours = Math.floor(minutes / 60) % 24;
+  const hour12 = hours % 12 === 0 ? 12 : hours % 12;
+  return `${hour12}:${String(minutes % 60).padStart(2, "0")} ${hours < 12 ? "AM" : "PM"}`;
+}
 
-export const SATURDAY_HOURS: DailySchedule = {
-  openMinutes: 8 * 60,
-  closeMinutes: 12 * 60,
-  label: "8:00 AM to 12:00 PM",
-};
+function schedule(openMinutes: number, closeMinutes: number): DailySchedule {
+  return { openMinutes, closeMinutes, label: `${clockLabel(openMinutes)} to ${clockLabel(closeMinutes)}` };
+}
 
-export const LIBRARY_HOURS_SUMMARY = "Mon-Fri 8:00 AM - 7:00 PM, Sat 8:00 AM - 12:00 PM";
+/**
+ * Weekday (Mon-Fri) and Saturday schedules, in minutes after midnight (UTC+8). Sunday is closed (null).
+ * Every text about the hours (Settings, Help, the in-library Loan messages, the Successfully Borrowed
+ * notice) is written from these two, so changing them here changes them everywhere.
+ */
+export const WEEKDAY_HOURS: DailySchedule = schedule(8 * 60, 19 * 60);
+
+export const SATURDAY_HOURS: DailySchedule = schedule(8 * 60, 12 * 60);
+
+/** The hours on one line, for messages and the Loan Policy help: "Mon-Fri 8:00 AM - 7:00 PM, Sat 8:00 AM - 12:00 PM". */
+export const LIBRARY_HOURS_SUMMARY =
+  `Mon-Fri ${clockLabel(WEEKDAY_HOURS.openMinutes)} - ${clockLabel(WEEKDAY_HOURS.closeMinutes)}, ` +
+  `Sat ${clockLabel(SATURDAY_HOURS.openMinutes)} - ${clockLabel(SATURDAY_HOURS.closeMinutes)}`;
+
+/** The line under the return reminder on Successfully Borrowed: where and when Books go back. */
+export const RETURN_AT_DESK_NOTICE = `Return Books at the library desk during library hours: Mon to Fri ${WEEKDAY_HOURS.label}, Sat ${SATURDAY_HOURS.label}.`;
 
 export interface LibraryHoursWindow {
   openAt: Date;

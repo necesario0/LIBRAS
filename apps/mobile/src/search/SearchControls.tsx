@@ -1,11 +1,10 @@
-import { CATALOG_SORTS, CATALOG_SORT_LABELS, activeFilterCount } from "@libras/shared";
+import { CATALOG_SORTS, CATALOG_SORT_LABELS, activeFilterCount, publishedFilterLabel } from "@libras/shared";
 import type { CatalogSearchFilters, CatalogSort } from "@libras/shared";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
-import { BackHandler, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { BackHandler, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import type { ReactNode } from "react";
-import { CheckIcon, ChevronDownIcon, CrossIcon, SlidersIcon, SortIcon } from "../components/OutlineIcons";
-import { publishedLabel } from "./FiltersSheet";
+import { CalendarIcon, CheckIcon, ChevronDownIcon, CrossIcon, SlidersIcon, SortIcon } from "../components/OutlineIcons";
 import { colors, fontFamily, fontSize, popupMenuShadow, radii, spacing } from "../theme/tokens";
 
 /** The chips' height, and how far below their top the Sort menu opens. */
@@ -56,15 +55,20 @@ function FilterChip({ label, onRemove, testID }: { label: string; onRemove: () =
 }
 
 /**
- * The row under the search bar in search results (approved Tier 3 preview):
- * the Sort chip, which opens a menu of the four orders just under it; the
- * one-tap Available now chip; and the Filters chip, which opens the Filters
- * sheet and says how many of its filters are on. The menu closes on a choice,
- * on the Sort chip, or on Android back.
+ * The row under the search bar in search mode (approved Tier 3 preview, with
+ * the owner's changes of 2026-11-21): the Sort chip, which opens a menu of the
+ * four orders just under it; the one-tap Available now chip; the Published
+ * chip, which names the years chosen ("Published: Last 5 years") and opens the
+ * Published sheet; and the Filters chip, which opens the Filters sheet and says
+ * how many of its filters are on. The menu closes on a choice, on the Sort
+ * chip, or on Android back.
  *
- * Under the row, each filter of the sheet that is on shows as a chip that
- * removes it: each Subject, the Published years, and "All editions" when
- * Latest edition only is off.
+ * The row shows from the moment search mode opens, so filters can be chosen
+ * before typing: they then apply to the next search.
+ *
+ * Under the row, each filter of the Filters sheet that is on shows as a chip
+ * that removes it: each Subject, and "All editions" when Latest edition only is
+ * off. Published has none: its chip already shows it.
  *
  * The menu opens over the results. It is not a child of the row but its next
  * sibling, placed by the row's position: Android leaves a view drawn outside
@@ -76,16 +80,19 @@ function FilterChip({ label, onRemove, testID }: { label: string; onRemove: () =
 export function SearchControls({
   filters,
   onChange,
+  onOpenPublished,
   onOpenFilters,
 }: {
   filters: CatalogSearchFilters;
   onChange: (change: Partial<CatalogSearchFilters>) => void;
+  onOpenPublished: () => void;
   onOpenFilters: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   // Where the row sits in its parent, so the menu can open just under the Sort chip.
   const [rowAt, setRowAt] = useState<{ x: number; y: number } | null>(null);
   const filterCount = activeFilterCount(filters);
+  const published = filters.published.kind !== "any";
 
   // Android back closes the menu first (Home's own handler, registered earlier, would leave search mode).
   useFocusEffect(
@@ -107,14 +114,8 @@ export function SearchControls({
   return (
     <>
       <View onLayout={(event) => setRowAt({ x: event.nativeEvent.layout.x, y: event.nativeEvent.layout.y })}>
-        {/* "handled", like the results around it: with the default, Android before API 30 may take the first tap on a chip to put the keyboard away. */}
-        <ScrollView
-          horizontal
-          keyboardShouldPersistTaps="handled"
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.row}
-          style={styles.scroller}
-        >
+        {/* The chips wrap onto a second line when they do not fit, so none is ever pushed off the screen (owner decision, #65). */}
+        <View style={styles.row} testID="search-controls-row">
           <Chip
             on
             label={CATALOG_SORT_LABELS[filters.sort]}
@@ -123,16 +124,6 @@ export function SearchControls({
             icon={<SortIcon color={colors.black} size={15} />}
             trailing={<ChevronDownIcon color={colors.black} size={14} />}
             testID="search-sort"
-          />
-          <Chip
-            on={filters.availableNow}
-            label="Available now"
-            onPress={() => {
-              setMenuOpen(false);
-              onChange({ availableNow: !filters.availableNow });
-            }}
-            icon={filters.availableNow ? <CheckIcon color={colors.black} size={14} /> : undefined}
-            testID="search-available-now"
           />
           <Chip
             on={filterCount > 0}
@@ -144,7 +135,28 @@ export function SearchControls({
             icon={<SlidersIcon color={colors.black} size={15} />}
             testID="search-filters"
           />
-        </ScrollView>
+          <Chip
+            on={published}
+            label={published ? `Published: ${publishedFilterLabel(filters.published)}` : "Published"}
+            onPress={() => {
+              setMenuOpen(false);
+              onOpenPublished();
+            }}
+            icon={<CalendarIcon color={colors.black} size={15} />}
+            trailing={<ChevronDownIcon color={colors.black} size={14} />}
+            testID="search-published"
+          />
+          <Chip
+            on={filters.availableNow}
+            label="Available now"
+            onPress={() => {
+              setMenuOpen(false);
+              onChange({ availableNow: !filters.availableNow });
+            }}
+            icon={filters.availableNow ? <CheckIcon color={colors.black} size={14} /> : undefined}
+            testID="search-available-now"
+          />
+        </View>
 
         {filterCount > 0 ? (
           <View style={styles.filterChips} testID="search-filter-chips">
@@ -156,9 +168,6 @@ export function SearchControls({
                 testID={`search-filter-subject-${subject}`}
               />
             ))}
-            {filters.published.kind === "any" ? null : (
-              <FilterChip label={publishedLabel(filters.published)} onRemove={() => onChange({ published: { kind: "any" } })} testID="search-filter-published" />
-            )}
             {filters.latestEditionOnly ? null : (
               <FilterChip label="All editions" onRemove={() => onChange({ latestEditionOnly: true })} testID="search-filter-all-editions" />
             )}
@@ -192,9 +201,7 @@ export function SearchControls({
 }
 
 const styles = StyleSheet.create({
-  // The chips scroll sideways edge to edge, so the row reaches past the screen's side gutter.
-  scroller: { marginHorizontal: -spacing.home },
-  row: { gap: spacing.sm, paddingHorizontal: spacing.home },
+  row: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   chip: {
     height: CHIP_HEIGHT,
     paddingHorizontal: spacing.inset,

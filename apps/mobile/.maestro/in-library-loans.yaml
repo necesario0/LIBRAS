@@ -78,6 +78,13 @@ appId: ph.edu.umak.libras
 - assertVisible:
     id: borrowed-count
     text: "1 of 3"
+- scrollUntilVisible:
+    element:
+      id: borrowed-hours
+    direction: DOWN
+- assertVisible:
+    id: borrowed-hours
+    text: "Return Books at the library desk during library hours: Mon to Fri 8:00 AM to 7:00 PM, Sat 8:00 AM to 12:00 PM\\."
 - takeScreenshot: visitor-borrowed
 - tapOn:
     id: borrowed-my-loans

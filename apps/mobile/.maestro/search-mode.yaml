@@ -1,5 +1,7 @@
 # Search mode on Home: the bar opens it and Cancel and Android back close it
-# (the tab bar steps aside while it is open); recent searches (10, de-duplicated,
+# (the tab bar steps aside while it is open); the row of controls (Sort,
+# Available now, Published, Filters) shows at once, with the recent searches
+# under it, and stays while typing and on results; recent searches (10, de-duplicated,
 # removable one by one or all at once, gone after sign-out); suggestions while
 # typing (a title opens its Book, an author runs a search).
 # Needs the end-to-end API on port 3000 (npm run e2e starts it).
@@ -31,7 +33,7 @@ appId: ph.edu.umak.libras
     visible: "Hi, Cobby"
     timeout: 20000
 
-# The bar opens search mode: Cancel, the field and the empty history, and no tab bar.
+# The bar opens search mode: Cancel, the field, the row of controls with the empty history under it, and no tab bar.
 - assertVisible:
     id: tab-home
 - tapOn:
@@ -43,7 +45,20 @@ appId: ph.edu.umak.libras
 - assertVisible:
     id: search-input
 - assertVisible:
+    id: search-sort
+- assertVisible: "Best match"
+- assertVisible:
+    id: search-available-now
+- assertVisible:
+    id: search-published
+    text: "Published"
+- assertVisible:
+    id: search-filters
+    text: "Filters"
+- assertVisible:
     id: recent-empty
+    below:
+      id: search-filters
 - assertVisible: "No recent searches"
 - assertNotVisible:
     id: tab-home
@@ -94,6 +109,11 @@ appId: ph.edu.umak.libras
     timeout: 15000
 - assertVisible: "SUGGESTIONS"
 - assertVisible: "Title"
+# Typing keeps the row, with the suggestions under it.
+- assertVisible:
+    id: suggestion-title
+    below:
+      id: search-published
 - takeScreenshot: search-mode-suggestions
 - tapOn:
     id: suggestion-title
@@ -137,6 +157,8 @@ appId: ph.edu.umak.libras
 - assertVisible: ${output.secondTitle}
 - assertVisible:
     id: search-results
+    below:
+      id: search-filters
 - takeScreenshot: search-mode-author-results
 
 # The search is now the newest recent search.
@@ -147,6 +169,10 @@ appId: ph.edu.umak.libras
       id: recent-0
     timeout: 10000
 - assertVisible: ${output.author}
+- assertVisible:
+    id: recent-0
+    below:
+      id: search-filters
 - takeScreenshot: search-mode-recent
 
 # A search typed in capitals is the same search: it moves to the top and is listed once.

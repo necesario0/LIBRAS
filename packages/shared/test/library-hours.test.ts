@@ -1,6 +1,15 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { inLibraryLoanDueAt, isWithinLibraryHours, libraryHoursOn } from "../src/index.ts";
+import {
+  LIBRARY_HOURS_SUMMARY,
+  RETURN_AT_DESK_NOTICE,
+  SATURDAY_HOURS,
+  WEEKDAY_HOURS,
+  clockLabel,
+  inLibraryLoanDueAt,
+  isWithinLibraryHours,
+  libraryHoursOn,
+} from "../src/index.ts";
 
 describe("library operating hours", () => {
   it("opens 8:00 AM to 7:00 PM on weekdays (Manila UTC+8)", () => {
@@ -39,5 +48,30 @@ describe("library operating hours", () => {
     assert.equal(libraryHoursOn(sunday), null);
     assert.equal(isWithinLibraryHours(sunday), false);
     assert.equal(inLibraryLoanDueAt(sunday), null);
+  });
+});
+
+describe("the texts written from the library hours", () => {
+  it("writes a time of day the way the library does", () => {
+    assert.equal(clockLabel(0), "12:00 AM");
+    assert.equal(clockLabel(8 * 60), "8:00 AM");
+    assert.equal(clockLabel(12 * 60), "12:00 PM");
+    assert.equal(clockLabel(19 * 60 + 30), "7:30 PM");
+    assert.equal(clockLabel(23 * 60 + 5), "11:05 PM");
+  });
+
+  it("labels each schedule from its opening and closing minutes", () => {
+    assert.equal(WEEKDAY_HOURS.label, "8:00 AM to 7:00 PM");
+    assert.equal(SATURDAY_HOURS.label, "8:00 AM to 12:00 PM");
+  });
+
+  it("gives the one-line summary and the Successfully Borrowed notice from the same schedules", () => {
+    assert.equal(LIBRARY_HOURS_SUMMARY, "Mon-Fri 8:00 AM - 7:00 PM, Sat 8:00 AM - 12:00 PM");
+    assert.equal(
+      RETURN_AT_DESK_NOTICE,
+      "Return Books at the library desk during library hours: Mon to Fri 8:00 AM to 7:00 PM, Sat 8:00 AM to 12:00 PM.",
+    );
+    assert.ok(RETURN_AT_DESK_NOTICE.includes(WEEKDAY_HOURS.label));
+    assert.ok(RETURN_AT_DESK_NOTICE.includes(SATURDAY_HOURS.label));
   });
 });

@@ -1,7 +1,10 @@
-# Search results can be narrowed by Subject and by publication year from the
-# Filters sheet. A UMAK Student (CCIS) sees their college's Subjects first. The
-# button counts the results live, each filter that is on shows as a chip that
-# removes it, the Filters chip counts them, and when nothing matches "No Books
+# Search results can be narrowed by Subject (Filters sheet) and by publication
+# year (Published chip and sheet). Filters picked before any words are typed
+# wait for the next search, and the sheet's button then reads "Done". A UMAK
+# Student (CCIS) sees their college's Subjects first. Once a search is shown the
+# button counts the results live, each Subject that is on shows as a chip that
+# removes it, the Filters chip counts them (Published is not counted and has no
+# chip: its own chip names the years), and when nothing matches "No Books
 # match" offers Clear filters. Each result and the Book page show the Subject.
 # Needs the end-to-end API on port 3000 (npm run e2e starts it).
 appId: ph.edu.umak.libras
@@ -31,6 +34,61 @@ appId: ph.edu.umak.libras
 - extendedWaitUntil:
     visible: "Hi, Cobby"
     timeout: 20000
+
+# Before typing: the Filters sheet's button reads "Done", and a Subject picked now waits for the search.
+- tapOn:
+    id: search-open
+- extendedWaitUntil:
+    visible:
+      id: search-filters
+    timeout: 10000
+- tapOn:
+    id: search-filters
+- extendedWaitUntil:
+    visible:
+      id: filters-sheet
+    timeout: 10000
+- extendedWaitUntil:
+    visible:
+      id: "filter-subject-Computer Science"
+    timeout: 15000
+- tapOn:
+    id: "filter-subject-Computer Science"
+- scrollUntilVisible:
+    element:
+      id: filters-show
+    direction: DOWN
+- assertVisible:
+    id: filters-show
+    text: "Done"
+- assertNotVisible: "PUBLISHED"
+- takeScreenshot: search-filters-sheet-done
+- tapOn:
+    id: filters-show
+- extendedWaitUntil:
+    notVisible:
+      id: filters-sheet
+    timeout: 10000
+- assertVisible: "Filters (1)"
+- assertVisible:
+    id: "search-filter-subject-Computer Science"
+- assertVisible:
+    id: recent-empty
+- takeScreenshot: search-filters-preselected
+
+# The next search applies it: only the Computer Science Book.
+- runFlow:
+    file: subflows/search-for.yaml
+    env:
+      QUERY: ${output.word}
+- extendedWaitUntil:
+    visible: "1 result"
+    timeout: 15000
+- assertVisible: ${output.algorithms}
+- assertNotVisible: ${output.obligations}
+- assertVisible: "Filters (1)"
+- tapOn:
+    id: "search-filter-subject-Computer Science"
 
 # Five rows (the two Networks editions fold into one), each with its year and Subject.
 - runFlow:
@@ -96,7 +154,7 @@ appId: ph.edu.umak.libras
 - extendedWaitUntil:
     visible: "Show 2 results"
     timeout: 15000
-- assertVisible: "PUBLISHED"
+- assertNotVisible: "PUBLISHED"
 - assertVisible: "Latest edition only"
 - takeScreenshot: search-filters-sheet-chosen
 - tapOn:
@@ -135,26 +193,64 @@ appId: ph.edu.umak.libras
 - assertNotVisible:
     id: search-filter-chips
 
-# Published, custom years 2000 to 2005: the older Networks edition becomes the row.
+# Published has its own chip and sheet. Last 10 years: the 2010 Calculus drops out, the 2022 Book stays.
+- assertVisible:
+    id: search-published
+    text: "Published"
 - tapOn:
-    id: search-filters
+    id: search-published
 - extendedWaitUntil:
     visible:
-      id: filters-sheet
+      id: published-sheet
     timeout: 10000
-- scrollUntilVisible:
-    element:
-      id: filter-published-custom
-    direction: DOWN
+- assertVisible:
+    id: filter-published-any
+    selected: true
+- assertVisible:
+    id: published-show
+    text: "Show 5 results"
+- takeScreenshot: search-published-sheet
+- tapOn:
+    id: filter-published-last10
+- tapOn:
+    id: published-show
+- extendedWaitUntil:
+    notVisible:
+      id: published-sheet
+    timeout: 10000
+- extendedWaitUntil:
+    visible:
+      id: search-published
+      text: "Published: Last 10 years"
+    timeout: 15000
+- extendedWaitUntil:
+    visible: ${output.obligations}
+    timeout: 15000
+- assertNotVisible: ${output.calculus}
+- assertVisible:
+    id: search-filters
+    text: "Filters"
+- assertNotVisible:
+    id: search-filter-chips
+- takeScreenshot: search-published-chip
+
+# Custom years 2000 to 2005: the older Networks edition becomes the row.
+- tapOn:
+    id: search-published
+- extendedWaitUntil:
+    visible:
+      id: published-sheet
+    timeout: 10000
 - tapOn:
     id: filter-published-custom
 # Tapping a year selects it, so typing replaces the whole year wherever the tap lands.
 # Typing can start before the keyboard is ready and lose the first digit: wait for it, and
-# on a retry tap the PUBLISHED label first so the field is left and the next tap selects again.
+# on a retry tap the sheet's title first so the field is left and the next tap selects again.
 - retry:
     maxRetries: 3
     commands:
-      - tapOn: "PUBLISHED"
+      - tapOn:
+          id: published-sheet-title
       - tapOn:
           id: filter-published-from
       - waitForAnimationToEnd:
@@ -166,7 +262,8 @@ appId: ph.edu.umak.libras
 - retry:
     maxRetries: 3
     commands:
-      - tapOn: "PUBLISHED"
+      - tapOn:
+          id: published-sheet-title
       - tapOn:
           id: filter-published-to
       - waitForAnimationToEnd:
@@ -175,23 +272,62 @@ appId: ph.edu.umak.libras
       - assertVisible:
           id: filter-published-to
           text: "2005"
-- scrollUntilVisible:
-    element:
-      id: filters-show
-    direction: DOWN
 - extendedWaitUntil:
-    visible: "Show 1 result"
+    visible:
+      id: published-show
+      text: "Show 1 result"
     timeout: 15000
+- takeScreenshot: search-published-custom
+# A range that ends before it starts is refused, and the range already applied stays.
+- retry:
+    maxRetries: 3
+    commands:
+      - tapOn:
+          id: published-sheet-title
+      - tapOn:
+          id: filter-published-from
+      - waitForAnimationToEnd:
+          timeout: 3000
+      - inputText: "2010"
+      - assertVisible:
+          id: filter-published-from
+          text: "2010"
+- assertVisible:
+    id: filter-published-error
+- assertVisible:
+    id: published-show
+    text: "Show 1 result"
+- takeScreenshot: search-published-custom-error
+- retry:
+    maxRetries: 3
+    commands:
+      - tapOn:
+          id: published-sheet-title
+      - tapOn:
+          id: filter-published-from
+      - waitForAnimationToEnd:
+          timeout: 3000
+      - inputText: "2000"
+      - assertVisible:
+          id: filter-published-from
+          text: "2000"
+- assertNotVisible:
+    id: filter-published-error
+- hideKeyboard
 - tapOn:
-    id: filters-show
+    id: published-show
 - extendedWaitUntil:
     visible: "${output.networks}, 3rd ed."
     timeout: 15000
 - assertNotVisible: "${output.networks}, 5th ed."
-- assertVisible: "2000 to 2005"
-- assertVisible: "Filters (1)"
+- assertVisible:
+    id: search-published
+    text: "Published: 2000 to 2005"
+- assertVisible:
+    id: search-filters
+    text: "Filters"
 
-# With Law as well nothing matches: "No Books match" and Clear filters.
+# With Law as well nothing matches: "No Books match" and Clear filters, which also puts Published back to Any time.
 - tapOn:
     id: search-filters
 - extendedWaitUntil:
@@ -216,15 +352,19 @@ appId: ph.edu.umak.libras
     visible: "No Books match"
     timeout: 15000
 - assertVisible: "Try fewer filters or another spelling."
-- assertVisible: "Filters (2)"
+- assertVisible: "Filters (1)"
 - takeScreenshot: search-filters-no-match
 - tapOn:
     id: search-clear-filters
 - extendedWaitUntil:
     visible: "5 results · older editions folded in"
     timeout: 15000
-- assertVisible: "Filters"
-- assertNotVisible: "Filters (2)"
+- assertVisible:
+    id: search-filters
+    text: "Filters"
+- assertVisible:
+    id: search-published
+    text: "Published"
 
 # Latest edition only, from the sheet: off shows every edition and an "All editions" chip.
 - tapOn:

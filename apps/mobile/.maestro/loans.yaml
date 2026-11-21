@@ -1,7 +1,7 @@
 # A UMAK Student taps Borrow on a Book with an available Copy: the Book page
 # closes, the Digital ID tab opens and nothing is recorded. When the Librarian
 # confirms the Loan at the desk (the end-to-end API does it, with the code on the
-# Member's phone), the app shows "Successfully Borrowed", and the Loans segment
+# Member's phone), the app shows "Successfully Borrowed" (with the library hours for returns), and the Loans segment
 # of My Books lists the Loan with its dates. The Member renews the Loan there
 # after a confirmation that shows the new due date. A Loan due tomorrow puts a
 # dot on the My Books tab. A Renewal refused because another Member's Hold
@@ -156,9 +156,22 @@ appId: ph.edu.umak.libras
     id: borrowed-count
     text: "1 of 3"
 - assertVisible: "Please return it by [A-Z][a-z]{2} [0-9]{1,2} to avoid a fine\\."
+# Under the reminder: where and when Books go back, written from the library hours.
+- scrollUntilVisible:
+    element:
+      id: borrowed-hours
+    direction: DOWN
+- assertVisible:
+    id: borrowed-hours
+    text: "Return Books at the library desk during library hours: Mon to Fri 8:00 AM to 7:00 PM, Sat 8:00 AM to 12:00 PM\\."
 - takeScreenshot: loans-successfully-borrowed
 
 # View My Books opens its Loans segment, which lists it with its checkout and due dates.
+# At large font sizes the buttons sit below the screen edge: scroll to them first.
+- scrollUntilVisible:
+    element:
+      id: borrowed-my-loans
+    direction: DOWN
 - tapOn:
     id: borrowed-my-loans
 - extendedWaitUntil:

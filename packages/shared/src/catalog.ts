@@ -84,9 +84,30 @@ export function publishedYears(published: PublishedFilter, currentYear: number):
   }
 }
 
-/** How many filters of the Filters sheet are on (each Subject counts once): the number on the Filters chip. Sort and Available now have their own chips. */
+/**
+ * How many filters of the Filters sheet are on (each Subject counts once, and "All editions" when
+ * Latest edition only is off): the number on the Filters chip. Sort, Available now and Published
+ * have their own chips, so they are not counted.
+ */
 export function activeFilterCount(filters: CatalogSearchFilters): number {
-  return filters.subjects.length + (filters.published.kind === "any" ? 0 : 1) + (filters.latestEditionOnly ? 0 : 1);
+  return filters.subjects.length + (filters.latestEditionOnly ? 0 : 1);
+}
+
+/** Whether any filter narrows the search: Available now, Published, or a filter of the Filters sheet. The sort does not narrow. */
+export function anyFilterOn(filters: CatalogSearchFilters): boolean {
+  return filters.availableNow || filters.published.kind !== "any" || activeFilterCount(filters) > 0;
+}
+
+/** How the Published chip and its sheet name a choice: "Any time", "Last 5 years" or "2016 to 2026". */
+export function publishedFilterLabel(published: PublishedFilter): string {
+  switch (published.kind) {
+    case "any":
+      return "Any time";
+    case "last":
+      return `Last ${published.years} years`;
+    case "between":
+      return `${published.from} to ${published.to}`;
+  }
 }
 
 /** A yes-or-no switch in the query string: exactly "true" or "false", or left out for its default. */
