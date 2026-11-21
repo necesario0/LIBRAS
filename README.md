@@ -1,6 +1,10 @@
+<div align="center">
+
+<img src="apps/web/public/favicon.svg" alt="LIBRAS logo" width="112" />
+
 # LIBRAS
 
-**Library Borrowing and Records Administration System** for the University of Makati.
+**Library Borrowing and Records Administration System** for the University of Makati
 
 [![CI](https://github.com/necesario0/LIBRAS/actions/workflows/ci.yml/badge.svg)](https://github.com/necesario0/LIBRAS/actions/workflows/ci.yml)
 ![Node.js](https://img.shields.io/badge/Node.js-24_LTS-339933?logo=node.js&logoColor=white)
@@ -9,6 +13,8 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Supabase-3ECF8E?logo=supabase&logoColor=white)
 
 LIBRAS replaces handwritten paper circulation slips with a mobile app for Members, a browser desk for Librarians, and a phone camera barcode scanner. One TypeScript API enforces search, priority Holds, rotating Digital IDs, Fines, and a tamper-evident audit log on top of PostgreSQL.
+
+</div>
 
 ## Key capabilities
 
