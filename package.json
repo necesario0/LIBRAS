@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "LIBRAS - the library system for the University of Makati",
+  "description": "Library Borrowing and Records Administration System for the University of Makati",
   "engines": {
     "node": ">=22.18"
   },
@@ -19,6 +19,8 @@
     "db:status": "supabase status",
     "db:reset": "supabase db reset",
     "seed": "npm run seed -w @libras/api --",
+    "demo:prepare": "npm run demo:prepare -w @libras/api",
+    "demo:reset": "npm run demo:reset -w @libras/api",
     "setup:hosted": "node scripts/run-setup-hosted.mjs",
     "schedule:hosted": "node --env-file-if-exists=.env.hosted apps/api/scripts/schedule-pickup-sweep.ts",
     "db:migrate:hosted": "node --env-file-if-exists=.env.hosted apps/api/scripts/migrate-hosted.ts",

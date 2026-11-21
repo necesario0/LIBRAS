@@ -1,213 +1,163 @@
 # LIBRAS
 
-The library system for the University of Makati: Members find and borrow physical books, and Librarians run circulation. The vocabulary is in [`GLOSSARY.md`](GLOSSARY.md) and the decisions are in [`docs/adr/`](docs/adr/).
+**Library Borrowing and Records Administration System** for the University of Makati.
 
-## Layout
+[![CI](https://github.com/necesario0/LIBRAS/actions/workflows/ci.yml/badge.svg)](https://github.com/necesario0/LIBRAS/actions/workflows/ci.yml)
+![Node.js](https://img.shields.io/badge/Node.js-24_LTS-339933?logo=node.js&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white)
+![React Native](https://img.shields.io/badge/React_Native-Expo-000020?logo=expo&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Supabase-3ECF8E?logo=supabase&logoColor=white)
 
-One repository, npm workspaces.
+LIBRAS replaces handwritten paper circulation slips with a mobile app for Members, a browser desk for Librarians, and a phone camera barcode scanner. One TypeScript API enforces search, priority Holds, rotating Digital IDs, Fines, and a tamper-evident audit log on top of PostgreSQL.
 
-| Path | Package | Contents |
+## Key capabilities
+
+### Member mobile app (Android)
+- **Typo-tolerant catalog search:** Search titles and authors with edit-distance matching, live suggestions, recent searches, sorting, and filters (Available now, Subject from LC call number, publication year, and latest edition).
+- **Self-service borrowing flow:** Browse curated Home shelves, save Books, place and cancel Holds when no Copy is available, renew eligible Loans, and view live Clearance, Good standing, and Fine totals.
+- **Rotating Digital ID:** Display a 12-digit Code 128 barcode (6 fixed Member digits plus a 6-digit HMAC-SHA-256 token rotating every 60 seconds) with automatic brightness boost and a countdown timer.
+- **Notifications and account controls:** In-app Notification inbox (Hold ready, due tomorrow, overdue, Announcements), optional push notifications, sign out of all devices, and self-service account deletion once cleared.
+- **Five Account Types:** UMAK Student, Faculty, NTP / Employee (7-day Loans, up to 3 Copies, 1 Renewal), and Visitor / Alumni (same-day in-library Loans).
+
+### Librarian web desk and phone scanner
+- **One-scan circulation:** Scan a Member's Digital ID to open a 10-minute Desk session showing their Account Type, open Loans, and computed Clearance, then scan Copy barcodes to confirm Loans.
+- **Automatic returns, Fines, and Hold dispatch:** Scanning a Copy with no Member at the desk records the return, fixes any late Fine (`PHP 5/day`, capped at `PHP 300`), lets the Librarian settle Fines as `paid` or `waived`, and sets aside the Copy for the highest-priority waiting Hold.
+- **Phone camera scanner:** Pair any smartphone browser at `/scan.html` with a 6-digit desk code to stream 1D barcode scans over Server-Sent Events without a dedicated USB scanner.
+- **Announcements management:** Create, crop (2:1 banner), schedule, and end library Announcements shown on the Member Home screen.
+
+### Algorithms and security
+- **Bounded Levenshtein Trie search:** Flattened typed-array prefix tree with dynamic programming and branch-and-bound pruning (`k = 0` for 1-3 letters, `1` for 4-6, `2` for 7+). Exact up to `k` edits; measured `1.93 ms` p95, `937 queries/s`, and `4.4 MB` memory on 50,000 tokens (compared with `16.9%` recall for `pg_trgm` at threshold `0.3`).
+- **Role-Weighted Priority Hold Dispatcher:** Orders Holds by `placed_at - role_weight` (Faculty `24 h`, NTP `12 h`, Student `0 h`), indexed on `(book_id, score, seq)` for `O(log K)` dispatch with `FOR UPDATE SKIP LOCKED` inside the return transaction. Bounded weights prevent starvation.
+- **Defense in depth:** 18 PostgreSQL Row-Level Security (RLS) policies, API role gates, Zod request validation, parameterized SQL everywhere, bcrypt password hashing via Supabase Auth, rate-limited sign-in and scanner pairing, and an append-only SHA-256 hash-chained `audit_log` protected by database triggers and verified by `npm run audit:verify -w @libras/api`.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    Mobile["Member App\n(React Native / Expo)"]
+    Desk["Librarian Desk\n(React / Vite)"]
+    Scanner["Phone Scanner\n(Camera Web + SSE)"]
+    API["LIBRAS API\n(Node.js / Express / TypeScript)"]
+    PG[("Supabase PostgreSQL\n28 tables + RLS + Audit Chain")]
+    Auth["Supabase Auth"]
+    Storage["Supabase Storage\n(Announcement posters)"]
+    Brevo["Brevo HTTPS Email\n(Codes & Loan notices)"]
+
+    Mobile --> API
+    Desk --> API
+    Scanner --> API
+    API --> PG
+    API --> Auth
+    API --> Storage
+    API --> Brevo
+```
+
+Clients never query PostgreSQL directly. All business rules, Digital ID secrets, Hold dispatch, catalog indexing, and audit writes live in the API, backed by PostgreSQL constraints and RLS.
+
+## Repository layout
+
+LIBRAS is a single TypeScript monorepo managed with npm workspaces.
+
+| Path | Package | Description |
 | --- | --- | --- |
-| `apps/api` | `@libras/api` | The API: Node.js, Express and TypeScript, backed by Supabase PostgreSQL |
-| `apps/mobile` | `@libras/mobile` | The Member mobile app (React Native with Expo). Placeholder for now |
-| `apps/web` | `@libras/web` | The Librarian desk page and the phone scanner page. Vite and React |
-| `packages/shared` | `@libras/shared` | Types, validation schemas and the search module shared by the API and the clients |
-| `benchmarks` | `libras-algorithm-benchmarks` | The algorithm benchmark prototypes behind ADR 0001 |
-| `supabase` | | Local Supabase configuration and database migrations |
+| [`apps/api`](apps/api/README.md) | `@libras/api` | Express + TypeScript REST API, trie search index, circulation logic, audit chain, and sweep worker |
+| [`apps/mobile`](apps/mobile/README.md) | `@libras/mobile` | React Native (Expo) Android app for Members |
+| [`apps/web`](apps/web/README.md) | `@libras/web` | Vite + React Librarian desk (`/`) and phone camera scanner (`/scan.html`) |
+| [`packages/shared`](packages/shared/README.md) | `@libras/shared` | Shared domain types, Zod schemas, policy helpers, and the Bounded Levenshtein Trie implementation |
+| [`benchmarks`](benchmarks/README.md) | `libras-algorithm-benchmarks` | Reproducible search and Hold-dispatch benchmarks behind ADR 0001 |
+| `supabase` | | Local Supabase config and 29 PostgreSQL migrations |
+| `docs` | | Architecture Decision Records (`docs/adr/`), deployment guide, verification steps, and benchmark reports |
 
-## Requirements
+## Quick start
 
-- Node.js 22.18 or newer (24 is used in CI, see `.node-version`). TypeScript files run directly, there is no build step.
-- Docker, running. The local database is the Supabase stack in Docker containers.
+### Prerequisites
 
-## Run the API locally
+- **Node.js 22.18+** (CI uses Node 24 LTS; see `.node-version`). Node runs TypeScript files directly with no build step.
+- **Docker** running locally (for the Supabase PostgreSQL, Auth, and Storage containers).
+
+### Run locally
 
 ```bash
-npm install
+git clone https://github.com/necesario0/LIBRAS.git
+cd LIBRAS
+npm ci
 npm run dev
 ```
 
-`npm run dev` starts the local Supabase PostgreSQL and then the API on http://localhost:3000, restarting it when a file changes. The first run downloads the Supabase Docker images, which takes a few minutes. Check that it works:
+`npm run dev` starts the local Supabase stack (first run downloads Docker images) and launches the API on `http://localhost:3000`. No `.env` file is required locally because workspace scripts load local Supabase keys automatically via `apps/api/scripts/with-local-supabase.ts`.
+
+Verify the API is healthy:
 
 ```bash
 curl http://localhost:3000/health
-# {"status":"ok","database":"ok","time":"2026-11-11T10:32:44.604Z"}
 ```
 
-No `.env` file is needed locally. To change the port or the database, copy `.env.example` to `.env` and edit it.
+Seed the local Librarian account (`librarian@libras.test`) and a synthetic 45,460-Book catalog (or place the private UMak accession workbook at `data/library-catalog.xlsx` and run `npm run seed`):
 
-No Supabase key lives in the source. `npm run dev`, `npm test`, `npm run test:api`, `npm run seed` and `npm run test:e2e` read `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_SECRET_KEY` from the running local stack (`npx supabase status -o env`, through `apps/api/scripts/with-local-supabase.ts`), so the database must be started first with `npm run db:start`. A variable you set yourself, in the environment or in `.env`, wins, and nothing is looked up when `NODE_ENV=production`: production sets all three explicitly (the API itself needs the secret key: it creates and confirms accounts at sign-up). To run a one-off command the same way: `node apps/api/scripts/with-local-supabase.ts <command>`.
+```bash
+npm run seed -- --sample-catalog
+```
 
-| Command | What it does |
+Start the Librarian web desk in a second terminal (`http://localhost:5173`):
+
+```bash
+npm run dev -w @libras/web
+```
+
+### Common commands
+
+| Command | Purpose |
 | --- | --- |
-| `npm run dev` | Start the database and the API |
-| `npm run db:start` | Start only the local Supabase stack (safe to run when it is already up) |
-| `npm run db:status` | Show the local Supabase URLs and keys |
-| `npm run db:reset` | Recreate the local database from `supabase/migrations` |
-| `npm run db:stop` | Stop the local Supabase stack |
-| `npm run seed` | Create the demo Librarian (`librarian@libras.test`, local only), make sure the Loan Policy rows and the Pickup Window setting exist (existing values are kept), and write the library's real catalog (see below). Safe to run again |
+| `npm run dev` | Start local Supabase and the API in watch mode |
+| `npm run db:start` / `db:stop` / `db:reset` | Manage local Supabase containers and replay `supabase/migrations/` |
+| `npm run seed -- --sample-catalog` | Seed the demo Librarian, Loan Policies, and synthetic catalog |
+| `npm run labels -- --title "algorithms"` | Generate printable Code 128 Copy labels (`copy-labels.html`) |
+| `npm run audit:verify -w @libras/api` | Recompute and verify the SHA-256 audit log hash chain |
+| `npm run build:apk -w @libras/mobile` | Build a local Android release APK (`apps/mobile/build/libras.apk`) |
 
-### The library's catalog
+> **Note on private catalog data:** Never commit `.xlsx`, `.xls`, or `.csv` accession lists. `/data/` and spreadsheet extensions are gitignored because the real library workbook contains acquisition costs and staff metadata.
 
-The demo catalog is the University Library's real collection, read from its accession list (the Excel workbook `2024-0807_LLC Official List`). The project owner supplies the file. **Never commit it**: the repository is public and the workbook also holds costs, sources of funds, cataloguer names and internal remarks. `.gitignore` covers `/data/` and every `.xlsx`, `.xls` and `.csv` file.
+## Testing and code quality
 
-1. Put the workbook at `data/library-catalog.xlsx` at the repository root (create the `data` folder).
-2. Run `npm run seed` with the local database started. It ends with a summary: Books, Copies, rows skipped and why, rows the workbook's colour legend marks for a look, and call numbers that look mistyped.
-
-`npm run seed -- --workbook <path>` reads the file from anywhere else. `npm run seed -- --sample-catalog` writes the generated sample catalog instead (the search benchmark and the tests use that one). Without the workbook the seed leaves the catalog as it is and says so. Running it again adds only Copies that are not there yet and never changes a Copy that exists, so a Copy on loan stays on loan.
-
-## Run the tests and checks locally
-
-The API tests send real HTTP requests to the API running against the real local PostgreSQL, so start the database first.
+API tests run real HTTP requests against the local Supabase PostgreSQL instance (`npm run db:start` first).
 
 ```bash
-npm run db:start
-npm test              # every package: the API tests and the benchmark tests
-npm run test:api      # only the API tests
-npm run test:benchmarks
-npm run test:e2e      # the desk page in Chrome against the real API (needs Chrome installed)
-npm run typecheck
-npm run lint          # ESLint, Stylelint and scripts/check-glossary.mjs
-npm run check         # typecheck, lint and tests together, the same as CI
+npm run check            # typecheck, lint, and all workspace tests (same as CI)
+npm test                 # API, shared, and benchmark tests (Node test runner)
+npm run test:e2e         # Playwright desk end-to-end tests in Chrome
+npm run typecheck        # TypeScript check across all workspaces
+npm run lint             # ESLint, Stylelint, design token rules, clock rule, and glossary check
 ```
 
-Lint also enforces three project rules:
+Every pull request runs `.github/workflows/ci.yml`: typecheck, lint, full test suite against PostgreSQL, **Gitleaks** secret scanning over git history, and **CodeQL** static security analysis. Local pre-push hooks (`.githooks`) run typecheck, lint, and Gitleaks before pushing.
 
-- Screens take colours, font sizes and radii from the theme tokens (`apps/mobile/src/theme/tokens.ts`, `apps/web/src/styles/tokens.css`), never raw values.
-- API code takes the time from the injected clock (`deps.clock.now()`), never `new Date()`, `Date.now()` or SQL `now()`.
-- Code uses the `GLOSSARY.md` terms, not the ones it lists under _Avoid_.
+## Deployment
 
-Tests use Node's built-in test runner. In an API test, `startTestApi()` from `apps/api/src/testing` starts the API on a free port with a clock the test controls and an email sender that captures messages instead of sending them. See [`apps/api/README.md`](apps/api/README.md).
+LIBRAS deploys on Supabase (PostgreSQL, Auth, Storage), Render (API web service and desk static site via `render.yaml`), and Brevo (HTTPS transactional email). See the full operational guide in [`docs/deployment.md`](docs/deployment.md) and the verification playbook in [`docs/hosted-verification.md`](docs/hosted-verification.md).
 
-## Continuous integration
+## Documentation
 
-`.github/workflows/ci.yml` runs on every pull request and on pushes to `main` and `spec-*` branches: typecheck, lint, tests against a local Supabase PostgreSQL, secret scanning with gitleaks over the full history, and static code scanning with CodeQL.
+- **Domain vocabulary:** [`GLOSSARY.md`](GLOSSARY.md) (enforced in code by `scripts/check-glossary.mjs`)
+- **Architecture Decision Records:** [`docs/adr/`](docs/adr/) (12 ADRs covering search and Hold algorithms, React Native, Supabase/Render, Code 128 Digital IDs, SSE phone scanning, Pickup Window expiry, Fines, account deletion, and notifications)
+- **Algorithm benchmarks:** [`docs/algorithm-benchmark-report.md`](docs/algorithm-benchmark-report.md) and [`benchmarks/README.md`](benchmarks/README.md)
+- **Push notifications setup:** [`docs/push-notifications.md`](docs/push-notifications.md)
+- **Deployment guide:** [`docs/deployment.md`](docs/deployment.md)
 
-`npm install` also sets `core.hooksPath` to `.githooks`. Its pre-push hook runs the typecheck, the lint and a gitleaks scan of the commits being pushed, so most CI failures show up before the push. It runs gitleaks itself if it is installed, otherwise through Docker. Without either, the push is refused. The tests and CodeQL run only in CI.
+## Current scope and roadmap
 
-To run the full secret scan locally:
-
-```bash
-docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1 git /repo --redact --no-banner
-```
-
-## Deployment (Supabase, Render, Brevo)
-
-The hosted system is three services, all on free tiers (ADR 0003):
-
-| Service | Role | Why this one |
+| Area | Status | Notes |
 | --- | --- | --- |
-| Supabase | PostgreSQL and Supabase Auth | Chosen in ADR 0003. Row-level security lives in the same database as the identities |
-| Render | The API (`render.yaml`, a free web service in Singapore) | Chosen in ADR 0003. Node runs the TypeScript directly, so there is no build step |
-| Brevo | Email (verification codes, Hold-ready notices) | See below |
+| Member Android app & Librarian circulation desk | Built | Search, shelves, Holds, Loans, Renewals, Fines, Clearance, Digital ID, phone scanner, Announcements, Notifications |
+| Core algorithms (hashing, RBAC/RLS, audit chain, B-Tree indexes, trie search, priority Hold queue) | Built | Copy lifecycle FSM is partial (`damaged`, `missing`, and `inspected` states are planned) |
+| Super Admin dashboard & Librarian reporting tools | Planned | Role/Admin management, audit trail UI viewer, transaction filters, PDF/Excel reports |
+| Predictive algorithms & offline desk cache | Planned | Semantic search, overdue-risk prediction, congestion forecasting, offline desk buffer, automated PITR backups |
 
-**Why Brevo.** Render's free web services block outbound SMTP (ports 25, 465, 587), so the API sends email through an HTTPS API (`BrevoEmailSender` in `apps/api/src/email.ts`). The alternative, Resend, can send from its test address only to the account owner's own email until a domain you own is verified, which cannot work for sign-up codes sent to arbitrary Members. Brevo's free plan (about 300 emails a day) lets you verify a single sender address (you click a link or enter a code sent to that mailbox) and then sends to any recipient, with no domain needed. The limit to know about: mail sent "from" an address on a free mail domain such as gmail.com cannot be authenticated for that domain, so it may land in spam. Use a sender address on a domain you control (for example a UMAK address), and for the best delivery authenticate that domain in Brevo later (SPF and DKIM records), which needs access to its DNS.
+## Team
 
-### The commands
+Built by **Team Synto Singko** (III-BCSAD, College of Computing and Information Sciences, University of Makati):
 
-| Command | What it does |
-| --- | --- |
-| `npm run setup:hosted` | The guided setup wizard (`scripts/setup-hosted.sh`, launched by `scripts/run-setup-hosted.mjs` so Windows uses Git Bash, not WSL). Opens each dashboard, asks for each value, writes `.env.hosted` and the GitHub secrets, applies the migrations, creates the Librarian, checks the API and sends a test email |
-| `npm run db:migrate:hosted` | Applies `supabase/migrations` to the hosted database. It first lists the pending migrations and asks you to type `apply`. `-- --dry-run` only lists them. `-- --yes` skips the question. Safe to run again |
-| `npm run seed:hosted` | Creates (or resets) the Librarian from `SEED_LIBRARIAN_EMAIL` and `SEED_LIBRARIAN_PASSWORD` in `.env.hosted`, makes sure the Loan Policy rows and the Pickup Window setting exist (existing values are kept) and writes the library's catalog from `data/library-catalog.xlsx` (`-- --workbook <path>` for another place; see "The library's catalog") |
-| `npm run labels:hosted -- --title "text" [--books 1] [--copies 3]` | Writes `copy-labels.html`: printable Code 128 labels (85 x 36 mm, two per row on A4) for available Copies of a Book whose title contains the text, or for given barcodes (`npm run labels:hosted -- 3100078314 3100078315`). Open in Chrome, print at 100% scale. Reads the database only. `npm run labels` does the same on the local database |
-| `npm run verify:hosted -- member | search | dispatch | tier2 | backdate | cleanup` | Checks and measurements on the hosted system (`docs/hosted-verification.md`). Tier 1: search at 50 users, Hold dispatch on the hosted database. `member` makes the measurement Visitor and saves its login in `.env.hosted`; `dispatch` makes and then deletes test Members and sends Hold-ready mail only to a +alias of `SEED_LIBRARIAN_EMAIL`. Tier 2: `tier2` walks Renewal, the Loans list, a Fine and its settlement, Clearance, the Good standing refusals, the password reset reply, the sweep endpoint and the audit chain with one test Member and a test Book, then deletes them (needs `SWEEP_SECRET` in `.env.hosted`). `backdate <barcode> <days>` moves the open Loan of a Copy back by whole days for the demo on real phones (6 = due tomorrow, 10 = three days late, for a seven-day Loan) |
-| `npm run check:hosted` | Asks the hosted API for `/health` until it answers (up to five minutes, to cover Render waking up) |
-| `npm run email:test -- you@example.com` | Sends one real email through Brevo |
-| `npm run build:apk:hosted -w @libras/mobile` | Builds the release APK against the hosted API (about 25 minutes) |
-
-Hosted settings live in `.env.hosted` at the repository root. It is gitignored and is never the same file as `.env`, because the local scripts and tests read `.env` and must keep using the local Supabase. Every name in it is listed in `.env.example`. No secret is ever committed: `render.yaml` holds names only, and secrets are typed or pasted in the dashboards.
-
-### The settings
-
-| Name | Where it comes from | Render service | Notes |
-| --- | --- | --- | --- |
-| `DATABASE_URL` | Supabase: Connect, Session pooler, password filled in | yes | The pooler works over IPv4. The direct connection is IPv6 only. The API connects over TLS (encrypted; set `DATABASE_CA_CERT` to the Supabase CA certificate to verify it too) |
-| `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` | Supabase: Project Settings, API Keys | yes | |
-| `SUPABASE_SECRET_KEY` | the same page | yes | Member sign-up creates the account and confirms its email with it; the seed script uses it too. It is a secret: never in source, never in the app |
-| `BREVO_API_KEY`, `EMAIL_FROM_ADDRESS` | Brevo: SMTP & API keys, and a verified sender | yes | Production refuses to start without them |
-| `TRUST_PROXY` | `render.yaml` sets it to `1` | yes | Reverse proxies in front of the API; see "Client address and the sign-in limit" below. Unset (0) when clients connect directly, as locally |
-| `SWEEP_SECRET` | `npm run schedule:hosted` makes one and saves it here; paste it into the Render service | optional, but needed for Pickup Windows to end while the service sleeps | At least 32 characters. See "Pickup Window expiry" below |
-| `CORS_ALLOWED_ORIGINS` | you | optional | See the CORS decision below |
-| `EXPO_PUBLIC_API_URL` | the Render service address | no | Used by `build:apk:hosted` and `check:hosted` |
-
-### Web pages and CORS
-
-The mobile app is not a browser, so it needs no CORS. The Librarian web pages are a different origin from the API, so the API has an allowlist: `CORS_ALLOWED_ORIGINS` is a comma separated list of exact origins (for example `https://libras-desk.onrender.com`). A listed origin gets the CORS headers, including for the preflight request; any other origin gets none. There is no wildcard and no cookie support: the clients send a bearer token. The default is an empty list, which is right until `apps/web` is hosted (next section).
-
-### Hosting the desk page and the phone scanner page (HTTPS)
-
-`apps/web` builds to two pages: the desk page at `/` and the phone scanner page at `/scan.html` (two HTML files, so no rewrite rule is needed on a static host). The phone camera works only on a secure page (HTTPS, or the phone's own `localhost`), and a Render static site is served over HTTPS with a certificate Render manages, so the scanner page is reachable that way with no extra work. The scanner page also needs the API over HTTPS, which the Render web service already is. The site is declared in `render.yaml` (service `libras-desk`), so a Blueprint sync creates it; `npm run setup:hosted` does not. To make it by hand instead (or to match what the Blueprint declares), do this once, after the API is deployed:
-
-1. Render dashboard > **New** > **Static Site**. Repository `necesario0/LIBRAS`, branch `main`, name `libras-desk` (any name), region Singapore.
-2. Build command `npm ci && npm run build -w @libras/web`. Publish directory `apps/web/dist`.
-3. Environment variable `VITE_API_URL` = the API address (`https://libras-api-....onrender.com`, no trailing slash). It is read at build time, so changing it needs a new deploy of the site.
-4. Deploy, copy the site address (`https://libras-desk.onrender.com`), and in the `libras-api` service environment set `CORS_ALLOWED_ORIGINS` to that origin (exact, no path). Redeploy the API.
-5. The Librarian opens `https://libras-desk.onrender.com` on the library computer and signs in; the desk page shows the pairing code and the exact address to open on the phone (`https://libras-desk.onrender.com/scan.html`).
-
-Checked locally: the built pages served from one origin with the API on another (CORS list set, `VITE_API_URL` set) pair, stream and deliver scans. Not checked on a live Render service: that its proxy passes the event stream through unbuffered (the API sends `X-Accel-Buffering: no`, `Cache-Control: no-transform` and a keep-alive comment every 15 seconds for this), and that the free instance keeps the stream open for a whole demo. The scanner page's status check every 5 seconds is inbound traffic, so a paired phone also keeps the instance from sleeping.
-
-To try the phone against a local machine, the camera needs HTTPS or the phone's own localhost: with an Android phone on USB, run `adb reverse tcp:5173 tcp:5173` and `adb reverse tcp:3000 tcp:3000` (Vite proxies `/api` to port 3000) and open `http://localhost:5173/scan.html` on the phone; or use an HTTPS tunnel to port 5173 (Vite then needs the tunnel host allowed in `server.allowedHosts`). The desk page shows `window.location.origin` as the address for the phone, so open the desk page through the same address.
-
-### Client address and the sign-in limit
-
-Failed sign-ins are limited per client address (5 failures in 15 minutes, then a block with a `Retry-After` header, for both Members and Librarians). On Render the API sits behind Render's load balancer, so the connection's address is the proxy's and the real client is in the `X-Forwarded-For` header. `TRUST_PROXY` is the number of proxies Express trusts: it takes the client address that many entries from the end of the header, so anything a client prepends is ignored. `render.yaml` sets `1`. Never set it higher than the real number of proxies, because then a client can pick its own address and the limit means nothing. Locally it is unset (0) and the header is ignored.
-
-Not verified on a live service: if Render puts another proxy (a CDN) in front of its load balancer, `1` yields that proxy's address for everyone, so one Member's failures would block all of them. After the first deploy, check the address the API sees (for example log `req.ip` for a request from your phone and from another network) and adjust `TRUST_PROXY`. The limit (`AttemptLimiter`, which also limits wrong pairing codes of the phone scanner) is kept in the API's memory on purpose, which is right for the one free instance: a restart forgets it, and a second instance would keep its own count. Guesses that arrive at the same moment are counted as they start, so they cannot pass the limit together. Supabase Auth also has its own limit per address (30 sign-ins per 5 minutes by default) and the API is the only address it sees, so that limit is shared by every Member of the hosted app; raise it in the Supabase dashboard (Authentication, Rate Limits) if a demo needs many sign-ins in a short time.
-
-### Auto-deploy: check that a merge reaches Render
-
-`render.yaml` says `autoDeployTrigger: commit` for both services, so a push to `main` should build and deploy them. That did not happen after the first merges (only manual deploys existed), so after every merge to `main` check, rather than assume:
-
-1. Render dashboard > the service > **Events**: a deploy for the new commit should appear within a minute and say Live. `GET <api>/health` does not show the version, so test a route that the new code added (for example an authenticated route answers `401` where old code answers `404`).
-2. If nothing appears: service > **Settings** > **Build & Deploy** > **Auto-Deploy** must be **On Commit**, and the **Branch** must be `main`. A service created outside the Blueprint, or edited in the dashboard, can differ from `render.yaml`.
-3. If the setting is right: GitHub > repository **Settings** > **Integrations** > Applications > **Render** > Configure, and check that the app has access to `necesario0/LIBRAS` (a repository removed from its access list stops all webhooks). Account Settings > **GitHub** in Render shows the same connection.
-4. Until it is fixed, use **Manual Deploy** > Deploy latest commit on each service.
-
-### What a free Render service does
-
-It goes to sleep after 15 minutes without traffic and takes about a minute to wake on the next request, and the mobile app gives up after 10 seconds. A sleeping or restarting API forgets every phone pairing (they live in its memory): the scanner page says the pairing was lost and the Librarian types the new code. Before a demo run `npm run check:hosted` a few minutes ahead (and once more just before), which wakes it and confirms it is healthy.
-
-### Pickup Window expiry while the service sleeps
-
-A Hold's Pickup Window must end on time, and Loan notices must go out, even when nobody uses the app and Render has put the service to sleep (ADR 0007, ADR 0009). The API sweeps every minute while it is awake. To wake it, a schedule in the Supabase database (pg_cron and pg_net) calls it every five minutes with the shared secret. After the deploy:
-
-1. `npm run db:migrate:hosted` (the expiry and Loan notice migrations).
-2. `npm run schedule:hosted`. It makes a `SWEEP_SECRET`, saves it in `.env.hosted` and on the clipboard, and installs the schedule (it enables pg_cron and pg_net itself and keeps the service address and the secret in Supabase Vault). Run it again any time to update; `npm run schedule:hosted -- --remove` removes the schedule.
-3. In the Render dashboard, open `libras-api`, Environment, add `SWEEP_SECRET` with the value from `.env.hosted`, save (Render restarts the service). Run `npm run schedule:hosted` once more: it asks the API whether it accepts the secret and says what is missing if not.
-
-A call every five minutes also keeps the free service awake, which uses about 744 of the 750 free hours a month: fine for one service. Change `PICKUP_SWEEP_SCHEDULE` in `apps/api/scripts/pickup-sweep-schedule.ts` to hourly if sleeping matters more than minute-accurate expiry.
-
-### Human checklist
-
-Do these in order, from the repository root, in Git Bash.
-
-1. **Get this work onto GitHub `main`.** Render builds from GitHub, and `render.yaml` must be on the `main` branch there. Merge the deployment work (branch `spec-2/6-setup`, or `spec-2-tier1` once it contains it) into `main` and push. Until then the wizard warns at the Render stage and you can stop and resume.
-2. **Prepare the computer.** `npm ci`. Then `gh auth login` if `gh auth status` says you are signed out (the wizard needs it to store GitHub secrets). Docker is not needed for this.
-3. **Run the wizard:** `npm run setup:hosted`. It has eight stages and can be stopped with Ctrl-C and run again: it remembers what it saved in `.env.hosted`. What you will do in each stage:
-   1. *Check this computer.* Nothing to do. It stops if `.env.hosted` is not gitignored.
-   2. *Supabase* (https://supabase.com/dashboard/new, opened for you).
-      - Sign in with GitHub. New project: name `libras`, region **Southeast Asia (Singapore)**, plan Free. Click **Generate a password** and **copy it before you click Create** (it is shown once).
-      - Wait about two minutes for the project to finish. Copy the project URL from the browser address bar: `https://<id>.supabase.co`, and paste it into the wizard.
-      - Project Settings (gear icon) > **API Keys**: paste the Publishable key (`sb_publishable_...`), then reveal and paste the Secret key (`sb_secret_...`, hidden as you type). The wizard checks both against Supabase.
-      - Click the green **Connect** button at the top, choose **Session pooler** (not Direct connection), copy the connection string as it is (it contains `[YOUR-PASSWORD]`), paste it, then paste the database password you copied. The wizard builds the final string.
-   3. *Brevo* (https://app.brevo.com, opened for you).
-      - Sign up and finish the onboarding questions.
-      - Add a sender: top-right menu > **Senders, Domains & Dedicated IPs** > **Senders** > **Add a sender**. Use an address you can open (a UMAK address is better than Gmail for delivery). Brevo emails it a code or link: confirm it. Wait until it shows as verified.
-      - **SMTP & API** > **API keys** > **Generate a new API key**, name `libras-api`, copy it (`xkeysib-...`), paste it into the wizard (hidden), then type the verified sender address.
-      - Security > **Authorized IPs**: make sure blocking of unknown IP addresses is **deactivated** (Render's addresses change, so a blocked IP would break sending in production only).
-   4. *Database and Librarian.* The wizard runs `npm run db:migrate:hosted`: it lists the pending migrations and asks you to type `apply`. Then give the Librarian email and a password of 12 or more characters (hidden). This is the account used on the desk page.
-   5. *Render* (https://dashboard.render.com/blueprint/new, opened for you).
-      - Sign up with GitHub. Connect the repository `necesario0/LIBRAS`, branch `main`, Blueprint name `libras`.
-      - Render asks for six values. The wizard puts each one on your clipboard in turn: click the field, press Ctrl+V, press Enter in the wizard. In order: `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`, `DATABASE_URL`, `BREVO_API_KEY`, `EMAIL_FROM_ADDRESS`.
-      - Click **Deploy Blueprint**. Pick the free plan if it offers a choice. Open the `libras-api` service and copy its address (`https://libras-api-....onrender.com`) into the wizard.
-   6. *Checks.* When Render's Events tab says the deploy is Live, press Enter: the wizard asks the API for `/health` (waits up to five minutes). Then give your own email address: a real test email is sent. Check the inbox and spam folder and answer yes.
-   7. *GitHub secrets.* Answer yes. It stores `HOSTED_DATABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY` and `BREVO_API_KEY` as repository secrets and `SUPABASE_URL`, `EMAIL_FROM_ADDRESS`, `HOSTED_API_URL` as variables. The current CI does not read them yet.
-   8. *APK.* Say yes to build now (about 25 minutes) or no to do it later.
-4. **Build the APK later, if you said no:** `npm run build:apk:hosted -w @libras/mobile`. It checks `/health` first and refuses an address that is not `https://`. The result is `apps/mobile/build/libras.apk`.
-5. **Install and look:** start an emulator or plug in a phone, `adb install -r apps/mobile/build/libras.apk`, open the app. The first screen shows the health result: it should say the service is OK. If the API was asleep it can take a minute: run `npm run check:hosted` first to wake it, then reopen the app.
-6. **Note the Render service address** and tick the acceptance criteria of the deployment issue: the hosted API answers `/health`, a real email arrived, and the APK shows the health result.
-
-To do any part by hand: `npm run db:migrate:hosted`, `npm run seed:hosted`, `npm run check:hosted`, `npm run email:test -- you@example.com`. All read `.env.hosted`.
-
-If something fails: Render service > **Logs** (API problems), Brevo > **Transactional** > **Logs** (email), Supabase > **Logs** (database). Never paste keys into a chat or an issue.
+- **Rosalan** - Project Manager / Researcher
+- **Necesario** - Lead Developer / Algorithms
+- **Saavedra** - Developer, UI/UX, Simulation
+- **Baldonado** - UI/UX, Tester
+- **Urdaneta** - Researcher, Tester
