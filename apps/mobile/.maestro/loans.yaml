@@ -167,6 +167,11 @@ appId: ph.edu.umak.libras
 - takeScreenshot: loans-successfully-borrowed
 
 # View My Books opens its Loans segment, which lists it with its checkout and due dates.
+# At large font sizes the buttons sit below the screen edge: scroll to them first.
+- scrollUntilVisible:
+    element:
+      id: borrowed-my-loans
+    direction: DOWN
 - tapOn:
     id: borrowed-my-loans
 - extendedWaitUntil:
