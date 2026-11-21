@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { formatLibraryDate, formatLibraryDay, formatLibraryTime, formatLoanDueAt, hasExactDueTime, libraryDaysBetween } from "@libras/shared";
+import { RETURN_AT_DESK_NOTICE, formatLibraryDate, formatLibraryDay, formatLibraryTime, formatLoanDueAt, hasExactDueTime, libraryDaysBetween } from "@libras/shared";
 import type { Loan } from "@libras/shared";
 import badge from "../../assets/images/borrowed-badge.png";
 import { useAuth } from "../../src/auth/AuthContext";
@@ -9,7 +9,7 @@ import { BookCover } from "../../src/components/BookCover";
 import { CallToAction } from "../../src/components/CallToAction";
 import { useScreenTop } from "../../src/hooks/useScreenTop";
 import { currentLoans, useLoans } from "../../src/loans/useLoans";
-import { colors, fontFamily, fontSize, outlineActionHeight, radii, spacing } from "../../src/theme/tokens";
+import { colors, fontFamily, fontSize, lineHeightFor, outlineActionHeight, radii, spacing } from "../../src/theme/tokens";
 
 function Fact({ label, value, color, testID }: { label: string; value: string; color: string; testID: string }) {
   return (
@@ -59,7 +59,9 @@ function LoanCard({ loan, out, limit }: { loan: Loan; out: number; limit: number
 /**
  * "Successfully Borrowed" (Figma 617:3485): shown once the Librarian has
  * confirmed the Loan at the desk. The Digital ID screen opens it with the id of
- * the new Loan, and the details come from the API.
+ * the new Loan, and the details come from the API. Under the return reminder,
+ * a line says where and when Books go back, written from the library hours of
+ * the shared package (the same as Settings and the in-library due time).
  */
 export default function BorrowedScreen() {
   const { loanId } = useLocalSearchParams<{ loanId: string }>();
@@ -108,6 +110,11 @@ export default function BorrowedScreen() {
             The details are in My Loans.
           </Text>
         ) : null}
+        {state.status !== "loading" ? (
+          <Text style={styles.notice} testID="borrowed-hours">
+            {RETURN_AT_DESK_NOTICE}
+          </Text>
+        ) : null}
         <View style={styles.actions}>
           <Pressable
             accessibilityRole="button"
@@ -140,7 +147,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     width: 292,
   },
-  highlight: { color: colors.highlight },
+  highlight: { color: colors.availableText },
   subtitle: {
     fontFamily: fontFamily.regular,
     fontSize: fontSize.body,
@@ -190,6 +197,16 @@ const styles = StyleSheet.create({
   footer: { alignSelf: "stretch", paddingHorizontal: 8, marginTop: 22, gap: 17 },
   reminder: { fontFamily: fontFamily.regular, fontSize: fontSize.body, letterSpacing: -0.64, color: colors.textMuted, textAlign: "center" },
   reminderDate: { color: colors.black },
+  // Tucked under the reminder (the footer's gap less 9), one size down.
+  notice: {
+    fontFamily: fontFamily.regular,
+    fontSize: fontSize.small,
+    lineHeight: lineHeightFor(fontSize.small),
+    letterSpacing: -0.39,
+    color: colors.textMuted,
+    textAlign: "center",
+    marginTop: -9,
+  },
   actions: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   action: { flex: 1 },
   home: {

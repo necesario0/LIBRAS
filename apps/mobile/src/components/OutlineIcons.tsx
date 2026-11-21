@@ -208,6 +208,16 @@ export function SlidersIcon(props: OutlineIconProps) {
   );
 }
 
+/** A calendar: the Published chip of search mode. */
+export function CalendarIcon(props: OutlineIconProps) {
+  return (
+    <Outline {...props}>
+      <Rect x={3.5} y={5} width={17} height={15.5} rx={2.5} />
+      <Path d="M3.5 10h17M8 3v4M16 3v4" />
+    </Outline>
+  );
+}
+
 /** A gear: the Settings row of Profile. */
 export function GearIcon(props: OutlineIconProps) {
   return (

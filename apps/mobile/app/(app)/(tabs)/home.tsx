@@ -17,6 +17,8 @@ import { SearchBar } from "../../../src/home/SearchBar";
 import { NoResults, SearchFailed } from "../../../src/home/SearchMessage";
 import { FiltersSheet } from "../../../src/search/FiltersSheet";
 import type { SubjectOptions } from "../../../src/search/FiltersSheet";
+import { PublishedSheet } from "../../../src/search/PublishedSheet";
+import type { ResultsCount } from "../../../src/search/ShowResultsButton";
 import { RecentSearches } from "../../../src/search/RecentSearches";
 import { SearchControls } from "../../../src/search/SearchControls";
 import { SearchModeBar } from "../../../src/search/SearchModeBar";
@@ -25,7 +27,7 @@ import { useRecentSearches } from "../../../src/search/useRecentSearches";
 import { useSuggestions } from "../../../src/search/useSuggestions";
 import { useUnreadNotifications } from "../../../src/notifications/useUnreadNotifications";
 import { colors, fontFamily, fontSize, spacing } from "../../../src/theme/tokens";
-import { DEFAULT_CATALOG_SEARCH_FILTERS, activeFilterCount, memberCollege, subjectFilterOptions } from "@libras/shared";
+import { DEFAULT_CATALOG_SEARCH_FILTERS, anyFilterOn, memberCollege, subjectFilterOptions } from "@libras/shared";
 import type { CatalogSearchResponse } from "@libras/shared";
 
 /** "12 results", "1 result" or "Top 20 of 64 results", and whether older editions were folded into the rows shown. */
@@ -48,9 +50,11 @@ function resultCount(response: CatalogSearchResponse): string {
  *
  * Tapping the search bar turns Home into search mode (it is a state of Home,
  * not another route): the bar moves up with a Cancel button, the tab bar steps
- * aside, and the screen shows the Member's recent searches, then suggestions
- * while typing, then the results once a search is submitted. Cancel and the
- * Android back button return to Home.
+ * aside, and the screen shows the row of search controls (Sort, Available now,
+ * Published, Filters) and under it the Member's recent searches, then
+ * suggestions while typing, then the results once a search is submitted.
+ * Filters chosen before a search wait for it: nothing is searched without
+ * words. Cancel and the Android back button return to Home.
  *
  * The avatar and greeting open the Profile tab.
  */
@@ -73,7 +77,7 @@ export default function HomeScreen() {
   const typing = searchOn && !search.submitted;
   const suggestions = useSuggestions(request, search.query, typing);
   const { state } = search;
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [sheet, setSheet] = useState<"filters" | "published" | null>(null);
   const college = memberCollege(member);
   // The shelves are read again each time Home comes into view, so they follow what was borrowed meanwhile.
   const home = useFocusedFetch(request, api.getHome, "The shelves could not be loaded.");
@@ -87,19 +91,32 @@ export default function HomeScreen() {
   const closeSearch = useCallback(() => {
     Keyboard.dismiss();
     search.reset();
-    setFiltersOpen(false);
+    setSheet(null);
     setSearchOn(false);
   }, [search]);
 
   const openFilters = () => {
     Keyboard.dismiss();
-    setFiltersOpen(true);
+    setSheet("filters");
     void subjects.reload();
   };
 
-  /** Turns every filter off, Available now too; the sort stays. */
+  const openPublished = () => {
+    Keyboard.dismiss();
+    setSheet("published");
+  };
+
+  /** Turns every filter off, Available now and Published too; the sort stays. */
   const clearFilters = () => search.setFilters({ ...DEFAULT_CATALOG_SEARCH_FILTERS, sort: search.filters.sort });
-  const filtered = search.filters.availableNow || activeFilterCount(search.filters) > 0;
+
+  // What the sheets' button says: "Done" while no search is shown (a change then waits for the next search), else the live count.
+  const resultsCount: ResultsCount = !search.submitted
+    ? { kind: "no-search" }
+    : state.status === "results"
+      ? { kind: "counted", total: state.response.total }
+      : state.status === "empty"
+        ? { kind: "counted", total: 0 }
+        : { kind: "counting" };
 
   const subjectOptions: SubjectOptions =
     subjects.state.status === "loaded"
@@ -185,6 +202,8 @@ export default function HomeScreen() {
         keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
       >
+        <SearchControls filters={search.filters} onChange={search.setFilters} onOpenPublished={openPublished} onOpenFilters={openFilters} />
+
         {search.query.trim() === "" && !search.submitted ? (
           <RecentSearches searches={recent.searches} onPick={submit} onRemove={recent.remove} onClear={recent.clear} />
         ) : null}
@@ -195,10 +214,6 @@ export default function HomeScreen() {
 
         {state.status === "loading" && shown === undefined ? (
           <ActivityIndicator color={colors.primary} style={styles.spinner} testID="search-loading" />
-        ) : null}
-
-        {search.submitted && state.status !== "error" ? (
-          <SearchControls filters={search.filters} onChange={search.setFilters} onOpenFilters={openFilters} />
         ) : null}
 
         {shown !== undefined ? (
@@ -212,19 +227,26 @@ export default function HomeScreen() {
           </View>
         ) : null}
 
-        {state.status === "empty" ? <NoResults query={state.query} filtered={filtered} onClearFilters={clearFilters} /> : null}
+        {state.status === "empty" ? <NoResults query={state.query} filtered={anyFilterOn(search.filters)} onClearFilters={clearFilters} /> : null}
         {state.status === "error" ? <SearchFailed message={state.message} onRetry={search.retry} /> : null}
       </ScrollView>
 
       <FiltersSheet
-        visible={filtersOpen}
+        visible={sheet === "filters"}
         filters={search.filters}
         onChange={search.setFilters}
-        onReset={clearFilters}
-        onClose={() => setFiltersOpen(false)}
+        onReset={() => search.setFilters({ subjects: [], latestEditionOnly: DEFAULT_CATALOG_SEARCH_FILTERS.latestEditionOnly })}
+        onClose={() => setSheet(null)}
         subjects={subjectOptions}
         college={college}
-        count={state.status === "results" ? state.response.total : state.status === "empty" ? 0 : undefined}
+        results={resultsCount}
+      />
+      <PublishedSheet
+        visible={sheet === "published"}
+        published={search.filters.published}
+        onChange={(published) => search.setFilters({ published })}
+        onClose={() => setSheet(null)}
+        results={resultsCount}
       />
     </View>
   );
