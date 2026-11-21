@@ -2,7 +2,7 @@ import { CATALOG_SORTS, CATALOG_SORT_LABELS, activeFilterCount, publishedFilterL
 import type { CatalogSearchFilters, CatalogSort } from "@libras/shared";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
-import { BackHandler, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { BackHandler, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import type { ReactNode } from "react";
 import { CalendarIcon, CheckIcon, ChevronDownIcon, CrossIcon, SlidersIcon, SortIcon } from "../components/OutlineIcons";
 import { colors, fontFamily, fontSize, popupMenuShadow, radii, spacing } from "../theme/tokens";
@@ -114,14 +114,8 @@ export function SearchControls({
   return (
     <>
       <View onLayout={(event) => setRowAt({ x: event.nativeEvent.layout.x, y: event.nativeEvent.layout.y })}>
-        {/* "handled", like the results around it: with the default, Android before API 30 may take the first tap on a chip to put the keyboard away. */}
-        <ScrollView
-          horizontal
-          keyboardShouldPersistTaps="handled"
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.row}
-          style={styles.scroller}
-        >
+        {/* The chips wrap onto a second line when they do not fit, so none is ever pushed off the screen (owner decision, #65). */}
+        <View style={styles.row} testID="search-controls-row">
           <Chip
             on
             label={CATALOG_SORT_LABELS[filters.sort]}
@@ -132,14 +126,14 @@ export function SearchControls({
             testID="search-sort"
           />
           <Chip
-            on={filters.availableNow}
-            label="Available now"
+            on={filterCount > 0}
+            label={filterCount > 0 ? `Filters (${filterCount})` : "Filters"}
             onPress={() => {
               setMenuOpen(false);
-              onChange({ availableNow: !filters.availableNow });
+              onOpenFilters();
             }}
-            icon={filters.availableNow ? <CheckIcon color={colors.black} size={14} /> : undefined}
-            testID="search-available-now"
+            icon={<SlidersIcon color={colors.black} size={15} />}
+            testID="search-filters"
           />
           <Chip
             on={published}
@@ -153,16 +147,16 @@ export function SearchControls({
             testID="search-published"
           />
           <Chip
-            on={filterCount > 0}
-            label={filterCount > 0 ? `Filters (${filterCount})` : "Filters"}
+            on={filters.availableNow}
+            label="Available now"
             onPress={() => {
               setMenuOpen(false);
-              onOpenFilters();
+              onChange({ availableNow: !filters.availableNow });
             }}
-            icon={<SlidersIcon color={colors.black} size={15} />}
-            testID="search-filters"
+            icon={filters.availableNow ? <CheckIcon color={colors.black} size={14} /> : undefined}
+            testID="search-available-now"
           />
-        </ScrollView>
+        </View>
 
         {filterCount > 0 ? (
           <View style={styles.filterChips} testID="search-filter-chips">
@@ -207,9 +201,7 @@ export function SearchControls({
 }
 
 const styles = StyleSheet.create({
-  // The chips scroll sideways edge to edge, so the row reaches past the screen's side gutter.
-  scroller: { marginHorizontal: -spacing.home },
-  row: { gap: spacing.sm, paddingHorizontal: spacing.home },
+  row: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   chip: {
     height: CHIP_HEIGHT,
     paddingHorizontal: spacing.inset,
