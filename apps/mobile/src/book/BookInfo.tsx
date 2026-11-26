@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from "react-native";
 import { ACCOUNT_TYPE_LABELS, bookAvailabilityLabel, canBorrow, isInLibraryOnlyAccount } from "@libras/shared";
 import type { AccountType, BookDetail } from "@libras/shared";
+import { CallNumber } from "./CallNumber";
 import { BookCover } from "../components/BookCover";
 import { BookTexts } from "./BookTexts";
 import { colors, fontFamily, fontSize, lineHeightFor, radii, spacing } from "../theme/tokens";
@@ -62,10 +63,7 @@ export function BookInfo({ book, accountType }: { book: BookDetail; accountType:
 
         {book.lcCallNumber === null ? null : (
           <View style={styles.classification}>
-            <View style={styles.callNumber} testID="book-call-number">
-              <Text style={styles.callNumberLabel}>CALL NO.</Text>
-              <Text style={styles.callNumberText}>{book.lcCallNumber}</Text>
-            </View>
+            <CallNumber value={book.lcCallNumber} testID="book-call-number" />
           </View>
         )}
       </View>
@@ -140,18 +138,6 @@ const styles = StyleSheet.create({
   subjectTag: { backgroundColor: colors.selected, borderColor: colors.selected },
   subjectText: { fontFamily: fontFamily.semiBold, color: colors.brandInk },
   classification: { alignItems: "flex-start", gap: 10 },
-  callNumber: {
-    alignSelf: "flex-start",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    borderRadius: radii.callNumber,
-    backgroundColor: colors.callNumber,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-  },
-  callNumberLabel: { fontFamily: fontFamily.monoLabel, fontSize: fontSize.caption, lineHeight: lineHeightFor(fontSize.caption), color: colors.black },
-  callNumberText: { fontFamily: fontFamily.mono, fontSize: fontSize.caption, lineHeight: lineHeightFor(fontSize.caption), color: colors.black },
   details: { gap: 7 },
   detailsHeading: { fontFamily: fontFamily.regular, fontSize: fontSize.body, lineHeight: lineHeightFor(fontSize.body), letterSpacing: -0.64, color: colors.black },
   detailsBody: { fontFamily: fontFamily.regular, fontSize: fontSize.body, lineHeight: lineHeightFor(fontSize.body), letterSpacing: -0.64, color: colors.textBody },

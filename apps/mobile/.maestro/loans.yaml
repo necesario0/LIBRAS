@@ -86,14 +86,31 @@ appId: ph.edu.umak.libras
       id: book-borrow
     direction: DOWN
     timeout: 15000
-- assertVisible: "Loan period: 7 days. After you tap Borrow, show the code to the librarian."
+- assertVisible: "Loan period: 7 days. Take it from the shelf, then show your Digital ID at the desk."
 - assertNotVisible:
     id: hold-action
 - takeScreenshot: loans-book-borrow
 
-# Borrow closes the Book page and opens the Digital ID tab.
+# Borrow at the desk opens the Borrow sheet over the Book: the shelf, then the live code.
 - tapOn:
     id: book-borrow
+- extendedWaitUntil:
+    visible:
+      id: borrow-sheet-code
+    timeout: 15000
+- assertVisible:
+    id: borrow-sheet-title
+    text: "Borrow at the desk"
+- assertVisible:
+    id: borrow-sheet-call-number
+- assertVisible: "QA76.9 .Z99 2026"
+- assertVisible: "Take it from the shelf"
+- assertVisible: "They scan it, then the Book. It is due back in 7 days."
+- takeScreenshot: loans-borrow-sheet
+
+# Open my Digital ID closes the sheet and the Book page and opens the Digital ID tab.
+- tapOn:
+    id: borrow-sheet-digital-id
 - assertVisible: "Show this to the librarian"
 - extendedWaitUntil:
     visible:
@@ -388,3 +405,34 @@ appId: ph.edu.umak.libras
 - assertNotVisible:
     id: hold-place
 - takeScreenshot: loans-hold-not-in-good-standing
+
+# The Member learns it before the desk: Home opens on the same notice, which
+# leads to the overdue Loan ...
+- tapOn:
+    id: book-close
+- runFlow: subflows/leave-search.yaml
+- tapOn:
+    id: tab-home
+- extendedWaitUntil:
+    visible:
+      id: home-standing
+    timeout: 15000
+- assertVisible: "You can’t borrow right now"
+- takeScreenshot: loans-home-not-in-good-standing
+- tapOn:
+    id: home-standing-action
+- extendedWaitUntil:
+    visible:
+      id: loans-segment
+    timeout: 15000
+
+# ... and the Digital ID says the librarian can't lend a Book today.
+- tapOn:
+    id: tab-digital-id
+- extendedWaitUntil:
+    visible:
+      id: digital-id-standing
+    timeout: 15000
+- assertVisible: "The librarian can’t lend you a Book today"
+- assertVisible: "The librarian scans it to take back a Copy or to settle a Fine."
+- takeScreenshot: loans-digital-id-not-in-good-standing

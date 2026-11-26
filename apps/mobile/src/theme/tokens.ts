@@ -257,6 +257,8 @@ export const radii = {
   checkbox: 6,
   /** A radio button (24 pt). */
   radio: 12,
+  /** The numbered disc of a step in the Borrow sheet (28 pt). */
+  stepDisc: 14,
   /** The bars of the sign-up step progress. */
   progress: 1,
 } as const;
