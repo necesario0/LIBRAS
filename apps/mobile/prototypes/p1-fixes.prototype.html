@@ -1,0 +1,536 @@
+<title>LIBRAS P1 Fix Prototypes</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap">
+<!--
+  PROTOTYPE, throwaway. Answers: "What should the three P1 critique fixes look like on the LIBRAS mobile app?"
+  Plan: for each fix (Borrow handoff, blocked Member, first load), the current app plus three structurally
+  different variants, drawn as phone frames in the app's own look, switchable with #<fix>-<variant>,
+  the floating bar, or the arrow keys. Nothing here talks to the API; all data is the local demo data.
+-->
+<style>
+/* Layout: a reading column (question, what changes, trade-off) beside a scrolling row of phone frames. */
+:root {
+  --bg: #F3F5F9;
+  --panel: #FFFFFF;
+  --fg: #151A2C;
+  --muted: #5A6276;
+  --line: #DDE2EB;
+  --accent: #005DC3;
+  --accent-soft: #E3EEFB;
+  --pick: #B87900;
+  --pick-soft: #FFF3D6;
+  --bar-bg: #151A2C;
+  --bar-fg: #FFFFFF;
+  --font-ui: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-app: "Montserrat", "Segoe UI", Roboto, sans-serif;
+  --font-mono: "Roboto Mono", ui-monospace, Consolas, monospace;
+
+  /* The app's own tokens (apps/mobile/src/theme/tokens.ts). The app is light-only, so the phone keeps them in both page themes. */
+  --a-white: #FFFFFF;
+  --a-black: #000000;
+  --a-brand-ink: #111C4E;
+  --a-primary: #005DC3;
+  --a-surface: #F0F0F0;
+  --a-muted: #747474;
+  --a-faint: #AFAFAF;
+  --a-accent: #FCBF49;
+  --a-highlight: #FFA800;
+  --a-danger: #B3261E;
+  --a-danger-surface: #FDECEC;
+  --a-error: #FF4A4A;
+  --a-border: #D9D9D9;
+  --a-callno: #9DCCFF;
+  --a-avail-surface: #C7FFD5;
+  --a-avail-text: #188132;
+  --a-info-surface: #CEF2FF;
+  --a-body: #6E6E6E;
+  --a-scrim: rgba(0,0,0,0.45);
+  --a-shadow: rgba(0,0,0,0.18);
+  --a-skeleton: #ECEEF1;
+  --a-skeleton-hi: #F7F8FA;
+  --phone-bezel: #1C1F26;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E1220; --panel: #161B2B; --fg: #E7EAF2; --muted: #9AA2B6; --line: #283047;
+    --accent: #7AB2FF; --accent-soft: #1B2A45; --pick: #F2B84B; --pick-soft: #33290F;
+    --bar-bg: #E7EAF2; --bar-fg: #0E1220; --phone-bezel: #000000; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E1220; --panel: #161B2B; --fg: #E7EAF2; --muted: #9AA2B6; --line: #283047;
+  --accent: #7AB2FF; --accent-soft: #1B2A45; --pick: #F2B84B; --pick-soft: #33290F;
+  --bar-bg: #E7EAF2; --bar-fg: #0E1220; --phone-bezel: #000000; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--font-ui); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 110px;
+}
+button { font: inherit; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.wrap { max-width: 1320px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+header.top { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: end; justify-content: space-between; }
+.eyebrow { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+h1 { font-family: var(--font-app); font-size: 26px; line-height: 1.2; margin: 2px 0 0; text-wrap: balance; }
+.picks { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); }
+.pick-chip { border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 3px 10px; color: var(--fg); }
+.pick-chip b { color: var(--pick); font-weight: 600; }
+.btn-ghost { border: 1px solid var(--line); background: var(--panel); color: var(--fg); border-radius: 8px; padding: 5px 12px; font-size: 13px; }
+
+nav.fixes { display: flex; flex-wrap: wrap; gap: 8px; }
+nav.fixes button {
+  border: 1px solid var(--line); background: var(--panel); color: var(--fg); border-radius: 10px; padding: 8px 14px;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 0; text-align: left; min-width: 0;
+}
+nav.fixes button small { color: var(--muted); font-size: 12px; }
+nav.fixes button[aria-current="true"] { border-color: var(--accent); background: var(--accent-soft); }
+
+.stage { display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 860px) { .stage { grid-template-columns: minmax(0, 1fr); } }
+.info { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.info h2 { font-family: var(--font-app); font-size: 19px; margin: 0; line-height: 1.25; text-wrap: balance; }
+.info .q { color: var(--muted); font-size: 14px; margin: 0; }
+.info h3 { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; font-weight: 600; }
+.info ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.info p { margin: 0; }
+.persona { font-size: 13px; border-radius: 8px; background: var(--accent-soft); padding: 6px 10px; }
+.files code { font-family: var(--font-mono); font-size: 12px; overflow-wrap: anywhere; }
+.pick-btn { align-self: flex-start; border: 1px solid var(--pick); color: var(--pick); background: transparent; border-radius: 8px; padding: 7px 14px; font-weight: 600; }
+.pick-btn[aria-pressed="true"] { background: var(--pick-soft); }
+.pick-btn[disabled] { opacity: 0.5; cursor: default; }
+
+.frames { display: flex; gap: 22px; overflow-x: auto; padding: 4px 4px 14px; min-width: 0; scroll-snap-type: x proximity; }
+figure.frame { margin: 0; display: flex; flex-direction: column; gap: 10px; flex: none; scroll-snap-align: start; }
+figcaption { width: 300px; font-size: 13px; color: var(--muted); }
+figcaption b { color: var(--fg); font-weight: 600; display: block; }
+
+/* ---------- Phone frame and the app's look ---------- */
+.phone { width: 300px; height: 640px; border-radius: 38px; border: 9px solid var(--phone-bezel); background: var(--a-white); position: relative; overflow: hidden; flex: none; box-shadow: 0 10px 30px rgba(10,20,40,0.18); }
+.scr { position: absolute; inset: 0; font-family: var(--font-app); color: var(--a-black); background: var(--a-white); font-size: 12px; line-height: 1.35; overflow: hidden; }
+.sb { height: 26px; display: flex; justify-content: space-between; align-items: center; padding: 0 18px; font-size: 11px; font-weight: 600; font-family: Roboto, var(--font-ui); }
+.sb i { display: inline-block; width: 16px; height: 9px; border: 1.5px solid var(--a-black); border-radius: 2px; margin-left: 4px; position: relative; }
+.sb i::after { content: ""; position: absolute; inset: 1px 4px 1px 1px; background: var(--a-black); }
+.pad { padding: 0 14px; }
+
+.home-head { display: flex; align-items: center; gap: 9px; padding: 10px 14px 8px; }
+.avatar { width: 38px; height: 38px; border-radius: 50%; background: #F6DCC8; position: relative; overflow: hidden; flex: none; }
+.avatar::before { content: ""; position: absolute; width: 16px; height: 16px; border-radius: 50%; background: #2B2B33; left: 11px; top: 6px; }
+.avatar::after { content: ""; position: absolute; width: 30px; height: 18px; border-radius: 15px 15px 0 0; background: var(--a-brand-ink); left: 4px; top: 25px; }
+.hi { font-weight: 700; font-size: 20px; line-height: 1.05; }
+.hi-sub { font-size: 8.5px; color: var(--a-faint); font-weight: 600; }
+.bell { margin-left: auto; width: 26px; height: 26px; display: grid; place-items: center; position: relative; }
+.searchbar { margin: 0 14px; height: 38px; border: 1.5px solid var(--a-black); border-radius: 19px; display: flex; align-items: center; padding: 0 12px; justify-content: space-between; color: var(--a-muted); font-size: 12.5px; box-shadow: 0 3px 5px rgba(0,0,0,0.12); }
+
+.shelf { padding: 14px 14px 0; }
+.shelf h4 { font-size: 17px; margin: 0; font-weight: 700; }
+.shelf .sub { font-size: 9.5px; color: var(--a-muted); margin-bottom: 8px; }
+.covers { display: flex; gap: 10px; overflow: hidden; }
+.bk { width: 82px; flex: none; }
+.cover { width: 82px; height: 118px; border-radius: 6px; position: relative; overflow: hidden; color: var(--a-white); font-weight: 600; font-size: 10px; display: flex; align-items: flex-end; padding: 8px 8px 12px 13px; }
+.cover::before { content: ""; position: absolute; left: 4px; top: 0; bottom: 0; width: 3px; background: rgba(255,255,255,0.35); }
+.bk .t { font-size: 10.5px; margin-top: 5px; line-height: 1.25; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.bk .a { font-size: 9px; color: var(--a-muted); }
+
+.tabbar { position: absolute; left: 10px; right: 10px; bottom: 16px; height: 56px; border-radius: 28px; background: var(--a-white); box-shadow: 0 6px 18px var(--a-shadow); border: 1px solid rgba(0,0,0,0.06); display: grid; grid-template-columns: repeat(4, 1fr); align-items: center; }
+.tab { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 10px; font-weight: 500; position: relative; }
+.tab.on { color: var(--a-primary); }
+.tab.ghost { opacity: 0; }
+.tab .dot { position: absolute; top: -2px; left: 54%; width: 6px; height: 6px; border-radius: 50%; background: var(--a-error); }
+
+/* Search behind the Book sheet */
+.srch { padding: 8px 12px 0; display: flex; flex-direction: column; gap: 8px; }
+.srch-row { display: flex; align-items: center; gap: 8px; }
+.srch-in { flex: 1; height: 36px; border: 1.5px solid var(--a-primary); border-radius: 18px; display: flex; align-items: center; padding: 0 12px; gap: 6px; font-size: 12px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--a-border); border-radius: 999px; padding: 4px 9px; font-size: 10px; font-weight: 500; }
+.chip.sel { background: var(--a-accent); border-color: var(--a-black); }
+
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--a-white); border-radius: 22px 22px 0 0; box-shadow: 0 -6px 24px rgba(0,0,0,0.12); padding: 8px 14px 18px; display: flex; flex-direction: column; gap: 10px; }
+.grab { width: 40px; height: 4px; border-radius: 2px; background: var(--a-border); align-self: center; }
+.sheet-top { display: flex; justify-content: flex-end; gap: 8px; }
+.save { border: 1px solid var(--a-border); border-radius: 999px; padding: 5px 12px; font-size: 11px; display: flex; align-items: center; gap: 5px; }
+.x { width: 30px; height: 30px; border-radius: 50%; background: var(--a-surface); display: grid; place-items: center; }
+.bookrow { display: flex; gap: 12px; }
+.bigcover { width: 92px; height: 132px; border-radius: 6px; flex: none; position: relative; box-shadow: 0 3px 6px rgba(0,0,0,0.15); }
+.bigcover::before { content: ""; position: absolute; left: 5px; top: 0; bottom: 0; width: 3px; background: rgba(255,255,255,0.35); }
+.btitle { font-weight: 700; font-size: 15px; line-height: 1.25; }
+.bauthor { color: var(--a-muted); font-size: 11px; margin: 3px 0 6px; }
+.pills { display: flex; flex-wrap: wrap; gap: 4px; }
+.pill { border: 1px solid var(--a-border); border-radius: 999px; padding: 2px 7px; font-size: 9.5px; }
+.pill.av { background: var(--a-avail-surface); color: var(--a-avail-text); border-color: transparent; }
+.pill.sub { background: var(--a-info-surface); border-color: transparent; font-weight: 600; }
+.pill.bad { background: var(--a-danger-surface); color: var(--a-danger); border-color: transparent; font-weight: 600; }
+.callno { align-self: flex-start; background: var(--a-callno); border-radius: 999px; padding: 4px 11px; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.02em; }
+.kv b { display: block; font-weight: 500; font-size: 12px; }
+.kv span { color: var(--a-muted); font-size: 11.5px; }
+.body { font-size: 11.5px; color: var(--a-black); }
+.body.grey { color: var(--a-body); }
+.link { color: var(--a-primary); }
+.cta { height: 42px; border-radius: 21px; display: grid; place-items: center; font-size: 15px; font-weight: 500; }
+.cta.yellow { background: var(--a-accent); }
+.cta.blue { background: var(--a-primary); color: var(--a-white); }
+.cta.off { background: var(--a-surface); color: var(--a-muted); }
+.cta.outline { border: 1.5px solid var(--a-black); }
+.helper { font-size: 10px; color: var(--a-muted); text-align: center; }
+
+.notice { border-radius: 10px; background: var(--a-danger-surface); color: var(--a-danger); padding: 9px 11px; font-size: 11px; display: flex; flex-direction: column; gap: 4px; }
+.notice b { font-size: 12.5px; }
+.notice.boxed { border: 1.5px solid var(--a-error); background: var(--a-white); }
+.notice .act { align-self: flex-start; margin-top: 4px; border: 1.5px solid var(--a-danger); border-radius: 999px; padding: 3px 10px; font-weight: 600; font-size: 10.5px; }
+
+/* Digital ID */
+.idh { font-size: 25px; line-height: 1.1; padding: 22px 14px 6px; font-weight: 400; }
+.idh em { font-style: normal; color: var(--a-highlight); }
+.idsub { font-size: 10.5px; color: var(--a-muted); padding: 0 14px 10px; }
+.idbox { margin: 0 14px; border: 2px dashed var(--a-border); border-radius: 14px; padding: 14px 10px 10px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.idbox svg { display: block; }
+.idnum { font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.18em; }
+.cd { font-size: 10px; color: var(--a-muted); display: flex; align-items: center; gap: 4px; }
+.idbox .cd svg { display: inline; }
+.cd b { color: var(--a-black); }
+.idname { text-align: center; padding-top: 10px; }
+.idname b { display: block; font-size: 13px; }
+.idname span { font-size: 11px; }
+.bright { margin: 10px 14px 0; background: var(--a-surface); border-radius: 10px; padding: 8px 10px; font-size: 9.5px; color: var(--a-muted); }
+.forcard { margin: 0 14px 10px; border-radius: 12px; border: 1.5px solid var(--a-primary); padding: 9px 11px; display: flex; gap: 10px; align-items: center; }
+.forcard .mini { width: 34px; height: 48px; border-radius: 4px; flex: none; position: relative; }
+.forcard .mini::before { content: ""; position: absolute; left: 3px; top: 0; bottom: 0; width: 2px; background: rgba(255,255,255,0.35); }
+.forcard .lbl { font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--a-primary); font-weight: 700; }
+.forcard .tt { font-weight: 600; font-size: 12px; line-height: 1.2; }
+.forcard .callno { margin-top: 4px; font-size: 9.5px; padding: 2px 8px; }
+.stub { margin: 0 14px; border: 2px dashed var(--a-border); border-top: none; border-radius: 0 0 14px 14px; padding: 12px 12px 12px; position: relative; display: flex; flex-direction: column; gap: 4px; }
+.stub::before { content: ""; position: absolute; left: -2px; right: -2px; top: 0; border-top: 2px dotted var(--a-black); opacity: 0.35; }
+.stub .lbl { font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--a-muted); font-weight: 700; }
+.stub .shelf-no { font-family: var(--font-mono); font-size: 17px; letter-spacing: 0.02em; }
+.idbox.top { border-radius: 14px 14px 0 0; border-bottom: none; }
+.intent { display: inline-flex; gap: 6px; align-items: center; margin: 18px 14px 0; background: var(--a-info-surface); border-radius: 999px; padding: 3px 10px; font-size: 10px; font-weight: 700; color: var(--a-brand-ink); }
+.dim { filter: grayscale(1); opacity: 0.25; }
+
+.standing-bar { position: absolute; left: 10px; right: 10px; bottom: 80px; border-radius: 14px; background: var(--a-danger); color: var(--a-white); padding: 8px 12px; font-size: 10.5px; display: flex; align-items: center; justify-content: space-between; gap: 8px; box-shadow: 0 6px 14px rgba(179,38,30,0.25); }
+.standing-bar b { display: block; font-size: 11.5px; }
+
+.task { margin: 12px 14px 0; border-radius: 14px; background: var(--a-white); border: 1.5px solid var(--a-error); padding: 11px 12px; display: flex; flex-direction: column; gap: 8px; }
+.task h5 { margin: 0; font-size: 14px; }
+.task .step { display: flex; gap: 8px; align-items: flex-start; font-size: 11px; }
+.task .box { width: 14px; height: 14px; border: 1.5px solid var(--a-black); border-radius: 4px; flex: none; margin-top: 1px; }
+
+.steps { display: flex; flex-direction: column; gap: 10px; }
+.stepn { display: flex; gap: 10px; align-items: flex-start; }
+.num { width: 22px; height: 22px; border-radius: 50%; background: var(--a-accent); display: grid; place-items: center; font-weight: 700; font-size: 11px; flex: none; }
+
+.skel { background: linear-gradient(90deg, var(--a-skeleton) 0%, var(--a-skeleton-hi) 50%, var(--a-skeleton) 100%); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; border-radius: 6px; }
+@keyframes shimmer { from { background-position: 200% 0; } to { background-position: 0 0; } }
+.spin { width: 12px; height: 12px; border: 2px solid var(--a-border); border-top-color: var(--a-primary); border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .skel, .spin { animation: none; } }
+.refresh { position: absolute; left: 50%; transform: translateX(-50%); top: 112px; background: var(--a-brand-ink); color: var(--a-white); border-radius: 999px; padding: 4px 10px; font-size: 9.5px; display: flex; gap: 6px; align-items: center; box-shadow: 0 3px 8px rgba(0,0,0,0.2); }
+.refresh .spin { border-color: rgba(255,255,255,0.3); border-top-color: var(--a-white); }
+.splash { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; }
+.logo { width: 92px; height: 92px; border-radius: 50%; background: var(--a-primary); position: relative; }
+.logo::before { content: ""; position: absolute; left: 30px; top: 22px; width: 14px; height: 46px; border-radius: 4px; background: var(--a-white); }
+.logo::after { content: ""; position: absolute; left: 30px; top: 58px; width: 36px; height: 10px; border-radius: 5px; background: var(--a-brand-ink); box-shadow: 0 -3px 0 var(--a-white); }
+.logo i { position: absolute; left: 47px; top: 22px; width: 12px; height: 20px; background: var(--a-accent); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 75%, 0 100%); }
+.progress { width: 150px; height: 4px; border-radius: 2px; background: var(--a-surface); overflow: hidden; }
+.progress div { height: 100%; width: 62%; background: var(--a-primary); border-radius: 2px; }
+.loadlist { font-size: 10.5px; color: var(--a-muted); display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }
+
+/* Floating switcher: deliberately not the app's look */
+.switcher { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--bar-bg); color: var(--bar-fg); border-radius: 999px; display: flex; align-items: center; gap: 4px; padding: 6px; box-shadow: 0 8px 28px rgba(0,0,0,0.3); z-index: 20; max-width: calc(100vw - 32px); }
+.switcher button { width: 38px; height: 38px; border-radius: 50%; border: none; background: transparent; color: inherit; font-size: 18px; display: grid; place-items: center; }
+.switcher button:hover { background: rgba(127,127,127,0.25); }
+.switcher .lbl { padding: 0 12px; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.switcher .lbl span { opacity: 0.65; font-weight: 400; }
+.kbd { font-size: 12px; color: var(--muted); }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">Prototype · LIBRAS mobile · critique P1 fixes</div>
+      <h1>What should the three P1 fixes look like?</h1>
+    </div>
+    <div class="picks" id="picks" aria-live="polite"></div>
+  </header>
+  <nav class="fixes" id="fixes" aria-label="Fix"></nav>
+  <main class="stage">
+    <section class="info" id="info"></section>
+    <section class="frames" id="frames" aria-label="Phone screens"></section>
+  </main>
+  <p class="kbd">Use ← and → to switch variants, 1 2 3 to switch fix. Every screen uses the local demo accounts; nothing here talks to the API.</p>
+</div>
+
+<div class="switcher" role="toolbar" aria-label="Variant switcher">
+  <button id="prev" aria-label="Previous variant">←</button>
+  <div class="lbl" id="vlabel"></div>
+  <button id="next" aria-label="Next variant">→</button>
+</div>
+
+<script>
+/* ---------- Small drawing helpers ---------- */
+const ICON = {
+  home: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 10.5 12 4l8 6.5V20h-5v-6H9v6H4z"/></svg>',
+  books: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4v16M9 4v16M13 5l4 15"/></svg>',
+  id: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M7 9v6M10 9v6M12.5 9v6M15 9v6M17 9v6"/></svg>',
+  profile: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="10" r="3"/><path d="M6.5 18c1.5-2.2 3.4-3 5.5-3s4 .8 5.5 3"/></svg>',
+  bell: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0"/></svg>',
+  search: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>',
+  mark: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h12v18l-6-4-6 4z"/></svg>',
+  close: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 5l14 14M19 5 5 19"/></svg>',
+  clock: '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  sun: '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.4 1.4M17.6 17.6 19 19M5 19l1.4-1.4M17.6 6.4 19 5"/></svg>',
+  chev: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m9 6 6 6-6 6"/></svg>',
+};
+
+/* A Code 128-looking bar pattern, deterministic per seed. */
+function bars(seed, w = 220, h = 64) {
+  let x = 0, s = seed, out = "";
+  const rnd = () => (s = (s * 9301 + 49297) % 233280) / 233280;
+  while (x < w - 4) {
+    const bw = 1 + Math.floor(rnd() * 3) * 1.3, gap = 1 + Math.floor(rnd() * 3) * 1.2;
+    out += `<rect x="${x.toFixed(1)}" y="0" width="${bw.toFixed(1)}" height="${h}" fill="#000"/>`;
+    x += bw + gap;
+  }
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-label="Digital ID barcode">${out}</svg>`;
+}
+
+const COLORS = ["#2E9C8E", "#6E8C45", "#8A1A1A", "#2F5DAF", "#C9A642", "#2B2B33"];
+const SHELF_A = [["Readings in Databases", "Leslutosjo et al.", 0], ["Essentials of Networks", "Ciara", 1], ["Essential Triolit Systems", "Yareen", 2], ["Jurisprudence: Theory and Applications", "Rocruz", 1]];
+const SHELF_B = [["A Student's Guide to Networks", "Aquino", 1], ["A Student's Guide to Databases", "Santos", 2], ["Algorithms in the Philippines", "Lesnarza", 5]];
+
+const sb = () => `<div class="sb"><span>3:08</span><span>▾ ◢ <i></i></span></div>`;
+const tabbar = (active, o = {}) => `<div class="tabbar">${[["home", "Home", ICON.home], ["books", "My Books", ICON.books], ["id", "Digital ID", ICON.id], ["profile", "Profile", ICON.profile]]
+  .map(([k, l, ic]) => `<div class="tab ${k === active ? "on" : ""} ${k === "books" && o.ghostBooks ? "ghost" : ""}">${ic}${k === "books" && o.dot ? '<span class="dot"></span>' : ""}<span>${l}</span></div>`).join("")}</div>`;
+
+function shelf(title, sub, books, coverText = true) {
+  return `<div class="shelf"><h4>${title}</h4><div class="sub">${sub}</div><div class="covers">${books.map(([t, a, c]) =>
+    `<div class="bk"><div class="cover" style="background:${COLORS[c]}">${coverText ? t : ""}</div><div class="t">${t}</div><div class="a">${a}</div></div>`).join("")}</div></div>`;
+}
+function skelShelf() {
+  const bk = `<div class="bk"><div class="skel" style="width:82px;height:118px"></div><div class="skel" style="width:70px;height:9px;margin-top:7px"></div><div class="skel" style="width:46px;height:8px;margin-top:5px"></div></div>`;
+  return `<div class="shelf"><div class="skel" style="width:130px;height:16px"></div><div class="skel" style="width:170px;height:8px;margin:7px 0 10px"></div><div class="covers">${bk.repeat(4)}</div></div>`;
+}
+
+function homeHead(name, bellCount = 0) {
+  return `<div class="home-head"><div class="avatar"></div><div><div class="hi">Hi, ${name}</div><div class="hi-sub">What’s on your mind</div></div>
+    <div class="bell">${ICON.bell}${bellCount ? `<span style="position:absolute;top:-1px;right:-1px;background:var(--a-danger);color:#fff;border-radius:50%;width:13px;height:13px;font-size:8px;display:grid;place-items:center;font-weight:700">${bellCount}</span>` : ""}</div></div>
+    <div class="searchbar"><span>what’s on your mind</span>${ICON.search}</div>`;
+}
+
+/* ---------- Screens ---------- */
+function home(o = {}) {
+  const name = o.name ?? "Maria";
+  let body = "";
+  if (o.state === "blank") body = "";
+  else if (o.state === "skeleton") body = skelShelf() + skelShelf();
+  else body = shelf("New arrivals", "The newest Books in the catalog", SHELF_A) + shelf("Popular in CCIS", "Most borrowed by CCIS Members in the last 6 months", SHELF_B);
+  let blocked = "";
+  if (o.blocked === "card") blocked = `<div class="pad" style="margin-top:12px"><div class="notice boxed"><b>You can’t borrow right now</b><span>“A Student’s Guide to Networks” was due Nov 19. Return it and settle its Fine (PHP 35 so far) at the library desk.</span><span class="act">See my Loan</span></div></div>`;
+  if (o.blocked === "task") blocked = `<div class="task"><h5>Before you can borrow again</h5>
+      <div class="step"><span class="box"></span><span>Return <b>A Student’s Guide to Networks</b>, due Nov 19 (7 days late)</span></div>
+      <div class="step"><span class="box"></span><span>Settle its Fine at the desk: <b>PHP 35 so far</b>, PHP 5 more each day</span></div>
+      <div class="step" style="color:var(--a-muted)"><span class="box" style="border-color:var(--a-border)"></span><span>Then borrowing, Holds and Renewals open again</span></div></div>`;
+  return `<div class="scr">${sb()}${homeHead(name, o.bell)}${o.refreshing ? `<div class="refresh"><span class="spin"></span>Updating shelves</div>` : ""}${blocked}${body}
+    ${o.blocked === "bar" ? standingBar() : ""}${tabbar("home", { ghostBooks: o.ghostBooks, dot: o.dot })}</div>`;
+}
+
+function standingBar() {
+  return `<div class="standing-bar"><div><b>Not in Good standing</b>1 overdue Loan · Fine PHP 35 so far</div>${ICON.chev}</div>`;
+}
+
+function searchBehind(q) {
+  return `<div class="srch"><div class="srch-row"><div class="srch-in">${ICON.search}<span>${q}</span></div><span style="font-size:12px">Cancel</span></div>
+    <div class="chips"><span class="chip sel">⇅ Best match ⌄</span><span class="chip">Filters</span><span class="chip">Published ⌄</span><span class="chip">Available now</span></div></div>`;
+}
+
+const BOOK_Y = { title: "A Student’s Guide to Algorithms", author: "Dero, James V.", ed: "2nd ed.", year: "1999", avail: "1 of 1 available", subject: "Biology", call: "QH363 .D59 A17 1999", isbn: "9781555139094", color: "#2F5DAF" };
+
+function bookSheet(o = {}) {
+  const b = o.book ?? BOOK_Y;
+  let foot = "";
+  if (o.mode === "now") foot = `<div class="body">Loan period: <span class="link">7 days.</span> After you tap Borrow, show the code to the librarian.</div><div class="cta yellow">Borrow</div>`;
+  if (o.mode === "desk") foot = `<div class="body">Loan period: 7 days. Take it from the shelf, then show your Digital ID at the desk.</div><div class="cta yellow">Borrow at the desk</div><div class="helper">Opens your Digital ID with this Book on it</div>`;
+  if (o.mode === "blocked-now") foot = `<div class="body grey">You cannot borrow, place a Hold or renew a Loan while you have an overdue Loan. Return it to the library desk and settle its Fine there.</div>`;
+  if (o.mode === "blocked-notice") foot = `<div class="notice"><b>You can’t borrow this yet</b><span>You have an overdue Loan. Return “A Student’s Guide to Networks” and settle its Fine at the desk, then you can borrow again.</span><span class="act">See my Loan</span></div>`;
+  if (o.mode === "blocked-disabled") foot = `<div class="cta off">Borrow</div><div class="helper" style="color:var(--a-danger)">Not available while a Loan is overdue · <u>Why?</u></div>`;
+  if (o.mode === "blocked-task") foot = `<div class="notice"><b>2 steps before you can borrow</b><span>1. Return “A Student’s Guide to Networks”. 2. Settle PHP 35 at the desk.</span></div><div class="cta outline">Save it for later</div>`;
+  return `<div class="scr">${sb()}${searchBehind(o.q ?? "guide to algorithms")}${o.scrim ? `<div style="position:absolute;inset:0;background:var(--a-scrim)"></div>` : ""}
+    <div class="sheet" style="top:${o.top ?? 118}px"><div class="grab"></div><div class="sheet-top"><span class="save">${ICON.mark} Save</span><span class="x">${ICON.close}</span></div>
+    <div class="bookrow"><div class="bigcover" style="background:${b.color}"></div><div><div class="btitle">${b.title}</div><div class="bauthor">${b.author}</div>
+    <div class="pills"><span class="pill">${b.ed}</span><span class="pill">${b.year}</span><span class="pill av">${b.avail}</span><span class="pill sub">${b.subject}</span></div></div></div>
+    <span class="callno">CALL NO. ${b.call}</span><div class="kv"><b>ISBN</b><span>${b.isbn}</span></div>${foot}</div></div>`;
+}
+
+function borrowSteps() {
+  return `<div class="scr">${sb()}${searchBehind("guide to algorithms")}<div style="position:absolute;inset:0;background:var(--a-scrim)"></div>
+    <div class="sheet" style="top:96px;gap:12px"><div class="grab"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center"><div style="font-weight:700;font-size:16px">Borrow at the desk</div><span class="x">${ICON.close}</span></div>
+    <div class="steps">
+      <div class="stepn"><span class="num">1</span><div><b>Take it from the shelf</b><div style="font-size:10.5px;color:var(--a-muted)">A Student’s Guide to Algorithms, 2nd ed.</div><span class="callno" style="display:inline-block;margin-top:5px">QH363 .D59 A17 1999</span></div></div>
+      <div class="stepn"><span class="num">2</span><div><b>Show this code to the librarian</b><div style="font-size:10.5px;color:var(--a-muted)">They scan it, then the Book. Due in 7 days.</div></div></div>
+    </div>
+    <div class="idbox" style="margin:0">${bars(7, 210, 56)}<div class="idnum">1842 0434 1906</div><div class="cd">${ICON.clock} New code in <b class="tick">0:51</b></div></div>
+    <div class="helper">Screen is at full brightness while this is open</div>
+    <div class="cta outline" style="height:36px;font-size:13px">Open full Digital ID</div></div></div>`;
+}
+
+function digitalId(o = {}) {
+  const who = o.who ?? ["Maria Santos", "Faculty"];
+  let heading = `<div class="idh">Show this to the <em>librarian</em></div><div class="idsub">The librarian scans it to lend you a Book or to give you the Copy set aside for your Hold.</div>`;
+  if (o.heading === "borrowing") heading = `<div class="idh">Borrowing at the <em>desk</em></div><div class="idsub">Take the Book from the shelf, then show this code. The librarian scans both.</div>`;
+  if (o.heading === "return") heading = `<div class="idh">Return and <em>settle</em></div><div class="idsub">You can’t borrow right now. Bring the overdue Book; the librarian scans this code to take it back and settle your Fine.</div>`;
+  let pre = "";
+  if (o.forBook === "card") pre = `<div class="forcard"><div class="mini" style="background:${BOOK_Y.color}"></div><div><div class="lbl">For this Book</div><div class="tt">${BOOK_Y.title}, ${BOOK_Y.ed}</div><span class="callno">CALL NO. ${BOOK_Y.call}</span></div></div>`;
+  if (o.blocked === "notice") pre = `<div class="pad" style="margin-bottom:10px"><div class="notice"><b>The librarian can’t lend you a Book today</b><span>1 Loan is overdue. This code still works for returning it and settling the Fine.</span></div></div>`;
+  if (o.intent) pre = `<div class="intent">● ${o.intent}</div>` + pre;
+  const box = o.forBook === "stub"
+    ? `<div class="idbox top" style="margin-top:6px">${bars(3)}<div class="idnum">1842 0434 1906</div><div class="cd">${ICON.clock} New code in <b class="tick">0:51</b></div></div>
+       <div class="stub"><span class="lbl">Borrowing · take it from the shelf first</span><div style="font-weight:600;font-size:12px">${BOOK_Y.title}, ${BOOK_Y.ed}</div><div class="shelf-no">${BOOK_Y.call}</div><div style="font-size:9.5px;color:var(--a-muted)">Due Dec 3, 2026 if borrowed today · <u>Remove</u></div></div>`
+    : `<div class="idbox ${o.dimBars ? "" : ""}"><div class="${o.dimBars ? "dim" : ""}">${bars(o.seed ?? 3)}</div><div class="idnum">${o.num ?? "1842 0434 1906"}</div><div class="cd">${ICON.clock} New code in <b class="tick">0:51</b></div></div>`;
+  return `<div class="scr">${sb()}${heading}${pre}${box}
+    <div class="idname"><b>${who[0]}</b><span>${who[1]}</span></div>
+    ${o.forBook === "stub" ? "" : `<div class="bright">${ICON.sun} Your screen is at full brightness and stays on while this is open.</div>`}
+    ${o.blocked === "bar" ? standingBar() : ""}${tabbar("id", { dot: o.dot })}</div>`;
+}
+
+function splash(o = {}) {
+  return `<div class="scr">${sb()}<div class="splash"><div class="logo"><i></i></div>
+    <div style="font-weight:700;font-size:16px;color:var(--a-brand-ink)">Libras<span style="color:var(--a-accent)">.</span></div>
+    <div class="progress"><div></div></div><div class="loadlist"><span>✓ Signed in as Maria Santos</span><span>✓ Your Loans and Holds</span><span><span class="spin" style="width:9px;height:9px;vertical-align:-1px"></span> Shelves for CCIS</span></div></div></div>`;
+}
+
+/* ---------- The three fixes ---------- */
+const ELENA = ["Elena Cruz", "NTP / Employee"];
+const FIXES = [
+  {
+    id: "borrow", name: "Borrow handoff", short: "Book page → desk",
+    question: "How should the Book travel from the Book page to the desk?",
+    persona: "Maria Santos · Faculty · in Good standing, borrowing A Student’s Guide to Algorithms",
+    variants: [
+      { key: "now", name: "Now", summary: "The current app.", changes: ["Borrow jumps to the Digital ID tab.", "The ID shows no title, Copy or call number."], tradeoff: "The Member has to go back to the Book page to find the shelf.", files: [],
+        frames: [["Book page", "Borrow button, no hint of what happens next.", () => bookSheet({ mode: "now" })], ["After Borrow", "Generic Digital ID. Which Book? Which shelf?", () => digitalId()]] },
+      { key: "a", name: "Book on the ID", summary: "Keep the Digital ID tab; add a card for the Book above the barcode.", changes: ["Button reads “Borrow at the desk” with a one-line helper.", "Digital ID opens with a “For this Book” card: cover, title, call number.", "Heading changes to “Borrowing at the desk”."], tradeoff: "Smallest change. The card pushes the barcode down about 70 dp; still fits one screen.", files: ["src/loans/BorrowAction.tsx", "app/(app)/(tabs)/digital-id.tsx"],
+        frames: [["Book page", "Honest button label, helper says where it goes.", () => bookSheet({ mode: "desk" })], ["Digital ID", "The Book and its call number ride along.", () => digitalId({ heading: "borrowing", forBook: "card" })]] },
+      { key: "b", name: "Borrow sheet", summary: "Never leave the Book: a second sheet walks the two steps and holds the code.", changes: ["Borrow opens a sheet over the Book page: 1. take it from the shelf (call number), 2. show this code.", "The barcode and countdown live inside the sheet.", "“Open full Digital ID” stays as a way out."], tradeoff: "Clearest single-Book flow. Duplicates the barcode on a second surface, and brightness has to follow the sheet too.", files: ["src/loans/BorrowAction.tsx", "new: src/loans/BorrowSheet.tsx"],
+        frames: [["Book page", "Same button as A.", () => bookSheet({ mode: "desk" })], ["Borrow sheet", "Shelf, then code, on one surface.", () => borrowSteps()]] },
+      { key: "c", name: "Desk pass", summary: "The Digital ID becomes a pass with a tear-off stub naming the Book.", changes: ["Intent chip “Borrowing · 1 Book” at the top.", "Barcode card continues into a stub with the call number set large.", "Stub shows the due date if borrowed today, and Remove."], tradeoff: "Most distinctive; leaves room for more than one Book later. Biggest change to an approved Figma frame.", files: ["app/(app)/(tabs)/digital-id.tsx", "new: src/digital-id/DeskPassStub.tsx"],
+        frames: [["Book page", "Same button as A.", () => bookSheet({ mode: "desk" })], ["Digital ID as a pass", "Code above, shelf number below the perforation.", () => digitalId({ heading: "borrowing", forBook: "stub", intent: "Borrowing · 1 Book" })]] },
+    ],
+  },
+  {
+    id: "blocked", name: "Blocked Member", short: "Good standing",
+    question: "How should a Member who is not in Good standing find out, before the desk?",
+    persona: "Elena Cruz · NTP / Employee · 1 overdue Loan, Fine PHP 35 so far",
+    variants: [
+      { key: "now", name: "Now", summary: "The current app.", changes: ["Home says nothing.", "Book page explains it in grey body text.", "Digital ID still promises to “lend you a Book”."], tradeoff: "She learns on the Book page, or at the desk.", files: [],
+        frames: [["Home", "Shelves as usual; only a red dot on My Books.", () => home({ name: "Elena", bell: 1, dot: true })], ["Book page", "Grey text where Borrow would be.", () => bookSheet({ mode: "blocked-now", q: "algoritms aquino" })], ["Digital ID", "“…to lend you a Book.”", () => digitalId({ who: ELENA, dot: true, seed: 11, num: "4022 6884 0277" })]] },
+      { key: "a", name: "Notice cards", summary: "One red notice, the same component, on Home, the Book page and the Digital ID.", changes: ["Home: a boxed notice above the shelves with “See my Loan”.", "Book page: the Profile notice style replaces Borrow.", "Digital ID: a notice says the code still works for returns."], tradeoff: "Uses a pattern the app already has. Takes vertical space on every screen while it applies.", files: ["src/home/HomeShelves.tsx", "src/loans/BorrowAction.tsx", "app/(app)/(tabs)/digital-id.tsx", "new: src/standing/StandingNotice.tsx"],
+        frames: [["Home", "First thing she reads.", () => home({ name: "Elena", bell: 1, dot: true, blocked: "card" })], ["Book page", "Red notice with a way to the Loan.", () => bookSheet({ mode: "blocked-notice", q: "algoritms aquino" })], ["Digital ID", "Sets expectations for the desk.", () => digitalId({ who: ELENA, dot: true, blocked: "notice", seed: 11, num: "4022 6884 0277" })]] },
+      { key: "b", name: "Standing bar", summary: "A persistent bar docked above the tab bar on every tab until she is back in Good standing.", changes: ["Red bar: “Not in Good standing · 1 overdue Loan · Fine PHP 35 so far”, tap for the Loan.", "Book page shows Borrow greyed out with a “Why?”.", "Screens keep their layout."], tradeoff: "Impossible to miss, costs no content space. Can feel like nagging; covers the bottom of lists.", files: ["app/(app)/(tabs)/_layout.tsx", "new: src/standing/StandingBar.tsx", "src/loans/BorrowAction.tsx"],
+        frames: [["Home", "Bar floats above the tabs.", () => home({ name: "Elena", bell: 1, dot: true, blocked: "bar" })], ["Book page", "Disabled Borrow, one-line reason.", () => bookSheet({ mode: "blocked-disabled", q: "algoritms aquino" })], ["Digital ID", "Same bar, same place.", () => digitalId({ who: ELENA, dot: true, blocked: "bar", seed: 11, num: "4022 6884 0277" })]] },
+      { key: "c", name: "To-do, and the ID changes job", summary: "Turn the block into steps, and let the Digital ID say what it is for today.", changes: ["Home: a “Before you can borrow again” checklist replaces the top of Home.", "Book page: “2 steps before you can borrow” and Save it for later.", "Digital ID heading becomes “Return and settle”."], tradeoff: "Most helpful and least scolding. The ID wording now depends on standing, so the desk sees a different heading.", files: ["src/home/HomeShelves.tsx", "src/loans/BorrowAction.tsx", "app/(app)/(tabs)/digital-id.tsx"],
+        frames: [["Home", "What to do, in order.", () => home({ name: "Elena", bell: 1, dot: true, blocked: "task" })], ["Book page", "Steps plus a useful action.", () => bookSheet({ mode: "blocked-task", q: "algoritms aquino" })], ["Digital ID", "The code’s job today: return and settle.", () => digitalId({ who: ELENA, dot: true, heading: "return", seed: 11, num: "4022 6884 0277" })]] },
+    ],
+  },
+  {
+    id: "load", name: "First load", short: "Home after sign-in",
+    question: "What should Home look like in the seconds before the shelves and Loans arrive?",
+    persona: "Maria Santos · just signed in · about 10 seconds until data arrives on the local API",
+    variants: [
+      { key: "now", name: "Now", summary: "The current app.", changes: ["Blank under the search bar, no loading sign.", "My Books is invisible (opacity 0) until Loans load, leaving a gap in the tab bar."], tradeoff: "Looks broken for the first seconds.", files: [],
+        frames: [["While loading", "Blank Home, three tabs with a hole.", () => home({ state: "blank", ghostBooks: true })], ["Loaded", "Shelves appear and the tab bar shifts.", () => home({})]] },
+      { key: "a", name: "Skeleton shelves", summary: "Draw the shelves’ shape at once; show My Books from the start.", changes: ["Shimmering placeholder shelves where the real ones will land.", "My Books tab visible as “My Books”; it only switches to “Saved” once Loans say the Member can’t borrow."], tradeoff: "Standard and cheap. Visitors and Alumni see “My Books” flip to “Saved” once, after load.", files: ["src/home/HomeShelves.tsx", "app/(app)/(tabs)/_layout.tsx"],
+        frames: [["While loading", "Same layout as loaded, no jump.", () => home({ state: "skeleton" })], ["Loaded", "Content fills the placeholders.", () => home({})]] },
+      { key: "b", name: "Keep last seen", summary: "Show the shelves from the last visit at once, with an “Updating” pill.", changes: ["Shelves and the My Books label are kept on the phone from the last session.", "A small “Updating shelves” pill until fresh data lands."], tradeoff: "Feels instant after the first visit. Needs a local cache; the very first sign-in still needs A’s skeleton.", files: ["src/home/HomeShelves.tsx", "app/(app)/(tabs)/_layout.tsx", "new: shelf cache in expo-secure-store or AsyncStorage"],
+        frames: [["While loading", "Yesterday’s shelves, refreshing.", () => home({ refreshing: true })], ["Loaded", "Pill gone, shelves current.", () => home({})]] },
+      { key: "c", name: "Hold the splash", summary: "Stay on the branded splash, with what is loading, until Home is complete.", changes: ["Splash shows the logo, a progress bar and a short list: signed in, Loans and Holds, shelves.", "Home appears complete, tab bar final."], tradeoff: "No half-built screens at all. The wait is visible and nothing is usable during it.", files: ["app/_layout.tsx", "app/(app)/(tabs)/home.tsx"],
+        frames: [["While loading", "Branded wait with real steps.", () => splash()], ["Loaded", "Home arrives finished.", () => home({})]] },
+    ],
+  },
+];
+
+/* ---------- State, routing, picks ---------- */
+let fixIdx = 0, varIdx = 1;
+let picks = {};
+try { picks = JSON.parse(localStorage.getItem("libras-p1-picks") || "{}") || {}; } catch (e) { picks = {}; }
+const savePicks = () => { try { localStorage.setItem("libras-p1-picks", JSON.stringify(picks)); } catch (e) {} };
+
+function readHash() {
+  const m = /^#([a-z]+)-([a-z]+)$/.exec(location.hash);
+  if (!m) return;
+  const f = FIXES.findIndex(x => x.id === m[1]);
+  if (f < 0) return;
+  const v = FIXES[f].variants.findIndex(x => x.key === m[2]);
+  if (v < 0) return;
+  fixIdx = f; varIdx = v;
+}
+function go(f, v) {
+  fixIdx = (f + FIXES.length) % FIXES.length;
+  const n = FIXES[fixIdx].variants.length;
+  varIdx = (v + n) % n;
+  const h = `#${FIXES[fixIdx].id}-${FIXES[fixIdx].variants[varIdx].key}`;
+  if (location.hash !== h) history.replaceState(null, "", h);
+  render();
+}
+
+function render() {
+  const fix = FIXES[fixIdx], v = fix.variants[varIdx];
+  document.getElementById("fixes").innerHTML = FIXES.map((f, i) =>
+    `<button data-fix="${i}" aria-current="${i === fixIdx}">${i + 1}. ${f.name}<small>${f.short}${picks[f.id] ? ` · picked ${picks[f.id].toUpperCase()}` : ""}</small></button>`).join("");
+  const picked = picks[fix.id] === v.key;
+  document.getElementById("info").innerHTML = `
+    <div class="eyebrow">${fix.name} · ${v.key === "now" ? "current app" : "variant " + v.key.toUpperCase()}</div>
+    <h2>${v.name}</h2>
+    <p class="q">${fix.question}</p>
+    <div class="persona">${fix.persona}</div>
+    <p>${v.summary}</p>
+    <div><h3>${v.key === "now" ? "What happens" : "What changes"}</h3><ul>${v.changes.map(c => `<li>${c}</li>`).join("")}</ul></div>
+    <div><h3>Trade-off</h3><p>${v.tradeoff}</p></div>
+    ${v.files.length ? `<div class="files"><h3>Files it touches</h3><ul>${v.files.map(f => `<li><code>${f}</code></li>`).join("")}</ul></div>` : ""}
+    <button class="pick-btn" id="pick" aria-pressed="${picked}" ${v.key === "now" ? "disabled" : ""}>${v.key === "now" ? "Baseline" : picked ? "✓ Picked for " + fix.name : "Pick this variant"}</button>`;
+  document.getElementById("frames").innerHTML = v.frames.map(([cap, sub, draw], i) =>
+    `<figure class="frame"><div class="phone">${draw()}</div><figcaption><b>${i + 1}. ${cap}</b>${sub}</figcaption></figure>`).join("");
+  document.getElementById("vlabel").innerHTML = `${fix.name}: ${v.key === "now" ? "Now" : v.key.toUpperCase()} <span>(${v.name})</span>`;
+  const summary = FIXES.map(f => `<span class="pick-chip">${f.name}: <b>${picks[f.id] ? picks[f.id].toUpperCase() : "–"}</b></span>`).join("");
+  document.getElementById("picks").innerHTML = `Your picks ${summary}<button class="btn-ghost" id="copy">Copy picks</button>`;
+  document.getElementById("frames").scrollLeft = 0;
+}
+
+document.addEventListener("click", e => {
+  const fb = e.target.closest("[data-fix]");
+  if (fb) return go(+fb.dataset.fix, 1);
+  if (e.target.closest("#prev")) return go(fixIdx, varIdx - 1);
+  if (e.target.closest("#next")) return go(fixIdx, varIdx + 1);
+  if (e.target.closest("#pick")) {
+    const f = FIXES[fixIdx], v = f.variants[varIdx];
+    if (v.key === "now") return;
+    picks[f.id] = picks[f.id] === v.key ? undefined : v.key;
+    if (!picks[f.id]) delete picks[f.id];
+    savePicks(); render(); return;
+  }
+  const cp = e.target.closest("#copy");
+  if (cp) {
+    const text = "Prototype picks: " + FIXES.map(f => `${f.name} ${picks[f.id] ? picks[f.id].toUpperCase() + " (" + f.variants.find(v => v.key === picks[f.id]).name + ")" : "none"}`).join(", ");
+    navigator.clipboard.writeText(text).then(() => { cp.textContent = "Copied"; }, () => { cp.textContent = text; });
+  }
+});
+document.addEventListener("keydown", e => {
+  if (e.target.closest && e.target.closest("input, textarea, [contenteditable]")) return;
+  if (e.key === "ArrowLeft") go(fixIdx, varIdx - 1);
+  else if (e.key === "ArrowRight") go(fixIdx, varIdx + 1);
+  else if (["1", "2", "3"].includes(e.key)) go(+e.key - 1, 1);
+});
+window.addEventListener("hashchange", () => { readHash(); render(); });
+
+/* The Digital ID countdown ticks like the app's. */
+let sec = 51;
+setInterval(() => { sec = sec <= 1 ? 60 : sec - 1; const t = `0:${String(sec).padStart(2, "0")}`; document.querySelectorAll(".tick").forEach(n => { n.textContent = sec === 60 ? "1:00" : t; }); }, 1000);
+
+readHash();
+render();
+</script>
