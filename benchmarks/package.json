@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Prototype benchmark code for the LIBRAS algorithm choices (Bounded Trie Levenshtein Search and Role-Weighted Min-Heap Dispatcher)",
+  "description": "Benchmarks of the LIBRAS algorithm choices (Bounded Levenshtein Trie Search and the Role-Weighted Priority Queue Dispatcher) against alternatives",
   "engines": {
     "node": ">=22.18"
   },
@@ -17,7 +17,8 @@
     "bench:h2h": "node --expose-gc --max-old-space-size=8192 src/bench-head-to-head.ts",
     "bench:pg": "node --expose-gc src/bench-pg.ts",
     "matrix": "node src/decision-matrix.ts",
-    "bench": "npm run bench:search && npm run bench:heap && npm run bench:claims"
+    "bench": "npm run bench:search && npm run bench:heap && npm run bench:claims",
+    "dataset": "node src/inspect-dataset.ts"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

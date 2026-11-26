@@ -1,6 +1,6 @@
 # LIBRAS algorithm benchmarks
 
-Prototype benchmark code for the two algorithm choices in PBL Milestone 1 against alternative algorithms. The chosen algorithms are **Bounded Levenshtein Trie Search** (catalog search) and **Role-Weighted Priority Queue Dispatcher** (hold dispatch); the milestone's original names were Bounded Levenshtein Trie Automaton Search and Role-Weighted Composite Min-Heap Hold Dispatcher. The write-up is in [`docs/algorithm-benchmark-report.md`](../docs/algorithm-benchmark-report.md) and the decision record is [`docs/adr/0001-fuzzy-search-and-hold-dispatch-algorithms.md`](../docs/adr/0001-fuzzy-search-and-hold-dispatch-algorithms.md).
+Benchmark code for the two algorithm choices of the LIBRAS Algorithm Design Document, measured against alternative algorithms. The search benchmarks include the code LIBRAS ships (`packages/shared/src/search/flat-trie.ts`, candidate `libras-flat-trie`), and the PostgreSQL benchmark uses the shipped holds schema and dispatch statement. The executed analysis is [`LIBRAS_Benchmarking_Analysis.ipynb`](LIBRAS_Benchmarking_Analysis.ipynb). The chosen algorithms are **Bounded Levenshtein Trie Search** (catalog search) and **Role-Weighted Priority Queue Dispatcher** (hold dispatch); the milestone's original names were Bounded Levenshtein Trie Automaton Search and Role-Weighted Composite Min-Heap Hold Dispatcher. The write-up is in [`docs/algorithm-benchmark-report.md`](../docs/algorithm-benchmark-report.md) and the decision record is [`docs/adr/0001-fuzzy-search-and-hold-dispatch-algorithms.md`](../docs/adr/0001-fuzzy-search-and-hold-dispatch-algorithms.md).
 
 Written in TypeScript to match the project stack (Node.js, Express, TypeScript). Needs Node 22.18 or newer, which runs `.ts` files directly.
 
@@ -11,9 +11,11 @@ The package is an npm workspace of the repository, so install from the repositor
 ```bash
 cd benchmarks
 npm test               # correctness: every candidate vs brute-force reference
+npm run dataset        # describe the synthetic datasets            -> results/dataset.json
 npm run bench:search   # fuzzy search latency, memory, scaling  -> results/search.md
 npm run bench:heap     # hold dispatcher throughput             -> results/heap.md
-npm run bench:claims   # checks numbers quoted in the milestone -> results/claims.md
+npm run bench:claims   # checks the design document's claims     -> results/claims.md
+npm run bench:worstcase # worst-case node bound, exhaustive dictionary -> results/worst-case.md
 npm run bench:h2h      # flat trie vs bigram index, repeated runs -> results/head-to-head.md
 npm run bench:pg       # PostgreSQL candidates (needs the container below) -> results/pg.md
 npm run matrix         # weighted decision matrix               -> results/decision-matrix.md
@@ -36,11 +38,17 @@ Add `--quick` to any `bench:*` script for a fast smoke run (smaller sizes, writt
 | Path | Contents |
 | --- | --- |
 | `src/data/catalog.ts` | Seeded synthetic lexicon and typo-query generator |
-| `src/search/` | Fuzzy-search candidates: `trie-dp` (the milestone design, spec-faithful), `trie-dp-flat` (same algorithm, optimised), `linear-scan`, `bk-tree`, `symspell`, `ngram` |
+| `src/search/` | Fuzzy-search candidates: `libras-production` (the shipped flat trie, imported from `packages/shared`), `trie-dp-flat` (its prototype), `trie-dp` (same algorithm with Map nodes), `linear-scan`, `bk-tree`, `symspell`, `ngram` |
 | `src/heap/` | Dispatcher candidates: binary heap (spec and indexed), 4-ary heap, lazy-delete heap, pairing heap, sorted array, linear scan |
 | `src/bench-*.ts`, `src/verify-claims.ts`, `src/decision-matrix.ts` | Runners |
 | `test/` | Correctness tests against a brute-force Levenshtein and a re-sorting queue model |
 | `results/` | Generated output from the runs reported in the docs |
+
+## Method
+
+- Every latency is the median across independent trials (5 for search, 7 for the in-memory queues, 5 for PostgreSQL), each with a shuffled candidate order and query order, reported with the interquartile range (IQR) across trials.
+- Every results file names the commit of the benchmark code it was generated from (`+dirty` when the measured code had uncommitted changes).
+- `bench:pg` reads the server version and host at run time and describes the environment it actually ran in.
 
 ## Limitations
 
