@@ -68,11 +68,11 @@ Checks:
 
 ## Part 3: Borrow, Digital ID, Loan confirmed (user stories 30 to 40, 51 to 59)
 
-1. Phone A, Book page: tap **Borrow**. The Book page closes and the Digital ID tab opens: a 1D barcode with 12 digits beneath it, and "Show it to the librarian at the desk". Wait for it to change (every 60 seconds).
-2. The app raises the brightness while the Digital ID tab is open. At the Librarian's phone, hold it 15 to 25 cm from the Digital ID so that the whole barcode is inside the frame. The phone says "Sent <12 digits> to the desk" and vibrates.
+1. Phone A, Book page: tap **Borrow at the desk**. The Borrow sheet rises over the Book: step 1, "Take it from the shelf", with the Book's call number; step 2, "Show this code to the librarian", with a 1D barcode and 12 digits beneath it. Wait for the code to change (every 60 seconds).
+2. The app raises the brightness while the Borrow sheet is open. At the Librarian's phone, hold it 15 to 25 cm from the Digital ID so that the whole barcode is inside the frame. The phone says "Sent <12 digits> to the desk" and vibrates.
 3. Desk: the Member card appears with name, Account Type and "Loans x of 3".
 4. Librarian's phone: scan the printed label of the available Copy. Desk: the Loan is confirmed with its due date.
-5. Phone A: the Digital ID tab gives way to **Successfully Borrowed** with the Book and the due date. Open **View My Books**: the Loan is listed under Current.
+5. Phone A: the Borrow sheet closes and **Successfully Borrowed** opens with the Book and the due date. Open **View My Books**: the Loan is listed under Current.
 6. On the desk press **Done with this Member**.
 7. Show the refusals the desk gives: scan the same Copy again for a Member (Copy already on Loan), or an expired Digital ID.
 

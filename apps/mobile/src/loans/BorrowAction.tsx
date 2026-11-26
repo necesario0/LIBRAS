@@ -1,21 +1,24 @@
-import { useRouter } from "expo-router";
+import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { LIBRARY_HOURS_SUMMARY, canBorrow, goodStandingNotice, isInLibraryOnlyAccount } from "@libras/shared";
+import { LIBRARY_HOURS_SUMMARY, canBorrow, isInLibraryOnlyAccount } from "@libras/shared";
 import type { AccountType, BookDetail, GoodStanding } from "@libras/shared";
 import { useAuth } from "../auth/AuthContext";
 import { CallToAction } from "../components/CallToAction";
+import { StandingNotice } from "../standing/StandingNotice";
 import { colors, fontFamily, fontSize, lineHeightFor } from "../theme/tokens";
+import { BorrowSheet } from "./BorrowSheet";
 import { currentLoans, useLoans } from "./useLoans";
 
 /**
  * The Borrow action of the Book page (Figma 609:1066). It appears when the
  * Book has an available Copy and the Member can borrow (including same-day
- * in-library borrowing for Visitors and Alumni within library hours). Borrow
- * records nothing: it closes the Book page and opens the Digital ID tab, and
- * the Loan exists only once the Librarian confirms it at the desk. A Member
- * at their loan limit, or not in Good standing (`goodStanding`, from the API;
- * undefined until it loads), is told so instead of being sent to the desk for
- * nothing.
+ * in-library borrowing for Visitors and Alumni within library hours). "Borrow
+ * at the desk" records nothing: it opens the Borrow sheet over the Book
+ * (`BorrowSheet`), with the shelf to take it from and the Digital ID to show,
+ * and the Loan exists only once the Librarian confirms it at the desk. A
+ * Member at their loan limit, or not in Good standing (`goodStanding`, from
+ * the API; undefined until it loads), is told so instead of being sent to the
+ * desk for nothing: the second with the red `StandingNotice`.
  */
 export function BorrowAction({
   book,
@@ -26,18 +29,14 @@ export function BorrowAction({
   accountType: AccountType;
   goodStanding: GoodStanding | undefined;
 }) {
-  const router = useRouter();
   const { request } = useAuth();
   const { state } = useLoans(request);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   if (!canBorrow(accountType) || book.availableCopies === 0) return null;
 
   if (goodStanding && !goodStanding.inGoodStanding) {
-    return (
-      <View style={styles.action} testID="borrow-not-in-good-standing">
-        <Text style={styles.note}>{goodStandingNotice(goodStanding.reasons)}</Text>
-      </View>
-    );
+    return <StandingNotice title="You can’t borrow this yet" reasons={goodStanding.reasons} from="pushed" testID="borrow-not-in-good-standing" />;
   }
 
   const policy = state.status === "loaded" ? state : undefined;
@@ -55,6 +54,12 @@ export function BorrowAction({
   }
 
   const inLibraryOnly = policy?.inLibraryOnly ?? isInLibraryOnlyAccount(accountType);
+  const loanPeriodDays = policy?.loanPeriodDays ?? null;
+  const due = inLibraryOnly
+    ? "Use it in the library and return it before closing."
+    : loanPeriodDays === null
+      ? ""
+      : `It is due back in ${loanPeriodDays} days.`;
 
   return (
     <View style={styles.action} testID="borrow-action">
@@ -65,15 +70,16 @@ export function BorrowAction({
             <Text style={styles.period}>In-library use only (return before closing)</Text>
             {`. Library hours: ${LIBRARY_HOURS_SUMMARY}. `}
           </>
-        ) : policy && policy.loanPeriodDays !== null ? (
+        ) : loanPeriodDays !== null ? (
           <>
             {"Loan period: "}
-            <Text style={styles.period}>{`${policy.loanPeriodDays} days.`}</Text>{" "}
+            <Text style={styles.period}>{`${loanPeriodDays} days.`}</Text>{" "}
           </>
         ) : null}
-        After you tap Borrow, show the code to the librarian.
+        Take it from the shelf, then show your Digital ID at the desk.
       </Text>
-      <CallToAction label="Borrow" onPress={() => router.dismissTo("/digital-id")} testID="book-borrow" />
+      <CallToAction label="Borrow at the desk" onPress={() => setSheetOpen(true)} testID="book-borrow" />
+      <BorrowSheet book={book} due={due} visible={sheetOpen} onClose={() => setSheetOpen(false)} />
     </View>
   );
 }

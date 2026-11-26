@@ -54,14 +54,15 @@ appId: ph.edu.umak.libras
 - assertVisible: ".*In-library use only \\(return before closing\\).*"
 - takeScreenshot: visitor-book-borrow
 
-# Tap Borrow -> opens Digital ID with in-library wording -> Librarian confirms at 10:00 AM Manila.
+# Borrow at the desk -> the Borrow sheet with in-library wording -> Librarian confirms at 10:00 AM Manila.
+# The sheet watches for the Loan itself, so Successfully Borrowed opens straight from it.
 - tapOn:
     id: book-borrow
 - extendedWaitUntil:
     visible:
-      id: digital-id-code
+      id: borrow-sheet-code
     timeout: 15000
-- assertVisible: ".*same-day in-library use during library hours.*"
+- assertVisible: ".*Use it in the library and return it before closing.*"
 - runScript: scripts/confirm-in-library-loan.js
 
 # Successfully Borrowed opens with the same-day 7:00 PM closing time.

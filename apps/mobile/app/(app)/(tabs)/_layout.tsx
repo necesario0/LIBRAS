@@ -12,7 +12,9 @@ export const unstable_settings = { initialRouteName: "home" };
  * The four tabs of the signed-in app, under the floating tab bar
  * (`FloatingTabBar`): Home, My Books, Digital ID and Profile. There is no
  * drawer. A Member who cannot borrow (a loan limit of zero in their Loan
- * Policy) sees the My Books tab as "Saved", with a bookmark.
+ * Policy) sees the My Books tab as "Saved", with a bookmark. Until the Loans
+ * have loaded the tab shows as My Books, the case for most Members, so the
+ * bar is whole from the first frame.
  *
  * The tabs share the Member's Loans and Holds (`MyBooksProvider`), fetched
  * again each time a tab comes into focus; the My Books tab gets a dot when a
@@ -49,8 +51,6 @@ function AppTabs() {
           title: saved ? "Saved" : "My Books",
           tabBarIcon: (icon) => (saved ? <SavedTabIcon {...icon} /> : <BooksTabIcon {...icon} />),
           tabBarButtonTestID: "tab-my-books",
-          // Until the Loan Policy is known the tab cannot say what it is: it keeps its place, unlabelled.
-          tabBarItemStyle: canBorrow === undefined ? { opacity: 0 } : undefined,
           tabBarBadge: attention.loans || attention.holds ? "" : undefined,
         }}
       />

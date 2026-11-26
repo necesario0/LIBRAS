@@ -1,4 +1,5 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useEffect, useRef } from "react";
+import { AccessibilityInfo, Animated, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { BookSearchResult, HomeShelf } from "@libras/shared";
 import { BookCover, coverColor } from "../components/BookCover";
 import { colors, coverInk, fontFamily, fontSize, lineHeightFor, radii, shelfCover, spacing } from "../theme/tokens";
@@ -75,6 +76,59 @@ export function HomeShelves({ shelves, onOpenBook }: { shelves: readonly HomeShe
   );
 }
 
+/** How many covers a placeholder shelf draws: more than fit, so the row runs off the edge like a real one. */
+const SKELETON_BOOKS = 4;
+
+/**
+ * Two shelves drawn in grey while Home fetches the real ones, in their exact
+ * size and place, so the screen has its shape from the first frame and nothing
+ * moves when the Books arrive. They pulse gently unless the phone asks for
+ * reduced motion.
+ */
+export function ShelvesLoading() {
+  const pulse = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    let loop: Animated.CompositeAnimation | undefined;
+    let cancelled = false;
+    void AccessibilityInfo.isReduceMotionEnabled().then((reduce) => {
+      if (reduce || cancelled) return;
+      loop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulse, { toValue: 0.55, duration: 700, useNativeDriver: true }),
+          Animated.timing(pulse, { toValue: 1, duration: 700, useNativeDriver: true }),
+        ]),
+      );
+      loop.start();
+    });
+    return () => {
+      cancelled = true;
+      loop?.stop();
+    };
+  }, [pulse]);
+
+  return (
+    <Animated.View style={{ opacity: pulse }} testID="home-shelves-loading" accessibilityLabel="Loading the shelves">
+      {[0, 1].map((shelf) => (
+        <View key={shelf} style={styles.shelf}>
+          <View style={styles.heading}>
+            <View style={[styles.block, styles.blockHeading]} />
+            <View style={[styles.block, styles.blockSubtitle]} />
+          </View>
+          <View style={[styles.rowScroll, styles.row, styles.skeletonRow]}>
+            {Array.from({ length: SKELETON_BOOKS }, (_, book) => (
+              <View key={book} style={styles.book}>
+                <View style={[styles.block, styles.blockCover]} />
+                <View style={[styles.block, styles.blockTitle]} />
+                <View style={[styles.block, styles.blockAuthor]} />
+              </View>
+            ))}
+          </View>
+        </View>
+      ))}
+    </Animated.View>
+  );
+}
+
 /** The shelves could not be loaded: one quiet line and a way to try again. Home still works without them. */
 export function ShelvesFailed({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
@@ -106,6 +160,14 @@ const styles = StyleSheet.create({
   coverText: { fontFamily: fontFamily.semiBold, fontSize: fontSize.resultNote, lineHeight: lineHeightFor(fontSize.resultNote), letterSpacing: -0.2 },
   title: { fontFamily: fontFamily.medium, fontSize: fontSize.resultNote, lineHeight: lineHeightFor(fontSize.resultNote), color: colors.black },
   author: { fontFamily: fontFamily.regular, fontSize: fontSize.micro, lineHeight: lineHeightFor(fontSize.micro), color: colors.textMuted },
+  // The placeholders take the sizes of what they stand for: a cover, two lines of title, one of author.
+  skeletonRow: { flexDirection: "row", overflow: "hidden" },
+  block: { backgroundColor: colors.surface, borderRadius: radii.coverSmall },
+  blockHeading: { width: 150, height: lineHeightFor(fontSize.subheading) },
+  blockSubtitle: { width: 210, height: lineHeightFor(fontSize.resultMeta) - 3, marginTop: 3 },
+  blockCover: { width: shelfCover.width, height: shelfCover.height, borderRadius: radii.cover },
+  blockTitle: { width: shelfCover.width - 14, height: lineHeightFor(fontSize.resultNote) - 3 },
+  blockAuthor: { width: shelfCover.width / 2, height: lineHeightFor(fontSize.micro) - 3 },
   failed: { marginTop: spacing.xl, gap: spacing.xs, paddingHorizontal: spacing.xs },
   failedText: { fontFamily: fontFamily.regular, fontSize: fontSize.label, lineHeight: lineHeightFor(fontSize.label), color: colors.textMuted },
   retry: { fontFamily: fontFamily.medium, fontSize: fontSize.label, lineHeight: lineHeightFor(fontSize.label), color: colors.primary },

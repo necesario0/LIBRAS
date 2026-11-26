@@ -4,6 +4,7 @@ import { ActivityIndicator, BackHandler, Keyboard, Pressable, ScrollView, StyleS
 import { useAuth, useMember } from "../../../src/auth/AuthContext";
 import { api } from "../../../src/api";
 import { useCatalogSearch } from "../../../src/catalog/useCatalogSearch";
+import { useClearance } from "../../../src/clearance/useClearance";
 import { useFetch, useFocusedFetch } from "../../../src/hooks/useFocusedFetch";
 import { useScreenTop } from "../../../src/hooks/useScreenTop";
 import { useHideTabBar } from "../../../src/navigation/TabBarVisibility";
@@ -11,7 +12,7 @@ import { useTabBarSpace } from "../../../src/navigation/FloatingTabBar";
 import { SearchResultRow } from "../../../src/home/BookResultRow";
 import { AnnouncementBanner } from "../../../src/home/AnnouncementBanner";
 import { HomeHeader } from "../../../src/home/HomeHeader";
-import { HomeShelves, ShelvesFailed } from "../../../src/home/HomeShelves";
+import { HomeShelves, ShelvesFailed, ShelvesLoading } from "../../../src/home/HomeShelves";
 import { NotificationBell } from "../../../src/home/NotificationBell";
 import { SearchBar } from "../../../src/home/SearchBar";
 import { NoResults, SearchFailed } from "../../../src/home/SearchMessage";
@@ -26,6 +27,7 @@ import { Suggestions } from "../../../src/search/Suggestions";
 import { useRecentSearches } from "../../../src/search/useRecentSearches";
 import { useSuggestions } from "../../../src/search/useSuggestions";
 import { useUnreadNotifications } from "../../../src/notifications/useUnreadNotifications";
+import { StandingNotice } from "../../../src/standing/StandingNotice";
 import { colors, fontFamily, fontSize, spacing } from "../../../src/theme/tokens";
 import { DEFAULT_CATALOG_SEARCH_FILTERS, anyFilterOn, memberCollege, subjectFilterOptions } from "@libras/shared";
 import type { CatalogSearchResponse } from "@libras/shared";
@@ -42,7 +44,9 @@ function resultCount(response: CatalogSearchResponse): string {
  * 1032:1994) as the approved Tier 3 preview lays it out: the greeting and the
  * search bar, then the running Announcement as a banner (nothing when none
  * runs), then the shelves (New arrivals, Popular in your college,
- * Available now in your top Subject). Loans, Holds and the Digital ID have
+ * Available now in your top Subject), drawn as grey placeholders until they
+ * arrive (`ShelvesLoading`). A Member who is not in Good standing reads that
+ * first, in the red `StandingNotice` above everything else. Loans, Holds and the Digital ID have
  * their own tabs, so Home is about finding Books. There is no menu. The bell at
  * the right of the header opens the Notifications screen, with a badge for the
  * unread count, read again whenever Home comes into view or the app returns to
@@ -83,6 +87,9 @@ export default function HomeScreen() {
   const home = useFocusedFetch(request, api.getHome, "The shelves could not be loaded.");
   const subjects = useFetch(request, api.getSubjects, "The Subjects could not be loaded. Close the filters and try again.");
   const unread = useUnreadNotifications();
+  // Read with the shelves, so a Member who is not in Good standing learns it on Home, before the desk.
+  const { state: clearance } = useClearance(request);
+  const standing = clearance.status === "loaded" ? clearance.goodStanding : undefined;
 
   // Search mode can stay open under another screen (Home is left through a Book sheet's links): the bar is hidden only while Home itself is showing.
   const homeShowing = useIsFocused();
@@ -176,12 +183,18 @@ export default function HomeScreen() {
           contentContainerStyle={[styles.bodyContent, { paddingBottom: tabBarSpace }]}
           showsVerticalScrollIndicator={false}
         >
+          {standing !== undefined && !standing.inGoodStanding ? (
+            <View style={styles.standing}>
+              <StandingNotice title="You can’t borrow right now" reasons={standing.reasons} from="tab" outlined testID="home-standing" />
+            </View>
+          ) : null}
           {home.state.status === "loaded" && home.state.announcement !== null ? (
             // The shelf below brings its own 24 of space, as in the preview, so the screen's gap is taken back here.
             <View style={styles.banner}>
               <AnnouncementBanner announcement={home.state.announcement} onOpen={() => router.push("/announcement")} />
             </View>
           ) : null}
+          {home.state.status === "loading" ? <ShelvesLoading /> : null}
           {home.state.status === "loaded" ? <HomeShelves shelves={home.state.shelves} onOpenBook={openBook} /> : null}
           {home.state.status === "error" ? <ShelvesFailed message={home.state.message} onRetry={() => void home.reload()} /> : null}
         </ScrollView>
@@ -258,6 +271,7 @@ const styles = StyleSheet.create({
   profile: { flexShrink: 1 },
   search: { paddingHorizontal: spacing.home, marginTop: 10 },
   banner: { marginBottom: -spacing.md },
+  standing: { marginTop: spacing.xs },
   modeBar: { paddingHorizontal: spacing.home, paddingVertical: 4 },
   body: { flex: 1, marginTop: spacing.lg },
   bodyContent: { paddingHorizontal: spacing.home, gap: spacing.md },
