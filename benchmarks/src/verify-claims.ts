@@ -6,11 +6,11 @@
 // them, and the flat trie LIBRAS ships visits exactly the same nodes (same trie, same pruning rule).
 // Latencies use the shipped code (packages/shared/src/search) and are medians across TRIALS shuffled trials.
 import { generateCatalog } from "../../apps/api/src/seed/catalog-generator.ts";
-import { buildCatalogIndex, tokenize, typoBoundFor } from "../../packages/shared/src/search/catalog-index.ts";
+import { buildCatalogIndex, tokenize } from "../../packages/shared/src/search/catalog-index.ts";
 import type { IndexedBook } from "../../packages/shared/src/search/catalog-index.ts";
 import { generateLexicon, generateQueries } from "./data/catalog.ts";
 import {
-  environmentInfo, fmtInt, fmtMB, fmtMs, fmtTrialMs, gc, mdTable, measureRetained, provenance, shuffled, summarize,
+  environmentInfo, fmtInt, fmtMB, fmtTrialMs, gc, mdTable, measureRetained, provenance, shuffled, summarize,
   nowNs, trialStat, writeResult,
 } from "./harness.ts";
 import { makeReservation } from "./heap/types.ts";
