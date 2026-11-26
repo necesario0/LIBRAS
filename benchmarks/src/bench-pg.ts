@@ -217,7 +217,7 @@ async function benchSearch() {
   queries.forEach((q, i) => {
     if (!q.source || misses.length >= 10) return;
     if (!returnedBy["pg-trgm-gin-0.3"]![i]!.has(q.source)) {
-      misses.push([`\`${q.text}\``, `\`${q.source}\``, q.ops.join(" + ") || "none", levenshtein(q.text, q.source), returnedBy["libras-flat-trie"]![i]!.has(q.source) ? "yes" : "NO", returnedBy["pg-trgm-gin-0.1"]![i]!.has(q.source) ? "yes" : "no"]);
+      misses.push([`\`${q.text}\``, `\`${q.source}\``, q.ops.join(" + ") || "none", levenshtein(q.text, q.source), returnedBy["libras-flat-trie"]![i]!.has(q.source) ? "yes" : "NO", returnedBy["pg-trgm-gin-0.1"]![i]!.has(q.source) ? "yes" : "NO"]);
     }
   });
 

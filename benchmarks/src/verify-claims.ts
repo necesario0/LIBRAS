@@ -66,7 +66,7 @@ let internal = 0, fanout = 0;
 }
 
 out.push("## Claim 1 - Trie memory\n");
-out.push("First version: \"approximately 18.5 MB\" for 50,000 titles x 4 tokens x 6 characters, node count about 0.35 x (N x L_avg). Revised: the shipped flat trie (32-bit typed arrays) needs about 4 to 5 MB for 50,000 distinct tokens and about 17 MB for 200,000; a pointer trie with Map children needs over ten times more.\n");
+out.push("First version: \"approximately 18.5 MB\" for 50,000 titles x 4 tokens x 6 characters, node count about 0.35 x (N x L_avg). Revised: the shipped flat trie (32-bit typed arrays) needs a few MB for 50,000 distinct tokens and grows in step with its node count (Claim 3 lists it up to 200,000 tokens); a pointer trie with Map children needs over ten times more.\n");
 facts.memory = { tokens: N, meanLength: avgLen, trieNodes: trie.nodeCount, nodesPerLetter: trie.nodeCount / (N * avgLen), shippedBytes: shippedMem, mapTrieBytes: trieMem };
 out.push(mdTable(
   ["Measure", "Value"],

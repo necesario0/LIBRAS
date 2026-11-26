@@ -16,7 +16,7 @@
 //
 // If the bounds are right, expanded / (m^3 sigma^2) and visited / (m^3 sigma^3) stay bounded as m and sigma grow,
 // and the log-log slope of expanded against m approaches k + 1 = 3 from below as m grows past k.
-import { mdTable, writeResult } from "./harness.ts";
+import { environmentInfo, mdTable, provenance, writeResult } from "./harness.ts";
 
 function countNodes(sigma: number, m: number, k: number): { visited: number; expanded: number } {
   const q = Array.from({ length: m }, (_, i) => i % sigma);
@@ -50,6 +50,7 @@ function countNodes(sigma: number, m: number, k: number): { visited: number; exp
 const QUICK = process.argv.includes("--quick");
 const K = 2;
 const out: string[] = ["# Worst-case node counts, exhaustive dictionary, k = 2\n"];
+out.push(`${provenance(environmentInfo())} Node counts are deterministic: they depend only on sigma, m and k, not on the machine.\n`);
 out.push("Expanded = nodes whose children are explored (row minimum <= k); bound O(m^3 sigma^2). Visited = nodes whose DP row is computed, one per edge probe; bound O(m^3 sigma^3). The slope is the log-log growth of expanded nodes between consecutive m; it should approach k + 1 = 3 from below as m grows (it is lower for small m because the edit balls of short prefixes overlap and are clipped at length 0).\n");
 const configs: Array<[number, number[]]> = QUICK
   ? [[3, [4, 6, 8]]]
