@@ -4,7 +4,13 @@
     "platform": "win32 x64",
     "cpus": "16x AMD Ryzen 7 PRO 5850U with Radeon Graphics",
     "totalMemGB": 15.3,
-    "date": "2026-11-09T18:57:02.752Z"
+    "commit": "97d046449d70",
+    "date": "2026-11-26T12:27:20.282Z"
+  },
+  "server": {
+    "version": "PostgreSQL 16.15 (Debian 16.15-1.pgdg13+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit",
+    "host": "127.0.0.1:55432",
+    "text": "Server: PostgreSQL 16.15 (Debian 16.15-1.pgdg13+2) on x86_64-pc-linux-gnu at 127.0.0.1:55432 on this machine, inside a Linux container or VM reached through loopback port forwarding (the client runs on win32); shared_buffers 128MB, max_connections 100. Client: Node v24.16.0 on win32 x64."
   },
   "quick": false,
   "search": {
@@ -12,22 +18,55 @@
       "description": "Milestone baseline 1: ILIKE '%term%' with no index (substring match, not edit distance)",
       "usesIndex": false,
       "seq": {
-        "n": 400,
-        "mean": 21959880.25,
-        "p50": 21807600,
-        "p95": 23883800,
-        "p99": 24853500,
-        "max": 28709800
+        "p50": {
+          "median": 39958700,
+          "q1": 39852500,
+          "q3": 40243800,
+          "iqr": 391300,
+          "trials": [
+            40243800,
+            40256800,
+            39958700,
+            39758600,
+            39852500
+          ]
+        },
+        "p95": {
+          "median": 43665000,
+          "q1": 43622200,
+          "q3": 43981500,
+          "iqr": 359300,
+          "trials": [
+            43981500,
+            44317400,
+            43665000,
+            43349100,
+            43622200
+          ]
+        },
+        "p99": {
+          "median": 45964900,
+          "q1": 45178100,
+          "q3": 46764000,
+          "iqr": 1585900,
+          "trials": [
+            45178100,
+            53864400,
+            46764000,
+            44370000,
+            45964900
+          ]
+        }
       },
       "concurrent": {
         "n": 400,
-        "mean": 189127112.25,
-        "p50": 191200600,
-        "p95": 311530500,
-        "p99": 353833300,
-        "max": 407377800
+        "mean": 255998246.75,
+        "p50": 253889000,
+        "p95": 449928100,
+        "p99": 615001900,
+        "max": 692012100
       },
-      "qps50": 256.69415026760043,
+      "qps50": 190.41312746183348,
       "recall": 0.03737989219592219,
       "precision": 0.09449052132701422
     },
@@ -35,22 +74,55 @@
       "description": "fuzzystrmatch levenshtein_less_equal over every row, with a length prefilter (exact, no index)",
       "usesIndex": false,
       "seq": {
-        "n": 400,
-        "mean": 8745093.75,
-        "p50": 8847700,
-        "p95": 10461900,
-        "p99": 11300500,
-        "max": 13103300
+        "p50": {
+          "median": 15677600,
+          "q1": 15654600,
+          "q3": 15693100,
+          "iqr": 38500,
+          "trials": [
+            15693100,
+            15677600,
+            15654600,
+            15560600,
+            15767100
+          ]
+        },
+        "p95": {
+          "median": 17024800,
+          "q1": 16997300,
+          "q3": 17050800,
+          "iqr": 53500,
+          "trials": [
+            16981900,
+            17024800,
+            17050800,
+            16997300,
+            17190900
+          ]
+        },
+        "p99": {
+          "median": 17684900,
+          "q1": 17341800,
+          "q3": 18779300,
+          "iqr": 1437500,
+          "trials": [
+            17237800,
+            18779300,
+            17684900,
+            17341800,
+            19011500
+          ]
+        }
       },
       "concurrent": {
         "n": 400,
-        "mean": 74168321.5,
-        "p50": 63247200,
-        "p95": 185660500,
-        "p99": 253303800,
-        "max": 298519100
+        "mean": 97229208.75,
+        "p50": 82677000,
+        "p95": 217099700,
+        "p99": 281226000,
+        "max": 343057500
       },
-      "qps50": 656.3288312457155,
+      "qps50": 501.3379456424332,
       "recall": 1,
       "precision": 1
     },
@@ -58,22 +130,55 @@
       "description": "pg_trgm GIN candidate filter (default similarity threshold 0.3) then exact levenshtein verify",
       "usesIndex": true,
       "seq": {
-        "n": 400,
-        "mean": 1628223.75,
-        "p50": 1517500,
-        "p95": 2577900,
-        "p99": 3224000,
-        "max": 3411500
+        "p50": {
+          "median": 2793300,
+          "q1": 2787000,
+          "q3": 2834000,
+          "iqr": 47000,
+          "trials": [
+            2787000,
+            2834000,
+            2793300,
+            2758700,
+            2857500
+          ]
+        },
+        "p95": {
+          "median": 4882600,
+          "q1": 4878400,
+          "q3": 4907900,
+          "iqr": 29500,
+          "trials": [
+            4907900,
+            4826300,
+            4882600,
+            4878400,
+            4942000
+          ]
+        },
+        "p99": {
+          "median": 5879300,
+          "q1": 5865900,
+          "q3": 5884900,
+          "iqr": 19000,
+          "trials": [
+            5884900,
+            5819100,
+            5865900,
+            5879300,
+            6691100
+          ]
+        }
       },
       "concurrent": {
         "n": 400,
-        "mean": 20648640.25,
-        "p50": 10449800,
-        "p95": 84819300,
-        "p99": 133914700,
-        "max": 142577200
+        "mean": 28940790.75,
+        "p50": 13260000,
+        "p95": 148987800,
+        "p99": 190309300,
+        "max": 205083200
       },
-      "qps50": 2377.547393435354,
+      "qps50": 1682.5202133772134,
       "recall": 0.16897117412702134,
       "precision": 1
     },
@@ -81,46 +186,510 @@
       "description": "pg_trgm GIN candidate filter with a low threshold (0.1) for higher recall, then exact verify",
       "usesIndex": true,
       "seq": {
-        "n": 400,
-        "mean": 6712454.25,
-        "p50": 6156900,
-        "p95": 12475700,
-        "p99": 14859200,
-        "max": 20042400
+        "p50": {
+          "median": 10814300,
+          "q1": 10786900,
+          "q3": 10822600,
+          "iqr": 35700,
+          "trials": [
+            10917100,
+            10822600,
+            10786900,
+            10814300,
+            10761700
+          ]
+        },
+        "p95": {
+          "median": 22414700,
+          "q1": 22409600,
+          "q3": 22896800,
+          "iqr": 487200,
+          "trials": [
+            22968400,
+            22414700,
+            22373600,
+            22896800,
+            22409600
+          ]
+        },
+        "p99": {
+          "median": 27114700,
+          "q1": 27095400,
+          "q3": 27154100,
+          "iqr": 58700,
+          "trials": [
+            27154100,
+            26885100,
+            27095400,
+            28057200,
+            27114700
+          ]
+        }
       },
       "concurrent": {
         "n": 400,
-        "mean": 49244010.25,
-        "p50": 38619200,
-        "p95": 127968600,
-        "p99": 199585200,
-        "max": 249058800
+        "mean": 75287485.5,
+        "p50": 56157300,
+        "p95": 203894700,
+        "p99": 321600700,
+        "max": 361830800
       },
-      "qps50": 972.1489059922287,
+      "qps50": 627.9606381712782,
       "recall": 0.6983829388329037,
       "precision": 1
+    },
+    "failureModes": {
+      "columns": [
+        "libras-flat-trie",
+        "pg-trgm-gin-0.3",
+        "pg-trgm-gin-0.1",
+        "pg-ilike-scan"
+      ],
+      "rows": [
+        [
+          "no typo",
+          126,
+          "0.0%",
+          "0.0%",
+          "0.0%",
+          "0.0%"
+        ],
+        [
+          "one substitution",
+          32,
+          "0.0%",
+          "6.3%",
+          "0.0%",
+          "96.9%"
+        ],
+        [
+          "one deletion",
+          43,
+          "0.0%",
+          "2.3%",
+          "0.0%",
+          "65.1%"
+        ],
+        [
+          "one insertion",
+          22,
+          "0.0%",
+          "0.0%",
+          "0.0%",
+          "100.0%"
+        ],
+        [
+          "one transposition",
+          41,
+          "0.0%",
+          "17.1%",
+          "0.0%",
+          "97.6%"
+        ],
+        [
+          "two edit operations",
+          120,
+          "24.2%",
+          "46.7%",
+          "26.7%",
+          "99.2%"
+        ],
+        [
+          "Levenshtein distance 0",
+          128,
+          "0.0%",
+          "0.0%",
+          "0.0%",
+          "0.0%"
+        ],
+        [
+          "Levenshtein distance 1",
+          107,
+          "0.0%",
+          "4.7%",
+          "0.0%",
+          "85.0%"
+        ],
+        [
+          "Levenshtein distance 2",
+          120,
+          "0.0%",
+          "26.7%",
+          "2.5%",
+          "100.0%"
+        ],
+        [
+          "Levenshtein distance 3+ (beyond k)",
+          29,
+          "100.0%",
+          "100.0%",
+          "100.0%",
+          "100.0%"
+        ],
+        [
+          "short word (3-6 chars)",
+          99,
+          "6.1%",
+          "35.4%",
+          "9.1%",
+          "60.6%"
+        ],
+        [
+          "medium word (7-12 chars)",
+          226,
+          "8.0%",
+          "11.5%",
+          "8.0%",
+          "63.3%"
+        ],
+        [
+          "long word (13+ chars)",
+          59,
+          "8.5%",
+          "8.5%",
+          "8.5%",
+          "62.7%"
+        ]
+      ],
+      "examples": [
+        [
+          "`abnako`",
+          "`anbako`",
+          "transposition",
+          2,
+          "yes",
+          "yes"
+        ],
+        [
+          "`ogide`",
+          "`godide`",
+          "transposition + deletion",
+          2,
+          "yes",
+          "yes"
+        ],
+        [
+          "`stro`",
+          "`stor`",
+          "transposition",
+          2,
+          "yes",
+          "yes"
+        ],
+        [
+          "`psourtcliboist`",
+          "`spourtclibiost`",
+          "transposition + transposition",
+          4,
+          "NO",
+          "NO"
+        ],
+        [
+          "`cakaliica`",
+          "`cakolicia`",
+          "transposition + substitution",
+          3,
+          "NO",
+          "NO"
+        ],
+        [
+          "`huolpoom`",
+          "`houploom`",
+          "transposition + transposition",
+          3,
+          "NO",
+          "NO"
+        ],
+        [
+          "`ithau`",
+          "`iotham`",
+          "deletion + substitution",
+          2,
+          "yes",
+          "yes"
+        ],
+        [
+          "`wotr`",
+          "`wourt`",
+          "deletion + transposition",
+          2,
+          "yes",
+          "yes"
+        ],
+        [
+          "`veeoo`",
+          "`vedeko`",
+          "substitution + deletion",
+          2,
+          "yes",
+          "yes"
+        ],
+        [
+          "`hce`",
+          "`che`",
+          "transposition + substitution",
+          2,
+          "yes",
+          "NO"
+        ]
+      ]
     }
   },
   "dispatch": {
-    "steady": {
-      "n": 7600,
-      "mean": 1732758.1973684211,
-      "p50": 1671700,
-      "p95": 2193700,
-      "p99": 2581300,
-      "max": 7254000
-    },
-    "churn": {
-      "n": 4000,
-      "mean": 1660484.55,
-      "p50": 1617900,
-      "p95": 1992000,
-      "p99": 2363800,
-      "max": 3128900
-    },
     "orderMatches": true,
-    "concServed": 2000,
-    "concDistinct": 2000,
-    "concWall": 0.4186233
+    "perSize": {
+      "5000": {
+        "push": {
+          "p50": {
+            "median": 2788400,
+            "q1": 2787600,
+            "q3": 2788900,
+            "iqr": 1300,
+            "trials": [
+              2788900,
+              2784100,
+              2787600,
+              2828300,
+              2788400
+            ]
+          },
+          "p95": {
+            "median": 3280500,
+            "q1": 3278400,
+            "q3": 3291400,
+            "iqr": 13000,
+            "trials": [
+              3291400,
+              3264000,
+              3280500,
+              3346100,
+              3278400
+            ]
+          }
+        },
+        "dispatch": {
+          "p50": {
+            "median": 3041400,
+            "q1": 3038800,
+            "q3": 3050500,
+            "iqr": 11700,
+            "trials": [
+              3038800,
+              3041400,
+              3037200,
+              3096900,
+              3050500
+            ]
+          },
+          "p95": {
+            "median": 3580800,
+            "q1": 3578600,
+            "q3": 3622100,
+            "iqr": 43500,
+            "trials": [
+              3580800,
+              3578600,
+              3526300,
+              3734200,
+              3622100
+            ]
+          }
+        },
+        "cancel": {
+          "p50": {
+            "median": 2865000,
+            "q1": 2859400,
+            "q3": 2868600,
+            "iqr": 9200,
+            "trials": [
+              2859400,
+              2845600,
+              2865000,
+              2913600,
+              2868600
+            ]
+          },
+          "p95": {
+            "median": 3390200,
+            "q1": 3344100,
+            "q3": 3390600,
+            "iqr": 46500,
+            "trials": [
+              3390600,
+              3344100,
+              3299800,
+              3442800,
+              3390200
+            ]
+          }
+        }
+      },
+      "50000": {
+        "push": {
+          "p50": {
+            "median": 2841500,
+            "q1": 2834500,
+            "q3": 2857300,
+            "iqr": 22800,
+            "trials": [
+              2810600,
+              2857300,
+              2896500,
+              2841500,
+              2834500
+            ]
+          },
+          "p95": {
+            "median": 3345900,
+            "q1": 3336900,
+            "q3": 3453300,
+            "iqr": 116400,
+            "trials": [
+              3275300,
+              3543300,
+              3453300,
+              3336900,
+              3345900
+            ]
+          }
+        },
+        "dispatch": {
+          "p50": {
+            "median": 3110900,
+            "q1": 3102600,
+            "q3": 3134600,
+            "iqr": 32000,
+            "trials": [
+              3055300,
+              3134600,
+              3191500,
+              3102600,
+              3110900
+            ]
+          },
+          "p95": {
+            "median": 3700100,
+            "q1": 3689300,
+            "q3": 3782200,
+            "iqr": 92900,
+            "trials": [
+              3603100,
+              3848700,
+              3782200,
+              3700100,
+              3689300
+            ]
+          }
+        },
+        "cancel": {
+          "p50": {
+            "median": 2913800,
+            "q1": 2908000,
+            "q3": 2924300,
+            "iqr": 16300,
+            "trials": [
+              2879300,
+              2924300,
+              2981400,
+              2908000,
+              2913800
+            ]
+          },
+          "p95": {
+            "median": 3517100,
+            "q1": 3454100,
+            "q3": 3612700,
+            "iqr": 158600,
+            "trials": [
+              3314300,
+              3697000,
+              3612700,
+              3517100,
+              3454100
+            ]
+          }
+        }
+      }
+    },
+    "concurrency": [
+      {
+        "name": "SKIP LOCKED (shipped)",
+        "served": 2000,
+        "distinct": 2000,
+        "rollbacks": 0,
+        "wall": 1.8206387,
+        "throughput": 1098.5155923577809,
+        "tau": 0.998944472236118,
+        "discordantShare": 0.0005277638819409704,
+        "maxDisplacement": 8,
+        "meanDisplacement": 0.917,
+        "leftBehind": 0
+      },
+      {
+        "name": "SKIP LOCKED, 10% of returns roll back",
+        "served": 1800,
+        "distinct": 1800,
+        "rollbacks": 200,
+        "wall": 1.8034783,
+        "throughput": 998.0713380360606,
+        "tau": 0.9939237848187265,
+        "discordantShare": 0.0030381075906367734,
+        "maxDisplacement": 70,
+        "meanDisplacement": 4.586666666666667,
+        "leftBehind": 2
+      },
+      {
+        "name": "SKIP LOCKED, 5 clients hold the top Hold then roll back",
+        "served": 1996,
+        "distinct": 1996,
+        "rollbacks": 0,
+        "wall": 1.9140874,
+        "throughput": 1042.7945975716677,
+        "tau": 0.9928518691518375,
+        "discordantShare": 0.0035740654240812453,
+        "maxDisplacement": 35,
+        "meanDisplacement": 6.31062124248497,
+        "leftBehind": 4
+      },
+      {
+        "name": "per-title advisory lock (strict)",
+        "served": 2000,
+        "distinct": 2000,
+        "rollbacks": 0,
+        "wall": 17.254364,
+        "throughput": 115.9127047510995,
+        "tau": 1,
+        "discordantShare": 0,
+        "maxDisplacement": 0,
+        "meanDisplacement": 0,
+        "leftBehind": 0
+      },
+      {
+        "name": "per-title advisory lock, 10% roll back",
+        "served": 1800,
+        "distinct": 1800,
+        "rollbacks": 200,
+        "wall": 17.1969869,
+        "throughput": 104.66949881784234,
+        "tau": 1,
+        "discordantShare": 0,
+        "maxDisplacement": 0,
+        "meanDisplacement": 0,
+        "leftBehind": 0
+      },
+      {
+        "name": "per-title advisory lock, 5 lock holders",
+        "served": 2000,
+        "distinct": 2000,
+        "rollbacks": 0,
+        "wall": 24.1320955,
+        "throughput": 82.87717906635999,
+        "tau": 1,
+        "discordantShare": 0,
+        "maxDisplacement": 0,
+        "meanDisplacement": 0,
+        "leftBehind": 0
+      }
+    ]
   }
 }

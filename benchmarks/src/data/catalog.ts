@@ -104,7 +104,11 @@ export interface QueryCase {
   source: string | null;
   /** Number of random edit operations applied (transposition counts as one op). */
   edits: number;
+  /** The edit operations applied, in order (empty for an exact or a no-match query). Used by the failure-mode breakdown. */
+  ops: EditOp[];
 }
+
+export type EditOp = "substitution" | "deletion" | "insertion" | "transposition";
 
 function alphabetOf(lexicon: readonly string[]): string[] {
   const s = new Set<string>();
@@ -112,20 +116,21 @@ function alphabetOf(lexicon: readonly string[]): string[] {
   return [...s].sort();
 }
 
-function applyEdit(rng: Rng, s: string, alphabet: readonly string[]): string {
+function applyEdit(rng: Rng, s: string, alphabet: readonly string[]): { text: string; op: EditOp | null } {
+  // The random draws are the same as in the first version of this generator, so the query sets are unchanged.
   const op = randInt(rng, 0, 3);
-  if (s.length === 0) return pick(rng, alphabet);
+  if (s.length === 0) return { text: pick(rng, alphabet), op: "insertion" };
   const i = randInt(rng, 0, s.length - 1);
   switch (op) {
-    case 0: // substitution
-      return s.slice(0, i) + pick(rng, alphabet) + s.slice(i + 1);
-    case 1: // deletion (keep at least 1 char)
-      return s.length > 1 ? s.slice(0, i) + s.slice(i + 1) : s;
-    case 2: // insertion
-      return s.slice(0, i) + pick(rng, alphabet) + s.slice(i);
+    case 0:
+      return { text: s.slice(0, i) + pick(rng, alphabet) + s.slice(i + 1), op: "substitution" };
+    case 1: // keep at least 1 char
+      return s.length > 1 ? { text: s.slice(0, i) + s.slice(i + 1), op: "deletion" } : { text: s, op: null };
+    case 2:
+      return { text: s.slice(0, i) + pick(rng, alphabet) + s.slice(i), op: "insertion" };
     default: // adjacent transposition
-      if (i + 1 < s.length) return s.slice(0, i) + s[i + 1] + s[i] + s.slice(i + 2);
-      return s;
+      if (i + 1 < s.length) return { text: s.slice(0, i) + s[i + 1] + s[i] + s.slice(i + 2), op: "transposition" };
+      return { text: s, op: null };
   }
 }
 
@@ -155,16 +160,21 @@ export function generateQueries(lexicon: readonly string[], opts: QueryOptions):
       const len = randInt(rng, Math.max(minLen, 4), Math.min(maxLen, 14));
       let s = "";
       for (let i = 0; i < len; i++) s += pick(rng, alphabet);
-      out.push({ text: s, source: null, edits: -1 });
+      out.push({ text: s, source: null, edits: -1, ops: [] });
       continue;
     }
     const word = pick(rng, lexicon);
     if (word.length < minLen - 2 || word.length > maxLen + 2) continue;
     const edits = pick(rng, editChoices);
     let q = word;
-    for (let e = 0; e < edits; e++) q = applyEdit(rng, q, alphabet);
+    const ops: EditOp[] = [];
+    for (let e = 0; e < edits; e++) {
+      const edit = applyEdit(rng, q, alphabet);
+      q = edit.text;
+      if (edit.op) ops.push(edit.op);
+    }
     if (q.length < minLen || q.length > maxLen) continue;
-    out.push({ text: q, source: word, edits });
+    out.push({ text: q, source: word, edits, ops });
   }
   if (out.length < opts.count) throw new Error("could not generate enough queries for the requested length range");
   return out;

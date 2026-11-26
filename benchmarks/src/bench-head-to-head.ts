@@ -1,8 +1,13 @@
-// Focused comparison of the two light-memory search candidates: the flattened trie and the bigram index.
+// Focused comparison of the light-memory search candidates: the flattened trie (the shipped code and its
+// benchmark prototype) and the bigram index.
 //   npm run bench:h2h
-// Repeats each measurement with alternating order so JIT warm-up and machine noise do not favour either.
+// Repeats each measurement with a rotating candidate order so JIT warm-up and machine noise do not favour any
+// candidate; figures are the median of the per-run percentiles with the IQR across runs.
 import { generateLexicon, generateQueries } from "./data/catalog.ts";
-import { environmentInfo, fmtInt, fmtMs, gc, mdTable, measureRetained, nowNs, summarize, writeResult } from "./harness.ts";
+import {
+  environmentInfo, fmtInt, fmtTrialMs, gc, mdTable, measureRetained, nowNs, provenance, summarize, trialStat, writeResult,
+} from "./harness.ts";
+import { LibrasProductionIndex } from "./search/libras-production.ts";
 import { NgramIndex } from "./search/ngram.ts";
 import { TrieDpFlatIndex } from "./search/trie-dp-flat.ts";
 import type { SearchIndex } from "./search/types.ts";
@@ -13,7 +18,11 @@ const QUERIES = QUICK ? 400 : 3000;
 const SIZES = QUICK ? [10_000, 50_000] : [20_000, 50_000, 100_000, 200_000, 400_000];
 
 type Make = () => SearchIndex;
-const makers: Record<string, Make> = { "trie-dp-flat": () => new TrieDpFlatIndex(), "ngram-bigram": () => new NgramIndex() };
+const makers: Record<string, Make> = {
+  "libras-flat-trie": () => new LibrasProductionIndex(),
+  "trie-dp-flat": () => new TrieDpFlatIndex(),
+  "ngram-bigram": () => new NgramIndex(),
+};
 
 function timeAll(idx: SearchIndex, qs: string[], k: number): number[] {
   for (let i = 0; i < 200; i++) idx.search(qs[i % qs.length]!, k);
@@ -23,11 +32,12 @@ function timeAll(idx: SearchIndex, qs: string[], k: number): number[] {
 }
 
 const env = environmentInfo();
-const out: string[] = [`# Head-to-head: flattened trie vs bigram index\n`];
-out.push(`Generated ${env.date} on ${env.cpus}, Node ${env.node}. Synthetic words lexicon; ${fmtInt(QUERIES)} queries per run, ${REPEATS} runs with alternating order; values are the mean of per-run percentiles.\n`);
+const out: string[] = ["# Head-to-head: flattened trie (shipped and prototype) vs bigram index\n"];
+out.push(`${provenance(env)} Synthetic words lexicon; ${fmtInt(QUERIES)} queries per run, ${REPEATS} runs with a rotating candidate order; values are the median of per-run percentiles in ms, with the IQR across runs.\n`);
 
 const raw: Record<string, unknown> = {};
 const rows: (string | number)[][] = [];
+const keys = Object.keys(makers);
 for (const n of SIZES) {
   const lexicon = generateLexicon("words", n, 42);
   const qs = generateQueries(lexicon, { count: QUERIES, seed: 31, noMatchFraction: 0.05, minLen: 3, maxLen: 24 }).map((q) => q.text);
@@ -40,7 +50,8 @@ for (const n of SIZES) {
   for (const k of [1, 2]) {
     const acc: Record<string, { p50: number[]; p95: number[]; p99: number[] }> = {};
     for (let rep = 0; rep < REPEATS; rep++) {
-      const order = rep % 2 === 0 ? Object.keys(makers) : Object.keys(makers).reverse();
+      const order = keys.map((_, i) => keys[(i + rep) % keys.length]!);
+      if (rep % 2 === 1) order.reverse();
       for (const name of order) {
         gc();
         const s = summarize(timeAll(built[name]!, qs, k));
@@ -48,11 +59,11 @@ for (const n of SIZES) {
         a.p50.push(s.p50); a.p95.push(s.p95); a.p99.push(s.p99);
       }
     }
-    for (const name of Object.keys(makers)) {
+    for (const name of keys) {
       const a = acc[name]!;
-      const mean = (xs: number[]) => xs.reduce((s, x) => s + x, 0) / xs.length;
-      rows.push([fmtInt(n), k, name, fmtMs(mean(a.p50)), fmtMs(mean(a.p95)), fmtMs(mean(a.p99)), (mem[name]! / 1024 / 1024).toFixed(1)]);
-      (raw[`${n}-k${k}-${name}`] = { p50: mean(a.p50), p95: mean(a.p95), p99: mean(a.p99), retainedBytes: mem[name] });
+      const t50 = trialStat(a.p50), t95 = trialStat(a.p95), t99 = trialStat(a.p99);
+      rows.push([fmtInt(n), k, name, fmtTrialMs(t50), fmtTrialMs(t95), fmtTrialMs(t99), (mem[name]! / 1024 / 1024).toFixed(1)]);
+      raw[`${n}-k${k}-${name}`] = { p50: t50, p95: t95, p99: t99, retainedBytes: mem[name] };
     }
     console.log(`N=${fmtInt(n)} k=${k} done`);
   }

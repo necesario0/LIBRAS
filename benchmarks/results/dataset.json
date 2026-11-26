@@ -1,0 +1,221 @@
+{
+  "env": {
+    "node": "v24.16.0",
+    "platform": "win32 x64",
+    "cpus": "16x AMD Ryzen 7 PRO 5850U with Radeon Graphics",
+    "totalMemGB": 15.3,
+    "commit": "97d046449d70",
+    "date": "2026-11-26T11:41:53.168Z"
+  },
+  "words": {
+    "n": 50000,
+    "meanLength": 9.37762,
+    "lengthHistogram": {
+      "3": 794,
+      "4": 2495,
+      "5": 2656,
+      "6": 5039,
+      "7": 5299,
+      "8": 6180,
+      "9": 5591,
+      "10": 4416,
+      "11": 3966,
+      "12": 3485,
+      "13": 3092,
+      "14": 2598,
+      "15": 2008,
+      "16": 1262,
+      "17": 680,
+      "18": 274,
+      "19": 133,
+      "20": 25,
+      "21": 6,
+      "22": 1
+    },
+    "alphabet": "abcdefghijklmnopqrstuvwxyz",
+    "sample": [
+      "mathematics",
+      "fleluscaidou",
+      "gebrasvirtdrou",
+      "kudongpriogoun",
+      "sanluma",
+      "lire",
+      "sastvaistflood",
+      "cletethoumeat",
+      "thoufled",
+      "dosamato"
+    ]
+  },
+  "callnos": {
+    "n": 20000,
+    "meanLength": 7.0299,
+    "sample": [
+      "l615",
+      "684.8",
+      "h56",
+      "a80",
+      "a01",
+      "n18",
+      "834.0",
+      "p62",
+      "785.2",
+      "066.909"
+    ]
+  },
+  "queries": {
+    "n": 1500,
+    "lengthHistogram": {
+      "3": 22,
+      "4": 73,
+      "5": 108,
+      "6": 130,
+      "7": 167,
+      "8": 191,
+      "9": 159,
+      "10": 149,
+      "11": 122,
+      "12": 111,
+      "13": 85,
+      "14": 70,
+      "15": 48,
+      "16": 40,
+      "17": 19,
+      "18": 2,
+      "19": 3,
+      "20": 1
+    },
+    "editOpsHistogram": {
+      "0": 467,
+      "1": 495,
+      "2": 470,
+      "-1": 68
+    },
+    "distanceHistogram": {
+      "0": 490,
+      "1": 396,
+      "2": 439,
+      "3": 97,
+      "4": 10,
+      "-1": 68
+    },
+    "opTypes": {
+      "deletion": 355,
+      "substitution": 371,
+      "insertion": 344,
+      "transposition": 332
+    },
+    "sample": [
+      {
+        "query": "pliflibriokoo",
+        "intended": "pliflibriokoo",
+        "ops": [],
+        "distance": 0
+      },
+      {
+        "query": "enzsr",
+        "intended": "enzara",
+        "ops": [
+          "deletion",
+          "substitution"
+        ],
+        "distance": 2
+      },
+      {
+        "query": "tregnrenfdin",
+        "intended": "tregrenfedin",
+        "ops": [
+          "deletion",
+          "insertion"
+        ],
+        "distance": 2
+      },
+      {
+        "query": "tairocleveen",
+        "intended": "tariocleveen",
+        "ops": [
+          "transposition"
+        ],
+        "distance": 2
+      },
+      {
+        "query": "prionchacktoular",
+        "intended": "prionchacktoular",
+        "ops": [],
+        "distance": 0
+      },
+      {
+        "query": "eespoorvior",
+        "intended": "deespoorvior",
+        "ops": [
+          "deletion"
+        ],
+        "distance": 1
+      },
+      {
+        "query": "failnert",
+        "intended": "failnert",
+        "ops": [],
+        "distance": 0
+      },
+      {
+        "query": "vepanarra",
+        "intended": "vepanarra",
+        "ops": [],
+        "distance": 0
+      },
+      {
+        "query": "berlciia",
+        "intended": "berlicia",
+        "ops": [
+          "transposition"
+        ],
+        "distance": 2
+      },
+      {
+        "query": "hekemgeblea",
+        "intended": "hekemgeblea",
+        "ops": [],
+        "distance": 0
+      },
+      {
+        "query": "trrent",
+        "intended": "trent",
+        "ops": [
+          "insertion"
+        ],
+        "distance": 1
+      },
+      {
+        "query": "jisoraolecxk",
+        "intended": "jisoraleck",
+        "ops": [
+          "insertion",
+          "insertion"
+        ],
+        "distance": 2
+      }
+    ]
+  },
+  "sampleCatalog": {
+    "books": 45460,
+    "copies": 86679,
+    "distinctTokens": 50000,
+    "titleWordsHistogram": {
+      "3": 19516,
+      "4": 6497,
+      "5": 9648,
+      "6": 3321,
+      "7": 6478
+    },
+    "sampleTitles": [
+      "The Kingcricksceartclaid Handbook of Blisciscet / Varciaenez, Nancy",
+      "Databases: Principles and Practice / Ezpa, Helen K.",
+      "Stechirt Kentleescior: Theory and Applications / Lopez, Ricardo U.",
+      "Essentials of Fiction / Allari, Henry",
+      "Vaigour Analysis Reviewer / Young, Eduardo",
+      "Shonprilthoot and Driobraingwer: A Study of Spaisliclon / Lagocruz, Cristina",
+      "Introduction to Psychology / Roni, Beatriz",
+      "Speecihackvud Concepts Reviewer / Nipami, Roberto"
+    ]
+  }
+}

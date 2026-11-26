@@ -13,8 +13,13 @@ import {
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(here, "..");
-const md = fs.readFileSync(path.join(root, "PBL-Milestone-1-Algorithm-Architecture-Specification.md"), "utf8").replace(/\r\n/g, "\n").replace("<!-- SLIDES -->", "");
-const outFile = path.join(root, "PBL-Milestone-1-Algorithm-Architecture-Specification.docx");
+// Another document of the same layout: DOC=<basename in docs/milestone> SLIDES=0 TITLE="..." FOOTER="..." node build-docx.mjs
+const docName = process.env.DOC ?? "PBL-Milestone-1-Algorithm-Architecture-Specification";
+const withSlides = process.env.SLIDES !== "0";
+const docTitle = process.env.TITLE ?? "PBL Milestone 1: Algorithm Architecture Specification and Software Engineering Proposal";
+const footerText = process.env.FOOTER ?? "Project LIBRAS - PBL Milestone 1";
+const md = fs.readFileSync(path.join(root, `${docName}.md`), "utf8").replace(/\r\n/g, "\n").replace("<!-- SLIDES -->", "");
+const outFile = path.join(root, `${docName}.docx`);
 
 const FONT = "Calibri";
 const MONO = "Consolas";
@@ -184,7 +189,7 @@ const tokens = marked.lexer(md, { gfm: true });
 const body = blocks(tokens);
 
 const slideChildren = [];
-for (let i = 1; i <= 12; i++) {
+for (let i = 1; withSlides && i <= 12; i++) {
   const file = path.join(root, "slides", `slide-${String(i).padStart(2, "0")}.png`);
   slideChildren.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 0 }, children: [imageRun(file, 980)] }));
   if (i < 12) slideChildren.push(new Paragraph({ children: [new PageBreak()] }));
@@ -194,7 +199,7 @@ const footer = new Footer({
   children: [new Paragraph({
     alignment: AlignmentType.CENTER,
     children: [
-      new TextRun({ text: "Project LIBRAS - PBL Milestone 1 - page ", font: FONT, size: 16, color: "555555" }),
+      new TextRun({ text: `${footerText} - page `, font: FONT, size: 16, color: "555555" }),
       new TextRun({ children: [PageNumber.CURRENT], font: FONT, size: 16, color: "555555" }),
     ],
   })],
@@ -207,7 +212,7 @@ const levelsFor = (fmt, text) => Array.from({ length: 4 }, (_, level) => ({
 
 const doc = new Document({
   creator: "Group 1, III-BCSAD, University of Makati",
-  title: "PBL Milestone 1: Algorithm Architecture Specification and Software Engineering Proposal",
+  title: docTitle,
   subject: "Project LIBRAS",
   styles: {
     default: { document: { run: { font: FONT, size: 21 } } },
@@ -230,10 +235,10 @@ const doc = new Document({
       footers: { default: footer },
       children: body,
     },
-    {
+    ...(withSlides ? [{
       properties: { page: { size: { width: 11906, height: 16838, orientation: PageOrientation.LANDSCAPE }, margin: { top: 567, bottom: 567, left: 567, right: 567 } } },
       children: slideChildren,
-    },
+    }] : []),
   ],
 });
 

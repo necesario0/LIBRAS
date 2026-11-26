@@ -43,7 +43,7 @@
     <div class="box" style="border-color:#5b9d62; margin-bottom:10px;"><b>Core Service</b>Business logic, Loan Policy checks, circulation transactions, audit log, mailer, REST controllers</div>
     <div style="display:flex; gap:24px;">
       <div class="box" style="flex:1; border-color:#2f7f8f; background:#effafb;"><b>Algorithmic module: Catalog search</b>
-        <ul><li>Bounded Levenshtein Trie Search</li><li>Flat typed-array trie (about 4.4 MB at 50,000 tokens)</li><li>Atomic rebuild and swap when the catalog changes</li></ul></div>
+        <ul><li>Bounded Levenshtein Trie Search</li><li>Flat typed-array trie (about 3.4 MB at 50,000 tokens)</li><li>Atomic rebuild and swap when the catalog changes</li></ul></div>
       <div class="box" style="flex:1; border-color:#2f7f8f; background:#effafb;"><b>Algorithmic module: Hold queue</b>
         <ul><li>Role-Weighted Priority Queue Dispatcher</li><li>Place, dispatch on return, cancel as SQL statements</li><li>Row locking (SKIP LOCKED), no Redis mutex</li></ul></div>
     </div>
