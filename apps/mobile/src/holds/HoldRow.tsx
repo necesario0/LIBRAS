@@ -68,7 +68,8 @@ export function HoldRow({ hold, onCancel, onShowDigitalId }: HoldRowProps) {
         <StatusPill label={HOLD_STATUS_LABELS[hold.status]} tone={PILL_TONES[hold.status]} testID="hold-status" />
       </View>
 
-      {hold.status === "waiting" && hold.queuePosition !== null ? (
+      {/* A number only: an API from before the place in line was added sends no queuePosition at all. */}
+      {hold.status === "waiting" && typeof hold.queuePosition === "number" ? (
         <View style={styles.queue} testID="hold-queue">
           <Text style={styles.queueTitle} testID="hold-queue-position">
             {holdPlaceInLine(hold.queuePosition)}
