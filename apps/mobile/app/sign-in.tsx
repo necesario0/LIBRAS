@@ -20,7 +20,9 @@ import { colors, fontFamily, fontSize, minTouchTarget, spacing } from "../src/th
  * wordmark, the book, the tagline, then email, password and Continue.
  *
  * "Forgot password?" under Continue opens Forgot password (the frame writes it
- * "forgot password?"), carrying the email typed so far.
+ * "forgot password?"), carrying the email typed so far. Under it, "New to
+ * LIBRAS? Sign up" opens the first sign-up step, so a Member who came here
+ * first need not go back to the welcome screen (not in the frames).
  *
  * Deliberate difference from the frames: the error frames swap the tagline for the
  * university's name, which here stays the tagline so the layout does not jump
@@ -109,7 +111,7 @@ export default function SignInScreen() {
             secure
             revealable
             label="Password"
-            placeholder="password"
+            placeholder="Password"
             value={password}
             onChangeText={(text) => {
               setPassword(text);
@@ -133,6 +135,18 @@ export default function SignInScreen() {
           >
             <Text style={styles.forgotLabel}>Forgot password?</Text>
           </Pressable>
+          <Pressable
+            onPress={() => router.push("/sign-up/account-type")}
+            accessibilityRole="link"
+            accessibilityLabel="New to LIBRAS? Sign up"
+            style={styles.signUp}
+            testID="sign-in-sign-up"
+          >
+            <Text style={styles.signUpText}>
+              {"New to LIBRAS? "}
+              <Text style={styles.signUpLink}>Sign up</Text>
+            </Text>
+          </Pressable>
         </View>
       </ScrollView>
     </KeyboardAvoiding>
@@ -154,5 +168,9 @@ const styles = StyleSheet.create({
   form: { alignSelf: "stretch", paddingHorizontal: spacing.screen, marginTop: spacing.xs, gap: spacing.sm },
   // 48 pt to tap; the negative margin takes back the form's gap, so the link sits about where the frame has it.
   forgot: { alignSelf: "center", minHeight: minTouchTarget, justifyContent: "center", paddingHorizontal: spacing.md, marginTop: -spacing.sm },
+  // Right under Forgot password: the two 48 pt taps touch, with no gap between them.
+  signUp: { alignSelf: "center", minHeight: minTouchTarget, justifyContent: "center", paddingHorizontal: spacing.md, marginTop: -spacing.sm },
+  signUpText: { fontFamily: fontFamily.regular, fontSize: fontSize.caption, color: colors.textMuted },
+  signUpLink: { color: colors.black, textDecorationLine: "underline" },
   forgotLabel: { fontFamily: fontFamily.regular, fontSize: fontSize.caption, color: colors.black, textDecorationLine: "underline" },
 });

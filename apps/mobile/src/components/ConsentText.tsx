@@ -3,9 +3,11 @@ import { StyleSheet, Text } from "react-native";
 import { colors, fontFamily, fontSize } from "../theme/tokens";
 
 /**
- * "By continuing, you agree to libras Consumer Terms and Usage Policy, and
+ * "By continuing, you agree to LIBRAS Consumer Terms and Usage Policy, and
  * acknowledge their Privacy policy": the line at the foot of every onboarding
- * frame. Each underlined name opens the terms.
+ * frame (the welcome screen, sign-up and its code screens). Each underlined name
+ * opens the terms. The frames write the name "libras"; here it is LIBRAS, as
+ * the system is named everywhere else.
  */
 export function ConsentText() {
   const router = useRouter();
@@ -13,7 +15,7 @@ export function ConsentText() {
   const openPrivacy = () => router.push({ pathname: "/terms", params: { doc: "privacy" } });
   return (
     <Text style={styles.text} testID="consent-text">
-      {"By continuing, you agree to libras "}
+      {"By continuing, you agree to LIBRAS "}
       <Text style={styles.link} accessibilityRole="link" onPress={openTerms}>
         Consumer Terms
       </Text>

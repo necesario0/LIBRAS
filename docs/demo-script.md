@@ -91,7 +91,7 @@ Checks:
 ## Part 5: return and dispatch (user stories 49, 50, 60, 61)
 
 1. Desk, with no Member at the desk: scan the Copy that Member A borrowed. The desk shows the return, and a second panel says "Set aside for <Member B>", with the time the Pickup Window ends. Put the Copy on the hold shelf.
-2. Phone A: My Books, Loans shows the Loan under Past Loans.
+2. Phone A: My Books, Borrow shows the Book under Returned.
 3. Phone B: the My Books tab has a red dot and opens on Holds: **A Copy is set aside for you** with the end of the Pickup Window. The "Your LIBRAS Hold is ready for pickup" email arrives in B's inbox.
 4. Try to lend the same Copy to Member A at the desk: refused, set aside for another Member.
 
@@ -119,7 +119,7 @@ Run Parts 8 to 11 after 08:00 Manila time, when Loan notices go out. Member A he
 
 1. Desk: Member A shows the Digital ID (the Digital ID tab). The Librarian scans it, then Copies X and Y. Two Loans confirmed, due in 7 days. **Done with this Member**.
 2. Phone A, My Books, Loans: both Loans under Current, each with **Renew**.
-3. Tap **Renew** on X. The row asks "Renew this Loan? The new due date is ..." with the date 7 days later. Tap **Yes, renew**. The due date moves and the row shows a **Renewed** pill.
+3. Tap **Renew** on X. The row asks "Renew this Book? The new due date is ..." with the date 7 days later. Tap **Yes, renew**. The due date moves and the row shows a **Renewed** pill.
 4. X now says why it cannot be renewed again (the renewal limit) in place of Renew.
 
 Checks:
@@ -149,7 +149,7 @@ Checks:
 4. Scan Copy Z. The desk refuses: "This Member has an unsettled Fine, so no Loan was recorded. Settle it in the Member panel, then scan the Copy again."
 5. Press **Paid** (Waived asks first: show it, then choose Keep it). The Fine leaves the panel and Clearance turns **Cleared**.
 6. Scan Z again: the Loan is confirmed in the same visit. **Done with this Member**.
-7. Phone A, Profile: **Not cleared** with one Loan out (Z) and no red note, because Member A is in Good standing again. My Books, Loans shows Y under Past Loans with its Fine paid.
+7. Phone A, Profile: **Not cleared** with one Loan out (Z) and no red note, because Member A is in Good standing again. My Books, Borrow shows Y under Returned with its Fine paid.
 8. Desk: scan Z to return it. Phone A, Profile: **Cleared**.
 
 Checks:

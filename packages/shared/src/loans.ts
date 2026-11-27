@@ -129,7 +129,7 @@ export type RenewalRefusal = (typeof RENEWAL_REFUSALS)[number];
  */
 export type LoanRenewal = { renewable: true; dueAt: string; last: boolean } | { renewable: false; reason: RenewalRefusal };
 
-/** What My Loans shows in place of the Renew button of a Loan that cannot be renewed. */
+/** What My Books shows in place of the Renew button of a Loan that cannot be renewed. */
 export const RENEWAL_REASONS: Readonly<Record<RenewalRefusal, string>> = {
   loan_overdue: "Overdue Loans cannot be renewed. Please return it to the library desk.",
   not_renewable: "In-library Loans cannot be renewed. Please return it before closing.",
@@ -142,7 +142,7 @@ export const RENEWAL_REASONS: Readonly<Record<RenewalRefusal, string>> = {
 /** The words the API returns and the app shows when a Renewal is refused. */
 export const RENEWAL_MESSAGES = {
   /** For a Loan id that is not one at all, and for one that is not the Member's: the same words, so neither says more. */
-  loanNotFound: "This Loan could not be found. Open My Loans and try again.",
+  loanNotFound: "This Loan could not be found. Open My Books and try again.",
   loanReturned: "This Copy has been returned, so there is no Loan to renew.",
   /** A refusal of the Renewal itself. The Loans list said it could be renewed, so something changed since. */
   refused: {

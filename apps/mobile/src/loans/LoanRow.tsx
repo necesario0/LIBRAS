@@ -13,7 +13,7 @@ function pillOf(loan: Loan): { label: string; tone: PillTone } {
   if (loan.returnedAt !== null) return { label: "Returned", tone: "neutral" };
   if (loan.overdue) return { label: "Overdue", tone: "danger" };
   if (loan.renewalCount > 0) return { label: "Renewed", tone: "info" };
-  return { label: "On loan", tone: "available" };
+  return { label: "Borrowed", tone: "available" };
 }
 
 interface LoanRowProps {
@@ -44,7 +44,7 @@ export function LoanRow({ loan, onRenew }: LoanRowProps) {
     try {
       await onRenew(loan);
     } catch (error) {
-      setFailure(error instanceof Error ? error.message : "Your Loan could not be renewed. Please try again.");
+      setFailure(error instanceof Error ? error.message : "This Book could not be renewed. Please try again.");
     } finally {
       setBusy(false);
       setConfirming(false);
@@ -95,7 +95,7 @@ export function LoanRow({ loan, onRenew }: LoanRowProps) {
         <RowConfirmation
           question={
             <>
-              {"Renew this Loan? The new due date is "}
+              {"Renew this Book? The new due date is "}
               <RowConfirmationEmphasis>{formatLibraryDate(renewal.dueAt)}</RowConfirmationEmphasis>
               {renewal.last ? ". After this, it cannot be renewed again." : "."}
             </>

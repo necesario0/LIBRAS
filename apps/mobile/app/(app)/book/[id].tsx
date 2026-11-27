@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Animated, PanResponder, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { ActivityIndicator, Animated, BackHandler, PanResponder, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { bookSheetSnapBounds, clampBookSheetTop, resolveBookSheetRelease } from "@libras/shared";
 import type { BookSheetPosition } from "@libras/shared";
@@ -25,6 +25,12 @@ const MESSAGE_MS = 2500;
  * (node 609:1066) over the screen that opened it. Dragging the top grabber up
  * expands the sheet to fullscreen; dragging it down returns to the default
  * height or dismisses the sheet.
+ *
+ * Behind the sheet the screen is dimmed (`sheetScrim`), which fades in once the
+ * sheet is up and fades with it as it is dragged down. Every way of closing it
+ * (drag, the close button, the dimmed area, Android's back button) slides the
+ * sheet down first, so the dimming fades out instead of sliding off with the
+ * screen.
  */
 export default function BookScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -94,11 +100,25 @@ export default function BookScreen() {
     [sheetTop],
   );
 
-  const dismiss = useCallback(() => {
-    if (closingRef.current) return;
-    closingRef.current = true;
-    closeRef.current();
-  }, []);
+  const dismiss = useCallback(() => snapTo("closed"), [snapTo]);
+
+  useEffect(() => {
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      dismiss();
+      return true;
+    });
+    return () => sub.remove();
+  }, [dismiss]);
+
+  // The screen slides up with the sheet; the dimming waits until it is nearly there, so it never slides.
+  const scrimIn = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(scrimIn, { toValue: 1, duration: 220, delay: 180, useNativeDriver: false }).start();
+  }, [scrimIn]);
+  const scrimOpacity = Animated.multiply(
+    scrimIn,
+    sheetTop.interpolate({ inputRange: [bounds.defaultTop, bounds.closedTop], outputRange: [1, 0], extrapolate: "clamp" }),
+  );
 
   const makeDragResponder = (allowMove: (dx: number, dy: number) => boolean) =>
     PanResponder.create({
@@ -144,7 +164,9 @@ export default function BookScreen() {
   return (
     <View style={styles.screen}>
       {position === "expanded" ? null : (
-        <Pressable accessibilityLabel="Close" onPress={dismiss} style={StyleSheet.absoluteFill} testID="book-backdrop" />
+        <Animated.View style={[StyleSheet.absoluteFill, styles.scrim, { opacity: scrimOpacity }]}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={dismiss} style={StyleSheet.absoluteFill} testID="book-backdrop" />
+        </Animated.View>
       )}
       <Animated.View
         style={[
@@ -209,6 +231,7 @@ export default function BookScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
+  scrim: { backgroundColor: colors.sheetScrim },
   sheet: {
     position: "absolute",
     left: 0,

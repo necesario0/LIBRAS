@@ -21,7 +21,7 @@ export function currentLoans(loans: readonly Loan[]): Loan[] {
  * `reload`. A failed refresh keeps the Loans already shown.
  */
 export function useLoans(request: AuthorizedRequest) {
-  return useFocusedFetch(request, api.getLoans, "Your Loans could not be loaded. Please try again.");
+  return useFocusedFetch(request, api.getLoans, "Your borrowed Books could not be loaded. Please try again.");
 }
 
 /** A refusal or failure as words the Member can read. */

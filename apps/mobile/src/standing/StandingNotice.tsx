@@ -25,14 +25,14 @@ interface StandingNoticeProps {
  * place it shows (Home, the Book page and the Digital ID), so the Member meets
  * the same red card before the desk wherever they look. Under its heading it
  * gives the reason and what to do in the words the API and Profile use
- * (`goodStandingNotice`), then a way to what is in the way: the Loans segment
- * of My Books for an overdue Loan, the Clearance panel on Profile for a Fine.
+ * (`goodStandingNotice`), then a way to what is in the way: the Borrow segment
+ * of My Books (the Loans) for an overdue Loan, the Clearance panel on Profile for a Fine.
  */
 export function StandingNotice({ title, reasons, from, outlined = false, testID }: StandingNoticeProps) {
   const router = useRouter();
   const overdue = reasons.includes("overdue_loan");
   const action = overdue
-    ? { label: "See my Loans", go: { pathname: "/my-books", params: { segment: "loans" } } as const }
+    ? { label: "See what I borrowed", go: { pathname: "/my-books", params: { segment: "loans" } } as const }
     : { label: "See Clearance", go: "/profile" as const };
   const open = () => (from === "tab" ? router.navigate(action.go) : router.dismissTo(action.go));
 
