@@ -25,6 +25,19 @@ export const HOLD_STATUS_LABELS: Record<HoldStatus, string> = {
   cancelled: "Cancelled",
 };
 
+/** 1st, 2nd, 3rd, 4th, ..., 11th, 12th, 13th, ..., 21st. */
+function ordinal(n: number): string {
+  const lastTwo = n % 100;
+  if (lastTwo >= 11 && lastTwo <= 13) return `${n}th`;
+  const suffix = { 1: "st", 2: "nd", 3: "rd" }[n % 10] ?? "th";
+  return `${n}${suffix}`;
+}
+
+/** A waiting Hold's `queuePosition` in words: "You are next in line", "You are 2nd in line". */
+export function holdPlaceInLine(position: number): string {
+  return position === 1 ? "You are next in line" : `You are ${ordinal(position)} in line`;
+}
+
 /** The words the API and the app both show when a Hold cannot be placed or cancelled. */
 export const HOLD_MESSAGES = {
   invalidRequest: "Open the Book again and try placing the Hold from there.",
@@ -54,6 +67,13 @@ export interface Hold {
    * Member. Null while the Hold is waiting, and for a Hold that was never chosen.
    */
   pickupEndsAt: string | null;
+  /**
+   * The waiting Hold's place in the Book's queue, 1 for the next to be served, in
+   * the dispatcher's order (arrival time minus the Account Type's weight, so a
+   * Faculty Hold placed later can still come first). It can grow when a Member
+   * with more weight joins. Null for a Hold that is not waiting.
+   */
+  queuePosition: number | null;
 }
 
 /** The body of `POST /holds`. */

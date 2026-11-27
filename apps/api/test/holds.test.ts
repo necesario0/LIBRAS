@@ -366,6 +366,33 @@ describe("Holds: seeing and cancelling them", () => {
     assert.deepEqual(outcomes, ["refused", "refused", "refused"]);
   });
 
+  it("tells each waiting Member their place in line, in the dispatcher's order", async () => {
+    h.api().clock.set("2026-11-23T08:00:00.000Z");
+    const bookId = await h.addBook("Place In Line");
+    const anas = await place(ana, bookId);
+    h.api().clock.advance({ minutes: 1 });
+    const bens = await place(ben, bookId);
+
+    assert.equal(anas.queuePosition, 1);
+    assert.equal(bens.queuePosition, 2);
+
+    // A Faculty Member placed last but weighted 24 hours ahead goes first, and the others move back.
+    h.api().clock.advance({ minutes: 1 });
+    const faculty = await createTestMemberOfType(h.api(), "faculty");
+    const facultys = await place(faculty, bookId);
+    const positionOf = async (member: TestMember, holdId: string) => (await holdsOf(member)).find((held) => held.id === holdId)?.queuePosition;
+
+    assert.equal(facultys.queuePosition, 1);
+    assert.equal(await positionOf(ana, anas.id), 2);
+    assert.equal(await positionOf(ben, bens.id), 3);
+
+    // Leaving the queue moves everyone behind up, and a Hold that is not waiting has no place.
+    const cancelled = (await (await cancel(ana, anas.id)).json()) as CancelHoldResponse;
+    assert.equal(cancelled.hold.queuePosition, null);
+    assert.equal(await positionOf(ana, anas.id), null);
+    assert.equal(await positionOf(ben, bens.id), 2);
+  });
+
   it("records what the dispatcher needs: arrival time, weight, score and sequence", async () => {
     h.api().clock.set("2026-11-22T10:00:00.000Z");
     const bookId = await h.addBook("Ready For Dispatch");
