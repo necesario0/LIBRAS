@@ -12,7 +12,7 @@ appId: ph.edu.umak.libras
 - runScript: scripts/create-visitor.js
 
 - extendedWaitUntil:
-    visible: "SIGN  UP"
+    visible: "SIGN UP"
     timeout: 30000
 - tapOn:
     id: welcome-sign-in
@@ -90,7 +90,7 @@ appId: ph.edu.umak.libras
 # A Visitor: cannot borrow, and what they can do.
 - runFlow: subflows/sign-out.yaml
 - extendedWaitUntil:
-    visible: "SIGN  UP"
+    visible: "SIGN UP"
     timeout: 20000
 - tapOn:
     id: welcome-sign-in

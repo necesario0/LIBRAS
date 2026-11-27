@@ -37,6 +37,9 @@ const sh = (command, args, options = {}) =>
 let serial = process.env.ANDROID_SERIAL ?? null;
 const adb = (...args) => sh("adb", ["-s", serial, ...args]);
 
+/** The device's text size before the run, put back afterwards; null until it is read. */
+let fontScaleBefore = null;
+
 /** The serial of the first device that is online, or null. */
 function findDevice() {
   const lines = (sh("adb", ["devices"]).stdout ?? "").split(NEWLINE).slice(1);
@@ -95,6 +98,7 @@ async function apiState() {
 const children = [];
 let startedEmulator = false;
 function cleanup() {
+  if (fontScaleBefore !== null && serial) adb("shell", "settings", "put", "system", "font_scale", fontScaleBefore);
   // Shut a booted emulator down cleanly first. One that never came online has
   // no serial, so the process kill below is what stops it from lingering.
   if (startedEmulator && serial) adb("emu", "kill");
@@ -159,6 +163,14 @@ async function main() {
   adb("shell", "settings", "put", "system", "screen_off_timeout", "2147483647");
   adb("shell", "input", "keyevent", "KEYCODE_WAKEUP");
   adb("shell", "input", "keyevent", "82");
+
+  // The flows run at the default text size, whatever the phone is set to. At a larger size a long
+  // field's text is wider than the field, a tap lands mid-text and eraseText leaves the part after
+  // the cursor, and screens scroll differently. The phone's own setting is put back afterwards
+  // (cleanup); check larger text sizes by eye.
+  const scale = adb("shell", "settings", "get", "system", "font_scale").stdout?.trim();
+  fontScaleBefore = scale === undefined || scale === "" || scale === "null" ? "1.0" : scale;
+  adb("shell", "settings", "put", "system", "font_scale", "1.0");
 
   // The API gives the app Announcement images at the local Supabase address (http://127.0.0.1:54321), which on the
   // device is the device itself: forward that port to this machine so the images load as they do from hosted Storage.

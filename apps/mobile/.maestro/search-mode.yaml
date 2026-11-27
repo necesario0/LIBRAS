@@ -16,7 +16,7 @@ appId: ph.edu.umak.libras
 
 # Sign in.
 - extendedWaitUntil:
-    visible: "SIGN  UP"
+    visible: "SIGN UP"
     timeout: 30000
 - tapOn:
     id: welcome-sign-in
@@ -260,7 +260,7 @@ appId: ph.edu.umak.libras
 - runFlow: subflows/leave-search.yaml
 - runFlow: subflows/sign-out.yaml
 - extendedWaitUntil:
-    visible: "SIGN  UP"
+    visible: "SIGN UP"
     timeout: 20000
 - tapOn:
     id: welcome-sign-in

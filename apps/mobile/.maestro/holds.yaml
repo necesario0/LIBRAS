@@ -12,7 +12,7 @@ appId: ph.edu.umak.libras
 # The UMAK Student signs in. The emulator sometimes doubles the first character
 # typed after a tap: check and retype.
 - extendedWaitUntil:
-    visible: "SIGN  UP"
+    visible: "SIGN UP"
     timeout: 30000
 - tapOn:
     id: welcome-sign-in
@@ -168,7 +168,7 @@ appId: ph.edu.umak.libras
 - runFlow: subflows/leave-search.yaml
 - runFlow: subflows/sign-out.yaml
 - extendedWaitUntil:
-    visible: "SIGN  UP"
+    visible: "SIGN UP"
     timeout: 20000
 
 # A Visitor sees the Book but is not offered a Hold.

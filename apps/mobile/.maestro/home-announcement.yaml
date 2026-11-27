@@ -61,5 +61,5 @@ appId: ph.edu.umak.libras
 
 - runFlow: subflows/sign-out.yaml
 - extendedWaitUntil:
-    visible: "SIGN  UP"
+    visible: "SIGN UP"
     timeout: 20000
