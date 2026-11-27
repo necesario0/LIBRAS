@@ -110,7 +110,7 @@ const styles = StyleSheet.create({
   text: { flex: 1, gap: 2 },
   title: { fontFamily: fontFamily.medium, fontSize: fontSize.label, color: colors.black },
   authors: { fontFamily: fontFamily.regular, fontSize: fontSize.caption, color: colors.textMuted },
-  placed: { fontFamily: fontFamily.regular, fontSize: fontSize.micro, color: colors.textFaint },
+  placed: { fontFamily: fontFamily.regular, fontSize: fontSize.micro, color: colors.textMuted },
   pickup: { borderRadius: radii.panel, backgroundColor: colors.successSurface, paddingVertical: spacing.md, paddingHorizontal: spacing.lg, gap: 2 },
   pickupTitle: { fontFamily: fontFamily.semiBold, fontSize: fontSize.small, color: colors.availableText },
   pickupBody: { fontFamily: fontFamily.regular, fontSize: fontSize.caption, lineHeight: 18, color: colors.textSecondary },

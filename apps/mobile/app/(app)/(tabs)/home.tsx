@@ -21,7 +21,7 @@ import type { SubjectOptions } from "../../../src/search/FiltersSheet";
 import { PublishedSheet } from "../../../src/search/PublishedSheet";
 import type { ResultsCount } from "../../../src/search/ShowResultsButton";
 import { RecentSearches } from "../../../src/search/RecentSearches";
-import { SearchControls } from "../../../src/search/SearchControls";
+import { CHIP_TOUCH_INSET, SearchControls } from "../../../src/search/SearchControls";
 import { SearchModeBar } from "../../../src/search/SearchModeBar";
 import { Suggestions } from "../../../src/search/Suggestions";
 import { useRecentSearches } from "../../../src/search/useRecentSearches";
@@ -171,7 +171,7 @@ export default function HomeScreen() {
             style={styles.profile}
             testID="home-profile"
           >
-            <HomeHeader firstName={member.firstName} />
+            <HomeHeader name={member} />
           </Pressable>
           <NotificationBell unread={unread} onPress={() => router.push("/notifications")} />
         </View>
@@ -209,7 +209,7 @@ export default function HomeScreen() {
       </View>
 
       <ScrollView
-        style={styles.body}
+        style={[styles.body, styles.modeBody]}
         contentContainerStyle={[styles.bodyContent, styles.modeContent]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
@@ -276,7 +276,9 @@ const styles = StyleSheet.create({
   body: { flex: 1, marginTop: spacing.lg },
   bodyContent: { paddingHorizontal: spacing.home, gap: spacing.md },
   // At least the screen tall, so the Sort menu fits inside it even over one result (see SearchControls).
-  modeContent: { flexGrow: 1, paddingBottom: spacing.xl },
+  modeContent: { flexGrow: 1, paddingBottom: spacing.xl, paddingTop: CHIP_TOUCH_INSET },
+  // The chips' taps reach above them (see SearchControls): the scroll view starts that much higher, so the chips stay where they were.
+  modeBody: { marginTop: spacing.lg - CHIP_TOUCH_INSET },
   spinner: { marginTop: spacing.xl },
   count: { fontFamily: fontFamily.regular, fontSize: fontSize.resultNote, lineHeight: 15, color: colors.textMuted, marginTop: 2 },
 });

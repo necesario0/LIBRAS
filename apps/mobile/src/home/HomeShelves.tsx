@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { AccessibilityInfo, Animated, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { AccessibilityInfo, Animated, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import type { BookSearchResult, HomeShelf } from "@libras/shared";
 import { BookCover, coverColor } from "../components/BookCover";
 import { colors, coverInk, fontFamily, fontSize, lineHeightFor, radii, shelfCover, spacing } from "../theme/tokens";
@@ -11,8 +11,16 @@ export function shelfAuthor(authors: readonly string[]): string {
   return `${first.split(",")[0]?.trim() ?? first}${authors.length > 1 ? " et al." : ""}`;
 }
 
-/** A Book on a shelf: its cover with the title printed on it, then the title and the author. Tapping it opens the Book page. */
+/**
+ * A Book on a shelf: its cover with the title printed on it, then the title and
+ * the author. Tapping it opens the Book page. The cover is a picture of fixed
+ * size, so the title on it grows with the phone's text size only up to
+ * `COVER_TEXT_SCALE`; with the room that leaves, and a hyphen where a word still
+ * does not fit, no word breaks mid-word. The title under the cover always takes
+ * two lines of room, so the authors of a shelf line up.
+ */
 function ShelfBook({ book, shelf, onOpen }: { book: BookSearchResult; shelf: HomeShelf["kind"]; onOpen: (id: string) => void }) {
+  const { fontScale } = useWindowDimensions();
   const dark = coverColor(book.id) === coverInk.darkOn;
   return (
     <Pressable
@@ -25,12 +33,22 @@ function ShelfBook({ book, shelf, onOpen }: { book: BookSearchResult; shelf: Hom
       <View>
         <BookCover id={book.id} width={shelfCover.width} height={shelfCover.height} radius={radii.cover} />
         <View style={styles.coverTitle} pointerEvents="none">
-          <Text style={[styles.coverText, { color: dark ? coverInk.dark : coverInk.light }]} numberOfLines={5}>
+          <Text
+            style={[styles.coverText, { color: dark ? coverInk.dark : coverInk.light }]}
+            numberOfLines={5}
+            maxFontSizeMultiplier={COVER_TEXT_SCALE}
+            android_hyphenationFrequency="full"
+          >
             {book.title}
           </Text>
         </View>
       </View>
-      <Text style={styles.title} numberOfLines={2} testID="shelf-book-title">
+      <Text
+        style={[styles.title, { minHeight: 2 * TITLE_LINE * fontScale }]}
+        numberOfLines={2}
+        android_hyphenationFrequency="full"
+        testID="shelf-book-title"
+      >
         {book.title}
       </Text>
       <Text style={styles.author} numberOfLines={1}>
@@ -39,6 +57,12 @@ function ShelfBook({ book, shelf, onOpen }: { book: BookSearchResult; shelf: Hom
     </Pressable>
   );
 }
+
+/** The line height of a title under a cover. */
+const TITLE_LINE = lineHeightFor(fontSize.resultNote);
+
+/** The most the title printed on a cover grows with the phone's text size. */
+const COVER_TEXT_SCALE = 1.15;
 
 /** One shelf (approved Tier 3 preview): a heading, a one-line explanation and a horizontal row of covers. */
 function Shelf({ shelf, onOpenBook }: { shelf: HomeShelf; onOpenBook: (id: string) => void }) {
@@ -158,7 +182,7 @@ const styles = StyleSheet.create({
   book: { width: shelfCover.width, gap: 5 },
   coverTitle: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, justifyContent: "flex-end", paddingTop: spacing.sm, paddingBottom: spacing.sm, paddingRight: 7, paddingLeft: 16 },
   coverText: { fontFamily: fontFamily.semiBold, fontSize: fontSize.resultNote, lineHeight: lineHeightFor(fontSize.resultNote), letterSpacing: -0.2 },
-  title: { fontFamily: fontFamily.medium, fontSize: fontSize.resultNote, lineHeight: lineHeightFor(fontSize.resultNote), color: colors.black },
+  title: { fontFamily: fontFamily.medium, fontSize: fontSize.resultNote, lineHeight: TITLE_LINE, color: colors.black },
   author: { fontFamily: fontFamily.regular, fontSize: fontSize.micro, lineHeight: lineHeightFor(fontSize.micro), color: colors.textMuted },
   // The placeholders take the sizes of what they stand for: a cover, two lines of title, one of author.
   skeletonRow: { flexDirection: "row", overflow: "hidden" },

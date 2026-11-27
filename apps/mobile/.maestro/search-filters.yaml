@@ -138,9 +138,11 @@ appId: ph.edu.umak.libras
 - extendedWaitUntil:
     visible: "Show 1 result"
     timeout: 15000
+# Up to the heading of the list, not just to Law: Law can show while "All
+# Subjects" is still above the top, and then "below" cannot be checked.
 - scrollUntilVisible:
     element:
-      id: "filter-subject-Law"
+      text: "All Subjects"
     direction: UP
 - assertVisible:
     id: "filter-subject-Law"

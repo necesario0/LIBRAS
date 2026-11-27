@@ -33,7 +33,7 @@ export default function MyAccountScreen() {
 
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.xl }]} showsVerticalScrollIndicator={false}>
         <View style={styles.avatar}>
-          <Avatar size={AVATAR} />
+          <Avatar size={AVATAR} name={member} />
         </View>
         <View style={styles.fields}>
           <ReadOnlyField label="Full name" value={memberFullName(member)} testID="my-account-name" />

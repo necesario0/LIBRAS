@@ -42,7 +42,7 @@ export default function ProfileScreen() {
       </Text>
 
       <View style={styles.identity}>
-        <Avatar size={AVATAR} />
+        <Avatar size={AVATAR} name={member} />
         <View style={styles.details}>
           <Text style={styles.name} testID="profile-name">
             {memberFullName(member)}
