@@ -5,11 +5,21 @@ import { useCallback, useState } from "react";
 import { BackHandler, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import type { ReactNode } from "react";
 import { CalendarIcon, CheckIcon, ChevronDownIcon, CrossIcon, SlidersIcon, SortIcon } from "../components/OutlineIcons";
-import { colors, fontFamily, fontSize, popupMenuShadow, radii, spacing } from "../theme/tokens";
+import { colors, fontFamily, fontSize, minTouchTarget, popupMenuShadow, radii, spacing } from "../theme/tokens";
 
 /** The chips' height, and how far below their top the Sort menu opens. */
 const CHIP_HEIGHT = 34;
 const MENU_TOP = CHIP_HEIGHT + 8;
+/** A filter chip under the row is drawn smaller still. */
+const FILTER_CHIP_HEIGHT = 28;
+
+/**
+ * How far a chip's 48 pt tap reaches above and below the drawn chip. The tap
+ * takes no room: the rows keep the spacing of the design. A screen that puts
+ * the chips at the top of a scroll view pads its content by this much, so the
+ * part above the first row is inside the scroll view and can be tapped.
+ */
+export const CHIP_TOUCH_INSET = (minTouchTarget - CHIP_HEIGHT) / 2;
 
 function Chip({
   on,
@@ -34,12 +44,14 @@ function Chip({
       accessibilityState={{ selected: on, expanded, disabled: onPress === undefined }}
       disabled={onPress === undefined}
       onPress={onPress}
-      style={[styles.chip, on && styles.chipOn]}
+      style={styles.chipTarget}
       testID={testID}
     >
-      {icon}
-      <Text style={styles.chipText}>{label}</Text>
-      {trailing}
+      <View style={[styles.chip, on && styles.chipOn]}>
+        {icon}
+        <Text style={styles.chipText}>{label}</Text>
+        {trailing}
+      </View>
     </Pressable>
   );
 }
@@ -47,9 +59,11 @@ function Chip({
 /** One filter that is on, under the controls: tapping it turns that filter off. */
 function FilterChip({ label, onRemove, testID }: { label: string; onRemove: () => void; testID: string }) {
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={`Remove ${label}`} onPress={onRemove} style={styles.filterChip} testID={testID}>
-      <Text style={styles.filterChipText}>{label}</Text>
-      <CrossIcon color={colors.primary} size={14} />
+    <Pressable accessibilityRole="button" accessibilityLabel={`Remove ${label}`} onPress={onRemove} style={styles.filterChipTarget} testID={testID}>
+      <View style={styles.filterChip}>
+        <Text style={styles.filterChipText}>{label}</Text>
+        <CrossIcon color={colors.primary} size={14} />
+      </View>
     </Pressable>
   );
 }
@@ -202,6 +216,7 @@ export function SearchControls({
 
 const styles = StyleSheet.create({
   row: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
+  chipTarget: { height: minTouchTarget, justifyContent: "center", marginVertical: -CHIP_TOUCH_INSET },
   chip: {
     height: CHIP_HEIGHT,
     paddingHorizontal: spacing.inset,
@@ -216,8 +231,9 @@ const styles = StyleSheet.create({
   chipOn: { backgroundColor: colors.accent, borderColor: colors.black },
   chipText: { fontFamily: fontFamily.medium, fontSize: fontSize.caption, lineHeight: 16, color: colors.black },
   filterChips: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 10 },
+  filterChipTarget: { height: minTouchTarget, justifyContent: "center", marginVertical: -(minTouchTarget - FILTER_CHIP_HEIGHT) / 2 },
   filterChip: {
-    height: 28,
+    height: FILTER_CHIP_HEIGHT,
     borderRadius: radii.filterChip,
     backgroundColor: colors.selected,
     flexDirection: "row",

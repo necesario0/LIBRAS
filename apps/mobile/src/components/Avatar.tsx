@@ -1,31 +1,35 @@
-import { Image, StyleSheet, View } from "react-native";
-import avatar from "../../assets/images/home-avatar.png";
+import { StyleSheet, Text, View } from "react-native";
+import { colors, fontFamily } from "../theme/tokens";
+
+/** "Elena" and "Cruz" become "EC"; a name part that is empty adds nothing. */
+export function initials(name: { firstName: string; lastName: string }): string {
+  return [name.firstName, name.lastName]
+    .map((part) => Array.from(part.trim())[0] ?? "")
+    .join("")
+    .toLocaleUpperCase();
+}
 
 /**
- * The Figma export of the avatar is a larger picture that the design crops to
- * the circle: drawn this many times the circle's size, shifted left and up by
- * these fractions of it (248.68%, -74.47% and -73.99% in node 574:1557).
+ * The Member's round avatar (on Home, Profile and My Account): their initials
+ * on pale blue. It replaces the Figma artwork, which drew the same man for every
+ * Member, until photos are built. The name is always written beside it, so
+ * screen readers skip it.
  */
-const CROP_SCALE = 2.4868;
-const CROP_LEFT = 0.7447;
-const CROP_TOP = 0.7399;
-
-/**
- * The Member's round avatar (Figma "notifications icon (3)", on Home, Profile and
- * My Account). Every Member has the same artwork until photos are built.
- */
-export function Avatar({ size }: { size: number }) {
+export function Avatar({ size, name }: { size: number; name: { firstName: string; lastName: string } }) {
   return (
-    <View style={[styles.clip, { width: size, height: size, borderRadius: size / 2 }]}>
-      <Image
-        source={avatar}
-        accessibilityIgnoresInvertColors
-        style={{ position: "absolute", width: size * CROP_SCALE, height: size * CROP_SCALE, left: -size * CROP_LEFT, top: -size * CROP_TOP }}
-      />
+    <View
+      style={[styles.circle, { width: size, height: size, borderRadius: size / 2 }]}
+      importantForAccessibility="no-hide-descendants"
+      accessibilityElementsHidden
+    >
+      <Text style={[styles.letters, { fontSize: Math.round(size * 0.36) }]} maxFontSizeMultiplier={1.3} numberOfLines={1}>
+        {initials(name)}
+      </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  clip: { overflow: "hidden" },
+  circle: { alignItems: "center", justifyContent: "center", backgroundColor: colors.selected },
+  letters: { fontFamily: fontFamily.semiBold, color: colors.brandInk, letterSpacing: 0.5, includeFontPadding: false },
 });

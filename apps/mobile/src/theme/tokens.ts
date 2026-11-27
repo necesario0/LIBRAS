@@ -15,8 +15,11 @@ export const colors = {
   primary: "#005DC3",
   /** Text field and card fill. */
   surface: "#F0F0F0",
-  /** Placeholder and secondary text. */
-  textMuted: "#747474",
+  /**
+   * Placeholder and secondary text. Darker than the frames' #747474, which reads
+   * 4.1:1 on the grey field and pill fills; this is at least 4.5:1 on all of them.
+   */
+  textMuted: "#6B6B6B",
   /** Text links. */
   link: "#170D0D",
   /** The "already have an account?" link of the welcome screen. */
@@ -25,14 +28,17 @@ export const colors = {
   danger: "#B3261E",
   /** Sign-up screens: the "SIGN UP" button, and the second CTA colour of the design. */
   accent: "#FCBF49",
-  /** Required-field asterisks and field error text (Figma "ff4a4a"). */
-  error: "#FF4A4A",
+  /**
+   * Required-field asterisks, field error text and the red outlines. Deeper than
+   * the frames' "ff4a4a" (3.3:1 on white), so error text reads at 4.8:1.
+   */
+  error: "#D92D20",
   /** Light grey: radio outlines, upcoming steps, panel and option borders. */
   border: "#D9D9D9",
   /** Fill of the selected account type row. */
   selected: "#CEF2FF",
-  /** The "(optional)" hint next to a field label. */
-  hint: "#878787",
+  /** The "(optional)" hint next to a field label (the frames' #878787 is 3.6:1 on white). */
+  hint: "#6B6B6B",
   /** Secondary copy inside a panel ("We sent an email to"). */
   textSecondary: "#565656",
   /** Border of the college list. */
@@ -41,20 +47,24 @@ export const colors = {
   panelBorder: "rgba(0,0,0,0.32)",
   /** The highlighted word of a heading ("Show this to the librarian", Figma 617:3265). */
   highlight: "#FFA800",
-  /** The greeting's second line on Home ("What’s on your mind"). */
+  /** A hairline rule (Successfully Borrowed). Too faint for text: 2.2:1 on white. */
   textFaint: "#AFAFAF",
   /** Shadow of the Home search bar (Figma: black at 25%). */
   shadow: "#000000",
-  /** A Copy is available: text and fill of the status pill (Figma "92% match" pill). */
-  success: "#12B76A",
+  /**
+   * A Copy is available: text and fill of the status pill (Figma "92% match"
+   * pill). The text is the darker step of the frames' #12B76A, which read 2.3:1
+   * on the fill; this reads 5.1:1.
+   */
+  success: "#067647",
   successSurface: "#E5F6EC",
   /** A neutral status pill, for example no Copy available (Figma "74% match" pill). */
   pill: "#F1F1F3",
   /** Book page: the call number pill (Figma 1187:1479). */
   callNumber: "#9DCCFF",
-  /** Book page: the "Available" pill and its text (Figma 614:1170, 614:1171). */
+  /** Book page: the "Available" pill and its text (Figma 614:1170, 614:1171; the text one step darker, for 5:1). */
   availableSurface: "#C7FFD5",
-  availableText: "#188132",
+  availableText: "#14772D",
   /** Book page: body copy under a heading (Figma 617:1184). */
   textBody: "#6E6E6E",
   /** Fill of the "Overdue" pill; its text is `danger`. */
@@ -63,8 +73,8 @@ export const colors = {
   grabber: "#D9D9D9",
   /** Password screens (Figma 926:14226): headings and typed text. */
   ink: "#1A1A1F",
-  /** Password screens: the intro line, unmet requirements and the success message. */
-  textSubtle: "#737885",
+  /** Password screens: the intro line, unmet requirements and the success message (frames: #737885, 4.4:1). */
+  textSubtle: "#676C79",
   /** An outlined action that backs out without saving: its border and label (Cancel of the password screens, Figma 926:14378). */
   dismiss: "#D93025",
   /** The filled action that saves or confirms (Save of the password screens and the success dialog's button, Figma 926:14380, 928:14993). */
@@ -73,8 +83,8 @@ export const colors = {
   scrim: "rgba(0,0,0,0.55)",
   /** The hairline around the floating tab bar (black at 6%). */
   hairline: "rgba(0,0,0,0.06)",
-  /** The circled cross that empties the search field. */
-  clearField: "#B9B9B9",
+  /** The circled cross that empties the search field (3.3:1 on white, the floor for an icon). */
+  clearField: "#8E8E8E",
   /** The lighter spine drawn over a placeholder Book cover. */
   coverSpine: "rgba(255,255,255,0.35)",
   /** The chosen option of the Sort menu (approved Tier 3 preview). */
@@ -266,6 +276,12 @@ export const radii = {
 /** Height of text fields and buttons. */
 export const controlHeight = 44;
 
+/**
+ * The smallest area a tap lands on (Android's 48 dp). A control drawn smaller,
+ * such as a chip or a text link, keeps its look and gets this much room around it.
+ */
+export const minTouchTarget = 48;
+
 /** Height of a password field (Figma 926:14350). */
 export const passwordFieldHeight = 48;
 
@@ -305,3 +321,4 @@ export const shelfCover = { width: 96, height: 140 } as const;
 
 /** The title printed on a Home shelf cover: white, except on the pale yellow cover, where white could not be read. */
 export const coverInk = { light: "#FFFFFF", dark: "#2B2B33", darkOn: "#E5C773" } as const;
+

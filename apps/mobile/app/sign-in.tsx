@@ -13,7 +13,7 @@ import { FieldError, TextField } from "../src/components/TextField";
 import { Wordmark } from "../src/components/Wordmark";
 import { useScreenTop } from "../src/hooks/useScreenTop";
 import { check } from "../src/sign-up/validate";
-import { colors, fontFamily, fontSize, spacing } from "../src/theme/tokens";
+import { colors, fontFamily, fontSize, minTouchTarget, spacing } from "../src/theme/tokens";
 
 /**
  * "Login with account" (Figma "iPhone 17 - 9", error states 13, 14 and 96): the
@@ -128,7 +128,6 @@ export default function SignInScreen() {
           <Pressable
             onPress={() => router.push({ pathname: "/forgot-password", params: { email: email.trim() } })}
             accessibilityRole="link"
-            hitSlop={8}
             style={styles.forgot}
             testID="sign-in-forgot-password"
           >
@@ -153,6 +152,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.screen,
   },
   form: { alignSelf: "stretch", paddingHorizontal: spacing.screen, marginTop: spacing.xs, gap: spacing.sm },
-  forgot: { alignSelf: "center", marginTop: spacing.xs },
+  // 48 pt to tap; the negative margin takes back the form's gap, so the link sits about where the frame has it.
+  forgot: { alignSelf: "center", minHeight: minTouchTarget, justifyContent: "center", paddingHorizontal: spacing.md, marginTop: -spacing.sm },
   forgotLabel: { fontFamily: fontFamily.regular, fontSize: fontSize.caption, color: colors.black, textDecorationLine: "underline" },
 });

@@ -54,10 +54,12 @@ appId: ph.edu.umak.libras
     id: shelf-popular-book-${output.statutesId}
 - takeScreenshot: home-shelf-popular
 
-# Available now in Law: only Law Books with a Copy on the shelf.
+# Available now in Law: only Law Books with a Copy on the shelf. Scroll to the
+# Book, not the heading: at a large text size the heading shows while the covers
+# are still under the tab bar.
 - scrollUntilVisible:
     element:
-      id: shelf-available_now-title
+      id: shelf-available_now-book-${output.statutesId}
     direction: DOWN
 - assertVisible: "Available now in Law"
 - assertVisible:

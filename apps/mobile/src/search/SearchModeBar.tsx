@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { CATALOG_SEARCH_MAX_QUERY_LENGTH } from "@libras/shared";
 import { ClearFieldIcon, MagnifierIcon } from "../components/OutlineIcons";
-import { colors, fontFamily, fontSize, radii, searchBarHeight } from "../theme/tokens";
+import { colors, fontFamily, fontSize, minTouchTarget, radii, searchBarHeight } from "../theme/tokens";
 
 interface SearchModeBarProps {
   value: string;
@@ -10,7 +10,11 @@ interface SearchModeBarProps {
   onCancel: () => void;
 }
 
-/** The bar of search mode (approved Tier 3 preview): a focused field with a clear button, and Cancel beside it. */
+/**
+ * The bar of search mode (approved Tier 3 preview): a focused field with a clear
+ * button, and Cancel beside it. Both are drawn small but take a full-size tap:
+ * the clear button the field's whole height at its right end, Cancel 48 pt.
+ */
 export function SearchModeBar({ value, onChangeText, onSubmit, onCancel }: SearchModeBarProps) {
   return (
     <View style={styles.row}>
@@ -32,12 +36,12 @@ export function SearchModeBar({ value, onChangeText, onSubmit, onCancel }: Searc
           testID="search-input"
         />
         {value !== "" ? (
-          <Pressable accessibilityRole="button" accessibilityLabel="Clear" hitSlop={8} onPress={() => onChangeText("")} testID="search-clear">
+          <Pressable accessibilityRole="button" accessibilityLabel="Clear" onPress={() => onChangeText("")} style={styles.clear} testID="search-clear">
             <ClearFieldIcon color={colors.clearField} size={20} />
           </Pressable>
         ) : null}
       </View>
-      <Pressable accessibilityRole="button" hitSlop={8} onPress={onCancel} testID="search-cancel">
+      <Pressable accessibilityRole="button" onPress={onCancel} style={styles.cancelTarget} testID="search-cancel">
         <Text style={styles.cancel}>Cancel</Text>
       </Pressable>
     </View>
@@ -61,5 +65,8 @@ const styles = StyleSheet.create({
     boxShadow: "0px 0px 0px 4px rgba(0, 93, 195, 0.12)",
   },
   input: { flex: 1, minWidth: 0, height: "100%", paddingVertical: 0, fontFamily: fontFamily.regular, fontSize: fontSize.note, color: colors.black },
+  // Runs to the field's right border: the cross stays where the padding put it.
+  clear: { alignSelf: "stretch", width: 44, marginRight: -8, paddingRight: 8, alignItems: "flex-end", justifyContent: "center" },
+  cancelTarget: { minHeight: minTouchTarget, minWidth: minTouchTarget, justifyContent: "center", alignItems: "center" },
   cancel: { fontFamily: fontFamily.medium, fontSize: fontSize.label, lineHeight: 20, color: colors.black },
 });
