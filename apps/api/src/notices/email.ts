@@ -15,7 +15,7 @@ export interface NoticeLoan {
   renewal: LoanRenewal | null;
   /** The Member's daily Fine rate and Fine cap, in centavos: for a due-tomorrow notice, null otherwise or when nothing would be owed. */
   fineRate: FineRate | null;
-  /** The Fine so far, in centavos (`fineAt`, as My Loans shows it): for an overdue notice, null otherwise. */
+  /** The Fine so far, in centavos (`fineAt`, as My Books shows it): for an overdue notice, null otherwise. */
   fineSoFar: number | null;
 }
 
@@ -52,7 +52,7 @@ function paragraphOf(loan: NoticeLoan, now: Date): string {
       renewal === null
         ? ""
         : renewal.renewable
-          ? `You can renew it in the LIBRAS app, under My Loans, until then: the new due date would be ${formatLibraryDate(renewal.dueAt)}.`
+          ? `You can renew it in the LIBRAS app, under My Books, until then: the new due date would be ${formatLibraryDate(renewal.dueAt)}.`
           : `It cannot be renewed: ${RENEWAL_REASONS[renewal.reason]} Please return it to the library desk by then.`;
     const rate =
       loan.fineRate === null

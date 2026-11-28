@@ -290,7 +290,7 @@ appId: ph.edu.umak.libras
     visible:
       id: loan-renew-error
     timeout: 15000
-- assertVisible: "Your Loan was not renewed: another Member is now waiting for this Book. Please return the Copy by its due date."
+- assertVisible: "This Book was not renewed: another Member is now waiting for it. Please return the Copy by its due date."
 - extendedWaitUntil:
     visible: "Another Member is waiting for this Book, so it cannot be renewed."
     timeout: 15000
@@ -353,7 +353,7 @@ appId: ph.edu.umak.libras
 - assertVisible:
     id: loan-fine
     text: "Fine so far: PHP 15 \\(3 days late\\)"
-- assertVisible: "Overdue Loans cannot be renewed. Please return it to the library desk."
+- assertVisible: "This Book is overdue, so it cannot be renewed. Please return it to the library desk."
 - runFlow: subflows/leave-search.yaml
 - assertVisible:
     id: tab-my-books-dot

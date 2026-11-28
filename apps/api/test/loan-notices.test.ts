@@ -137,7 +137,7 @@ describe("Loan notices", () => {
     // Overdue Loans first, then the one due tomorrow, with whether it can be renewed: not while the others are overdue.
     assert.match(
       text,
-      /"First Of Three" [^\n]* is overdue[\s\S]*"Second Of Three" [^\n]* is overdue[\s\S]*"Due A Day Later" [^\n]* is due tomorrow, Nov 20, 2026\.\nIt cannot be renewed: You have another Loan that is overdue\./,
+      /"First Of Three" [^\n]* is overdue[\s\S]*"Second Of Three" [^\n]* is overdue[\s\S]*"Due A Day Later" [^\n]* is due tomorrow, Nov 20, 2026\.\nIt cannot be renewed: Another Book you borrowed is overdue\./,
     );
     assert.equal(omars.length, 1);
     assert.equal(omars[0]?.subject, "Your LIBRAS Loan is due tomorrow");
@@ -151,7 +151,7 @@ describe("Loan notices", () => {
 
     assert.match(
       email?.text ?? "",
-      /is due tomorrow, Nov 19, 2026\.\nYou can renew it in the LIBRAS app, under My Loans, until then: the new due date would be Nov 26, 2026\.\nIf it is returned late, the Fine is PHP 5 a day, up to PHP 300\./,
+      /is due tomorrow, Nov 19, 2026\.\nYou can renew it in the LIBRAS app, under My Books, until then: the new due date would be Nov 26, 2026\.\nIf it is returned late, the Fine is PHP 5 a day, up to PHP 300\./,
     );
   });
 

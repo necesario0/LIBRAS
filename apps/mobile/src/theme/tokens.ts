@@ -46,7 +46,7 @@ export const colors = {
   /** Border of a panel that holds a message. */
   panelBorder: "rgba(0,0,0,0.32)",
   /** The highlighted word of a heading ("Show this to the librarian", Figma 617:3265). */
-  highlight: "#FFA800",
+  highlight: "#C78100",
   /** A hairline rule (Successfully Borrowed). Too faint for text: 2.2:1 on white. */
   textFaint: "#AFAFAF",
   /** Shadow of the Home search bar (Figma: black at 25%). */

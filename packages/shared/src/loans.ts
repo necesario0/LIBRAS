@@ -131,26 +131,26 @@ export type LoanRenewal = { renewable: true; dueAt: string; last: boolean } | { 
 
 /** What My Books shows in place of the Renew button of a Loan that cannot be renewed. */
 export const RENEWAL_REASONS: Readonly<Record<RenewalRefusal, string>> = {
-  loan_overdue: "Overdue Loans cannot be renewed. Please return it to the library desk.",
-  not_renewable: "In-library Loans cannot be renewed. Please return it before closing.",
+  loan_overdue: "This Book is overdue, so it cannot be renewed. Please return it to the library desk.",
+  not_renewable: "A Book borrowed for in-library use cannot be renewed. Please return it before closing.",
   renewal_limit_reached: "Already renewed. It cannot be renewed again.",
   hold_waiting: "Another Member is waiting for this Book, so it cannot be renewed.",
-  overdue_loan: "You have another Loan that is overdue. Renewals can be made again once it is returned and its Fine is settled.",
+  overdue_loan: "Another Book you borrowed is overdue. Renewals can be made again once it is returned and its Fine is settled.",
   unsettled_fine: "You have an unsettled Fine. Renewals can be made again once it is settled at the library desk.",
 };
 
 /** The words the API returns and the app shows when a Renewal is refused. */
 export const RENEWAL_MESSAGES = {
   /** For a Loan id that is not one at all, and for one that is not the Member's: the same words, so neither says more. */
-  loanNotFound: "This Loan could not be found. Open My Books and try again.",
-  loanReturned: "This Copy has been returned, so there is no Loan to renew.",
+  loanNotFound: "This borrowed Book could not be found. Open My Books and try again.",
+  loanReturned: "This Book has been returned, so it cannot be renewed.",
   /** A refusal of the Renewal itself. The Loans list said it could be renewed, so something changed since. */
   refused: {
-    loan_overdue: "Your Loan was not renewed: it is now past its due date. Please return the Copy to the library desk.",
-    not_renewable: "Your Loan was not renewed: in-library Loans cannot be renewed. Please return the Copy before closing.",
-    renewal_limit_reached: "Your Loan was not renewed: it has already been renewed, and it cannot be renewed again.",
-    hold_waiting: "Your Loan was not renewed: another Member is now waiting for this Book. Please return the Copy by its due date.",
-    // Good standing: the same words My Loans shows for the Loan (`RENEWAL_REASONS`).
+    loan_overdue: "This Book was not renewed: it is now past its due date. Please return the Copy to the library desk.",
+    not_renewable: "This Book was not renewed: a Book borrowed for in-library use cannot be renewed. Please return the Copy before closing.",
+    renewal_limit_reached: "This Book was not renewed: it has already been renewed, and it cannot be renewed again.",
+    hold_waiting: "This Book was not renewed: another Member is now waiting for it. Please return the Copy by its due date.",
+    // Good standing: the same words My Books shows under the Loan (`RENEWAL_REASONS`).
     overdue_loan: RENEWAL_REASONS.overdue_loan,
     unsettled_fine: RENEWAL_REASONS.unsettled_fine,
   } satisfies Record<RenewalRefusal, string>,
