@@ -20,6 +20,18 @@ const rawStyleValues = [
 ];
 
 // Time comes from the injected clock (`deps.clock.now()`) so tests can move it.
+// Expo Router's `router.setParams`, `router.canGoBack` and `router.canDismiss` read one navigation
+// reference shared by the whole app. When Android recreates the activity (the Member changes the
+// text size, for example), the old root unmounts after the new one mounts and clears that
+// reference: setParams then throws and crashes the app, and canGoBack says false. The screen's own
+// navigation (`useNavigation()`) belongs to the navigator that is mounted now.
+const routerGlobalRef = [
+  {
+    selector: "CallExpression[callee.object.name='router'][callee.property.name=/^(setParams|canGoBack|canDismiss)$/]",
+    message: "Call this on useNavigation() instead: the router's version breaks after Android recreates the activity.",
+  },
+];
+
 const sqlNow = [
   {
     selector: "TemplateElement[value.raw=/\\bnow\\(\\)/i]",
@@ -69,9 +81,17 @@ export default tseslint.config(
     },
   },
   {
-    files: ["apps/mobile/src/**/*.{ts,tsx}", "apps/web/src/**/*.{ts,tsx}"],
-    ignores: ["apps/mobile/src/theme/tokens.ts"],
+    files: ["apps/web/src/**/*.{ts,tsx}"],
     rules: { "no-restricted-syntax": ["error", ...rawStyleValues] },
+  },
+  {
+    files: ["apps/mobile/src/**/*.{ts,tsx}"],
+    ignores: ["apps/mobile/src/theme/tokens.ts"],
+    rules: { "no-restricted-syntax": ["error", ...rawStyleValues, ...routerGlobalRef] },
+  },
+  {
+    files: ["apps/mobile/app/**/*.{ts,tsx}"],
+    rules: { "no-restricted-syntax": ["error", ...routerGlobalRef] },
   },
   {
     files: ["apps/api/src/**/*.ts"],

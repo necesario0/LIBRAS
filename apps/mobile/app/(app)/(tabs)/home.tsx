@@ -1,4 +1,5 @@
-import { useFocusEffect, useIsFocused, useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useIsFocused, useLocalSearchParams, useNavigation, useRouter } from "expo-router";
+import type { NavigationProp } from "expo-router/react-navigation";
 import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, BackHandler, Keyboard, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useAuth, useMember } from "../../../src/auth/AuthContext";
@@ -64,6 +65,7 @@ function resultCount(response: CatalogSearchResponse): string {
  */
 export default function HomeScreen() {
   const router = useRouter();
+  const navigation = useNavigation<NavigationProp<{ home: { search?: string } }>>();
   const member = useMember();
   const { request } = useAuth();
   const tabBarSpace = useTabBarSpace();
@@ -75,8 +77,9 @@ export default function HomeScreen() {
   useEffect(() => {
     if (searchParam !== "1") return;
     setSearchOn(true);
-    router.setParams({ search: undefined });
-  }, [searchParam, router]);
+    // This screen's navigation, not the router's: see `routerGlobalRef` in eslint.config.js.
+    navigation.setParams({ search: undefined });
+  }, [searchParam, navigation]);
   const recent = useRecentSearches(member.id, searchOn);
   const typing = searchOn && !search.submitted;
   const suggestions = useSuggestions(request, search.query, typing);
