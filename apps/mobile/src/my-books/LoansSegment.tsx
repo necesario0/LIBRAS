@@ -26,7 +26,7 @@ export function LoansSegment({ state, reload }: { state: LoansState; reload: () 
     } catch (error) {
       // The Loan may have changed since the list was loaded: show the refusal, then the fresh reason in the row.
       void reload();
-      throw new Error(loanFailureMessage(error, "Your Loan could not be renewed. Please try again."), { cause: error });
+      throw new Error(loanFailureMessage(error, "This Book could not be renewed. Please try again."), { cause: error });
     }
     await reload();
   };
@@ -42,7 +42,7 @@ export function LoansSegment({ state, reload }: { state: LoansState; reload: () 
       {state.status === "error" ? (
         <View style={[styles.panel, styles.failed]} testID="loans-error">
           <Text style={[styles.panelTitle, styles.failedTitle]} accessibilityRole="alert">
-            Your Loans did not load
+            Your borrowed Books did not load
           </Text>
           <Text style={styles.panelBody}>{state.message}</Text>
           <Button label="Try again" radius={radii.formButton} onPress={() => void reload()} testID="loans-retry" />
@@ -52,7 +52,7 @@ export function LoansSegment({ state, reload }: { state: LoansState; reload: () 
       {state.status === "loaded" && state.loans.length === 0 ? (
         <EmptyState
           icon={<BookOutlineIcon color={colors.textMuted} size={28} />}
-          title="No Loans yet"
+          title="Nothing borrowed yet"
           line="Open a Book with an available Copy and borrow it at the desk. It will be listed here."
           testID="loans-empty"
         />
@@ -61,7 +61,7 @@ export function LoansSegment({ state, reload }: { state: LoansState; reload: () 
       {overdue > 0 ? (
         <View style={[styles.panel, styles.failed]} testID="loans-overdue-notice">
           <Text style={[styles.panelTitle, styles.failedTitle]} accessibilityRole="alert">
-            {overdue === 1 ? "1 Loan is overdue" : `${overdue} Loans are overdue`}
+            {overdue === 1 ? "1 Book is overdue" : `${overdue} Books are overdue`}
           </Text>
           <Text style={styles.notice}>{`Please return ${overdue === 1 ? "it" : "them"} to the library desk as soon as you can.`}</Text>
         </View>
@@ -70,7 +70,7 @@ export function LoansSegment({ state, reload }: { state: LoansState; reload: () 
       {current.length > 0 ? (
         <View testID="loans-current">
           <Text style={styles.section} testID="loans-current-count">
-            {state.status === "loaded" && state.loanLimit > 0 ? `Current - ${current.length} of ${state.loanLimit}` : "Current"}
+            {state.status === "loaded" && state.loanLimit > 0 ? `Borrowed now - ${current.length} of ${state.loanLimit} allowed` : "Borrowed now"}
           </Text>
           {current.map((loan) => (
             <LoanRow key={loan.id} loan={loan} onRenew={renew} />
@@ -81,15 +81,15 @@ export function LoansSegment({ state, reload }: { state: LoansState; reload: () 
       {current.length === 0 && past.length > 0 ? (
         <View style={styles.panel} testID="loans-none-current">
           <Text style={styles.panelTitle} accessibilityRole="header">
-            No current Loans
+            Nothing borrowed right now
           </Text>
-          <Text style={styles.notice}>Nothing is out on your account right now. The Copies you have returned are listed below.</Text>
+          <Text style={styles.notice}>The Books you have returned are listed below.</Text>
         </View>
       ) : null}
 
       {past.length > 0 ? (
         <View testID="loans-past">
-          <Text style={styles.section} testID="loans-past-count">{`Past Loans - ${past.length}`}</Text>
+          <Text style={styles.section} testID="loans-past-count">{`Returned - ${past.length}`}</Text>
           {past.map((loan) => (
             <LoanRow key={loan.id} loan={loan} onRenew={renew} />
           ))}

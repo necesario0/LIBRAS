@@ -6,7 +6,7 @@ appId: ph.edu.umak.libras
     clearState: true
 # Wait for the app to be up before following the link: a link sent while it starts is lost.
 - extendedWaitUntil:
-    visible: "SIGN  UP"
+    visible: "SIGN UP"
     timeout: 30000
 - openLink: libras://status
 - extendedWaitUntil:

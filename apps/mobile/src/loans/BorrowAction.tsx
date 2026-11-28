@@ -87,5 +87,6 @@ export function BorrowAction({
 const styles = StyleSheet.create({
   action: { gap: 28 },
   note: { fontFamily: fontFamily.regular, fontSize: fontSize.label, lineHeight: lineHeightFor(fontSize.label), letterSpacing: -0.28, color: colors.black },
-  period: { color: colors.primary },
+  // Weight, not the link blue of the frames: nothing here can be tapped.
+  period: { fontFamily: fontFamily.semiBold },
 });

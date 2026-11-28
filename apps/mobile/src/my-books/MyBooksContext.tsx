@@ -35,7 +35,7 @@ const MyBooksContext = createContext<MyBooksValue | undefined>(undefined);
  */
 export function MyBooksProvider({ children }: { children: ReactNode }) {
   const { request } = useAuth();
-  const loans = useFetch(request, api.getLoans, "Your Loans could not be loaded. Please try again.");
+  const loans = useFetch(request, api.getLoans, "Your borrowed Books could not be loaded. Please try again.");
   const holds = useFetch(request, api.getHolds, "Your Holds could not be loaded. Please try again.");
   const reloadLoans = loans.reload;
   const reloadHolds = holds.reload;

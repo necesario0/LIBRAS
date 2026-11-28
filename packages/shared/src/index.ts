@@ -190,6 +190,7 @@ export {
   HOLD_STATUSES,
   HOLD_STATUS_LABELS,
   holdIdSchema,
+  holdPlaceInLine,
   isActiveHold,
   placeHoldRequestSchema,
 } from "./holds.ts";

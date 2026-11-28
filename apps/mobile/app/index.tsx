@@ -48,7 +48,7 @@ function WelcomeScreen() {
         </View>
         <View style={styles.actions}>
           <Button
-            label="SIGN  UP"
+            label="SIGN UP"
             tone="accent"
             radius={radii.field}
             onPress={() => router.push("/sign-up/account-type")}

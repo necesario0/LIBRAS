@@ -10,7 +10,7 @@ appId: ph.edu.umak.libras
 - runScript: scripts/create-in-library-loan.js
 
 - extendedWaitUntil:
-    visible: "SIGN  UP"
+    visible: "SIGN UP"
     timeout: 30000
 - tapOn:
     id: welcome-sign-in
@@ -101,13 +101,13 @@ appId: ph.edu.umak.libras
     id: my-books-saved
 - assertNotVisible:
     id: my-books-holds
-- assertVisible: "Current - 1 of 3"
+- assertVisible: "Borrowed now - 1 of 3 allowed"
 - assertVisible:
     id: loan-due
     text: "(Return by|Was due) Nov 20, 2026, 7:00 PM"
 - assertVisible:
     id: tab-my-books-dot
-- assertVisible: "In-library Loans cannot be renewed. Please return it before closing."
+- assertVisible: "A Book borrowed for in-library use cannot be renewed. Please return it before closing."
 - assertNotVisible:
     id: loan-renew
 - takeScreenshot: visitor-in-library-loan

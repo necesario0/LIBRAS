@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { HOLD_STATUS_LABELS, formatLibraryDate, formatLibraryDateTime } from "@libras/shared";
+import { HOLD_STATUS_LABELS, formatLibraryDate, formatLibraryDateTime, holdPlaceInLine } from "@libras/shared";
 import type { Hold, HoldStatus } from "@libras/shared";
 import { BookCover } from "../components/BookCover";
 import { RowAction, RowActions, RowConfirmation } from "../components/RowConfirmation";
@@ -27,7 +27,9 @@ interface HoldRowProps {
 
 /**
  * One of the Member's Holds: the Book, its status and when the Hold was placed.
- * A ready Hold says that a Copy is set aside and when the Pickup Window ends, in
+ * A waiting Hold says its place in line ("You are 2nd in line"), as the API
+ * worked it out on this load, and that Faculty and staff are served first, so
+ * the place can move back. A ready Hold says that a Copy is set aside and when the Pickup Window ends, in
  * the library's time. A waiting or ready Hold has a Cancel button that asks once
  * more: a waiting Hold leaves the queue, a ready one gives its Copy up. A
  * ready Hold also has Show my Digital ID, the way to pick it up.
@@ -65,6 +67,16 @@ export function HoldRow({ hold, onCancel, onShowDigitalId }: HoldRowProps) {
         </View>
         <StatusPill label={HOLD_STATUS_LABELS[hold.status]} tone={PILL_TONES[hold.status]} testID="hold-status" />
       </View>
+
+      {/* A number only: an API from before the place in line was added sends no queuePosition at all. */}
+      {hold.status === "waiting" && typeof hold.queuePosition === "number" ? (
+        <View style={styles.queue} testID="hold-queue">
+          <Text style={styles.queueTitle} testID="hold-queue-position">
+            {holdPlaceInLine(hold.queuePosition)}
+          </Text>
+          <Text style={styles.queueBody}>Faculty and staff are served first, so your place can move back.</Text>
+        </View>
+      ) : null}
 
       {hold.status === "ready" && hold.pickupEndsAt !== null ? (
         <View style={styles.pickup} testID="hold-pickup">
@@ -114,6 +126,9 @@ const styles = StyleSheet.create({
   pickup: { borderRadius: radii.panel, backgroundColor: colors.successSurface, paddingVertical: spacing.md, paddingHorizontal: spacing.lg, gap: 2 },
   pickupTitle: { fontFamily: fontFamily.semiBold, fontSize: fontSize.small, color: colors.availableText },
   pickupBody: { fontFamily: fontFamily.regular, fontSize: fontSize.caption, lineHeight: 18, color: colors.textSecondary },
+  queue: { borderRadius: radii.panel, backgroundColor: colors.selected, paddingVertical: spacing.md, paddingHorizontal: spacing.lg, gap: 2 },
+  queueTitle: { fontFamily: fontFamily.semiBold, fontSize: fontSize.small, color: colors.primary },
+  queueBody: { fontFamily: fontFamily.regular, fontSize: fontSize.caption, lineHeight: 18, color: colors.textSecondary },
   pickupUntil: { fontFamily: fontFamily.semiBold, color: colors.black },
   failure: { fontFamily: fontFamily.regular, fontSize: fontSize.caption, lineHeight: 18, color: colors.danger },
 });

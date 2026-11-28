@@ -66,6 +66,7 @@ _Avoid_: Assignment, allocation, notification (the email is only part of it)
 
 **Loan**:
 A record that a Member has a specific book copy out. A Loan exists only once a Librarian confirms it; a Member can never create one alone.
+On the My Books page of the mobile app, Members see their Loans under "Borrow", in words such as "Borrowed now" and "Returned" (owner decision, 2026-11-28). The reasons a Loan cannot be renewed say "Book" too, on My Books, in the API's refusal and in the due-tomorrow email, which share the same words. Everywhere else, and in code and API field names, it is a Loan.
 _Avoid_: Borrow (as a noun), checkout, transaction
 
 **Digital ID**:

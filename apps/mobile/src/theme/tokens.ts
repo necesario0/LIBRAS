@@ -46,7 +46,7 @@ export const colors = {
   /** Border of a panel that holds a message. */
   panelBorder: "rgba(0,0,0,0.32)",
   /** The highlighted word of a heading ("Show this to the librarian", Figma 617:3265). */
-  highlight: "#FFA800",
+  highlight: "#C78100",
   /** A hairline rule (Successfully Borrowed). Too faint for text: 2.2:1 on white. */
   textFaint: "#AFAFAF",
   /** Shadow of the Home search bar (Figma: black at 25%). */
@@ -81,6 +81,8 @@ export const colors = {
   confirm: "#F9B233",
   /** The dimmed screen behind a dialog (Figma 928:14986). */
   scrim: "rgba(0,0,0,0.55)",
+  /** The lighter dimming behind the Book sheet, so the screen it opened over reads as inactive. */
+  sheetScrim: "rgba(0,0,0,0.32)",
   /** The hairline around the floating tab bar (black at 6%). */
   hairline: "rgba(0,0,0,0.06)",
   /** The circled cross that empties the search field (3.3:1 on white, the floor for an icon). */

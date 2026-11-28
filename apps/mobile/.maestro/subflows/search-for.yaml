@@ -13,9 +13,17 @@ appId: ph.edu.umak.libras
 - tapOn:
     id: search-input
 # Typing can start before the keyboard is ready and lose the first letter; type until the whole query is in the field.
+# The field's own clear button empties it wherever the tap left the cursor (eraseText only deletes what is before it).
 - retry:
     maxRetries: 3
     commands:
+      - runFlow:
+          when:
+            visible:
+              id: search-clear
+          commands:
+            - tapOn:
+                id: search-clear
       - eraseText: 100
       - inputText: ${QUERY}
       - assertVisible: ${QUERY}

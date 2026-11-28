@@ -5,6 +5,7 @@ import type { Identity } from "../auth/auth-provider.ts";
 import { withIdentity } from "../auth/identity.ts";
 import { lockCopy } from "../copies/index.ts";
 import { isUniqueViolation, retryOnConflict, withTransaction } from "../db.ts";
+import type { Database, Tx } from "../db.ts";
 import { AppError } from "../errors.ts";
 import { lockMember } from "../loans/policy.ts";
 import { requireGoodStanding } from "../standing/index.ts";
@@ -23,7 +24,7 @@ interface HoldRow {
   pickup_ends_at: Date | null;
 }
 
-function toHold(row: HoldRow): Hold {
+function toHold(row: HoldRow, queuePosition: number | null = null): Hold {
   return {
     id: row.id,
     bookId: row.book_id,
@@ -32,7 +33,28 @@ function toHold(row: HoldRow): Hold {
     status: row.status,
     placedAt: row.placed_at.toISOString(),
     pickupEndsAt: row.pickup_ends_at === null ? null : row.pickup_ends_at.toISOString(),
+    queuePosition,
   };
+}
+
+/**
+ * The place in line of each of these Holds that is waiting: one more than the
+ * waiting Holds of its Book that the dispatcher serves first (lower score, or
+ * the same score and an earlier sequence; the `holds_queue_idx` order). Run
+ * with the API's own connection, not as the Member: row-level security would
+ * hide the other Members' Holds it counts. Only the count leaves this query.
+ */
+async function queuePositions(db: Database | Tx, holdIds: readonly string[]): Promise<Map<string, number>> {
+  if (holdIds.length === 0) return new Map();
+  const result = await db.query<{ id: string; position: number }>(
+    `select h.id,
+            1 + (select count(*) from public.holds o
+                  where o.book_id = h.book_id and o.status = 'waiting' and (o.score, o.seq) < (h.score, h.seq))::int as position
+       from public.holds h
+      where h.id = any($1) and h.status = 'waiting'`,
+    [holdIds],
+  );
+  return new Map(result.rows.map((row) => [row.id, row.position]));
 }
 
 /**
@@ -93,7 +115,8 @@ export async function placeHold(deps: AppDeps, member: MemberProfile, bookId: st
            from inserted h join public.books b on b.id = h.book_id`,
         [bookId, member.id, placedAt, HOLD_WEIGHT_HOURS[member.accountType], holdScore(placedAt, member.accountType)],
       );
-      return toHold(inserted.rows[0] as HoldRow);
+      const row = inserted.rows[0] as HoldRow;
+      return toHold(row, (await queuePositions(tx, [row.id])).get(row.id) ?? null);
     });
   } catch (error) {
     if (isUniqueViolation(error, "holds_one_active_per_member_and_book")) throw new AppError(409, "hold_exists", HOLD_MESSAGES.alreadyHeld);
@@ -105,7 +128,8 @@ export async function placeHold(deps: AppDeps, member: MemberProfile, bookId: st
  * The Member's own Holds, active ones first and each group newest first. Read as the
  * Member, so row-level security shows nobody else's. A Hold whose Pickup Window
  * has ended is expired first (and the Copy passed on), so what the Member reads
- * never depends on when the expiry sweep last ran.
+ * never depends on when the expiry sweep last ran. A waiting Hold carries its
+ * place in line (`queuePositions`), worked out on every read, so it is current.
  */
 export async function listHolds(deps: AppDeps, identity: Identity): Promise<Hold[]> {
   await expireDueHolds(deps, { memberId: identity.userId });
@@ -117,7 +141,11 @@ export async function listHolds(deps: AppDeps, identity: Identity): Promise<Hold
     );
     return result.rows;
   });
-  return rows.map(toHold);
+  const positions = await queuePositions(
+    deps.db,
+    rows.filter((row) => row.status === "waiting").map((row) => row.id),
+  );
+  return rows.map((row) => toHold(row, positions.get(row.id) ?? null));
 }
 
 /** Thrown inside the cancel's transaction to roll it back and read the Hold again. */

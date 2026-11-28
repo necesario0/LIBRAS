@@ -20,7 +20,7 @@ appId: ph.edu.umak.libras
 # The UMAK Student signs in. The emulator sometimes doubles the first character
 # typed after a tap: check and retype.
 - extendedWaitUntil:
-    visible: "SIGN  UP"
+    visible: "SIGN UP"
     timeout: 30000
 - tapOn:
     id: welcome-sign-in
@@ -59,7 +59,7 @@ appId: ph.edu.umak.libras
     visible:
       id: loans-empty
     timeout: 15000
-- assertVisible: "No Loans yet"
+- assertVisible: "Nothing borrowed yet"
 - runFlow: subflows/leave-search.yaml
 - assertNotVisible:
     id: tab-my-books-dot
@@ -198,11 +198,11 @@ appId: ph.edu.umak.libras
 - assertVisible:
     id: my-books-title
     text: "My Books"
-- assertVisible: "Current - 1 of 3"
+- assertVisible: "Borrowed now - 1 of 3 allowed"
 - assertVisible: ${output.borrowTitle}
 - assertVisible: "Borrowed on [A-Z][a-z]{2} [0-9]{1,2}, 20[0-9]{2}"
 - assertVisible: "Return by [A-Z][a-z]{2} [0-9]{1,2}, 20[0-9]{2}"
-- assertVisible: "On loan"
+- assertVisible: "Borrowed"
 - assertNotVisible: "Overdue"
 - assertVisible:
     id: loan-renew
@@ -218,14 +218,14 @@ appId: ph.edu.umak.libras
     visible:
       id: loan-renew-confirmation
     timeout: 5000
-- assertVisible: 'Renew this Loan\? The new due date is [A-Z][a-z]{2} [0-9]{1,2}, 20[0-9]{2}\. After this, it cannot be renewed again\.'
+- assertVisible: 'Renew this Book\? The new due date is [A-Z][a-z]{2} [0-9]{1,2}, 20[0-9]{2}\. After this, it cannot be renewed again\.'
 - takeScreenshot: loans-renew-confirm
 - tapOn:
     id: loan-renew-keep
 - assertNotVisible:
     id: loan-renew-confirmation
 - assertVisible: ${output.dueBeforeRenewal}
-- assertVisible: "On loan"
+- assertVisible: "Borrowed"
 
 # The Member renews: the row shows the new due date, that it was renewed, and
 # that it cannot be renewed again.
@@ -268,7 +268,7 @@ appId: ph.edu.umak.libras
     visible:
       id: loan-renew
     timeout: 15000
-- assertVisible: "Current - 2 of 3"
+- assertVisible: "Borrowed now - 2 of 3 allowed"
 - assertVisible: ${output.wantedTitle}
 - runFlow: subflows/leave-search.yaml
 - assertVisible:
@@ -290,7 +290,7 @@ appId: ph.edu.umak.libras
     visible:
       id: loan-renew-error
     timeout: 15000
-- assertVisible: "Your Loan was not renewed: another Member is now waiting for this Book. Please return the Copy by its due date."
+- assertVisible: "This Book was not renewed: another Member is now waiting for it. Please return the Copy by its due date."
 - extendedWaitUntil:
     visible: "Another Member is waiting for this Book, so it cannot be renewed."
     timeout: 15000
@@ -344,8 +344,8 @@ appId: ph.edu.umak.libras
     visible:
       id: loans-overdue-notice
     timeout: 15000
-- assertVisible: "1 Loan is overdue"
-- assertVisible: "Current - 3 of 3"
+- assertVisible: "1 Book is overdue"
+- assertVisible: "Borrowed now - 3 of 3 allowed"
 - assertVisible: ${output.lateTitle}
 - assertVisible: "Overdue"
 - assertVisible: "Was due [A-Z][a-z]{2} [0-9]{1,2}, 20[0-9]{2}"
@@ -353,7 +353,7 @@ appId: ph.edu.umak.libras
 - assertVisible:
     id: loan-fine
     text: "Fine so far: PHP 15 \\(3 days late\\)"
-- assertVisible: "Overdue Loans cannot be renewed. Please return it to the library desk."
+- assertVisible: "This Book is overdue, so it cannot be renewed. Please return it to the library desk."
 - runFlow: subflows/leave-search.yaml
 - assertVisible:
     id: tab-my-books-dot

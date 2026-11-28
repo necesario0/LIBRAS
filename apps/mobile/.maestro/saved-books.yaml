@@ -12,7 +12,7 @@ appId: ph.edu.umak.libras
 - runScript: scripts/create-saved-books.js
 
 - extendedWaitUntil:
-    visible: "SIGN  UP"
+    visible: "SIGN UP"
     timeout: 30000
 - tapOn:
     id: welcome-sign-in
@@ -43,7 +43,7 @@ appId: ph.edu.umak.libras
     visible:
       id: loans-empty
     timeout: 15000
-- assertVisible: "No Loans yet"
+- assertVisible: "Nothing borrowed yet"
 - assertVisible: "Search the catalog"
 - takeScreenshot: saved-books-loans-empty
 - tapOn:
@@ -257,7 +257,7 @@ appId: ph.edu.umak.libras
 # A Visitor can save a Book. Their tab is "Saved", with no segments.
 - runFlow: subflows/sign-out.yaml
 - extendedWaitUntil:
-    visible: "SIGN  UP"
+    visible: "SIGN UP"
     timeout: 20000
 - tapOn:
     id: welcome-sign-in

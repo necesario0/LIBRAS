@@ -35,6 +35,7 @@ function hold(status: HoldStatus): Hold {
     status,
     placedAt: "2026-11-15T02:00:00.000Z",
     pickupEndsAt: status === "ready" ? "2026-11-19T09:00:00.000Z" : null,
+    queuePosition: status === "waiting" ? 1 : null,
   };
 }
 

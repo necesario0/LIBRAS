@@ -98,11 +98,11 @@ export default function MyBooksScreen() {
 
   const segments: readonly Segment<MyBooksSegment>[] = inLibraryOnly
     ? [
-        { key: "loans", label: "Loans", dot: attention.loans, testID: "my-books-loans" },
+        { key: "loans", label: "Borrow", dot: attention.loans, testID: "my-books-loans" },
         { key: "saved", label: "Saved", dot: false, testID: "my-books-saved" },
       ]
     : [
-        { key: "loans", label: "Loans", dot: attention.loans, testID: "my-books-loans" },
+        { key: "loans", label: "Borrow", dot: attention.loans, testID: "my-books-loans" },
         { key: "holds", label: "Holds", dot: attention.holds, testID: "my-books-holds" },
         { key: "saved", label: "Saved", dot: false, testID: "my-books-saved" },
       ];

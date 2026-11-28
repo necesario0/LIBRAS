@@ -82,7 +82,7 @@ export type GoodStanding = { inGoodStanding: true } | { inGoodStanding: false; r
  * - the Member, anywhere the app or the API tells them they cannot borrow, place
  *   a Hold or renew in general: `goodStandingNotice` (Profile, the Book page's
  *   Borrow and Hold, and the API's refusal of a Hold, `GOOD_STANDING_MESSAGES`);
- * - the Member, about renewing one Loan: `RENEWAL_REASONS` (My Loans, the
+ * - the Member, about renewing one Loan: `RENEWAL_REASONS` (My Books, the
  *   due-tomorrow notice, and the API's refusal of that Renewal);
  * - the Librarian at the desk: `LOAN_MESSAGES.notInGoodStanding`.
  */

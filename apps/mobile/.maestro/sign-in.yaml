@@ -11,7 +11,7 @@ appId: ph.edu.umak.libras
 
 # Welcome leads to sign-in.
 - extendedWaitUntil:
-    visible: "SIGN  UP"
+    visible: "SIGN UP"
     timeout: 30000
 - takeScreenshot: welcome
 - tapOn:
@@ -76,20 +76,20 @@ appId: ph.edu.umak.libras
 # Signing out leaves the protected screen at once.
 - runFlow: subflows/sign-out.yaml
 - extendedWaitUntil:
-    visible: "SIGN  UP"
+    visible: "SIGN UP"
     timeout: 20000
 - assertNotVisible: "Hi, Cobby"
 
 # A link to the protected screen goes nowhere while signed out ...
 - openLink: libras://home
 - assertNotVisible: "Hi, Cobby"
-- assertVisible: "SIGN  UP"
+- assertVisible: "SIGN UP"
 
 # ... and the app stays signed out after a restart.
 - stopApp
 - launchApp
 - extendedWaitUntil:
-    visible: "SIGN  UP"
+    visible: "SIGN UP"
     timeout: 30000
 - assertNotVisible: "Hi, Cobby"
 
@@ -194,7 +194,7 @@ appId: ph.edu.umak.libras
     timeout: 20000
 - runFlow: subflows/sign-out.yaml
 - extendedWaitUntil:
-    visible: "SIGN  UP"
+    visible: "SIGN UP"
     timeout: 20000
 
 # The old password no longer works.
