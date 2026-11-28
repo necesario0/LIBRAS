@@ -1,4 +1,5 @@
-import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useNavigation } from "expo-router";
+import type { NavigationProp } from "expo-router/react-navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
 import { myBooksStartSegment } from "@libras/shared";
@@ -34,8 +35,7 @@ function segmentParam(value: string | string[] | undefined): MyBooksSegment | un
  * segment. Removing a Saved book shows a message with Undo at the foot.
  */
 export default function MyBooksScreen() {
-  const router = useRouter();
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp<{ "my-books": { segment?: string } }>>();
   const params = useLocalSearchParams<{ segment?: string }>();
   const { loans, holds, canBorrow, inLibraryOnly, attention, reload } = useMyBooks();
   const screenTop = useScreenTop();
@@ -57,8 +57,9 @@ export default function MyBooksScreen() {
   useEffect(() => {
     if (linked === undefined) return;
     setChosen(linked);
-    router.setParams({ segment: undefined });
-  }, [linked, router]);
+    // This screen's navigation, not the router's: see `routerGlobalRef` in eslint.config.js.
+    navigation.setParams({ segment: undefined });
+  }, [linked, navigation]);
 
   // Clear the chosen segment when the Member moves to another tab, not when opening a modal (such as a Book) over it.
   useEffect(() => {

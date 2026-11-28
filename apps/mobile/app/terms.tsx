@@ -1,4 +1,4 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import type { ComponentRef } from "react";
 import { Linking, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -17,6 +17,7 @@ import { colors, fontFamily, fontSize, lineHeightFor, radii, spacing } from "../
  */
 export default function TermsScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
   const params = useLocalSearchParams<{ doc?: string }>();
   const screenTop = useScreenTop();
   const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
@@ -33,7 +34,9 @@ export default function TermsScreen() {
     scrollRef.current?.scrollTo({ y: 0, animated: false });
   };
 
-  const back = () => (router.canGoBack() ? router.back() : router.replace("/"));
+  // Opened as the first screen (a link), there is nothing to go back to. Asked of this screen's
+  // navigation, not the router: see `routerGlobalRef` in eslint.config.js.
+  const back = () => (navigation.canGoBack() ? router.back() : router.replace("/"));
   const doc = LEGAL_DOCUMENTS[selected];
   const segments: readonly Segment<PolicyDocumentKind>[] = POLICY_DOCUMENTS.map((kind) => ({
     key: kind,
